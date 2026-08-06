@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}{{ project.name }}{% endblock %}
+
+{% block content %}
+  {% if not project.is_active %}
+    <div class="alert a-red" style="width:100%;margin-bottom:14px;cursor:default">
+      <b>این پروژه غیرفعال است.</b>
+      <form method="post" action="{% url 'projects:restore' project.pk %}" style="margin-inline-start:auto">
+        {% csrf_token %}<button class="btn btn-sm">فعال‌سازی مجدد</button>
+      </form>
+    </div>
+  {% endif %}
+
+  <section class="card glass" style="padding:20px;display:flex;gap:14px;align-items:center;margin-bottom:14px">
+    <i class="pdot" style="width:14px;height:14px;background:{{ project.color }}"></i>
+    <div style="flex:1">
+      <h1 style="font-size:20px;font-weight:700">{{ project.name }}</h1>
+      {% if project.domain %}<a href="//{{ project.domain }}" target="_blank" rel="noopener" style="color:var(--primary-400);font-size:13px;direction:ltr;display:inline-block">{{ project.domain }} ↗</a>{% endif %}
+      <div class="pc-tags" style="margin-top:6px">
+        {% for t in project.types_display %}<span class="tag t-info">{{ t }}</span>{% endfor %}
+        {% if project.is_active %}<span class="tag t-ok">فعال</span>{% else %}<span class="tag t-bad">غیرفعال</span>{% endif %}
+      </div>
+    </div>
+    <div class="side-c">
+      <a href="{% url 'projects:edit' project.pk %}" class="btn">ویرایش</a>
+      {% if project.is_active %}
+        <form method="post" action="{% url 'projects:archive' project.pk %}" onsubmit="return confirm('این پروژه غیرفعال شود؟')">
+          {% csrf_token %}<button class="btn">غیرفعال‌سازی</button>
+        </form>
+      {% endif %}
+    </div>
+  </section>
+
+  {# ── تب‌ها ── #}
+  <div class="tabs" id="ptabs">
+    <button class="tab on" data-tab="overview">نمای کلی</button>
+    <button class="tab" data-tab="tasks">تسک‌ها</button>
+    <button class="tab" data-tab="calendar">تقویم</button>
+    <button class="tab" data-tab="files">فایل‌ها</button>
+    <button class="tab" data-tab="creds">دسترسی‌ها</button>
+    <button class="tab" data-tab="reports">گزارش‌ها</button>
+    <button class="tab" data-tab="finance">حسابداری</button>
+  </div>
+
+  {# نمای کلی #}
+  <section class="card glass tab-panel on" data-panel="overview">
+    <div class="card-h"><h3>اطلاعات قرارداد و کارفرما</h3></div>
+    <table><tbody>
+      <tr><td style="color:var(--text-dim);width:150px">مبلغ قرارداد</td><td>{% if project.amount %}{{ project.amount|money }} تومان{% else %}—{% endif %}</td></tr>
+      <tr><td style="color:var(--text-dim)">بازه‌ی قرارداد</td><td>{{ project.contract_start|jalali|default:"—" }} تا {{ project.contract_end|jalali|default:"—" }}</td></tr>
+      <tr><td style="color:var(--text-dim)">کارفرما</td><td>{{ project.client_name|default:"—" }}</td></tr>
+      <tr><td style="color:var(--text-dim)">تلفن کارفرما</td><td dir="ltr" style="text-align:right">{{ project.client_phone|default:"—" }}</td></tr>
+      <tr><td style="color:var(--text-dim)">مسئول</td><td>{{ project.manager.full_name|default:"—" }}</td></tr>
+      <tr><td style="color:var(--text-dim)">تیم</td><td>{% for m in project.members.all %}{{ m.full_name }}{% if not forloop.last %}، {% endif %}{% empty %}—{% endfor %}</td></tr>
+    </tbody></table>
+    {% if project.description %}<div style="padding:16px 17px;color:var(--text-dim);line-height:2;border-top:1px solid var(--stroke-soft)">{{ project.description|linebreaksbr }}</div>{% endif %}
+  </section>
+
+  {# دسترسی‌ها #}
+  <section class="card glass tab-panel" data-panel="creds">
+    <div class="card-h"><h3>دسترسی‌ها</h3>
+      <div class="side-c"><button class="btn btn-sm btn-p" id="add-cred">＋ افزودن دسترسی</button></div>
+    </div>
+    <table id="cred-table">
+      <thead><tr><th>عنوان</th><th>آدرس</th><th>نام کاربری</th><th>پسورد</th><th></th></tr></thead>
+      <tbody>
+        {% for c in credentials %}
+          <tr data-id="{{ c.id }}">
+            <td>{{ c.title }}</td>
+            <td dir="ltr" style="text-align:right">{% if c.url %}<a href="{{ c.url }}" target="_blank" rel="noopener" style="color:var(--primary-400)">{{ c.url }}</a>{% else %}—{% endif %}</td>
+            <td dir="ltr" style="text-align:right">{{ c.username|default:"—" }}</td>
+            <td><span class="pw" data-pw="••••••">••••••</span></td>
+            <td style="white-space:nowrap">
+              <button class="mini reveal">👁 نمایش</button>
+              <button class="mini copy">📋 کپی</button>
+              <button class="mini del">حذف</button>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if not credentials %}<div class="empty" id="cred-empty"><div class="ico">🔑</div><h4>دسترسی‌ای ثبت نشده</h4></div>{% endif %}
+  </section>
+
+  {# تب‌های آینده #}
+  <section class="card glass tab-panel" data-panel="tasks"><div class="empty"><div class="ico">☰</div><h4>تسک‌ها در گام تسک‌ها فعال می‌شود</h4></div></section>
+  <section class="card glass tab-panel" data-panel="calendar"><div class="empty"><div class="ico">▦</div><h4>تقویم پروژه در گام تقویم فعال می‌شود</h4></div></section>
+  <section class="card glass tab-panel" data-panel="files"><div class="empty"><div class="ico">📎</div><h4>گالری فایل‌ها به‌زودی</h4></div></section>
+  <section class="card glass tab-panel" data-panel="reports"><div class="empty"><div class="ico">▪</div><h4>گزارش‌ها در گام گزارش‌دهی فعال می‌شود</h4></div></section>
+  <section class="card glass tab-panel" data-panel="finance"><div class="empty"><div class="ico">₮</div><h4>حسابداری در گام حسابداری فعال می‌شود</h4></div></section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  // ── تب‌ها ──
+  const tabs = document.getElementById('ptabs');
+  tabs.addEventListener('click', e=>{
+    const b = e.target.closest('.tab'); if(!b) return;
+    tabs.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+    b.classList.add('on');
+    const key = b.dataset.tab;
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('on', p.dataset.panel===key));
+  });
+
+  // ── دسترسی‌ها ──
+  const CREATE_URL = "{% url 'projects:credential_create' project.pk %}";
+  const revealUrl = id => `/projects/api/credentials/${id}/reveal/`;
+  const delUrl    = id => `/projects/api/credentials/${id}/`;
+  const tbody = document.querySelector('#cred-table tbody');
+
+  function rowHtml(c){
+    return `<tr data-id="${c.id}">
+      <td>${c.title}</td>
+      <td dir="ltr" style="text-align:right">${c.url?`<a href="${c.url}" target="_blank" rel="noopener" style="color:var(--primary-400)">${c.url}</a>`:'—'}</td>
+      <td dir="ltr" style="text-align:right">${c.username||'—'}</td>
+      <td><span class="pw" data-pw="••••••">••••••</span></td>
+      <td style="white-space:nowrap">
+        <button class="mini reveal">👁 نمایش</button>
+        <button class="mini copy">📋 کپی</button>
+        <button class="mini del">حذف</button>
+      </td></tr>`;
+  }
+
+  document.getElementById('add-cred').addEventListener('click', ()=>{
+    const html = `<div class="modal-h"><h3>افزودن دسترسی</h3><button class="x" onclick="App.closeModal()">×</button></div>
+      <div class="modal-b">
+        <div class="field"><label>عنوان</label><input class="input" id="c-title" placeholder="مثلاً پنل مدیریت"></div>
+        <div class="field"><label>آدرس</label><input class="input" id="c-url" dir="ltr"></div>
+        <div class="field"><label>نام کاربری</label><input class="input" id="c-user" dir="ltr"></div>
+        <div class="field"><label>پسورد</label><input class="input" id="c-pass" dir="ltr" type="text"></div>
+        <div class="field"><label>یادداشت</label><input class="input" id="c-note"></div>
+        <div style="display:flex;gap:8px"><button class="btn btn-p" id="c-save">ذخیره</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>
+      </div>`;
+    const root = App.openModal(html);
+    root.querySelector('#c-save').onclick = async ()=>{
+      const title = root.querySelector('#c-title').value.trim();
+      if(!title){ App.toast('عنوان لازم است','warn'); return; }
+      try{
+        const c = await App.fetchJSON(CREATE_URL, {method:'POST', body:{
+          title, url:root.querySelector('#c-url').value.trim(),
+          username:root.querySelector('#c-user').value.trim(),
+          password:root.querySelector('#c-pass').value,
+          note:root.querySelector('#c-note').value.trim(),
+        }});
+        const empty = document.getElementById('cred-empty'); if(empty) empty.remove();
+        tbody.insertAdjacentHTML('beforeend', rowHtml(c));
+        App.closeModal(); App.toast('دسترسی افزوده شد','ok');
+      }catch(_){}
+    };
+  });
+
+  tbody.addEventListener('click', async e=>{
+    const tr = e.target.closest('tr'); if(!tr) return;
+    const id = tr.dataset.id, pw = tr.querySelector('.pw');
+    if(e.target.classList.contains('reveal')){
+      if(pw.dataset.shown){ pw.textContent='••••••'; delete pw.dataset.shown; e.target.textContent='👁 نمایش'; return; }
+      try{ const d = await App.fetchJSON(revealUrl(id)); pw.textContent=d.password; pw.dataset.shown='1'; pw.dataset.val=d.password; e.target.textContent='🙈 پنهان'; }catch(_){}
+    }
+    if(e.target.classList.contains('copy')){
+      try{ let v = pw.dataset.val; if(!v){ const d=await App.fetchJSON(revealUrl(id)); v=d.password; pw.dataset.val=v; } await navigator.clipboard.writeText(v); App.toast('کپی شد','ok'); }catch(_){ App.toast('کپی ناموفق','err'); }
+    }
+    if(e.target.classList.contains('del')){
+      if(!await App.confirm('این دسترسی حذف شود؟')) return;
+      try{ await App.fetchJSON(delUrl(id), {method:'DELETE'}); tr.remove(); App.toast('حذف شد','ok'); }catch(_){}
+    }
+  });
+})();
+</script>
+{% endblock %}

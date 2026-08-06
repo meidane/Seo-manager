@@ -1,0 +1,136 @@
+"""ویوهای پروژه‌ها — CRUD + سینگل با تب‌ها + API دسترسی‌های رمزنگاری‌شده."""
+import json
+
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Q
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect
+from django.views.decorators.http import require_http_methods
+from django.views.generic import CreateView, DetailView, ListView, UpdateView, View
+
+from core.models import ActivityLog
+
+from .forms import ProjectForm
+from .models import Credential, Project
+
+
+class ProjectListView(LoginRequiredMixin, ListView):
+    model = Project
+    template_name = 'projects/list.html'
+    context_object_name = 'projects'
+    paginate_by = 24
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        query = self.request.GET.get('q', '').strip()
+        if query:
+            qs = qs.filter(Q(name__icontains=query) | Q(domain__icontains=query))
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['page_title'] = 'پروژه‌ها'
+        ctx['q'] = self.request.GET.get('q', '')
+        return ctx
+
+
+class ProjectDetailView(LoginRequiredMixin, DetailView):
+    model = Project
+    template_name = 'projects/detail.html'
+    context_object_name = 'project'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['page_title'] = self.object.name
+        ctx['credentials'] = self.object.credentials.all()
+        return ctx
+
+
+class ProjectCreateView(LoginRequiredMixin, CreateView):
+    model = Project
+    form_class = ProjectForm
+    template_name = 'projects/form.html'
+
+    def form_valid(self, form):
+        form.instance.created_by = self.request.user
+        return super().form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['page_title'] = 'پروژه‌ی جدید'
+        ctx['is_edit'] = False
+        return ctx
+
+
+class ProjectUpdateView(LoginRequiredMixin, UpdateView):
+    model = Project
+    form_class = ProjectForm
+    template_name = 'projects/form.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['page_title'] = f'ویرایش {self.object.name}'
+        ctx['is_edit'] = True
+        return ctx
+
+
+class ProjectArchiveView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        project = get_object_or_404(Project, pk=pk)
+        project.archive()
+        return redirect(project.get_absolute_url())
+
+
+class ProjectRestoreView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        project = get_object_or_404(Project, pk=pk)
+        project.restore()
+        return redirect(project.get_absolute_url())
+
+
+# ── API دسترسی‌ها (JSON) ────────────────────────────────────────────────
+
+def _cred_json(cred):
+    return {
+        'id': cred.id, 'title': cred.title, 'url': cred.url,
+        'username': cred.username, 'note': cred.note,
+    }
+
+
+@require_http_methods(['POST'])
+def credential_create(request, pk):
+    if not request.user.is_authenticated:
+        return JsonResponse({'detail': 'نیاز به ورود'}, status=403)
+    project = get_object_or_404(Project, pk=pk)
+    data = json.loads(request.body or '{}')
+    if not data.get('title'):
+        return JsonResponse({'detail': 'عنوان لازم است'}, status=400)
+    cred = Credential(
+        project=project, title=data['title'], url=data.get('url', ''),
+        username=data.get('username', ''), note=data.get('note', ''),
+    )
+    cred.set_password(data.get('password', ''))
+    cred.save()
+    return JsonResponse(_cred_json(cred), status=201)
+
+
+@require_http_methods(['GET'])
+def credential_reveal(request, pk):
+    """بازگشایی پسورد + ثبت رویداد در ActivityLog."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'detail': 'نیاز به ورود'}, status=403)
+    cred = get_object_or_404(Credential, pk=pk)
+    ActivityLog.objects.create(
+        actor=request.user, verb='reveal_credential', content_object=cred,
+        changes={'credential': cred.title, 'project': cred.project.name},
+    )
+    return JsonResponse({'password': cred.reveal_password()})
+
+
+@require_http_methods(['DELETE'])
+def credential_delete(request, pk):
+    if not request.user.is_authenticated:
+        return JsonResponse({'detail': 'نیاز به ورود'}, status=403)
+    cred = get_object_or_404(Credential, pk=pk)
+    cred.delete()
+    return JsonResponse({'ok': True})

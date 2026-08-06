@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}پروژه‌ها{% endblock %}
+
+{% block content %}
+  <div class="page-h">
+    <h1>پروژه‌ها</h1>
+    <div class="side-c">
+      <form method="get" style="display:flex">
+        <input type="text" name="q" value="{{ q }}" placeholder="جستجوی نام یا دامنه…" class="input" style="max-width:220px">
+      </form>
+      <a href="{% url 'projects:add' %}" class="btn btn-p">＋ پروژه‌ی جدید</a>
+    </div>
+  </div>
+
+  {% if projects %}
+    <div class="cards-grid">
+      {% for p in projects %}
+        <a href="{{ p.get_absolute_url }}" class="project-card glass {% if not p.is_active %}is-off{% endif %}">
+          <div class="pc-head">
+            <i class="pdot" style="background:{{ p.color }}"></i>
+            <b>{{ p.name }}</b>
+            {% if not p.is_active %}<span class="tag t-bad" style="margin-inline-start:auto">غیرفعال</span>{% endif %}
+          </div>
+          <span class="pc-domain">{{ p.domain|default:"—" }}</span>
+          <div class="pc-tags">
+            {% for t in p.types_display %}<span class="tag t-info">{{ t }}</span>{% empty %}<span class="pc-muted">بدون نوع</span>{% endfor %}
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+
+    {% if is_paginated %}
+      <div class="pager">
+        {% if page_obj.has_previous %}<a class="btn btn-sm" href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}">قبلی</a>{% endif %}
+        <span class="pager-info">صفحه‌ی {{ page_obj.number|fa_digits }} از {{ paginator.num_pages|fa_digits }}</span>
+        {% if page_obj.has_next %}<a class="btn btn-sm" href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}">بعدی</a>{% endif %}
+      </div>
+    {% endif %}
+  {% else %}
+    <section class="card glass">
+      <div class="empty">
+        <div class="ico">▤</div>
+        <h4>هنوز پروژه‌ای ثبت نشده</h4>
+        <a href="{% url 'projects:add' %}" class="btn btn-p" style="margin-top:12px">＋ پروژه‌ی جدید</a>
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}

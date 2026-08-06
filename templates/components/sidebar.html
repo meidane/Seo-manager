@@ -8,7 +8,9 @@
     <a href="{% url 'dashboard:index' %}" class="{% if request.resolver_match.namespace == 'dashboard' %}on{% endif %}">
       <span class="ico">◈</span> داشبورد
     </a>
-    <a href="#"><span class="ico">▤</span> پروژه‌ها</a>
+    <a href="{% url 'projects:list' %}" class="{% if request.resolver_match.namespace == 'projects' %}on{% endif %}">
+      <span class="ico">▤</span> پروژه‌ها
+    </a>
     <a href="#"><span class="ico">☰</span> تسک‌ها</a>
     <a href="#"><span class="ico">▦</span> تقویم</a>
     <a href="#"><span class="ico">◎</span> بازبینی محتوا</a>

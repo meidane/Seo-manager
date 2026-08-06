@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="page-h">
+    <h1>{% if is_edit %}ویرایش پروژه{% else %}پروژه‌ی جدید{% endif %}</h1>
+  </div>
+
+  <section class="card glass" style="max-width:680px">
+    <form method="post" enctype="multipart/form-data" class="modal-b">
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="auth-err">{{ form.non_field_errors }}</div>{% endif %}
+
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px">
+        <div class="field">
+          <label>نام پروژه</label>{{ form.name }}
+          {% if form.name.errors %}<small style="color:var(--danger)">{{ form.name.errors|striptags }}</small>{% endif %}
+        </div>
+        <div class="field">
+          <label>رنگ</label>
+          <input type="color" name="color" value="{{ form.color.value|default:'#4183F2' }}"
+                 style="width:100%;height:40px;padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--stroke-soft);border-radius:var(--r-sm)">
+        </div>
+      </div>
+
+      <div class="field"><label>دامنه (بدون http)</label>{{ form.domain }}</div>
+
+      <div class="field">
+        <label>نوع پروژه</label>
+        <div style="display:flex;flex-wrap:wrap;gap:14px">
+          {% for t in form.project_types %}
+            <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer">{{ t.tag }} {{ t.choice_label }}</label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="field"><label>مبلغ قرارداد (تومان)</label>{{ form.amount }}</div>
+        <div class="field"><label>وضعیت</label>{{ form.status }}</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="field"><label>شروع قرارداد (شمسی)</label>{{ form.contract_start }}
+          {% if form.contract_start.errors %}<small style="color:var(--danger)">{{ form.contract_start.errors|striptags }}</small>{% endif %}</div>
+        <div class="field"><label>پایان قرارداد (شمسی)</label>{{ form.contract_end }}
+          {% if form.contract_end.errors %}<small style="color:var(--danger)">{{ form.contract_end.errors|striptags }}</small>{% endif %}</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="field"><label>نام کارفرما</label>{{ form.client_name }}</div>
+        <div class="field"><label>تلفن کارفرما</label>{{ form.client_phone }}</div>
+      </div>
+
+      <div class="field"><label>مسئول پروژه</label>{{ form.manager }}</div>
+
+      <div class="field">
+        <label>تیم (اعضا)</label>
+        <div style="display:flex;flex-wrap:wrap;gap:12px">
+          {% for m in form.members %}
+            <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer">{{ m.tag }} {{ m.choice_label }}</label>
+          {% empty %}<span style="color:var(--text-faint);font-size:12px">ابتدا همکار اضافه کن</span>{% endfor %}
+        </div>
+      </div>
+
+      <div class="field"><label>توضیحات</label>{{ form.description }}</div>
+
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button type="submit" class="btn btn-p">ذخیره</button>
+        <a href="{% if is_edit %}{{ object.get_absolute_url }}{% else %}{% url 'projects:list' %}{% endif %}" class="btn">انصراف</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}
