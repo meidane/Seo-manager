@@ -1,0 +1,217 @@
+"""API‌های JSON تسک — بدون DRF، فقط JsonResponse.
+
+توابع کمکی برای پارس تاریخ شمسی و اعمال فیلدهای مجاز روی تسک اینجا متمرکز
+شده‌اند تا هم create و هم update از یک منبع بخوانند.
+"""
+import json
+from datetime import date, timedelta
+
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from django.views.decorators.http import require_http_methods
+
+from core.jalali import parse_jalali
+from core.models import Holiday
+
+from .models import Task, TaskComment
+
+# فیلدهایی که مستقیم از بدنه‌ی JSON پذیرفته می‌شوند (بقیه محاسباتی/سیستمی‌اند)
+TEXT_FIELDS = [
+    'title', 'description', 'seo_title', 'keywords', 'lsi_keywords',
+    'published_url', 'source_url', 'media_name', 'anchor_text', 'target_url',
+    'update_type', 'link_type', 'review_note',
+]
+CHOICE_FIELDS = ['task_type', 'status', 'priority']
+INT_FIELDS = ['word_count', 'current_rank', 'target_rank', 'link_count']
+DECIMAL_FIELDS = ['media_cost']
+FK_FIELDS = {'project': 'project_id', 'assignee': 'assignee_id'}
+
+
+def _body(request):
+    try:
+        return json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return {}
+
+
+def _pdate(value):
+    """رشته‌ی شمسی → date میلادی؛ خالی → None."""
+    if not value:
+        return None
+    try:
+        return parse_jalali(value)
+    except (ValueError, TypeError):
+        return None
+
+
+def apply_fields(task: Task, data: dict):
+    """اعمال فیلدهای مجاز از dict روی نمونه‌ی تسک (بدون save)."""
+    for f in TEXT_FIELDS + CHOICE_FIELDS:
+        if f in data:
+            setattr(task, f, data[f] or '')
+    for f in INT_FIELDS:
+        if f in data:
+            setattr(task, f, data[f] or None)
+    for f in DECIMAL_FIELDS:
+        if f in data:
+            setattr(task, f, data[f] or None)
+    for key, attr in FK_FIELDS.items():
+        if key in data:
+            setattr(task, attr, data[key] or None)
+    if 'planned_date_iso' in data and data['planned_date_iso']:
+        # از drag تقویم می‌آید: میلادی ISO
+        try:
+            task.planned_date = date.fromisoformat(data['planned_date_iso'])
+        except (ValueError, TypeError):
+            pass
+    if 'planned_date' in data:
+        d = _pdate(data['planned_date'])
+        if d:
+            task.planned_date = d
+    if 'planned_time' in data and data['planned_time']:
+        task.planned_time = data['planned_time']
+    if 'done_date' in data:
+        task.done_date = _pdate(data['done_date'])
+    # اگر وضعیت به «انجام شده» رفت و done_date خالی بود، امروز را بگذار
+    if task.status == Task.DONE and not task.done_date:
+        task.done_date = date.today()
+
+
+@login_required
+@require_http_methods(['POST'])
+def task_create(request):
+    data = _body(request)
+    if not data.get('title') or not data.get('project'):
+        return JsonResponse({'detail': 'عنوان و پروژه لازم است'}, status=400)
+    task = Task(created_by=request.user, planned_date=date.today())
+    apply_fields(task, data)
+    task.save()
+    return JsonResponse(task.to_dict(), status=201)
+
+
+@login_required
+@require_http_methods(['GET', 'PATCH', 'DELETE'])
+def task_detail(request, pk):
+    task = get_object_or_404(Task, pk=pk)
+    if request.method == 'GET':
+        # نمای کامل برای پرکردن مودال ویرایش
+        d = task.to_dict()
+        d.update({
+            'update_type': task.update_type, 'priority': task.priority,
+            'description': task.description, 'seo_title': task.seo_title,
+            'keywords': task.keywords, 'lsi_keywords': task.lsi_keywords,
+            'source_url': task.source_url, 'current_rank': task.current_rank,
+            'target_rank': task.target_rank, 'media_name': task.media_name,
+            'media_cost': str(task.media_cost) if task.media_cost else '',
+            'anchor_text': task.anchor_text, 'target_url': task.target_url,
+            'link_type': task.link_type, 'link_count': task.link_count,
+            'review_status': task.review_status, 'review_note': task.review_note,
+        })
+        return JsonResponse(d)
+    if request.method == 'DELETE':
+        task.delete()
+        return JsonResponse({'ok': True})
+    # PATCH
+    apply_fields(task, _body(request))
+    task.save()
+    return JsonResponse(task.to_dict())
+
+
+@login_required
+@require_http_methods(['PATCH'])
+def task_status(request, pk):
+    """تغییر سریع وضعیت (دراپ‌داون ردیف و drag کانبان)."""
+    task = get_object_or_404(Task, pk=pk)
+    data = _body(request)
+    new_status = data.get('status')
+    if new_status not in dict(Task.STATUS_CHOICES):
+        return JsonResponse({'detail': 'وضعیت نامعتبر'}, status=400)
+    task.status = new_status
+    if new_status == Task.DONE and not task.done_date:
+        task.done_date = date.today()
+    task.save(update_fields=['status', 'done_date', 'updated_at'])
+    return JsonResponse(task.to_dict())
+
+
+@login_required
+@require_http_methods(['PATCH'])
+def task_review(request, pk):
+    """تایید / نیاز به اصلاح (از فید بازبینی و صفحه‌ی بازبینی)."""
+    task = get_object_or_404(Task, pk=pk)
+    data = _body(request)
+    status = data.get('review_status')
+    if status not in dict(Task.REVIEW_CHOICES):
+        return JsonResponse({'detail': 'وضعیت بازبینی نامعتبر'}, status=400)
+    task.review_status = status
+    task.review_note = data.get('review_note', task.review_note)
+    task.reviewed_by = request.user
+    task.reviewed_at = timezone.now()
+    task.save(update_fields=['review_status', 'review_note', 'reviewed_by', 'reviewed_at', 'updated_at'])
+    return JsonResponse({'ok': True, 'review_status': task.review_status})
+
+
+def _next_workday(d: date, holidays: set) -> date:
+    """اگر روز تعطیل بود (جمعه یا در جدول)، به اولین روز کاری بعد برو."""
+    while d.weekday() == 3 or d in holidays:  # weekday()==3 → جمعه (Mon=0)
+        d += timedelta(days=1)
+    return d
+
+
+@login_required
+@require_http_methods(['POST'])
+def task_bulk(request):
+    """عملیات گروهی: تغییر/جابه‌جایی تاریخ، مسئول، وضعیت، پروژه، انجام‌شده."""
+    data = _body(request)
+    ids = data.get('ids', [])
+    action = data.get('action')
+    qs = Task.objects.filter(id__in=ids)
+    if not ids or not action:
+        return JsonResponse({'detail': 'ids و action لازم است'}, status=400)
+
+    skip_holidays = data.get('skip_holidays')
+    holidays = set(Holiday.objects.filter(is_off=True).values_list('date', flat=True)) if skip_holidays else set()
+
+    if action == 'set_date':
+        d = _pdate(data.get('date'))
+        if not d:
+            return JsonResponse({'detail': 'تاریخ نامعتبر'}, status=400)
+        for t in qs:
+            t.planned_date = _next_workday(d, holidays) if skip_holidays else d
+            t.save(update_fields=['planned_date', 'updated_at'])
+    elif action == 'shift_date':
+        days = int(data.get('days', 0))
+        for t in qs:
+            nd = t.planned_date + timedelta(days=days)
+            t.planned_date = _next_workday(nd, holidays) if skip_holidays else nd
+            t.save(update_fields=['planned_date', 'updated_at'])
+    elif action == 'set_assignee':
+        qs.update(assignee_id=data.get('assignee') or None)
+    elif action == 'set_status':
+        qs.update(status=data.get('status'))
+    elif action == 'set_project':
+        qs.update(project_id=data.get('project'))
+    elif action == 'mark_done':
+        dd = _pdate(data.get('done_date')) or date.today()
+        qs.update(status=Task.DONE, done_date=dd)
+    else:
+        return JsonResponse({'detail': 'action ناشناخته'}, status=400)
+
+    return JsonResponse({'ok': True, 'count': len(ids)})
+
+
+@login_required
+@require_http_methods(['GET', 'POST'])
+def task_comments(request, pk):
+    task = get_object_or_404(Task, pk=pk)
+    if request.method == 'GET':
+        items = [{'author': str(c.author), 'body': c.body,
+                  'at': c.created_at.strftime('%Y-%m-%d %H:%M')} for c in task.comments.all()]
+        return JsonResponse({'comments': items})
+    body = _body(request).get('body', '').strip()
+    if not body:
+        return JsonResponse({'detail': 'متن لازم است'}, status=400)
+    c = TaskComment.objects.create(task=task, author=request.user, body=body)
+    return JsonResponse({'author': str(c.author), 'body': c.body,
+                         'at': c.created_at.strftime('%Y-%m-%d %H:%M')}, status=201)

@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% load static seo_extras %}
+{% block title %}تسک‌ها{% endblock %}
+
+{% block content %}
+  <div class="page-h"><h1>تسک‌ها</h1>
+    <div class="side-c">
+      <div class="range"><button class="on" data-view="list">لیست</button><button data-view="kanban">کانبان</button></div>
+      <button class="btn btn-p" id="new-task">＋ تسک جدید</button>
+    </div>
+  </div>
+
+  <form method="get" class="glass filters">
+    <select name="project" onchange="this.form.submit()"><option value="">همه‌ی پروژه‌ها</option>
+      {% for p in projects %}<option value="{{ p.id }}" {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
+    <select name="assignee" onchange="this.form.submit()"><option value="">همه‌ی همکاران</option>
+      {% for c in colleagues %}<option value="{{ c.id }}" {% if filters.assignee == c.id|stringformat:'s' %}selected{% endif %}>{{ c.full_name }}</option>{% endfor %}</select>
+    <select name="type" onchange="this.form.submit()"><option value="">همه‌ی انواع</option>
+      {% for v,l in type_choices %}<option value="{{ v }}" {% if filters.type == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+    <select name="status" onchange="this.form.submit()"><option value="">همه‌ی وضعیت‌ها</option>
+      {% for v,l in status_choices %}<option value="{{ v }}" {% if filters.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+    <span class="sep"></span>
+    <a href="?overdue=1" class="chip {% if filters.overdue == '1' %}on{% endif %}" style="border-color:rgba(251,87,115,.4);color:#FFA3B3">🔴 عقب‌افتاده‌ها</a>
+    <a href="?all=1" class="chip {% if filters.all == '1' %}on{% endif %}">بدون فیلتر بازه</a>
+  </form>
+
+  {# ── لیست ── #}
+  <section class="card glass" data-panel="list">
+    {% if tasks %}
+      <table>
+        <thead><tr><th style="width:28px"><input type="checkbox" id="check-all"></th><th>عنوان</th><th>پروژه</th><th>مسئول</th><th>تاریخ برنامه</th><th>تاریخ انجام</th><th>وضعیت</th><th>🔗</th></tr></thead>
+        <tbody>
+          {% for t in tasks %}
+            <tr data-open-task="{{ t.id }}" {% if t.is_overdue %}class="overdue-l"{% endif %}>
+              <td><input type="checkbox" class="row-check" data-id="{{ t.id }}"></td>
+              <td><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span> {{ t.title }}</td>
+              <td>{{ t.project.name }}</td>
+              <td>{{ t.assignee.full_name|default:"—" }}</td>
+              <td>{{ t.planned_date|jalali }}</td>
+              <td>{% if t.done_date %}{{ t.done_date|jalali }}{% else %}<span class="zero">—</span>{% endif %}</td>
+              <td>
+                <select class="row-status" data-id="{{ t.id }}" style="padding:3px 8px;font-size:12px">
+                  {% for v,l in status_choices %}<option value="{{ v }}" {% if t.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+                </select>
+              </td>
+              <td>{% if t.published_url %}<a class="lnk" href="{{ t.published_url }}" target="_blank" rel="noopener">↗</a>{% else %}<span class="lnk" style="opacity:.3">↗</span>{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty"><div class="ico">☰</div><h4>تسکی در این بازه/فیلتر نیست</h4><button class="btn btn-p" id="new-task" style="margin-top:12px">＋ تسک جدید</button></div>
+    {% endif %}
+  </section>
+
+  {# ── کانبان ── #}
+  <div data-panel="kanban" style="display:none">
+    <div class="kanban">
+      {% for key,label in status_choices %}
+        <section class="card glass kcol">
+          <div class="kcol-h">{{ label }} <span class="cnt">{{ kanban|dictkey:key|length|fa_digits }}</span></div>
+          <div class="kcol-b" data-status="{{ key }}">
+            {% for t in kanban|dictkey:key %}
+              <div class="kcard" draggable="true" data-id="{{ t.id }}" data-open-task="{{ t.id }}">
+                <span class="kt">{{ t.title }}</span>
+                <div class="km"><i class="dot" style="background:rgb({{ t.color_rgb }})"></i>{{ t.project.name }} · {{ t.assignee.full_name|default:"—" }}</div>
+              </div>
+            {% endfor %}
+          </div>
+        </section>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# ── نوار عملیات گروهی ── #}
+  <div class="glass" id="bulkbar" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);gap:8px;align-items:center;padding:10px 16px;z-index:30">
+    <span style="font-size:12.5px;color:var(--text-dim)"><b id="bulk-count">0</b> تسک انتخاب شده</span><span class="sep" style="width:1px;height:20px;background:var(--stroke-soft)"></span>
+    <button class="btn btn-sm" onclick="TaskBulk.shift(3)">+۳ روز</button>
+    <button class="btn btn-sm" onclick="TaskBulk.shift(-7)">−۱ هفته</button>
+    <button class="btn btn-sm" onclick="TaskBulk.done()">علامت انجام‌شده</button>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.TASK_CFG = {
+    projects: [{% for p in projects %}["{{ p.id }}","{{ p.name|escapejs }}"]{% if not forloop.last %},{% endif %}{% endfor %}],
+    colleagues: [{% for c in colleagues %}["{{ c.id }}","{{ c.full_name|escapejs }}"]{% if not forloop.last %},{% endif %}{% endfor %}],
+    typeChoices: [{% for v,l in type_choices %}["{{ v }}","{{ l|escapejs }}"]{% if not forloop.last %},{% endif %}{% endfor %}],
+  };
+  document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{
+    document.querySelectorAll('[data-view]').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+    document.querySelector('[data-panel="list"]').style.display=b.dataset.view==='list'?'':'none';
+    document.querySelector('[data-panel="kanban"]').style.display=b.dataset.view==='kanban'?'':'none';
+  });
+</script>
+<script src="{% static 'js/task-schema.js' %}"></script>
+<script src="{% static 'js/tasks.js' %}"></script>
+{% endblock %}

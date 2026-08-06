@@ -35,6 +35,8 @@ LOCAL_APPS = [
     'dashboard',
     'colleagues',
     'projects',
+    'tasks',
+    'calendarapp',
 ]
 
 THIRD_PARTY_APPS = [

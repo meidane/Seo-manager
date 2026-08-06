@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load static seo_extras %}
+{% block title %}بازبینی محتوا{% endblock %}
+
+{% block content %}
+  <div class="page-h"><h1>بازبینی محتوا</h1>
+    <div class="side-c">
+      <a href="?review=unreviewed" class="chip {% if review == 'unreviewed' %}on{% endif %}">بازبینی‌نشده</a>
+      <a href="?review=all" class="chip {% if review == 'all' %}on{% endif %}">همه</a>
+    </div>
+  </div>
+
+  {% for t in tasks %}
+    <section class="card glass rev-card" id="rev-{{ t.id }}" data-id="{{ t.id }}">
+      <div class="rev-top"><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span><h3>{{ t.seo_title|default:t.title }}</h3></div>
+      <div class="rev-meta"><span>پروژه: <b>{{ t.project.name }}</b></span><span>نویسنده: <b>{{ t.assignee.full_name|default:"—" }}</b></span><span>تاریخ: <b>{{ t.done_date|jalali_long }}</b></span>{% if t.word_count %}<span>تعداد کلمه: <b>{{ t.word_count|fa_digits }}</b></span>{% endif %}</div>
+      {% if t.keywords %}<div class="rev-kw">{% for kw in t.keywords|slice:":120" %}{% endfor %}<span class="tag t-mute">{{ t.keywords }}</span></div>{% endif %}
+      <div class="rev-actions">
+        <a href="{{ t.published_url }}" target="_blank" rel="noopener" class="btn btn-p">باز کردن مطلب ↗</a>
+        <button class="btn rev-ok" data-id="{{ t.id }}" style="border-color:rgba(45,212,167,.4);color:#6FE3C4">✓ تایید</button>
+        <button class="btn rev-fix" data-id="{{ t.id }}" style="border-color:rgba(249,115,22,.4);color:#FDBA8C">⚠ نیاز به اصلاح</button>
+        <input class="input rev-note" data-id="{{ t.id }}" style="flex:1;min-width:180px" placeholder="یادداشت بازبینی…">
+      </div>
+    </section>
+  {% empty %}
+    <section class="card glass"><div class="empty"><div class="ico">◎</div><h4>محتوایی برای بازبینی نیست</h4></div></section>
+  {% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function review(id, status){
+  const note = document.querySelector(`.rev-note[data-id="${id}"]`).value;
+  try{ await App.fetchJSON(`/tasks/api/${id}/review/`,{method:'PATCH',body:{review_status:status,review_note:note}});
+    App.toast(status==='approved'?'تایید شد':'برای اصلاح علامت خورد','ok');
+    const card=document.getElementById('rev-'+id); card.style.opacity='.4';
+  }catch(_){}
+}
+document.querySelectorAll('.rev-ok').forEach(b=>b.onclick=()=>review(b.dataset.id,'approved'));
+document.querySelectorAll('.rev-fix').forEach(b=>b.onclick=()=>review(b.dataset.id,'needs_fix'));
+</script>
+{% endblock %}

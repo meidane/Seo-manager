@@ -10,6 +10,8 @@ urlpatterns = [
     path('', include('accounts.urls')),
     path('colleagues/', include('colleagues.urls')),
     path('projects/', include('projects.urls')),
+    path('tasks/', include('tasks.urls')),
+    path('calendar/', include('calendarapp.urls')),
     path('settings/', include('core.urls')),
 ]
 

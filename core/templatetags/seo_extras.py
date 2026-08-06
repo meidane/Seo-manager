@@ -39,6 +39,15 @@ def money(value):
     return j.to_fa_digits(f'{num:,}')
 
 
+@register.filter(name='dictkey')
+def dictkey(d, key):
+    """دسترسی به مقدار دیکشنری با کلید متغیر در تمپلیت: {{ mydict|dictkey:k }}."""
+    try:
+        return d.get(key)
+    except AttributeError:
+        return None
+
+
 @register.filter(name='timeago')
 def timeago(value):
     """فاصله‌ی زمانی نسبی به فارسی: «۳ روز پیش»."""

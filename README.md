@@ -1,38 +1,78 @@
 # سئوپنل — پلتفرم مدیریت پروژه‌های سئو
 
-پلتفرم مدیریت پروژه‌های سئو با Django، تم دارک شیشه‌ای، RTL و تقویم شمسی.
+پلتفرم مدیریت پروژه‌های سئو با Django، تم دارک شیشه‌ای (Glassmorphism)، RTL و
+تقویم شمسی. بدون بیلد فرانت، بدون DRF، بدون ادمین جنگو برای کار روزمره.
 
-> **وضعیت:** گام ۰ (پایه) پیاده‌سازی شده — اسکلت، احراز هویت، سیستم طراحی،
-> بازه‌ی زمانی سراسری و مدل‌های پایه. اپ‌های پروژه‌ها/همکاران/تسک‌ها/تقویم/گزارش‌ها
-> در گام‌های بعد اضافه می‌شوند.
+> **برای ادامه‌ی توسعه، اول [`HINTS.md`](./HINTS.md) را بخوان** — نقشه‌ی اتصال
+> گام‌های بعد و تله‌هایی که نباید تکرار شوند آنجاست.
+
+## وضعیت پیاده‌سازی
+
+| گام | بخش | وضعیت |
+|---|---|---|
+| ۰ | پایه (Django، مدل‌های core، تاریخ شمسی، style.css، base.html، app.js) | ✅ |
+| ۱ | همکاران — CRUD کامل | ✅ |
+| ۲ | پروژه‌ها — CRUD + دسترسی‌های رمزنگاری‌شده + تب‌ها | ✅ |
+| ۳ | تسک‌ها — مدل کامل، مودال چندحالته، لیست/کانبان، عملیات گروهی، بازبینی | ✅ |
+| ۴ | تقویم شمسی — ماه، ناوبری AJAX، drag تغییر تاریخ، workload API | ✅ (هفته/لیست: TODO) |
+| ۵ | داشبورد — کارت‌ها، هشدارها، جدول‌های تجمیعی، فید بازبینی، نمودار میله‌ای | ✅ (تب‌ها/دونات/هیت‌مپ: TODO) |
+| ۶–۹ | بازبینی کامل، گزارش‌دهی، حسابداری، جمع‌بندی | ⬜ (نقطه‌ی اتصال در HINTS) |
+
+**ماک‌آپ استاتیک همه‌ی صفحات** برای بازبینی دیزاین: پوشه‌ی `mockups/` را باز کن
+(`index.html`). این‌ها مرجع بصری‌اند و مطابق `designpreview.html` ساخته شده‌اند.
 
 ## راه‌اندازی
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env          # مقادیر را پر کن
+cp .env.example .env          # مقادیر را پر کن (به‌ویژه SECRET_KEY و FERNET_KEY)
 python manage.py migrate
 python manage.py seed_holidays 1405
 python manage.py createsuperuser
 python manage.py runserver
 ```
 
-## آنچه در گام پایه ساخته شد
+## ساختار
 
-- **config/** — تنظیمات Django (SQLite توسعه / PostgreSQL تولید)، URLها، WSGI/ASGI
-- **accounts/** — مدل `User` سفارشی + `Team` (آماده‌ی چندتیمی فاز ۳)، ورود/خروج
-- **core/**
-  - مدل‌های پایه: `TimeStampedModel`، `Attachment` (GenericFK)، `ActivityLog`، `Holiday`
-  - ابزار تاریخ شمسی (`jalali.py`) — تبدیل میلادی↔شمسی فقط در لایه‌ی نمایش
-  - `DateRangeMixin` — بازه‌ی زمانی سراسری با ذخیره در session و بازه‌ی قبلی برای مقایسه
-  - تمپلیت‌فیلترها: `jalali`، `jalali_long`، `money`، `timeago`، `fa_digits`
-  - دستور `seed_holidays` + صفحه‌ی مدیریت تعطیلات `/settings/holidays/`
-- **dashboard/** — ویو داشبورد با اسکلت کارت‌ها (اعداد در گام داشبورد پر می‌شوند)
-- **static/css/style.css** — کل سیستم طراحی بخش ۲، فقط بر پایه‌ی متغیرهای CSS
-- **static/js/app.js** — `fetchJSON`، `toast`، `openModal`/`closeModal`، `confirm`، CSRF
-- **templates/** — `base.html` (سایدبار + هدر + انتخابگر بازه)، کامپوننت‌ها، ورود، تعطیلات
+```
+config/         تنظیمات، URLها، WSGI/ASGI
+core/           TimeStampedModel, Attachment, ActivityLog, Holiday,
+                jalali.py, daterange.py (بازه‌ی سراسری), crypto.py (Fernet),
+                templatetags/seo_extras.py (jalali|money|timeago|fa_digits|dictkey)
+accounts/       User سفارشی + Team، ورود/خروج
+colleagues/     Colleague — CRUD
+projects/       Project + Credential (رمزنگاری‌شده) — CRUD + تب‌ها + API دسترسی‌ها
+tasks/          Task + TaskComment — مدل قلب سیستم، api.py (JSON), views.py (لیست/کانبان/بازبینی)
+calendarapp/    منطق ماه شمسی (calendar_logic.py) + ویو صفحه + API تقویم/workload
+dashboard/      ویو تجمیعی داشبورد
+templates/      base.html + components/ + هر اپ
+static/         css/style.css، js/{app,tasks,task-schema,calendar-page}.js
+mockups/        پیش‌نمایش استاتیک همه‌ی صفحات (HTML/CSS، داده‌ی ساختگی)
+```
 
-## قانون تاریخ
+## اصول کلیدی (خلاصه — کامل در HINTS)
 
-همه‌ی تاریخ‌ها در دیتابیس **میلادی** ذخیره می‌شوند؛ تبدیل شمسی فقط در نمایش و ورودی.
+- **تاریخ‌ها در DB میلادی‌اند؛** تبدیل شمسی فقط در نمایش/ورودی.
+- **بازه‌ی زمانی سراسری** (`DateRangeMixin`) روی همه‌ی صفحات آماری اثر می‌گذارد و
+  در session می‌ماند.
+- **task-schema.js** منبع واحد «کدام فیلد برای کدام نوع تسک»؛ هم مودال هم منطق فرانت.
+- **آمار داشبورد با یک کوئری تجمیعی** (`annotate + filter=Q`)، نه حلقه‌ی پایتونی.
+- **هیچ رنگ hard-code در CSS نیست** — فقط متغیر، آماده‌ی حالت روشن.
+
+## API (خلاصه)
+
+```
+# تسک
+POST   /tasks/api/                     ایجاد
+GET|PATCH|DELETE /tasks/api/<id>/      خواندن برای مودال / ویرایش / حذف
+PATCH  /tasks/api/<id>/status/         تغییر سریع وضعیت (کانبان)
+PATCH  /tasks/api/<id>/review/         تایید / نیاز به اصلاح
+POST   /tasks/api/<id>/comments/       کامنت
+POST   /tasks/api/bulk/                عملیات گروهی (تاریخ نسبی/مطلق، مسئول، وضعیت...)
+# تقویم
+GET    /calendar/api/?year=&month=&project=&assignee=&type=
+GET    /calendar/api/workload/?assignee=&year=&month=
+# پروژه (دسترسی‌ها)
+POST   /projects/api/<id>/credentials/  |  GET /projects/api/credentials/<id>/reveal/
+```

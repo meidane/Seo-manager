@@ -3,42 +3,113 @@
 
 {% block content %}
 
-  {# ── ردیف ۱: کارت‌های وضعیت (اسکلت — اعداد در گام داشبورد پر می‌شوند) ── #}
+  {# ── ردیف ۱: کارت‌های وضعیت ── #}
   <div class="stats">
     <div class="stat glass">
       <div class="lab"><i class="dot" style="background:var(--success)"></i> انجام‌شده</div>
-      <div class="num">۰</div>
-      <div class="sub">در بازه‌ی انتخابی</div>
+      <div class="num">{{ cards.done|fa_digits }}</div>
+      <div class="sub">{% if cards.done_pct != None %}<span class="{% if cards.done_pct >= 0 %}up{% else %}down{% endif %}">{% if cards.done_pct >= 0 %}▲{% else %}▼{% endif %} {{ cards.done_pct|fa_digits }}٪</span> نسبت به دوره‌ی قبل{% else %}در بازه‌ی انتخابی{% endif %}</div>
     </div>
     <div class="stat glass">
       <div class="lab"><i class="dot" style="background:var(--slate)"></i> باقی‌مانده</div>
-      <div class="num">۰</div>
-      <div class="sub">برنامه‌ریزی‌شده</div>
+      <div class="num">{{ cards.remaining|fa_digits }}</div><div class="sub">برنامه‌ریزی‌شده در بازه</div>
     </div>
     <div class="stat glass">
       <div class="lab"><i class="dot" style="background:var(--danger)"></i> عقب‌افتاده</div>
-      <div class="num">۰</div>
-      <div class="sub">تسک‌های گذشته</div>
+      <div class="num" style="color:#FF9AAB">{{ cards.overdue|fa_digits }}</div><div class="sub">تسک‌های گذشته‌ی انجام‌نشده</div>
     </div>
     <div class="stat glass">
       <div class="lab"><i class="dot" style="background:var(--info)"></i> کلمات نوشته‌شده</div>
-      <div class="num">۰</div>
-      <div class="sub">مجموع در بازه</div>
+      <div class="num">{{ cards.words|fa_digits }}</div>
+      <div class="sub">{% if cards.words_pct != None %}<span class="{% if cards.words_pct >= 0 %}up{% else %}down{% endif %}">{% if cards.words_pct >= 0 %}▲{% else %}▼{% endif %} {{ cards.words_pct|fa_digits }}٪</span>{% else %}مجموع در بازه{% endif %}</div>
     </div>
     <div class="stat glass">
       <div class="lab"><i class="dot" style="background:var(--warning)"></i> مانده‌ی مالی</div>
-      <div class="num">۰</div>
-      <div class="sub">طلب از مشتری‌ها</div>
+      <div class="num">{{ cards.balance|money }}</div><div class="sub">به FinanceEntry وصل می‌شود</div>
     </div>
   </div>
 
-  {# ── جدول وضعیت پروژه‌ها (حالت خالی تا اتصال داده) ── #}
+  {# ── ردیف ۲: نوار هشدارها (فقط وقتی مصداق دارند) ── #}
+  <div class="alerts">
+    {% if alerts.overdue %}<a href="{% url 'tasks:list' %}?overdue=1" class="alert a-red"><b>{{ alerts.overdue|fa_digits }} تسک</b> عقب‌افتاده <span class="arw">←</span></a>{% endif %}
+    {% if alerts.no_plan %}<a href="{% url 'projects:list' %}" class="alert a-org"><b>{{ alerts.no_plan|fa_digits }} پروژه‌ی فعال</b> بدون تسک برنامه‌ریزی‌شده <span class="arw">←</span></a>{% endif %}
+    {% if alerts.done_no_link %}<a href="{% url 'tasks:review' %}" class="alert a-yel"><b>{{ alerts.done_no_link|fa_digits }} تسک</b> انجام‌شده بدون لینک انتشار <span class="arw">←</span></a>{% endif %}
+    {% if alerts.unreviewed %}<a href="{% url 'tasks:review' %}" class="alert a-blu"><b>{{ alerts.unreviewed|fa_digits }} محتوا</b> منتشر شده و بازبینی‌نشده <span class="arw">←</span></a>{% endif %}
+  </div>
+
+  {# ── ردیف ۳: وضعیت پروژه‌ها ── #}
   <section class="card glass">
-    <div class="card-h"><h3>وضعیت پروژه‌ها</h3></div>
-    <div class="empty">
-      <div class="ico">▤</div>
-      <h4>هنوز پروژه‌ای ثبت نشده</h4>
-      <p>پس از افزودن پروژه‌ها و تسک‌ها، وضعیت هر پروژه در این جدول نمایش داده می‌شود.</p>
+    <div class="card-h"><h3>وضعیت پروژه‌ها</h3><div class="side-c"><span class="chip on">بدترین وضعیت بالا</span></div></div>
+    {% if projects %}
+      <table>
+        <thead><tr><th>پروژه</th><th>برنامه</th><th>انجام</th><th>مانده</th><th>عقب</th><th>کلمات</th><th>پیشرفت</th><th>آخرین فعالیت</th><th>وضعیت</th></tr></thead>
+        <tbody>
+          {% for p in projects %}
+            <tr onclick="location.href='{{ p.get_absolute_url }}'">
+              <td><div class="proj"><i class="pdot" style="background:{{ p.color }}"></i><span><b>{{ p.name }}</b><span>{{ p.domain }}</span></span></div></td>
+              <td class="num-c">{{ p.planned|fa_digits }}</td>
+              <td class="num-c {% if not p.done %}zero{% endif %}">{{ p.done|fa_digits }}</td>
+              <td class="num-c {% if not p.remaining %}zero{% endif %}">{{ p.remaining|fa_digits }}</td>
+              <td class="num-c {% if p.overdue %}red-n{% else %}zero{% endif %}">{{ p.overdue|fa_digits }}</td>
+              <td class="num-c {% if not p.words %}zero{% endif %}">{{ p.words|default:0|fa_digits }}</td>
+              <td><div class="bar {% if p.state.0 == 'ok' or p.state.0 == 'info' %}ok{% elif p.state.0 == 'bad' %}bad{% endif %}"><i style="width:{{ p.progress }}%"></i></div></td>
+              <td>{% if p.last_activity %}{{ p.last_activity|timeago }}{% else %}<span class="zero">—</span>{% endif %}</td>
+              <td><span class="tag t-{{ p.state.0 }}">● {{ p.state.1 }}</span></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty"><div class="ico">▤</div><h4>پروژه‌ی فعالی نیست</h4></div>
+    {% endif %}
+  </section>
+
+  {# ── ردیف ۴: دو ستون ── #}
+  <div class="duo">
+    <section class="card glass">
+      <div class="card-h"><h3>عملکرد همکاران</h3><div class="side-c"><span class="chip on">بازه‌ی انتخابی</span></div></div>
+      {% if colleagues %}
+        <table>
+          <thead><tr><th>همکار</th><th>انجام</th><th>کلمات</th><th>باز</th><th>عقب</th></tr></thead>
+          <tbody>
+            {% for c in colleagues %}
+              <tr onclick="location.href='{% url 'colleagues:detail' c.pk %}'">
+                <td><div class="who">{% if c.avatar %}<img src="{{ c.avatar.url }}">{% else %}<span class="fb" style="background:color-mix(in srgb,{{ c.color }} 22%,transparent);color:{{ c.color }}">{{ c.initials }}</span>{% endif %}<span><b>{{ c.full_name }}</b><span>{{ c.roles_display }}</span></span></div></td>
+                <td class="num-c">{{ c.done|fa_digits }}</td>
+                <td class="num-c {% if not c.words %}zero{% endif %}">{{ c.words|default:0|fa_digits }}</td>
+                <td class="num-c">{{ c.open|fa_digits }}</td>
+                <td class="num-c {% if c.overdue %}red-n{% else %}zero{% endif %}">{{ c.overdue|fa_digits }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}<div class="empty"><div class="ico">◉</div><h4>همکار فعالی نیست</h4></div>{% endif %}
+    </section>
+
+    <section class="card glass">
+      <div class="card-h"><h3>بازبینی محتوا</h3><div class="side-c"><a href="{% url 'tasks:review' %}" class="chip">همه</a></div></div>
+      <div class="feed">
+        {% for t in review_feed %}
+          <div class="item">
+            <div class="item-t"><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span><b>{{ t.seo_title|default:t.title }}</b></div>
+            <div class="item-m"><span>{{ t.project.name }}</span><span>{{ t.assignee.full_name|default:"—" }}</span><span>{{ t.done_date|jalali }}</span>
+              <span class="grow"><a class="mini go" href="{{ t.published_url }}" target="_blank" rel="noopener">↗ باز کردن</a></span>
+            </div>
+          </div>
+        {% empty %}<div class="empty" style="padding:30px"><div class="ico">◎</div><h4>محتوای بازبینی‌نشده‌ای نیست</h4></div>{% endfor %}
+      </div>
+    </section>
+  </div>
+
+  {# ── ردیف ۵: نمودار میله‌ای روزانه (SVG ساده) ── #}
+  <section class="card glass" style="margin-top:14px">
+    <div class="card-h"><h3>تسک‌های انجام‌شده به تفکیک روز</h3></div>
+    <div class="chart-wrap">
+      {% if daily_bars %}
+        <div class="spark" style="height:90px;gap:3px;align-items:flex-end">
+          {% for b in daily_bars %}<i style="height:{{ b.h }}%;flex:1;min-width:5px" title="{{ b.n }}"></i>{% endfor %}
+        </div>
+      {% else %}<div class="empty" style="padding:20px">داده‌ای برای نمودار نیست</div>{% endif %}
     </div>
   </section>
 
