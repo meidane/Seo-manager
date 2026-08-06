@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تقویم — سئوپنل</title><link rel="stylesheet" href="assets/style.css">
+</head>
+<body data-page="calendar">
+<div class="shell">
+  <main class="main">
+    <section class="card glass cal" style="margin-top:0">
+      <div class="cal-bar"><button class="nav-b">›</button><h3>مرداد ۱۴۰۵</h3><button class="nav-b">‹</button><button class="btn btn-sm">برو به امروز</button>
+        <div class="side-c" style="margin-inline-start:auto;display:flex;gap:6px;flex-wrap:wrap">
+          <select style="max-width:150px"><option>همه‌ی پروژه‌ها</option><option>پارتیشن پارس</option></select>
+          <select style="max-width:150px"><option>همه‌ی همکاران</option><option>مریم کاظمی</option></select>
+          <select style="max-width:130px"><option>همه‌ی انواع</option><option>انتشار</option></select>
+          <span class="chip on">رنگ: نوع تسک</span><span class="chip">رنگ: پروژه</span>
+          <div class="range" style="margin-inline-start:6px"><button class="on">ماه</button><button>هفته</button><button>لیست</button></div>
+        </div>
+      </div>
+      <div class="grid7">
+        <div class="dow">شنبه</div><div class="dow">یکشنبه</div><div class="dow">دوشنبه</div><div class="dow">سه‌شنبه</div><div class="dow">چهارشنبه</div><div class="dow">پنجشنبه</div><div class="dow off">جمعه</div>
+      </div>
+      <div class="grid7" id="cal"></div>
+      <div class="legend">
+        <span><i style="background:var(--info)"></i>انتشار</span><span><i style="background:var(--warning)"></i>آپدیت سطحی</span>
+        <span><i style="background:var(--orange)"></i>آپدیت اساسی</span><span><i style="background:var(--violet)"></i>فنی</span>
+        <span><i style="background:var(--pink)"></i>رپورتاژ</span><span><i style="background:var(--success)"></i>لینک‌سازی</span>
+        <span style="margin-inline-start:auto;color:#FF9AAB">■ روز تعطیل</span>
+      </div>
+    </section>
+  </main>
+</div>
+<script src="assets/shell.js"></script>
+<script src="assets/calendar.js"></script>
+</body>
+</html>
