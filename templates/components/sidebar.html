@@ -13,7 +13,9 @@
     <a href="#"><span class="ico">▦</span> تقویم</a>
     <a href="#"><span class="ico">◎</span> بازبینی محتوا</a>
     <div class="nav-label">تیم و مالی</div>
-    <a href="#"><span class="ico">◉</span> همکاران</a>
+    <a href="{% url 'colleagues:list' %}" class="{% if request.resolver_match.namespace == 'colleagues' %}on{% endif %}">
+      <span class="ico">◉</span> همکاران
+    </a>
     <a href="#"><span class="ico">▪</span> گزارش‌ها</a>
     <a href="#"><span class="ico">₮</span> حسابداری</a>
     <div class="nav-label">تنظیمات</div>

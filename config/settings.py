@@ -33,6 +33,7 @@ LOCAL_APPS = [
     'accounts',
     'core',
     'dashboard',
+    'colleagues',
 ]
 
 THIRD_PARTY_APPS = [

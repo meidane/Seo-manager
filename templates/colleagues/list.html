@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}همکاران{% endblock %}
+
+{% block content %}
+  <div class="page-h">
+    <h1>همکاران</h1>
+    <div class="side-c">
+      <form method="get" style="display:flex">
+        <input type="text" name="q" value="{{ q }}" placeholder="جستجوی نام یا ایمیل…"
+               style="max-width:220px" class="input">
+      </form>
+      <a href="{% url 'colleagues:add' %}" class="btn btn-p">＋ همکار جدید</a>
+    </div>
+  </div>
+
+  {% if colleagues %}
+    <div class="cards-grid">
+      {% for c in colleagues %}
+        <a href="{{ c.get_absolute_url }}" class="colleague-card glass {% if not c.is_active %}is-off{% endif %}">
+          {% if c.avatar %}
+            <img class="ca-avatar" src="{{ c.avatar.url }}" alt="">
+          {% else %}
+            <span class="ca-avatar ca-fallback" style="--c:{{ c.color }}">{{ c.initials }}</span>
+          {% endif %}
+          <div class="ca-body">
+            <b>{{ c.full_name }}</b>
+            <span class="ca-roles">{{ c.roles_display|default:"—" }}</span>
+          </div>
+          {% if not c.is_active %}<span class="tag t-bad ca-badge">غیرفعال</span>{% endif %}
+        </a>
+      {% endfor %}
+    </div>
+
+    {% if is_paginated %}
+      <div class="pager">
+        {% if page_obj.has_previous %}<a class="btn btn-sm" href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}">قبلی</a>{% endif %}
+        <span class="pager-info">صفحه‌ی {{ page_obj.number|fa_digits }} از {{ paginator.num_pages|fa_digits }}</span>
+        {% if page_obj.has_next %}<a class="btn btn-sm" href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}">بعدی</a>{% endif %}
+      </div>
+    {% endif %}
+  {% else %}
+    <section class="card glass">
+      <div class="empty">
+        <div class="ico">◉</div>
+        <h4>هنوز همکاری ثبت نشده</h4>
+        <p>برای شروع، اولین همکار را اضافه کن.</p>
+        <a href="{% url 'colleagues:add' %}" class="btn btn-p" style="margin-top:12px">＋ همکار جدید</a>
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}

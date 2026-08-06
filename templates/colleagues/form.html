@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+
+{% block content %}
+  <div class="page-h">
+    <h1>{% if is_edit %}ویرایش همکار{% else %}همکار جدید{% endif %}</h1>
+  </div>
+
+  <section class="card glass" style="max-width:640px">
+    <form method="post" enctype="multipart/form-data" class="modal-b">
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+        <div class="auth-err">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <div class="field">
+        <label>نام و نام خانوادگی</label>
+        {{ form.full_name }}
+        {% if form.full_name.errors %}<small style="color:var(--danger)">{{ form.full_name.errors|striptags }}</small>{% endif %}
+      </div>
+
+      <div class="field">
+        <label>نقش‌ها</label>
+        <div style="display:flex;flex-wrap:wrap;gap:14px">
+          {% for r in form.roles %}
+            <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer">
+              {{ r.tag }} {{ r.choice_label }}
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="field"><label>تلفن</label>{{ form.phone }}</div>
+        <div class="field"><label>ایمیل</label>{{ form.email }}</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="field">
+          <label>تاریخ عضویت (شمسی)</label>{{ form.join_date }}
+          {% if form.join_date.errors %}<small style="color:var(--danger)">{{ form.join_date.errors|striptags }}</small>{% endif %}
+        </div>
+        <div class="field"><label>وضعیت</label>{{ form.status }}</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="field"><label>رنگ (نمودارها)</label>
+          <input type="color" name="color" value="{{ form.color.value|default:'#4183F2' }}"
+                 style="width:100%;height:40px;padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--stroke-soft);border-radius:var(--r-sm)">
+        </div>
+        <div class="field"><label>آواتار</label>{{ form.avatar }}</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="field"><label>دستمزد هر کلمه (اختیاری)</label>{{ form.rate_per_word }}</div>
+        <div class="field"><label>دستمزد هر تسک (اختیاری)</label>{{ form.rate_per_task }}</div>
+      </div>
+
+      <div class="field"><label>توضیحات</label>{{ form.description }}</div>
+
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button type="submit" class="btn btn-p">ذخیره</button>
+        <a href="{% if is_edit %}{{ object.get_absolute_url }}{% else %}{% url 'colleagues:list' %}{% endif %}" class="btn">انصراف</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}
