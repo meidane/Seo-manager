@@ -1,0 +1,7 @@
+/* فونت Vazirmatn.
+ * فعلاً از CDN بارگذاری می‌شود تا توسعه روان باشد؛ در گام جمع‌بندی، فایل‌های
+ * woff2 دانلود و به همین پوشه منتقل می‌شوند و آدرس‌های زیر محلی خواهند شد
+ * (طبق پیوست ب: self-host در static/vendor/). در نبود اینترنت، فونت سیستمی
+ * جایگزین می‌شود و چیدمان به‌هم نمی‌ریزد.
+ */
+@import url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css');

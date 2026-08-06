@@ -1,0 +1,9 @@
+{# انتخابگر بازه‌ی زمانی سراسری — روی کل صفحه اثر می‌گذارد و در session ذخیره می‌شود #}
+<div class="range">
+  <a href="?range=today"  class="{% if range_key == 'today' %}on{% endif %}">امروز</a>
+  <a href="?range=7"      class="{% if range_key == '7' %}on{% endif %}">۷ روز</a>
+  <a href="?range=30"     class="{% if range_key == '30' %}on{% endif %}">۳۰ روز</a>
+  <a href="?range=90"     class="{% if range_key == '90' %}on{% endif %}">۹۰ روز</a>
+  <a href="?range=this_month" class="{% if range_key == 'this_month' %}on{% endif %}">این ماه</a>
+  <a href="#" class="{% if range_key == 'custom' %}on{% endif %}">دلخواه</a>
+</div>

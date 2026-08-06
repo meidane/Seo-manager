@@ -1,0 +1,25 @@
+{% load static %}
+<aside class="side">
+  <div class="brand">
+    <div class="brand-mark">س</div>
+    <div><b>سئوپنل</b><span>مدیریت پروژه‌های سئو</span></div>
+  </div>
+  <nav class="nav">
+    <a href="{% url 'dashboard:index' %}" class="{% if request.resolver_match.namespace == 'dashboard' %}on{% endif %}">
+      <span class="ico">◈</span> داشبورد
+    </a>
+    <a href="#"><span class="ico">▤</span> پروژه‌ها</a>
+    <a href="#"><span class="ico">☰</span> تسک‌ها</a>
+    <a href="#"><span class="ico">▦</span> تقویم</a>
+    <a href="#"><span class="ico">◎</span> بازبینی محتوا</a>
+    <div class="nav-label">تیم و مالی</div>
+    <a href="#"><span class="ico">◉</span> همکاران</a>
+    <a href="#"><span class="ico">▪</span> گزارش‌ها</a>
+    <a href="#"><span class="ico">₮</span> حسابداری</a>
+    <div class="nav-label">تنظیمات</div>
+    <a href="{% url 'core:holidays' %}" class="{% if request.resolver_match.namespace == 'core' %}on{% endif %}">
+      <span class="ico">✦</span> تعطیلات
+    </a>
+    <a href="{% url 'accounts:logout' %}"><span class="ico">⏻</span> خروج</a>
+  </nav>
+</aside>

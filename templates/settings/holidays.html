@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}تعطیلات{% endblock %}
+
+{% block content %}
+  <div class="page-h">
+    <h1>مدیریت تعطیلات</h1>
+    <div class="side-c">
+      <button class="btn btn-p">＋ افزودن تعطیلی</button>
+    </div>
+  </div>
+
+  <section class="card glass">
+    {% if holidays %}
+      <table>
+        <thead>
+          <tr><th>عنوان</th><th>تاریخ شمسی</th><th>نوع</th><th>تعطیل رسمی</th></tr>
+        </thead>
+        <tbody>
+          {% for h in holidays %}
+            <tr>
+              <td>{{ h.title }}</td>
+              <td class="num-c">{{ h.date|jalali }}</td>
+              <td>{{ h.get_kind_display }}</td>
+              <td>
+                {% if h.is_off %}
+                  <span class="tag t-bad">تعطیل</span>
+                {% else %}
+                  <span class="tag t-mute">مناسبت</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">
+        <div class="ico">✦</div>
+        <h4>هنوز تعطیلی‌ای ثبت نشده</h4>
+        <p>با دستور <code>python manage.py seed_holidays 1405</code> تعطیلات سال را بارگذاری کن.</p>
+      </div>
+    {% endif %}
+  </section>
+{% endblock %}

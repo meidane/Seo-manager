@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+
+{% block content %}
+
+  {# ── ردیف ۱: کارت‌های وضعیت (اسکلت — اعداد در گام داشبورد پر می‌شوند) ── #}
+  <div class="stats">
+    <div class="stat glass">
+      <div class="lab"><i class="dot" style="background:var(--success)"></i> انجام‌شده</div>
+      <div class="num">۰</div>
+      <div class="sub">در بازه‌ی انتخابی</div>
+    </div>
+    <div class="stat glass">
+      <div class="lab"><i class="dot" style="background:var(--slate)"></i> باقی‌مانده</div>
+      <div class="num">۰</div>
+      <div class="sub">برنامه‌ریزی‌شده</div>
+    </div>
+    <div class="stat glass">
+      <div class="lab"><i class="dot" style="background:var(--danger)"></i> عقب‌افتاده</div>
+      <div class="num">۰</div>
+      <div class="sub">تسک‌های گذشته</div>
+    </div>
+    <div class="stat glass">
+      <div class="lab"><i class="dot" style="background:var(--info)"></i> کلمات نوشته‌شده</div>
+      <div class="num">۰</div>
+      <div class="sub">مجموع در بازه</div>
+    </div>
+    <div class="stat glass">
+      <div class="lab"><i class="dot" style="background:var(--warning)"></i> مانده‌ی مالی</div>
+      <div class="num">۰</div>
+      <div class="sub">طلب از مشتری‌ها</div>
+    </div>
+  </div>
+
+  {# ── جدول وضعیت پروژه‌ها (حالت خالی تا اتصال داده) ── #}
+  <section class="card glass">
+    <div class="card-h"><h3>وضعیت پروژه‌ها</h3></div>
+    <div class="empty">
+      <div class="ico">▤</div>
+      <h4>هنوز پروژه‌ای ثبت نشده</h4>
+      <p>پس از افزودن پروژه‌ها و تسک‌ها، وضعیت هر پروژه در این جدول نمایش داده می‌شود.</p>
+    </div>
+  </section>
+
+{% endblock %}
