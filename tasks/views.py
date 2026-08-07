@@ -41,7 +41,7 @@ class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
             from datetime import date
             qs = qs.filter(status__in=[Task.TODO, Task.DOING], planned_date__lt=date.today())
         if g.get('q'):
-            qs = qs.filter(Q(title__icontains=g['q']) | Q(seo_title__icontains=g['q']))
+            qs = qs.filter(title__icontains=g['q'])
 
         ctx.update(self.range_context())
         ctx['tasks'] = qs

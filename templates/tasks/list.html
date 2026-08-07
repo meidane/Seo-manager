@@ -39,7 +39,7 @@
               <td>{{ t.planned_date|jalali }}</td>
               <td>{% if t.done_date %}{{ t.done_date|jalali }}{% else %}<span class="zero">—</span>{% endif %}</td>
               <td>
-                <select class="row-status" data-id="{{ t.id }}" style="padding:3px 8px;font-size:12px">
+                <select class="row-status st-{{ t.status }}" data-id="{{ t.id }}" style="padding:3px 8px;font-size:12px">
                   {% for v,l in status_choices %}<option value="{{ v }}" {% if t.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
                 </select>
               </td>

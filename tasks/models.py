@@ -88,10 +88,10 @@ class Task(TimeStampedModel):
     keywords = models.TextField('کلمات کلیدی', blank=True)
     lsi_keywords = models.TextField('کلمات LSI', blank=True)
     seo_title = models.CharField('عنوان سئو', max_length=255, blank=True)
-    current_rank = models.PositiveIntegerField('جایگاه فعلی', null=True, blank=True)
-    target_rank = models.PositiveIntegerField('جایگاه هدف', null=True, blank=True)
-    published_url = models.URLField('لینک انتشار', blank=True)
+    current_rank = models.PositiveIntegerField('جایگاه فعلی', null=True, blank=True)  # فقط آپدیت
+    published_url = models.URLField('لینک انتشار', blank=True)  # انتشار/رپورتاژ
     source_url = models.URLField('آدرس مطلب فعلی', blank=True)  # فقط آپدیت
+    estimate_minutes = models.PositiveIntegerField('تخمین زمان (دقیقه)', null=True, blank=True)
 
     # ── رپورتاژ ──
     media_name = models.CharField('نام رسانه', max_length=150, blank=True)
@@ -174,6 +174,7 @@ class Task(TimeStampedModel):
             'assignee_id': self.assignee_id,
             'word_count': self.word_count,
             'published_url': self.published_url,
+            'estimate_minutes': self.estimate_minutes,
         }
 
 

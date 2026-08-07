@@ -24,7 +24,7 @@ TEXT_FIELDS = [
     'update_type', 'link_type', 'review_note',
 ]
 CHOICE_FIELDS = ['task_type', 'status', 'priority']
-INT_FIELDS = ['word_count', 'current_rank', 'target_rank', 'link_count']
+INT_FIELDS = ['word_count', 'current_rank', 'link_count', 'estimate_minutes']
 DECIMAL_FIELDS = ['media_cost']
 FK_FIELDS = {'project': 'project_id', 'assignee': 'assignee_id'}
 
@@ -103,6 +103,13 @@ def form_data(request):
     })
 
 
+def _publish_url_error(task):
+    """تسک انتشارِ «انجام‌شده» بدون لینک انتشار مجاز نیست (الزام لینک)."""
+    if task.task_type == Task.PUBLISH and task.status == Task.DONE and not task.published_url:
+        return 'برای تسک انتشارِ انجام‌شده، وارد کردن «لینک انتشار» الزامی است.'
+    return None
+
+
 @login_required
 @require_http_methods(['POST'])
 def task_create(request):
@@ -111,6 +118,9 @@ def task_create(request):
         return JsonResponse({'detail': 'عنوان و پروژه لازم است'}, status=400)
     task = Task(created_by=request.user, planned_date=date.today())
     apply_fields(task, data)
+    err = _publish_url_error(task)
+    if err:
+        return JsonResponse({'detail': err}, status=400)
     task.save()
     return JsonResponse(task.to_dict(), status=201)
 
@@ -127,7 +137,7 @@ def task_detail(request, pk):
             'description': task.description, 'seo_title': task.seo_title,
             'keywords': task.keywords, 'lsi_keywords': task.lsi_keywords,
             'source_url': task.source_url, 'current_rank': task.current_rank,
-            'target_rank': task.target_rank, 'media_name': task.media_name,
+            'estimate_minutes': task.estimate_minutes, 'media_name': task.media_name,
             'media_cost': str(task.media_cost) if task.media_cost else '',
             'anchor_text': task.anchor_text, 'target_url': task.target_url,
             'link_type': task.link_type, 'link_count': task.link_count,
@@ -140,6 +150,9 @@ def task_detail(request, pk):
         return JsonResponse({'ok': True})
     # PATCH
     apply_fields(task, _body(request))
+    err = _publish_url_error(task)
+    if err:
+        return JsonResponse({'detail': err}, status=400)
     task.save()
     return JsonResponse(task.to_dict())
 
@@ -156,6 +169,9 @@ def task_status(request, pk):
     task.status = new_status
     if new_status == Task.DONE and not task.done_date:
         task.done_date = date.today()
+    err = _publish_url_error(task)
+    if err:
+        return JsonResponse({'detail': err}, status=400)
     task.save(update_fields=['status', 'done_date', 'updated_at'])
     return JsonResponse(task.to_dict())
 

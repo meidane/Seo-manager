@@ -4,7 +4,7 @@
 (function () {
   'use strict';
   const S = window.TASK_SCHEMA;
-  const ALWAYS = ['project', 'assignee', 'task_type', 'title', 'planned_date', 'status', 'priority', 'description'];
+  const ALWAYS = ['project', 'assignee', 'task_type', 'title', 'planned_date', 'status', 'priority', 'description', 'estimate_minutes'];
 
   let cfg = null;
   async function ensureCfg() {
@@ -42,9 +42,10 @@
         ${field('priority', 'اولویت', `<select id="f-priority"><option value="low">کم</option><option value="med">متوسط</option><option value="high">زیاد</option></select>`)}
       </div>
       ${field('title', 'عنوان', `<input id="f-title" class="input" value="${esc(t.title)}">`)}
-      <div class="grid2">
+      <div class="grid3">
         ${field('planned_date', 'تاریخ برنامه (شمسی)', `<input id="f-planned_date" class="input" dir="ltr" placeholder="۱۴۰۵/۰۵/۱۵" value="${t.planned_date_fa || ''}">`)}
         ${field('status', 'وضعیت', `<select id="f-status"><option value="todo">در انتظار</option><option value="doing">در حال انجام</option><option value="done">انجام شده</option><option value="cancelled">لغو شده</option></select>`)}
+        ${field('estimate_minutes', 'تخمین زمان (دقیقه)', `<input id="f-estimate_minutes" class="input" type="number" dir="ltr" placeholder="۶۰" value="${t.estimate_minutes || ''}">`)}
       </div>
 
       <!-- فیلدهای سفارشی نوع (داینامیک) -->
@@ -57,10 +58,7 @@
       </div>
       ${field('keywords', 'کلمات کلیدی', `<input id="f-keywords" class="input" value="${esc(t.keywords)}">`)}
       ${field('lsi_keywords', 'کلمات LSI', `<input id="f-lsi_keywords" class="input" value="${esc(t.lsi_keywords)}">`)}
-      <div class="grid2">
-        ${field('current_rank', 'جایگاه فعلی', `<input id="f-current_rank" class="input" type="number" value="${t.current_rank || ''}">`)}
-        ${field('target_rank', 'جایگاه هدف', `<input id="f-target_rank" class="input" type="number" value="${t.target_rank || ''}">`)}
-      </div>
+      ${field('current_rank', 'جایگاه فعلی', `<input id="f-current_rank" class="input" type="number" value="${t.current_rank || ''}">`)}
       ${field('published_url', 'لینک انتشار', `<input id="f-published_url" class="input" dir="ltr" value="${esc(t.published_url)}">`)}
       ${field('source_url', 'آدرس مطلب فعلی', `<input id="f-source_url" class="input" dir="ltr" value="${esc(t.source_url)}">`)}
       <div class="grid2">
@@ -132,7 +130,7 @@
       update_type: g('f-update_type'), priority: g('f-priority'), title: g('f-title'),
       planned_date: g('f-planned_date'), status: g('f-status'), word_count: g('f-word_count'),
       seo_title: g('f-seo_title'), keywords: g('f-keywords'), lsi_keywords: g('f-lsi_keywords'),
-      current_rank: g('f-current_rank'), target_rank: g('f-target_rank'), published_url: g('f-published_url'),
+      current_rank: g('f-current_rank'), published_url: g('f-published_url'), estimate_minutes: g('f-estimate_minutes'),
       source_url: g('f-source_url'), media_name: g('f-media_name'), media_cost: g('f-media_cost'),
       anchor_text: g('f-anchor_text'), target_url: g('f-target_url'), link_type: g('f-link_type'),
       link_count: g('f-link_count'), description: g('f-description'),
@@ -180,8 +178,12 @@
   // ── تغییر سریع وضعیت از دراپ‌داون ردیف ──
   document.addEventListener('change', async (e) => {
     if (e.target.matches('.row-status')) {
-      try { await App.fetchJSON(`/tasks/api/${e.target.dataset.id}/status/`, { method: 'PATCH', body: { status: e.target.value } }); App.toast('وضعیت به‌روز شد', 'ok'); }
-      catch (_) {}
+      const sel = e.target;
+      try {
+        await App.fetchJSON(`/tasks/api/${sel.dataset.id}/status/`, { method: 'PATCH', body: { status: sel.value } });
+        sel.className = 'row-status st-' + sel.value;
+        App.toast('وضعیت به‌روز شد', 'ok');
+      } catch (_) {}
     }
   });
 
