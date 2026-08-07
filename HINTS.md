@@ -24,8 +24,8 @@
 |---|---|---|
 | `core` | TimeStampedModel, Attachment, ActivityLog, Holiday | کامل |
 | `accounts` | User, Team | کامل (Team فقط ساخته شده، فاز ۳) |
-| `colleagues` | Colleague | CRUD کامل؛ آمار/تقویم شخصی ناقص |
-| `projects` | Project, Credential | CRUD کامل؛ تب‌های files/reports/finance placeholder |
+| `colleagues` | Colleague | CRUD + آمار سینگل + دونات + تقویم شخصی کامل (گام ۶) |
+| `projects` | Project, Credential | CRUD + آمار سینگل + تب تسک/تقویم؛ files/reports/finance placeholder |
 | `tasks` | Task, TaskComment | مدل و API کامل |
 | `calendarapp` | — (روی Task) | ماه/AJAX/drag کامل؛ هفته/لیست ناقص |
 | `dashboard` | — (تجمیعی) | کارت‌ها/جدول‌ها/فید کامل؛ نمودارها/تب‌ها ناقص |
@@ -114,7 +114,8 @@ python manage.py runserver
 ```
 
 ## چک‌لیست گام‌های باقی‌مانده (از سند)
-- [ ] گام ۶: صفحه‌ی review کامل‌تر + آمار سینگل پروژه/همکار + تب تقویم آن‌ها
+- [x] گام ۶: آمار سینگل پروژه/همکار + تب تقویم آن‌ها + میان‌بر کیبورد بازبینی
+      (تقویم قابل‌جاسازی: `static/js/calendar-embed.js` با data-project/data-assignee)
 - [ ] گام ۷: گزارش‌دهی (Report/ReportItem + چاپ + لینک عمومی)
 - [ ] گام ۸: حسابداری (FinanceEntry + داشبورد مالی + اکسل)
 - [ ] گام ۹: جستجوی سراسری، ریسپانسیو موبایل، empty stateها، ایندکس‌ها، seed_demo

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load seo_extras %}
+{% load static seo_extras %}
 {% block title %}{{ colleague.full_name }}{% endblock %}
 
 {% block content %}
@@ -7,61 +7,101 @@
     <div class="alert a-red" style="width:100%;margin-bottom:14px;cursor:default">
       <b>این همکار غیرفعال است.</b>
       <form method="post" action="{% url 'colleagues:restore' colleague.pk %}" style="margin-inline-start:auto">
-        {% csrf_token %}
-        <button class="btn btn-sm">فعال‌سازی مجدد</button>
+        {% csrf_token %}<button class="btn btn-sm">فعال‌سازی مجدد</button>
       </form>
     </div>
   {% endif %}
 
   <section class="card glass" style="padding:22px;display:flex;gap:18px;align-items:center;margin-bottom:14px">
-    {% if colleague.avatar %}
-      <img class="ca-avatar" style="width:66px;height:66px" src="{{ colleague.avatar.url }}" alt="">
-    {% else %}
-      <span class="ca-avatar ca-fallback" style="width:66px;height:66px;font-size:22px;--c:{{ colleague.color }}">{{ colleague.initials }}</span>
-    {% endif %}
-    <div style="flex:1">
-      <h1 style="font-size:20px;font-weight:700">{{ colleague.full_name }}</h1>
-      <p style="color:var(--text-dim);font-size:13px;margin-top:4px">{{ colleague.roles_display|default:"بدون نقش" }}</p>
-    </div>
+    {% if colleague.avatar %}<img class="ca-avatar" style="width:66px;height:66px" src="{{ colleague.avatar.url }}">
+    {% else %}<span class="ca-avatar ca-fallback" style="width:66px;height:66px;font-size:22px;--c:{{ colleague.color }}">{{ colleague.initials }}</span>{% endif %}
+    <div style="flex:1"><h1 style="font-size:20px;font-weight:700">{{ colleague.full_name }}</h1>
+      <p style="color:var(--text-dim);font-size:13px;margin-top:4px">{{ colleague.roles_display|default:"بدون نقش" }}</p></div>
     <div class="side-c">
       <a href="{% url 'colleagues:edit' colleague.pk %}" class="btn">ویرایش</a>
-      {% if colleague.is_active %}
-        <form method="post" action="{% url 'colleagues:archive' colleague.pk %}"
-              onsubmit="return confirm('این همکار غیرفعال شود؟')">
-          {% csrf_token %}
-          <button class="btn">غیرفعال‌سازی</button>
-        </form>
-      {% endif %}
+      {% if colleague.is_active %}<form method="post" action="{% url 'colleagues:archive' colleague.pk %}" onsubmit="return confirm('این همکار غیرفعال شود؟')">{% csrf_token %}<button class="btn">غیرفعال‌سازی</button></form>{% endif %}
     </div>
   </section>
 
-  <div class="duo" style="margin-top:0">
-    <section class="card glass">
-      <div class="card-h"><h3>اطلاعات</h3></div>
-      <table>
-        <tbody>
+  {# ── کارت‌های آمار بازه ── #}
+  <div class="stats" style="grid-template-columns:repeat(6,1fr)">
+    <div class="stat glass"><div class="lab">انجام‌شده</div><div class="num">{{ stats.done|fa_digits }}</div></div>
+    <div class="stat glass"><div class="lab">باز</div><div class="num">{{ stats.open|fa_digits }}</div></div>
+    <div class="stat glass"><div class="lab">عقب‌افتاده</div><div class="num" style="color:#FF9AAB">{{ stats.overdue|fa_digits }}</div></div>
+    <div class="stat glass"><div class="lab">مجموع کلمات</div><div class="num">{{ stats.words|fa_digits }}</div></div>
+    <div class="stat glass"><div class="lab">میانگین کلمه</div><div class="num">{{ stats.avg_words|fa_digits }}</div></div>
+    <div class="stat glass"><div class="lab">تحویل به‌موقع</div><div class="num">{{ stats.on_time|fa_digits }}٪</div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" data-tab="info">اطلاعات</button>
+    <button class="tab" data-tab="charts">نمودارها</button>
+    <button class="tab" data-tab="calendar">تقویم شخصی</button>
+    <button class="tab" data-tab="tasks">تسک‌ها</button>
+  </div>
+
+  <div class="tab-panel on" data-panel="info">
+    <div class="duo" style="margin-top:0">
+      <section class="card glass"><div class="card-h"><h3>اطلاعات</h3></div>
+        <table><tbody>
           <tr><td style="color:var(--text-dim);width:130px">تلفن</td><td dir="ltr" style="text-align:right">{{ colleague.phone|default:"—" }}</td></tr>
           <tr><td style="color:var(--text-dim)">ایمیل</td><td dir="ltr" style="text-align:right">{{ colleague.email|default:"—" }}</td></tr>
           <tr><td style="color:var(--text-dim)">تاریخ عضویت</td><td>{{ colleague.join_date|jalali|default:"—" }}</td></tr>
-          <tr><td style="color:var(--text-dim)">وضعیت</td><td>
-            {% if colleague.is_active %}<span class="tag t-ok">فعال</span>{% else %}<span class="tag t-bad">غیرفعال</span>{% endif %}
-          </td></tr>
-          {% if colleague.rate_per_word %}
-            <tr><td style="color:var(--text-dim)">دستمزد هر کلمه</td><td>{{ colleague.rate_per_word|money }} تومان</td></tr>
-          {% endif %}
-        </tbody>
-      </table>
-    </section>
+          {% if colleague.rate_per_word %}<tr><td style="color:var(--text-dim)">دستمزد هر کلمه</td><td>{{ colleague.rate_per_word|money }} تومان</td></tr>{% endif %}
+        </tbody></table>
+      </section>
+      <section class="card glass"><div class="card-h"><h3>توضیحات</h3></div>
+        <div style="padding:16px 17px;color:var(--text-dim);line-height:2">{{ colleague.description|linebreaksbr|default:"توضیحی ثبت نشده است." }}</div>
+      </section>
+    </div>
+  </div>
 
-    <section class="card glass">
-      <div class="card-h"><h3>توضیحات</h3></div>
-      <div style="padding:16px 17px;color:var(--text-dim);line-height:2">
-        {{ colleague.description|linebreaksbr|default:"توضیحی ثبت نشده است." }}
-      </div>
+  <div class="tab-panel" data-panel="charts">
+    <div class="duo" style="margin-top:0">
+      <section class="card glass"><div class="card-h"><h3>تفکیک نوع تسک</h3></div>
+        <div class="chart-wrap" style="display:flex;gap:24px;align-items:center">
+          {% if donut %}
+            <svg width="130" height="130" viewBox="0 0 42 42">
+              <circle cx="21" cy="21" r="15.9" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="6"></circle>
+              {% for s in donut %}<circle cx="21" cy="21" r="15.9" fill="none" stroke="{{ s.color }}" stroke-width="6" stroke-dasharray="{{ s.dash }} {{ s.rest }}" stroke-dashoffset="{{ s.offset }}" transform="rotate(-90 21 21)"></circle>{% endfor %}
+            </svg>
+            <div class="donut-legend">{% for s in donut %}<div class="row"><i style="background:{{ s.color }}"></i> {{ s.label }} <span class="v">{{ s.pct|fa_digits }}٪</span></div>{% endfor %}</div>
+          {% else %}<div class="empty" style="padding:20px">داده‌ای نیست</div>{% endif %}
+        </div>
+      </section>
+      <section class="card glass"><div class="card-h"><h3>تفکیک بر اساس پروژه</h3></div>
+        <table><tbody>{% for row in by_project %}<tr><td>{{ row.project__name }}</td><td class="num-c" style="text-align:left">{{ row.n|fa_digits }}</td></tr>{% empty %}<tr><td class="zero">داده‌ای نیست</td></tr>{% endfor %}</tbody></table>
+      </section>
+    </div>
+    <section class="card glass" style="margin-top:14px"><div class="card-h"><h3>روند روزانه</h3></div>
+      <div class="chart-wrap"><div class="spark" style="height:80px;gap:4px;align-items:flex-end">{% for b in daily_bars %}<i style="height:{{ b.h }}%;flex:1;min-width:5px"></i>{% endfor %}</div></div>
     </section>
   </div>
 
-  <p style="color:var(--text-faint);font-size:12px;margin-top:16px">
-    آمار عملکرد و تب تقویم شخصی در گام‌های بعد (پس از افزودن تسک‌ها) به این صفحه اضافه می‌شوند.
-  </p>
+  <div class="tab-panel" data-panel="calendar">
+    <section class="card glass cal"><div data-cal-embed data-assignee="{{ colleague.pk }}"></div></section>
+  </div>
+
+  <div class="tab-panel" data-panel="tasks">
+    <section class="card glass">
+      <table>
+        <thead><tr><th>عنوان</th><th>پروژه</th><th>تاریخ برنامه</th><th>وضعیت</th><th>🔗</th></tr></thead>
+        <tbody>{% for t in task_rows %}<tr>
+          <td><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span> {{ t.title }}</td>
+          <td>{{ t.project.name }}</td><td>{{ t.planned_date|jalali }}</td>
+          <td><span class="tag t-{% if t.status == 'done' %}ok{% elif t.is_overdue %}bad{% else %}mute{% endif %}">{{ t.get_status_display }}</span></td>
+          <td>{% if t.published_url %}<a class="lnk" href="{{ t.published_url }}" target="_blank" rel="noopener">↗</a>{% endif %}</td>
+        </tr>{% empty %}<tr><td colspan="5" class="zero" style="padding:24px;text-align:center">تسکی در این بازه نیست</td></tr>{% endfor %}</tbody>
+      </table>
+    </section>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/calendar-embed.js' %}"></script>
+<script>
+document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(!b)return;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));b.classList.add('on');
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('on',p.dataset.panel===b.dataset.tab));});
+</script>
 {% endblock %}

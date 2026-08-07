@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.http import require_http_methods
 from django.views.generic import CreateView, DetailView, ListView, UpdateView, View
 
+from core.daterange import DateRangeMixin
 from core.models import ActivityLog
 
 from .forms import ProjectForm
@@ -34,15 +35,36 @@ class ProjectListView(LoginRequiredMixin, ListView):
         return ctx
 
 
-class ProjectDetailView(LoginRequiredMixin, DetailView):
+class ProjectDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
     model = Project
     template_name = 'projects/detail.html'
     context_object_name = 'project'
 
     def get_context_data(self, **kwargs):
+        from datetime import date
+
+        from django.db.models import Q, Sum
+
+        from tasks.models import Task
+
         ctx = super().get_context_data(**kwargs)
-        ctx['page_title'] = self.object.name
-        ctx['credentials'] = self.object.credentials.all()
+        start, end = self.get_range(self.request)
+        ctx.update(self.range_context())
+        p = self.object
+
+        done_qs = p.tasks.filter(status=Task.DONE, done_date__range=(start, end))
+        planned = p.tasks.filter(planned_date__range=(start, end)).count()
+        done = done_qs.count()
+        ctx['stats'] = {
+            'done': done, 'planned': planned, 'remaining': max(planned - done, 0),
+            'overdue': p.tasks.filter(status__in=[Task.TODO, Task.DOING], planned_date__lt=date.today()).count(),
+            'words': done_qs.aggregate(s=Sum('word_count'))['s'] or 0,
+        }
+        ctx['task_rows'] = p.tasks.select_related('assignee').filter(
+            Q(planned_date__range=(start, end)) | Q(status=Task.DONE, done_date__range=(start, end))
+        ).order_by('-planned_date')[:40]
+        ctx['page_title'] = p.name
+        ctx['credentials'] = p.credentials.all()
         return ctx
 
 

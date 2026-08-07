@@ -38,5 +38,24 @@ async function review(id, status){
 }
 document.querySelectorAll('.rev-ok').forEach(b=>b.onclick=()=>review(b.dataset.id,'approved'));
 document.querySelectorAll('.rev-fix').forEach(b=>b.onclick=()=>review(b.dataset.id,'needs_fix'));
+
+// ── میان‌بر کیبورد: J/K حرکت، Enter باز کردن لینک، A تایید ──
+const cards=[...document.querySelectorAll('.rev-card')];
+let idx=-1;
+function focusCard(i){
+  if(i<0||i>=cards.length)return;
+  if(idx>=0)cards[idx].style.outline='';
+  idx=i; const c=cards[idx];
+  c.style.outline='2px solid var(--primary)'; c.style.borderRadius='var(--r)';
+  c.scrollIntoView({block:'center',behavior:'smooth'});
+}
+document.addEventListener('keydown',e=>{
+  if(/input|textarea/i.test(e.target.tagName))return;
+  if(e.key==='j'||e.key==='J')focusCard(Math.min(idx+1,cards.length-1));
+  else if(e.key==='k'||e.key==='K')focusCard(Math.max(idx-1,0));
+  else if(e.key==='Enter'&&idx>=0){const a=cards[idx].querySelector('a.btn-p');if(a)window.open(a.href,'_blank');}
+  else if((e.key==='a'||e.key==='A')&&idx>=0)review(cards[idx].dataset.id,'approved');
+});
+if(cards.length)focusCard(0);
 </script>
 {% endblock %}

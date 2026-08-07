@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load seo_extras %}
+{% load static seo_extras %}
 {% block title %}{{ project.name }}{% endblock %}
 
 {% block content %}
@@ -44,7 +44,14 @@
   </div>
 
   {# نمای کلی #}
-  <section class="card glass tab-panel on" data-panel="overview">
+  <div class="tab-panel on" data-panel="overview">
+  <div class="stats" style="grid-template-columns:repeat(4,1fr)">
+    <div class="stat glass"><div class="lab"><i class="dot" style="background:var(--success)"></i> انجام‌شده</div><div class="num">{{ stats.done|fa_digits }}</div></div>
+    <div class="stat glass"><div class="lab"><i class="dot" style="background:var(--slate)"></i> باقی‌مانده</div><div class="num">{{ stats.remaining|fa_digits }}</div></div>
+    <div class="stat glass"><div class="lab"><i class="dot" style="background:var(--danger)"></i> عقب‌افتاده</div><div class="num">{{ stats.overdue|fa_digits }}</div></div>
+    <div class="stat glass"><div class="lab"><i class="dot" style="background:var(--info)"></i> کلمات</div><div class="num">{{ stats.words|fa_digits }}</div></div>
+  </div>
+  <section class="card glass">
     <div class="card-h"><h3>اطلاعات قرارداد و کارفرما</h3></div>
     <table><tbody>
       <tr><td style="color:var(--text-dim);width:150px">مبلغ قرارداد</td><td>{% if project.amount %}{{ project.amount|money }} تومان{% else %}—{% endif %}</td></tr>
@@ -56,6 +63,7 @@
     </tbody></table>
     {% if project.description %}<div style="padding:16px 17px;color:var(--text-dim);line-height:2;border-top:1px solid var(--stroke-soft)">{{ project.description|linebreaksbr }}</div>{% endif %}
   </section>
+  </div>
 
   {# دسترسی‌ها #}
   <section class="card glass tab-panel" data-panel="creds">
@@ -83,15 +91,27 @@
     {% if not credentials %}<div class="empty" id="cred-empty"><div class="ico">🔑</div><h4>دسترسی‌ای ثبت نشده</h4></div>{% endif %}
   </section>
 
-  {# تب‌های آینده #}
-  <section class="card glass tab-panel" data-panel="tasks"><div class="empty"><div class="ico">☰</div><h4>تسک‌ها در گام تسک‌ها فعال می‌شود</h4></div></section>
-  <section class="card glass tab-panel" data-panel="calendar"><div class="empty"><div class="ico">▦</div><h4>تقویم پروژه در گام تقویم فعال می‌شود</h4></div></section>
+  {# تسک‌ها #}
+  <section class="card glass tab-panel" data-panel="tasks">
+    <div class="card-h"><h3>تسک‌های پروژه در بازه</h3><div class="side-c"><a href="{% url 'tasks:list' %}?project={{ project.pk }}&all=1" class="btn btn-sm">مدیریت کامل ↗</a></div></div>
+    <table>
+      <thead><tr><th>عنوان</th><th>مسئول</th><th>تاریخ برنامه</th><th>وضعیت</th><th>🔗</th></tr></thead>
+      <tbody>{% for t in task_rows %}<tr>
+        <td><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span> {{ t.title }}</td>
+        <td>{{ t.assignee.full_name|default:"—" }}</td><td>{{ t.planned_date|jalali }}</td>
+        <td><span class="tag t-{% if t.status == 'done' %}ok{% elif t.is_overdue %}bad{% else %}mute{% endif %}">{{ t.get_status_display }}</span></td>
+        <td>{% if t.published_url %}<a class="lnk" href="{{ t.published_url }}" target="_blank" rel="noopener">↗</a>{% endif %}</td>
+      </tr>{% empty %}<tr><td colspan="5" class="zero" style="padding:24px;text-align:center">تسکی در این بازه نیست</td></tr>{% endfor %}</tbody>
+    </table>
+  </section>
+  <section class="card glass tab-panel cal" data-panel="calendar"><div data-cal-embed data-project="{{ project.pk }}"></div></section>
   <section class="card glass tab-panel" data-panel="files"><div class="empty"><div class="ico">📎</div><h4>گالری فایل‌ها به‌زودی</h4></div></section>
   <section class="card glass tab-panel" data-panel="reports"><div class="empty"><div class="ico">▪</div><h4>گزارش‌ها در گام گزارش‌دهی فعال می‌شود</h4></div></section>
   <section class="card glass tab-panel" data-panel="finance"><div class="empty"><div class="ico">₮</div><h4>حسابداری در گام حسابداری فعال می‌شود</h4></div></section>
 {% endblock %}
 
 {% block scripts %}
+<script src="{% static 'js/calendar-embed.js' %}"></script>
 <script>
 (function(){
   // ── تب‌ها ──
