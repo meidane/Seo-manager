@@ -17,18 +17,20 @@
     return `<div class="field" data-f="${id}"><label>${label}</label>${inner}</div>`;
   }
 
+  // همه‌ی انواع از رکوردهای TaskTypeDef (built-in + سفارشی). اگر seed نشده باشد، از typeChoices می‌سازد.
+  function typeList() {
+    if (cfg.customTypes && cfg.customTypes.length) return cfg.customTypes;
+    return cfg.typeChoices.map(([k, l]) => ({ id: 'b:' + k, name: l, builtin_key: k, fields: [] }));
+  }
+  function findType(v) { return typeList().find((t) => String(t.id) === String(v)); }
   function typeOptions(sel) {
-    let h = cfg.typeChoices.map(([v, l]) => opt(v, l, sel)).join('');
-    if (cfg.customTypes.length) {
-      h += '<optgroup label="انواع سفارشی">' +
-        cfg.customTypes.map((t) => opt('custom:' + t.id, t.name, sel)).join('') + '</optgroup>';
-    }
-    return h;
+    return typeList().map((t) => opt(t.id, (t.icon ? t.icon + ' ' : '') + t.name, sel)).join('');
   }
 
   function modalHtml(t) {
     t = t || {};
-    const typeSel = t.type_def ? 'custom:' + t.type_def : (t.type || 'publish');
+    const _bt = typeList().find((x) => x.builtin_key === (t.type || 'publish'));
+    const typeSel = t.type_def || (_bt ? _bt.id : (typeList()[0] || {}).id);
     return `
     <div class="modal-h"><h3>${t.id ? 'ویرایش تسک' : 'تسک جدید'}</h3><button class="x" onclick="App.closeModal()">×</button></div>
     <div class="modal-b" id="tform">
@@ -86,10 +88,9 @@
   function esc(v) { return (v == null ? '' : String(v)).replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
 
   // ── رندر فیلدهای سفارشی یک نوع ──
-  function renderCustom(typeId, values) {
-    const t = cfg.customTypes.find((x) => String(x.id) === String(typeId));
+  function renderCustom(t, values) {
     const box = document.getElementById('custom-fields');
-    if (!t) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    if (!t || !t.fields || !t.fields.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
     values = values || {};
     box.style.display = '';
     box.innerHTML = t.fields.map((f) => {
@@ -106,28 +107,27 @@
   }
 
   function applyVisibility(loadedCustom) {
-    const val = document.getElementById('f-task_type').value;
-    const isCustom = val.startsWith('custom:');
-    const on = isCustom ? new Set() : S.fieldsFor(val);
+    const ty = findType(document.getElementById('f-task_type').value);
+    const bk = ty ? ty.builtin_key : '';
+    const on = bk ? S.fieldsFor(bk) : new Set();
     document.querySelectorAll('#tform [data-f]').forEach((el) => {
       const f = el.dataset.f;
       if (ALWAYS.includes(f)) return;
-      if (f === 'update_type') { el.style.display = (!isCustom && val === 'update') ? '' : 'none'; return; }
+      if (f === 'update_type') { el.style.display = (bk === 'update') ? '' : 'none'; return; }
       el.style.display = on.has(f) ? '' : 'none';
     });
-    if (isCustom) renderCustom(val.split(':')[1], loadedCustom);
-    else { const b = document.getElementById('custom-fields'); b.style.display = 'none'; b.innerHTML = ''; }
+    renderCustom(ty, loadedCustom);
   }
 
   function collect() {
     if (window.RichText) RichText.save();  // TinyMCE → textarea
     const g = (id) => { const e = document.getElementById(id); return e ? e.value : ''; };
-    const typeVal = g('f-task_type');
-    const isCustom = typeVal.startsWith('custom:');
+    const ty = findType(g('f-task_type'));
+    const bk = ty ? ty.builtin_key : '';
     const p = {
       project: g('f-project'), assignee: g('f-assignee'),
-      task_type: isCustom ? 'other' : typeVal,
-      type_def: isCustom ? +typeVal.split(':')[1] : null,
+      task_type: bk || 'other',
+      type_def: (ty && typeof ty.id === 'number') ? ty.id : null,
       update_type: g('f-update_type'), priority: g('f-priority'), title: g('f-title'),
       planned_date: g('f-planned_date'), status: g('f-status'), word_count: g('f-word_count'),
       seo_title: g('f-seo_title'), keywords: g('f-keywords'), lsi_keywords: g('f-lsi_keywords'),
@@ -136,7 +136,7 @@
       anchor_text: g('f-anchor_text'), target_url: g('f-target_url'), link_type: g('f-link_type'),
       link_count: g('f-link_count'), description: g('f-description'),
     };
-    if (isCustom) {
+    if (ty && ty.fields && ty.fields.length) {
       const custom = {};
       document.querySelectorAll('#custom-fields .cf').forEach((el) => {
         custom[el.dataset.key] = el.type === 'checkbox' ? el.checked : el.value;
@@ -176,6 +176,42 @@
     if (d) d.onclick = async () => { if (await App.confirm('این تسک حذف شود؟')) { await App.fetchJSON(`/tasks/api/${id}/`, { method: 'DELETE' }); App.closeModal(); location.reload(); } };
   }
   window.openTask = openTask;
+
+  // ── بازبینی: نوشتن موارد نیاز به اصلاح (TinyMCE) ──
+  async function openFixModal(id) {
+    App.openModal(
+      `<div class="modal-h"><h3>موارد نیاز به اصلاح</h3><button class="x" onclick="App.closeModal()">×</button></div>
+       <div class="modal-b"><p style="color:var(--text-dim);font-size:12px;margin-bottom:8px">توضیح بده چه چیزی باید اصلاح شود (بولد و عکس هم می‌توانی بگذاری). با ثبت، تسک از حالت انجام‌شده خارج و برای اصلاح برمی‌گردد.</p>
+         <textarea id="fix-note" class="rich-editor" rows="5"></textarea></div>
+       <div class="modal-f"><button class="btn btn-p" id="fix-save">ثبت و بازگرداندن برای اصلاح</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+    if (window.RichText) RichText.init('#fix-note');
+    document.getElementById('fix-save').onclick = async () => {
+      if (window.RichText) RichText.save();
+      const note = document.getElementById('fix-note').value;
+      try {
+        await App.fetchJSON(`/tasks/api/${id}/review/`, { method: 'PATCH', body: { review_status: 'needs_fix', review_note: note } });
+        App.toast('برای اصلاح علامت خورد', 'ok'); App.closeModal(); setTimeout(() => location.reload(), 300);
+      } catch (_) {}
+    };
+  }
+  window.openFixModal = openFixModal;
+
+  // ── نمایش موارد نیاز به اصلاح (تگ کنار عنوان) ──
+  async function showFixNote(id) {
+    try {
+      const t = await App.fetchJSON(`/tasks/api/${id}/`);
+      App.openModal(
+        `<div class="modal-h"><h3>موارد نیاز به اصلاح</h3><button class="x" onclick="App.closeModal()">×</button></div>
+         <div class="modal-b"><div class="rich">${t.review_note || '<span style="color:var(--text-faint)">توضیحی ثبت نشده</span>'}</div></div>
+         <div class="modal-f"><button class="btn btn-p" onclick="App.closeModal()">فهمیدم</button>
+           <button class="btn" onclick="App.closeModal();window.openTask(${id})">باز کردن تسک</button></div>`);
+    } catch (_) {}
+  }
+  window.showFixNote = showFixNote;
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-fix-note]');
+    if (t) { e.stopPropagation(); showFixNote(t.dataset.fixNote); }
+  });
 
   // ── تغییر سریع وضعیت از دراپ‌داون ردیف ──
   document.addEventListener('change', async (e) => {

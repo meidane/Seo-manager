@@ -9,6 +9,7 @@ urlpatterns = [
     path('', views.ReportListView.as_view(), name='list'),
     path('add/', views.ReportCreateView.as_view(), name='add'),
     path('<int:pk>/', views.ReportDetailView.as_view(), name='detail'),
+    path('<int:pk>/preview/', views.ReportPreviewView.as_view(), name='preview'),
 
     # API
     path('api/<int:pk>/pull-tasks/', views.pull_tasks, name='pull_tasks'),

@@ -10,8 +10,11 @@
   - بازبینی: `review_status, review_note, reviewed_by/at, ai_*` (فاز۳)
   - **سفارشی:** `type_def`(FK TaskTypeDef) + `custom`(JSON). فیلدهای هسته‌ای دست‌نخورده.
   - propertyها: `is_overdue, is_done, type_label, color_rgb, to_dict()` (شامل آواتار برای تقویم)
-- **TaskTypeDef / TaskTypeField** — انواع سفارشی کاربر (kind: text/textarea/number/checkbox/select/url/date).
-  `TaskTypeDef.schema()` → لیست فیلد برای فرانت.
+- **TaskTypeDef / TaskTypeField** — همه‌ی انواع (built-in + سفارشی) اینجا رکورد دارند.
+  `builtin_key` پرشده = نوع پیش‌فرض (فیلدهای هسته‌ای + آمار داشبورد با همین کار می‌کنند)؛
+  خالی = کاملاً سفارشی. `seed_task_types` انواع پیش‌فرض را می‌سازد (اجرای مکرر ایمن).
+  مودال از `form_data.customTypes` درایو می‌شود؛ انتخاب نوع → `task_type=builtin_key||other`
+  + `type_def=id` + فیلدهای سفارشی. `TaskTypeDef.schema()` → لیست فیلد.
 - **TaskComment**.
 
 ## فایل‌ها
@@ -32,6 +35,14 @@
 ## افزودن فیلد به تسک = ۳ نقطه
 ۱) فیلد در `models.py` (+migration) ۲) گروه در `task-schema.js` ۳) لیست مناسب در
 `apply_fields` (TEXT/INT/DECIMAL/CHOICE). برای نمایش در لیست/تقویم، `to_dict` را هم ببین.
+
+## بازبینی (review)
+`task_review`: `needs_fix` → تسک از `done` به `doing` برمی‌گردد و `done_date` پاک می‌شود؛
+`review_note` (HTML، پاکسازی با clean_html) با مودال TinyMCE نوشته می‌شود. در لیست، تگ
+«⚠ نیاز به اصلاح» کنار عنوان (`data-fix-note`) → `showFixNote(id)` نوت را نشان می‌دهد.
+
+## دستور
+`python manage.py seed_task_types` — ساخت انواع پیش‌فرض قابل‌مدیریت.
 
 ## TODO
 - نمایش مقادیر `custom` در جدول لیست/سینگل (فعلاً فقط در مودال).

@@ -194,6 +194,9 @@ class TaskTypeDef(TimeStampedModel):
     icon = models.CharField('آیکن (اموجی)', max_length=8, blank=True)
     order = models.PositiveIntegerField('ترتیب', default=0)
     is_active = models.BooleanField('فعال', default=True)
+    # اگر نوع built-in باشد، کلیدش اینجاست (publish/update/...) تا فیلدهای هسته‌ای و
+    # آمار داشبورد کار کنند. خالی = نوع کاملاً سفارشی.
+    builtin_key = models.CharField('کلید built-in', max_length=20, blank=True)
 
     class Meta:
         verbose_name = 'نوع تسک سفارشی'

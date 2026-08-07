@@ -17,7 +17,9 @@
 ## فایل‌ها / URLها
 - `views.py` — صفحات (List/Detail/Public) + API (`pull_tasks, add_items, add_manual,
   item_edit, reorder, report_update, upload_image`). `clean_html` برای توضیحات (bleach).
-- نسخه‌ی عمومی: `/r/<uuid>/` (بدون login؛ در `config/urls` با نام `report_public`)، تم روشن، چاپ.
+- نسخه‌ی عمومی: `/r/<uuid>/` (بدون login؛ `report_public`؛ فقط اگر `is_public`)، تم روشن، چاپ.
+- **پیش‌نمایش مالک:** `/reports/<id>/preview/` (`ReportPreviewView`، login) — همان تمپلیت public،
+  بدون نیاز به عمومی‌کردن (`is_preview` بنر می‌گذارد). دکمه‌ی «پیش‌نمایش مشتری» به این می‌رود.
 - تمپلیت‌ها: `list/detail/_groups/public`. توضیحات: contenteditable + آپلود عکس.
 
 ## نکات

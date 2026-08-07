@@ -100,7 +100,8 @@ def form_data(request):
         'colleagues': [[c.id, c.full_name] for c in Colleague.objects.filter(status=Colleague.ACTIVE)],
         'typeChoices': list(Task.TYPE_CHOICES),
         'customTypes': [
-            {'id': t.id, 'name': t.name, 'color': t.color, 'fields': t.schema()}
+            {'id': t.id, 'name': t.name, 'color': t.color, 'icon': t.icon,
+             'builtin_key': t.builtin_key, 'fields': t.schema()}
             for t in TaskTypeDef.objects.filter(is_active=True)
         ],
     })
@@ -188,12 +189,20 @@ def task_review(request, pk):
     status = data.get('review_status')
     if status not in dict(Task.REVIEW_CHOICES):
         return JsonResponse({'detail': 'وضعیت بازبینی نامعتبر'}, status=400)
+    from core.htmlsan import clean_html
     task.review_status = status
-    task.review_note = data.get('review_note', task.review_note)
+    if 'review_note' in data:
+        task.review_note = clean_html(data['review_note'])
     task.reviewed_by = request.user
     task.reviewed_at = timezone.now()
-    task.save(update_fields=['review_status', 'review_note', 'reviewed_by', 'reviewed_at', 'updated_at'])
-    return JsonResponse({'ok': True, 'review_status': task.review_status})
+    fields = ['review_status', 'review_note', 'reviewed_by', 'reviewed_at', 'updated_at']
+    # «نیاز به اصلاح» → تسک از حالت انجام‌شده برمی‌گردد تا دوباره انجام شود
+    if status == Task.NEEDS_FIX and task.status == Task.DONE:
+        task.status = Task.DOING
+        task.done_date = None
+        fields += ['status', 'done_date']
+    task.save(update_fields=fields)
+    return JsonResponse({'ok': True, 'review_status': task.review_status, 'status': task.status})
 
 
 def _next_workday(d: date, holidays: set) -> date:

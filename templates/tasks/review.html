@@ -18,8 +18,7 @@
       <div class="rev-actions">
         <a href="{{ t.published_url }}" target="_blank" rel="noopener" class="btn btn-p">باز کردن مطلب ↗</a>
         <button class="btn rev-ok" data-id="{{ t.id }}" style="border-color:rgba(45,212,167,.4);color:#6FE3C4">✓ تایید</button>
-        <button class="btn rev-fix" data-id="{{ t.id }}" style="border-color:rgba(249,115,22,.4);color:#FDBA8C">⚠ نیاز به اصلاح</button>
-        <input class="input rev-note" data-id="{{ t.id }}" style="flex:1;min-width:180px" placeholder="یادداشت بازبینی…">
+        <button class="btn" onclick="window.openFixModal({{ t.id }})" style="border-color:rgba(249,115,22,.4);color:#FDBA8C">⚠ نیاز به اصلاح</button>
       </div>
     </section>
   {% empty %}
@@ -30,14 +29,12 @@
 {% block scripts %}
 <script>
 async function review(id, status){
-  const note = document.querySelector(`.rev-note[data-id="${id}"]`).value;
-  try{ await App.fetchJSON(`/tasks/api/${id}/review/`,{method:'PATCH',body:{review_status:status,review_note:note}});
-    App.toast(status==='approved'?'تایید شد':'برای اصلاح علامت خورد','ok');
+  try{ await App.fetchJSON(`/tasks/api/${id}/review/`,{method:'PATCH',body:{review_status:status}});
+    App.toast('تایید شد','ok');
     const card=document.getElementById('rev-'+id); card.style.opacity='.4';
   }catch(_){}
 }
 document.querySelectorAll('.rev-ok').forEach(b=>b.onclick=()=>review(b.dataset.id,'approved'));
-document.querySelectorAll('.rev-fix').forEach(b=>b.onclick=()=>review(b.dataset.id,'needs_fix'));
 
 // ── میان‌بر کیبورد: J/K حرکت، Enter باز کردن لینک، A تایید ──
 const cards=[...document.querySelectorAll('.rev-card')];
