@@ -17,4 +17,8 @@ urlpatterns = [
     path('api/<int:pk>/credentials/', views.credential_create, name='credential_create'),
     path('api/credentials/<int:pk>/reveal/', views.credential_reveal, name='credential_reveal'),
     path('api/credentials/<int:pk>/', views.credential_delete, name='credential_delete'),
+
+    # فایل‌ها
+    path('api/<int:pk>/files/', views.project_files, name='files'),
+    path('api/files/<int:pk>/', views.project_file_delete, name='file_delete'),
 ]

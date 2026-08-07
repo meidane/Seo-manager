@@ -73,7 +73,7 @@
         ${field('link_type', 'نوع لینک', `<select id="f-link_type"><option value="">—</option><option value="comment">کامنت</option><option value="profile">پروفایل</option><option value="forum">فروم</option><option value="directory">دایرکتوری</option><option value="social">سوشال</option><option value="other">سایر</option></select>`)}
         ${field('link_count', 'تعداد لینک', `<input id="f-link_count" class="input" type="number" value="${t.link_count || ''}">`)}
       </div>
-      ${field('description', 'توضیحات', `<textarea id="f-description" rows="3">${esc(t.description)}</textarea>`)}
+      ${field('description', 'توضیحات', `<textarea id="f-description" class="rich-editor" rows="3">${esc(t.description)}</textarea>`)}
     </div>
     <div class="modal-f">
       <button class="btn btn-p" id="t-save">ذخیره</button>
@@ -120,6 +120,7 @@
   }
 
   function collect() {
+    if (window.RichText) RichText.save();  // TinyMCE → textarea
     const g = (id) => { const e = document.getElementById(id); return e ? e.value : ''; };
     const typeVal = g('f-task_type');
     const isCustom = typeVal.startsWith('custom:');
@@ -156,6 +157,7 @@
     const loaded = data.custom || {};
     document.getElementById('f-task_type').addEventListener('change', () => applyVisibility(loaded));
     applyVisibility(loaded);
+    if (window.RichText) RichText.init('#f-description');  // ادیتور غنی توضیحات
 
     const save = async (again) => {
       const payload = collect();

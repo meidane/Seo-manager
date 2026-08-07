@@ -51,6 +51,9 @@ def apply_fields(task: Task, data: dict):
     for f in TEXT_FIELDS + CHOICE_FIELDS:
         if f in data:
             setattr(task, f, data[f] or '')
+    if 'description' in data:
+        from core.htmlsan import clean_html
+        task.description = clean_html(data['description'])
     for f in INT_FIELDS:
         if f in data:
             setattr(task, f, data[f] or None)

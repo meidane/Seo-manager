@@ -105,7 +105,16 @@
     </table>
   </section>
   <section class="card glass tab-panel cal" data-panel="calendar"><div data-cal-embed data-project="{{ project.pk }}"></div></section>
-  <section class="card glass tab-panel" data-panel="files"><div class="empty"><div class="ico">📎</div><h4>گالری فایل‌ها به‌زودی</h4></div></section>
+  <section class="card glass tab-panel" data-panel="files">
+    <div class="card-h"><h3>فایل‌های پروژه</h3></div>
+    <div style="padding:16px">
+      <div class="drop" id="file-drop"><input type="file" id="file-input" multiple hidden>
+        <div class="ico">📎</div><b>فایل‌ها را اینجا رها کن یا کلیک کن</b>
+        <div style="font-size:12px;margin-top:4px;color:var(--text-faint)">حداکثر ۲۰ مگابایت برای هر فایل</div>
+      </div>
+      <div class="files-grid" id="file-grid" style="margin-top:14px"></div>
+    </div>
+  </section>
   <section class="card glass tab-panel" data-panel="reports"><div class="empty"><div class="ico">▪</div><h4>گزارش‌ها در گام گزارش‌دهی فعال می‌شود</h4></div></section>
   <section class="card glass tab-panel" data-panel="finance"><div class="empty"><div class="ico">₮</div><h4>حسابداری در گام حسابداری فعال می‌شود</h4></div></section>
 {% endblock %}
@@ -113,6 +122,31 @@
 {% block scripts %}
 <script src="{% static 'js/calendar-embed.js' %}"></script>
 <script>
+// ── فایل‌های پروژه ──
+(function(){
+  const PID={{ project.pk }};
+  const drop=document.getElementById('file-drop'), input=document.getElementById('file-input'), grid=document.getElementById('file-grid');
+  if(!drop) return;
+  function card(f){
+    const thumb=f.is_image?`<img src="${f.url}">`:'📄';
+    return `<div class="file-card" data-id="${f.id}"><button class="del" title="حذف">×</button>
+      <a class="thumb" href="${f.url}" target="_blank" rel="noopener">${thumb}</a>
+      <div class="meta"><b title="${f.name}">${f.name}</b><span>${f.size}</span></div></div>`;
+  }
+  async function loadFiles(){ try{ const d=await App.fetchJSON(`/projects/api/${PID}/files/`); grid.innerHTML=d.files.map(card).join(''); }catch(_){} }
+  async function upload(files){
+    const fd=new FormData(); [...files].forEach(f=>fd.append('file',f));
+    try{ await App.fetchJSON(`/projects/api/${PID}/files/`,{method:'POST',body:fd}); App.toast('آپلود شد','ok'); loadFiles(); }catch(_){}
+  }
+  drop.onclick=()=>input.click();
+  input.onchange=e=>{ if(e.target.files.length) upload(e.target.files); };
+  drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});
+  drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
+  drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over'); if(e.dataTransfer.files.length) upload(e.dataTransfer.files);});
+  grid.addEventListener('click',async e=>{ const d=e.target.closest('.del'); if(!d)return;
+    const card=d.closest('.file-card'); if(await App.confirm('این فایل حذف شود؟')){ await App.fetchJSON(`/projects/api/files/${card.dataset.id}/`,{method:'DELETE'}); card.remove(); App.toast('حذف شد','ok'); } });
+  loadFiles();
+})();
 (function(){
   // ── تب‌ها ──
   const tabs = document.getElementById('ptabs');

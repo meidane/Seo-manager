@@ -188,3 +188,45 @@ def credential_delete(request, pk):
     cred = get_object_or_404(Credential, pk=pk)
     cred.delete()
     return JsonResponse({'ok': True})
+
+
+# ── فایل‌های پروژه (Attachment) ──────────────────────────────────────────
+
+def _file_json(a):
+    return {'id': a.id, 'name': a.original_name or a.file.name.split('/')[-1],
+            'url': a.file.url, 'is_image': a.is_image, 'size': a.size_h}
+
+
+@require_http_methods(['GET', 'POST'])
+def project_files(request, pk):
+    if not request.user.is_authenticated:
+        return JsonResponse({'detail': 'نیاز به ورود'}, status=403)
+    from django.contrib.contenttypes.models import ContentType
+
+    from core.models import Attachment
+    project = get_object_or_404(Project, pk=pk)
+    ct = ContentType.objects.get_for_model(Project)
+    if request.method == 'GET':
+        files = Attachment.objects.filter(content_type=ct, object_id=project.id).order_by('-uploaded_at')
+        return JsonResponse({'files': [_file_json(a) for a in files]})
+    # POST — آپلود (یک یا چند فایل)
+    created = []
+    for f in request.FILES.getlist('file'):
+        if f.size > 20 * 1024 * 1024:
+            continue
+        a = Attachment.objects.create(
+            content_type=ct, object_id=project.id, file=f,
+            original_name=f.name, size=f.size, mime=f.content_type or '',
+            uploaded_by=request.user,
+        )
+        created.append(_file_json(a))
+    return JsonResponse({'files': created}, status=201)
+
+
+@require_http_methods(['DELETE'])
+def project_file_delete(request, pk):
+    if not request.user.is_authenticated:
+        return JsonResponse({'detail': 'نیاز به ورود'}, status=403)
+    from core.models import Attachment
+    get_object_or_404(Attachment, pk=pk).delete()
+    return JsonResponse({'ok': True})

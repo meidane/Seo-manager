@@ -4,10 +4,12 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
+from core.views import editor_upload
 from reports.views import PublicReportView as ReportPublicView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/editor/upload/', editor_upload, name='editor_upload'),
     path('', include('dashboard.urls')),
     path('', include('accounts.urls')),
     path('colleagues/', include('colleagues.urls')),

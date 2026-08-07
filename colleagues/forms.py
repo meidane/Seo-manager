@@ -35,6 +35,12 @@ class ColleagueForm(forms.ModelForm):
                     self.instance.join_date, fa_digits=False
                 )
 
+        self.fields['description'].widget.attrs.update({'class': 'rich-editor'})
+
+    def clean_description(self):
+        from core.htmlsan import clean_html
+        return clean_html(self.cleaned_data.get('description', ''))
+
     def clean_join_date(self):
         value = (self.cleaned_data.get('join_date') or '').strip()
         if not value:
