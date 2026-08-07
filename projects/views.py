@@ -15,21 +15,53 @@ from .forms import ProjectForm
 from .models import Credential, Project
 
 
-class ProjectListView(LoginRequiredMixin, ListView):
+class ProjectListView(LoginRequiredMixin, DateRangeMixin, ListView):
+    """لیست جدولی پروژه‌ها با اطلاعات مدیریتی (مثل جدول داشبورد)."""
+
     model = Project
     template_name = 'projects/list.html'
     context_object_name = 'projects'
-    paginate_by = 24
+    paginate_by = 50
 
     def get_queryset(self):
+        from datetime import date
+
+        from django.db.models import Count, Max, Sum
+
+        from tasks.models import Task
+
+        start, end = self.get_range(self.request)
+        self._start, self._end = start, end
         qs = super().get_queryset()
         query = self.request.GET.get('q', '').strip()
         if query:
             qs = qs.filter(Q(name__icontains=query) | Q(domain__icontains=query))
-        return qs
+        return qs.annotate(
+            planned=Count('tasks', filter=Q(tasks__planned_date__range=(start, end))),
+            done=Count('tasks', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
+            words=Sum('tasks__word_count', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
+            overdue=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING], tasks__planned_date__lt=date.today())),
+            last_report=Max('reports__date_to'),
+        )
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        ctx.update(self.range_context())
+        for p in ctx['projects']:
+            p.remaining = max(p.planned - p.done, 0)
+            p.progress = round(p.done / p.planned * 100) if p.planned else 0
+            if not p.is_active:
+                p.state = ('mute', 'غیرفعال')
+            elif p.planned == 0:
+                p.state = ('bad', 'بدون کار')
+            elif p.overdue:
+                p.state = ('bad', 'عقب‌افتاده')
+            elif p.progress < 60:
+                p.state = ('warn', 'عقب')
+            elif p.progress < 100:
+                p.state = ('ok', 'روی روال')
+            else:
+                p.state = ('info', 'جلوتر')
         ctx['page_title'] = 'پروژه‌ها'
         ctx['q'] = self.request.GET.get('q', '')
         return ctx

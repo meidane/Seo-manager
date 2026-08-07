@@ -350,6 +350,35 @@ tbody tr:last-child td{border-bottom:0}
 .tab-panel{display:none}
 .tab-panel.on{display:block}
 
+/* ── همکار در جدول ── */
+.who{display:flex;align-items:center;gap:9px}
+.who img,.who .fb{width:29px;height:29px;border-radius:50%;object-fit:cover;border:1px solid var(--stroke);
+  display:grid;place-items:center;font-size:12px;font-weight:700;flex:none}
+.who b{font-weight:500;font-size:13px;display:block;line-height:1.4}
+.who span{font-size:10.5px;color:var(--text-faint)}
+.spark{display:flex;align-items:flex-end;gap:2px;height:22px}
+.spark i{width:4px;border-radius:2px;background:var(--primary);opacity:.75}
+
+/* ── فید بازبینی ── */
+.feed{padding:8px}
+.item{padding:11px 12px;border-radius:11px;transition:var(--ease);border:1px solid transparent}
+.item:hover{background:var(--glass);border-color:var(--stroke-soft)}
+.item+.item{margin-top:2px}
+.item-t{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.item-t b{font-weight:400;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item-m{display:flex;align-items:center;gap:11px;font-size:11px;color:var(--text-faint)}
+.item-m .grow{margin-inline-start:auto;display:flex;gap:5px}
+.ttype{font-size:10.5px;padding:1.5px 8px;border-radius:var(--r-full);font-weight:500;flex:none;display:inline-flex;align-items:center}
+.mini.go:hover{border-color:var(--primary-ring);color:#BBD4FF;background:var(--primary-soft)}
+.mini.ok:hover{border-color:rgba(45,212,167,.4);color:#6FE3C4;background:rgba(45,212,167,.12)}
+
+/* ── نمودار ── */
+.chart-wrap{padding:16px}
+.donut-legend{display:flex;flex-direction:column;gap:7px;font-size:12px}
+.donut-legend .row{display:flex;align-items:center;gap:8px}
+.donut-legend .row i{width:9px;height:9px;border-radius:3px}
+.donut-legend .row .v{margin-inline-start:auto;color:var(--text-dim);font-variant-numeric:tabular-nums}
+
 /* ── تقویم (گوگل‌کلندری) ── */
 .cal{margin-top:0}
 .cal-bar{display:flex;align-items:center;gap:9px;padding:13px 16px;border-bottom:1px solid var(--stroke-soft);flex-wrap:wrap}
