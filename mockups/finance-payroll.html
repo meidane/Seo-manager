@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>حقوق — سئوپنل</title><link rel="stylesheet" href="assets/style.css">
+</head>
+<body data-page="finance" data-fin="finance-payroll.html">
+<div class="shell">
+  <main class="main">
+    <div class="page-h"><h1>صورت‌حساب حقوق</h1>
+      <div class="side-c">
+        <div class="range"><button>تیر</button><button class="on">مرداد</button><button>شهریور</button></div>
+        <button class="btn btn-p" onclick="document.getElementById('m').classList.add('open')">＋ صدور حقوق</button>
+      </div>
+    </div>
+    <div id="fin-nav"></div>
+
+    <div class="stats" style="grid-template-columns:repeat(4,1fr)">
+      <div class="stat glass"><div class="lab">کل تعهد حقوق</div><div class="num">۲۴۵<small style="font-size:14px;color:var(--text-dim)"> م</small></div></div>
+      <div class="stat glass"><div class="lab">پرداخت‌شده</div><div class="num" style="color:#6FE3C4">۱۹۸<small style="font-size:14px;color:var(--text-dim)"> م</small></div></div>
+      <div class="stat glass"><div class="lab">مانده</div><div class="num" style="color:#FF9AAB">۴۷<small style="font-size:14px;color:var(--text-dim)"> م</small></div></div>
+      <div class="stat glass"><div class="lab">تعداد نفرات</div><div class="num">۴</div></div>
+    </div>
+
+    <section class="card glass">
+      <div class="card-h"><h3>حقوق مرداد ۱۴۰۵</h3></div>
+      <table>
+        <thead><tr><th>همکار</th><th>بخش</th><th>حقوق پایه</th><th>پاداش</th><th>سایر</th><th>جمع</th><th>پرداخت‌شده</th><th>مانده</th><th>وضعیت</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><div class="who"><img src="https://i.pravatar.cc/64?img=45"><span><b>مریم کاظمی</b><span>نویسنده</span></span></div></td>
+            <td>تولید محتوا</td><td class="num-c">۲۰م</td><td class="num-c">۵م</td><td class="num-c">۲م</td><td class="num-c" style="font-weight:700">۲۷م</td><td class="num-c">۲۷م</td><td class="num-c zero">۰</td><td><span class="tag t-ok">تسویه</span></td>
+          </tr>
+          <tr>
+            <td><div class="who"><img src="https://i.pravatar.cc/64?img=32"><span><b>سارا احمدی</b><span>نویسنده</span></span></div></td>
+            <td>تولید محتوا</td><td class="num-c">۱۸م</td><td class="num-c">۳م</td><td class="num-c zero">۰</td><td class="num-c" style="font-weight:700">۲۱م</td><td class="num-c">۱۸م</td><td class="num-c red-n">۳م</td><td><span class="tag t-warn">ناقص</span></td>
+          </tr>
+          <tr>
+            <td><div class="who"><img src="https://i.pravatar.cc/64?img=68"><span><b>رضا مرادی</b><span>مدیر سئو</span></span></div></td>
+            <td>سئو</td><td class="num-c">۳۵م</td><td class="num-c">۸م</td><td class="num-c">۴م</td><td class="num-c" style="font-weight:700">۴۷م</td><td class="num-c">۱۲م</td><td class="num-c red-n">۳۵م</td><td><span class="tag t-bad">پرداخت‌نشده</span></td>
+          </tr>
+          <tr>
+            <td><div class="who"><img src="https://i.pravatar.cc/64?img=24"><span><b>نگین رستمی</b><span>سرپرست</span></span></div></td>
+            <td>سئو</td><td class="num-c">۴۰م</td><td class="num-c">۱۰م</td><td class="num-c">۳م</td><td class="num-c" style="font-weight:700">۵۳م</td><td class="num-c">۵۳م</td><td class="num-c zero">۰</td><td><span class="tag t-ok">تسویه</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+</div>
+
+<!-- مودال صدور حقوق -->
+<div class="modal-backdrop" id="m">
+  <div class="modal glass">
+    <div class="modal-h"><h3>صدور حقوق</h3><button class="x" onclick="document.getElementById('m').classList.remove('open')">×</button></div>
+    <div class="modal-b">
+      <div class="grid2">
+        <div class="field"><label>همکار</label><select><option>مریم کاظمی</option><option>سارا احمدی</option><option>رضا مرادی</option></select></div>
+        <div class="field"><label>ماه</label><select><option>مرداد ۱۴۰۵</option><option>شهریور ۱۴۰۵</option></select></div>
+      </div>
+      <label>اجزای حقوق</label>
+      <div style="display:flex;gap:8px;margin-bottom:8px"><input class="input" placeholder="عنوان (مثلاً حقوق پایه)"><input class="input" type="number" placeholder="مبلغ" style="max-width:140px"></div>
+      <div style="display:flex;gap:8px;margin-bottom:8px"><input class="input" value="پاداش" ><input class="input" type="number" value="5000000" style="max-width:140px"></div>
+      <button class="mini" style="margin-bottom:6px">＋ افزودن جزء</button>
+      <div class="pay-comp"><span class="c">حقوق پایه <b>۲۰م</b></span><span class="c">پاداش <b>۵م</b></span><span class="c" style="border-color:var(--primary-ring)">جمع <b style="color:var(--text)">۲۵م</b></span></div>
+    </div>
+    <div class="modal-f"><button class="btn btn-p">صدور صورت‌حساب</button><button class="btn" onclick="document.getElementById('m').classList.remove('open')">انصراف</button></div>
+  </div>
+</div>
+<script src="assets/shell.js"></script>
+<script src="assets/finance.js"></script>
+</body>
+</html>

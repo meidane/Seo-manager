@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>بانک‌ها — سئوپنل</title><link rel="stylesheet" href="assets/style.css">
+</head>
+<body data-page="finance" data-fin="finance-banks.html">
+<div class="shell">
+  <main class="main">
+    <div class="page-h"><h1>حساب‌های بانکی</h1>
+      <div class="side-c"><button class="btn btn-p" onclick="document.getElementById('m').classList.add('open')">＋ حساب جدید</button></div>
+    </div>
+    <div id="fin-nav"></div>
+
+    <div class="cards-grid">
+      <div class="bank-card glass"><div class="bname"><span class="blogo" style="background:#EC4899">م</span> بانک ملت</div><div class="bnum">۶۱۰۴-۳۳۷۰-****-۲۳۱۱</div><div class="bbal">۳۱۲<small> میلیون تومان</small></div>
+        <div style="margin-top:12px;display:flex;gap:6px"><button class="mini">ویرایش</button><button class="mini">تراکنش‌ها</button></div></div>
+      <div class="bank-card glass"><div class="bname"><span class="blogo" style="background:#0EA5E9">س</span> بانک سامان</div><div class="bnum">۶۲۱۹-۸۶۱۰-****-۸۸۰۲</div><div class="bbal">۱۸۴<small> میلیون تومان</small></div>
+        <div style="margin-top:12px;display:flex;gap:6px"><button class="mini">ویرایش</button><button class="mini">تراکنش‌ها</button></div></div>
+      <div class="bank-card glass"><div class="bname"><span class="blogo" style="background:#22C55E">پ</span> بانک پاسارگاد</div><div class="bnum">۵۰۲۲-۲۹۱۰-****-۴۵۰۹</div><div class="bbal">۱۰۷<small> میلیون تومان</small></div>
+        <div style="margin-top:12px;display:flex;gap:6px"><button class="mini">ویرایش</button><button class="mini">تراکنش‌ها</button></div></div>
+    </div>
+
+    <div class="note glass" style="margin-top:16px">هر حساب مانده‌ی خودش را دارد و تراکنش‌های واردشده از اکسل به همان حساب نسبت داده می‌شوند. مانده‌ی کل داشبورد = جمع همه‌ی حساب‌ها.</div>
+  </main>
+</div>
+
+<!-- مودال افزودن حساب -->
+<div class="modal-backdrop" id="m">
+  <div class="modal glass">
+    <div class="modal-h"><h3>حساب بانکی جدید</h3><button class="x" onclick="document.getElementById('m').classList.remove('open')">×</button></div>
+    <div class="modal-b">
+      <div class="field"><label>نام حساب</label><input class="input" placeholder="مثلاً ملت — حساب اصلی"></div>
+      <div class="grid2">
+        <div class="field"><label>بانک</label><select><option>ملت</option><option>سامان</option><option>پاسارگاد</option><option>ملی</option><option>سایر</option></select></div>
+        <div class="field"><label>رنگ</label><input type="color" value="#EC4899" style="width:100%;height:40px;padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--stroke-soft);border-radius:var(--r-sm)"></div>
+      </div>
+      <div class="field"><label>شماره کارت / حساب</label><input class="input" dir="ltr" placeholder="6104-****-****-2311"></div>
+      <div class="field"><label>مانده‌ی اولیه (تومان)</label><input class="input" type="number" placeholder="0"></div>
+    </div>
+    <div class="modal-f"><button class="btn btn-p">ذخیره</button><button class="btn" onclick="document.getElementById('m').classList.remove('open')">انصراف</button></div>
+  </div>
+</div>
+<script src="assets/shell.js"></script>
+<script src="assets/finance.js"></script>
+</body>
+</html>

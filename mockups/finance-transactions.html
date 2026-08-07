@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تراکنش‌ها — سئوپنل</title><link rel="stylesheet" href="assets/style.css">
+</head>
+<body data-page="finance" data-fin="finance-transactions.html">
+<div class="shell">
+  <main class="main">
+    <div class="page-h"><h1>تراکنش‌ها</h1>
+      <div class="side-c"><a href="finance-import.html" class="btn btn-p">＋ ورود اکسل بانک</a></div>
+    </div>
+    <div id="fin-nav"></div>
+
+    <section class="glass filters">
+      <select style="max-width:150px"><option>همه‌ی بانک‌ها</option><option>ملت</option><option>سامان</option><option>پاسارگاد</option></select>
+      <select style="max-width:150px"><option>همه‌ی پروژه‌ها</option><option>پارتیشن پارس</option><option>دکتر آنلاین</option></select>
+      <select style="max-width:150px"><option>همه‌ی بابت‌ها</option><option>سئو</option><option>طراحی سایت</option><option>حقوق</option></select>
+      <span class="chip">فقط بدون پروژه</span>
+      <span style="margin-inline-start:auto;font-size:11.5px;color:var(--text-faint)">دابل‌کلیک یا تایپ = ویرایش · Enter = پایین · کلیدهای جهت = حرکت</span>
+    </section>
+
+    <div class="sheet-wrap">
+      <table class="sheet">
+        <thead><tr>
+          <th class="chk-col"><input type="checkbox" id="check-all" style="width:auto"></th>
+          <th class="row-num">#</th><th>تاریخ</th><th>شرح سند</th><th>واریز</th><th>برداشت</th><th>مانده</th>
+          <th style="background:rgba(65,131,242,.08)">پروژه ✎</th><th style="background:rgba(65,131,242,.08)">بابت ✎</th><th style="background:rgba(65,131,242,.08)">توضیحات ✎</th>
+        </tr></thead>
+        <tbody>
+          <tr data-r="0"><td class="chk-col"><input type="checkbox" class="row-check" style="width:auto"></td><td class="row-num">۱</td>
+            <td data-c="date"><span class="cv">۱۴۰۵/۰۴/۲۴</span></td><td data-c="desc"><span class="cv" style="text-align:right">کارمزد تراکنش</span></td>
+            <td class="num" data-c="dep"><span class="cv">—</span></td><td class="num wd" data-c="wd"><span class="cv">۱۲٬۰۰۰</span></td><td class="num" data-c="bal"><span class="cv">۳۱۲٬۴۰۰٬۰۰۰</span></td>
+            <td class="edit" data-c="proj"><span class="cv zero">—</span></td><td class="edit" data-c="cat"><span class="cv zero">—</span></td><td class="edit" data-c="note"><span class="cv zero">—</span></td></tr>
+          <tr data-r="1"><td class="chk-col"><input type="checkbox" class="row-check" style="width:auto"></td><td class="row-num">۲</td>
+            <td data-c="date"><span class="cv">۱۴۰۵/۰۴/۲۴</span></td><td data-c="desc"><span class="cv" style="text-align:right">واریز از دکتر آنلاین</span></td>
+            <td class="num dep" data-c="dep"><span class="cv">۵۰٬۰۰۰٬۰۰۰</span></td><td class="num" data-c="wd"><span class="cv">—</span></td><td class="num" data-c="bal"><span class="cv">۳۱۲٬۴۱۲٬۰۰۰</span></td>
+            <td class="edit" data-c="proj"><span class="cv">دکتر آنلاین</span></td><td class="edit" data-c="cat"><span class="cv">سئو</span></td><td class="edit" data-c="note"><span class="cv">قسط دوم قرارداد</span></td></tr>
+          <tr data-r="2"><td class="chk-col"><input type="checkbox" class="row-check" style="width:auto"></td><td class="row-num">۳</td>
+            <td data-c="date"><span class="cv">۱۴۰۵/۰۴/۲۵</span></td><td data-c="desc"><span class="cv" style="text-align:right">حقوق مریم کاظمی</span></td>
+            <td class="num" data-c="dep"><span class="cv">—</span></td><td class="num wd" data-c="wd"><span class="cv">۲۰٬۰۰۰٬۰۰۰</span></td><td class="num" data-c="bal"><span class="cv">۲۹۲٬۴۱۲٬۰۰۰</span></td>
+            <td class="edit" data-c="proj"><span class="cv zero">—</span></td><td class="edit" data-c="cat"><span class="cv">حقوق</span></td><td class="edit" data-c="note"><span class="cv">تیر ۱۴۰۵</span></td></tr>
+          <tr data-r="3"><td class="chk-col"><input type="checkbox" class="row-check" style="width:auto"></td><td class="row-num">۴</td>
+            <td data-c="date"><span class="cv">۱۴۰۵/۰۴/۲۶</span></td><td data-c="desc"><span class="cv" style="text-align:right">خرید رپورتاژ</span></td>
+            <td class="num" data-c="dep"><span class="cv">—</span></td><td class="num wd" data-c="wd"><span class="cv">۳٬۵۰۰٬۰۰۰</span></td><td class="num" data-c="bal"><span class="cv">۲۸۸٬۹۱۲٬۰۰۰</span></td>
+            <td class="edit" data-c="proj"><span class="cv">اسکراب زیبایی</span></td><td class="edit" data-c="cat"><span class="cv">تولید محتوا</span></td><td class="edit" data-c="note"><span class="cv zero">—</span></td></tr>
+          <tr data-r="4"><td class="chk-col"><input type="checkbox" class="row-check" style="width:auto"></td><td class="row-num">۵</td>
+            <td data-c="date"><span class="cv">۱۴۰۵/۰۴/۲۷</span></td><td data-c="desc"><span class="cv" style="text-align:right">واریز از پارتیشن پارس</span></td>
+            <td class="num dep" data-c="dep"><span class="cv">۴۰٬۰۰۰٬۰۰۰</span></td><td class="num" data-c="wd"><span class="cv">—</span></td><td class="num" data-c="bal"><span class="cv">۳۲۸٬۹۱۲٬۰۰۰</span></td>
+            <td class="edit" data-c="proj"><span class="cv">پارتیشن پارس</span></td><td class="edit" data-c="cat"><span class="cv">طراحی سایت</span></td><td class="edit" data-c="note"><span class="cv zero">—</span></td></tr>
+          <tr data-r="5"><td class="chk-col"><input type="checkbox" class="row-check" style="width:auto"></td><td class="row-num">۶</td>
+            <td data-c="date"><span class="cv">۱۴۰۵/۰۴/۲۸</span></td><td data-c="desc"><span class="cv" style="text-align:right">هزینه سرور و هاست</span></td>
+            <td class="num" data-c="dep"><span class="cv">—</span></td><td class="num wd" data-c="wd"><span class="cv">۶٬۲۰۰٬۰۰۰</span></td><td class="num" data-c="bal"><span class="cv">۳۲۲٬۷۱۲٬۰۰۰</span></td>
+            <td class="edit" data-c="proj"><span class="cv zero">—</span></td><td class="edit" data-c="cat"><span class="cv">فنی</span></td><td class="edit" data-c="note"><span class="cv zero">—</span></td></tr>
+          <tr data-r="6"><td class="chk-col"><input type="checkbox" class="row-check" style="width:auto"></td><td class="row-num">۷</td>
+            <td data-c="date"><span class="cv">۱۴۰۵/۰۴/۲۹</span></td><td data-c="desc"><span class="cv" style="text-align:right">حقوق سارا احمدی</span></td>
+            <td class="num" data-c="dep"><span class="cv">—</span></td><td class="num wd" data-c="wd"><span class="cv">۱۸٬۰۰۰٬۰۰۰</span></td><td class="num" data-c="bal"><span class="cv">۳۰۴٬۷۱۲٬۰۰۰</span></td>
+            <td class="edit" data-c="proj"><span class="cv zero">—</span></td><td class="edit" data-c="cat"><span class="cv">حقوق</span></td><td class="edit" data-c="note"><span class="cv zero">—</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- نوار عملیات گروهی -->
+    <div class="glass" id="bulkbar" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);gap:8px;align-items:center;padding:10px 16px;z-index:30">
+      <span style="font-size:12.5px;color:var(--text-dim)"><b id="bulk-count">0</b> تراکنش انتخاب شده</span><span style="width:1px;height:20px;background:var(--stroke-soft)"></span>
+      <button class="btn btn-sm">تعیین پروژه</button>
+      <button class="btn btn-sm">تعیین بابت</button>
+      <button class="btn btn-sm">افزودن توضیح</button>
+      <button class="btn btn-sm" style="color:var(--danger)">حذف</button>
+    </div>
+  </main>
+</div>
+<script src="assets/shell.js"></script>
+<script src="assets/finance.js"></script>
+</body>
+</html>

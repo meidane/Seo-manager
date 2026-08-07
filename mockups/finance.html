@@ -4,41 +4,96 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>حسابداری — سئوپنل</title><link rel="stylesheet" href="assets/style.css">
 </head>
-<body data-page="finance">
+<body data-page="finance" data-fin="finance.html">
 <div class="shell">
   <main class="main">
-    <div class="page-h"><h1>حسابداری</h1><div class="side-c"><button class="btn">خروجی اکسل</button><button class="btn btn-p">＋ تراکنش</button></div></div>
+    <div class="page-h"><h1>حسابداری</h1>
+      <div class="side-c"><button class="btn">خروجی اکسل</button></div>
+    </div>
+    <div id="fin-nav"></div>
 
-    <div class="stats" style="grid-template-columns:repeat(4,1fr)">
-      <div class="stat glass"><div class="lab"><i class="dot" style="background:var(--info)"></i> مجموع قراردادها</div><div class="num">۴۸۰<span style="font-size:15px;color:var(--text-dim)"> م</span></div></div>
-      <div class="stat glass"><div class="lab"><i class="dot" style="background:var(--warning)"></i> کل صورتحساب</div><div class="num">۳۱۰<span style="font-size:15px;color:var(--text-dim)"> م</span></div></div>
-      <div class="stat glass"><div class="lab"><i class="dot" style="background:var(--success)"></i> کل دریافتی</div><div class="num">۲۱۵٫۵<span style="font-size:15px;color:var(--text-dim)"> م</span></div></div>
-      <div class="stat glass"><div class="lab"><i class="dot" style="background:var(--danger)"></i> کل طلب</div><div class="num" style="color:#FF9AAB">۹۴٫۵<span style="font-size:15px;color:var(--text-dim)"> م</span></div></div>
+    <!-- کارت‌های کلان -->
+    <div class="stats" style="grid-template-columns:repeat(5,1fr)">
+      <div class="stat glass"><div class="lab"><i class="dot" style="background:var(--success)"></i> کل درآمد</div><div class="num">۸۱۵<span style="font-size:14px;color:var(--text-dim)"> م</span></div><div class="sub">در بازه</div></div>
+      <div class="stat glass"><div class="lab"><i class="dot" style="background:var(--danger)"></i> کل هزینه</div><div class="num">۳۲۴<span style="font-size:14px;color:var(--text-dim)"> م</span></div><div class="sub">شامل حقوق</div></div>
+      <div class="stat glass"><div class="lab"><i class="dot" style="background:var(--warning)"></i> حقوق پرداختی</div><div class="num">۱۹۸<span style="font-size:14px;color:var(--text-dim)"> م</span></div><div class="sub">از ۲۴۵ م تعهد</div></div>
+      <div class="stat glass"><div class="lab"><i class="dot" style="background:var(--info)"></i> سود خالص</div><div class="num">۴۹۱<span style="font-size:14px;color:var(--text-dim)"> م</span></div><div class="sub"><span class="up">▲ ۱۴٪</span></div></div>
+      <div class="stat glass"><div class="lab"><i class="dot" style="background:var(--violet)"></i> مانده‌ی بانک‌ها</div><div class="num">۶۰۳<span style="font-size:14px;color:var(--text-dim)"> م</span></div><div class="sub">۳ حساب</div></div>
     </div>
 
-    <section class="card glass">
-      <div class="card-h"><h3>مانده‌ی پروژه‌ها</h3><div class="side-c"><span class="chip on">بدهکارترین بالا</span></div></div>
-      <table>
-        <thead><tr><th>پروژه</th><th>کل صورتحساب</th><th>کل دریافتی</th><th>مانده</th></tr></thead>
-        <tbody>
-          <tr><td><div class="proj"><i class="pdot" style="background:var(--danger)"></i><span><b>اسکراب زیبایی</b><span>scrub-beauty.com</span></span></div></td><td class="num-c">۹۰٬۰۰۰٬۰۰۰</td><td class="num-c">۵۲٬۰۰۰٬۰۰۰</td><td class="num-c red-n">۳۸٬۰۰۰٬۰۰۰</td></tr>
-          <tr><td><div class="proj"><i class="pdot" style="background:var(--warning)"></i><span><b>صنایع تولیدی نوین</b><span>novin-sanaye.ir</span></span></div></td><td class="num-c">۷۰٬۰۰۰٬۰۰۰</td><td class="num-c">۴۸٬۰۰۰٬۰۰۰</td><td class="num-c red-n">۲۲٬۰۰۰٬۰۰۰</td></tr>
-          <tr><td><div class="proj"><i class="pdot" style="background:var(--pink)"></i><span><b>وکیل اوقاف</b><span>vakil-oghaf.ir</span></span></div></td><td class="num-c">۳۰٬۰۰۰٬۰۰۰</td><td class="num-c">۲۱٬۰۰۰٬۰۰۰</td><td class="num-c red-n">۹٬۰۰۰٬۰۰۰</td></tr>
-          <tr><td><div class="proj"><i class="pdot" style="background:var(--primary)"></i><span><b>پارتیشن پارس</b><span>partition-pars.com</span></span></div></td><td class="num-c">۱۲۰٬۰۰۰٬۰۰۰</td><td class="num-c">۱۰۷٬۵۰۰٬۰۰۰</td><td class="num-c red-n">۱۲٬۵۰۰٬۰۰۰</td></tr>
-          <tr><td><div class="proj"><i class="pdot" style="background:var(--success)"></i><span><b>دکتر آنلاین</b><span>doctor-online.ir</span></span></div></td><td class="num-c">۱۰۰٬۰۰۰٬۰۰۰</td><td class="num-c">۱۰۰٬۰۰۰٬۰۰۰</td><td class="num-c zero">۰</td></tr>
-        </tbody>
-      </table>
-    </section>
+    <!-- نوار هشدار -->
+    <div class="alerts">
+      <div class="alert a-red"><b>۹۴٫۵م</b> طلب از ۴ مشتری <span class="arw">←</span></div>
+      <div class="alert a-org"><b>۴۷م</b> حقوق پرداخت‌نشده <span class="arw">←</span></div>
+      <div class="alert a-yel"><b>۱۲ تراکنش</b> بدون پروژه/بابت <span class="arw">←</span></div>
+    </div>
 
-    <section class="card glass" style="margin-top:14px">
-      <div class="card-h"><h3>دریافتی‌های ماهانه</h3></div>
-      <div class="chart-wrap"><div class="spark" style="height:90px;gap:10px;align-items:flex-end">
-        <i style="height:50%;width:26px;background:var(--success)"></i><i style="height:70%;width:26px;background:var(--success)"></i>
-        <i style="height:45%;width:26px;background:var(--success)"></i><i style="height:85%;width:26px;background:var(--success)"></i>
-        <i style="height:60%;width:26px;background:var(--success)"></i><i style="height:100%;width:26px;background:var(--success)"></i></div></div>
-    </section>
+    <div class="duo">
+      <!-- تفکیک بخش‌ها (بابت) -->
+      <section class="card glass">
+        <div class="card-h"><h3>تفکیک بر اساس بخش (بابت)</h3><div class="side-c"><span class="chip">درآمد</span><span class="chip">هزینه</span><span class="chip on">همه</span></div></div>
+        <div style="padding:8px 16px 14px">
+          <div class="sect"><div class="name"><i class="pdot" style="background:var(--info);display:inline-block;margin-inline-end:6px"></i>سئو</div>
+            <div><div class="tris"><span>درآمد<b class="dep">۳۱۰م</b></span><span>هزینه<b class="wd">۴۵م</b></span><span>حقوق<b>۸۸م</b></span></div><div class="mini-bar"><i style="width:74%;background:var(--info)"></i></div></div></div>
+          <div class="sect"><div class="name"><i class="pdot" style="background:var(--primary);display:inline-block;margin-inline-end:6px"></i>طراحی سایت</div>
+            <div><div class="tris"><span>درآمد<b class="dep">۲۴۰م</b></span><span>هزینه<b class="wd">۶۰م</b></span><span>حقوق<b>۵۲م</b></span></div><div class="mini-bar"><i style="width:58%;background:var(--primary)"></i></div></div></div>
+          <div class="sect"><div class="name"><i class="pdot" style="background:var(--pink);display:inline-block;margin-inline-end:6px"></i>تولید محتوا</div>
+            <div><div class="tris"><span>درآمد<b class="dep">۱۵۵م</b></span><span>هزینه<b class="wd">۱۸م</b></span><span>حقوق<b>۴۲م</b></span></div><div class="mini-bar"><i style="width:38%;background:var(--pink)"></i></div></div></div>
+          <div class="sect"><div class="name"><i class="pdot" style="background:var(--violet);display:inline-block;margin-inline-end:6px"></i>فنی</div>
+            <div><div class="tris"><span>درآمد<b class="dep">۱۱۰م</b></span><span>هزینه<b class="wd">۲۲م</b></span><span>حقوق<b>۱۶م</b></span></div><div class="mini-bar"><i style="width:27%;background:var(--violet)"></i></div></div></div>
+        </div>
+      </section>
+
+      <!-- بدهی مشتریان -->
+      <section class="card glass">
+        <div class="card-h"><h3>بدهکار / بستانکار</h3><div class="side-c"><span class="chip on">بدهکارترین بالا</span></div></div>
+        <table>
+          <thead><tr><th>پروژه</th><th>صورتحساب</th><th>دریافتی</th><th>مانده</th></tr></thead>
+          <tbody>
+            <tr><td><div class="proj"><i class="pdot" style="background:var(--danger)"></i><span><b>اسکراب زیبایی</b></span></div></td><td class="num-c">۹۰م</td><td class="num-c">۵۲م</td><td class="num-c red-n">۳۸م</td></tr>
+            <tr><td><div class="proj"><i class="pdot" style="background:var(--warning)"></i><span><b>صنایع نوین</b></span></div></td><td class="num-c">۷۰م</td><td class="num-c">۴۸م</td><td class="num-c red-n">۲۲م</td></tr>
+            <tr><td><div class="proj"><i class="pdot" style="background:var(--primary)"></i><span><b>پارتیشن پارس</b></span></div></td><td class="num-c">۱۲۰م</td><td class="num-c">۱۳۲م</td><td class="num-c" style="color:#6FE3C4">۱۲م+</td></tr>
+            <tr><td><div class="proj"><i class="pdot" style="background:var(--success)"></i><span><b>دکتر آنلاین</b></span></div></td><td class="num-c">۱۰۰م</td><td class="num-c">۱۰۰م</td><td class="num-c zero">۰</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </div>
+
+    <div class="duo">
+      <!-- حقوق پرداخت‌شده/نشده -->
+      <section class="card glass">
+        <div class="card-h"><h3>حقوق: پرداخت‌شده / مانده</h3></div>
+        <div style="padding:18px">
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px"><span>پرداخت‌شده: <b class="dep">۱۹۸م</b></span><span>مانده: <b class="wd">۴۷م</b></span></div>
+          <div class="bar" style="height:10px"><i style="width:81%"></i></div>
+          <div style="font-size:11.5px;color:var(--text-faint);margin-top:8px">۸۱٪ از تعهد حقوق این دوره پرداخت شده است.</div>
+          <table style="margin-top:14px">
+            <thead><tr><th>بخش</th><th>حقوق پرداختی</th></tr></thead>
+            <tbody>
+              <tr><td>سئو</td><td class="num-c">۸۸م</td></tr>
+              <tr><td>طراحی سایت</td><td class="num-c">۵۲م</td></tr>
+              <tr><td>تولید محتوا</td><td class="num-c">۴۲م</td></tr>
+              <tr><td>فنی</td><td class="num-c">۱۶م</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- حساب‌های بانکی -->
+      <section class="card glass">
+        <div class="card-h"><h3>حساب‌های بانکی</h3><div class="side-c"><a href="finance-banks.html" class="chip">مدیریت</a></div></div>
+        <div style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="bank-card glass"><div class="bname"><span class="blogo" style="background:#EC4899">م</span> ملت</div><div class="bnum">۶۱۰۴-****-****-۲۳۱۱</div><div class="bbal">۳۱۲<small> م</small></div></div>
+          <div class="bank-card glass"><div class="bname"><span class="blogo" style="background:#0EA5E9">س</span> سامان</div><div class="bnum">۶۲۱۹-****-****-۸۸۰۲</div><div class="bbal">۱۸۴<small> م</small></div></div>
+          <div class="bank-card glass"><div class="bname"><span class="blogo" style="background:#22C55E">پ</span> پاسارگاد</div><div class="bnum">۵۰۲۲-****-****-۴۵۰۹</div><div class="bbal">۱۰۷<small> م</small></div></div>
+          <div class="bank-card glass" style="display:grid;place-items:center;border-style:dashed"><a href="finance-banks.html" style="color:var(--text-dim)">＋ افزودن حساب</a></div>
+        </div>
+      </section>
+    </div>
+
   </main>
 </div>
 <script src="assets/shell.js"></script>
+<script src="assets/finance.js"></script>
 </body>
 </html>

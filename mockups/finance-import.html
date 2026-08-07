@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ورود اکسل — سئوپنل</title><link rel="stylesheet" href="assets/style.css">
+</head>
+<body data-page="finance" data-fin="finance-import.html">
+<div class="shell">
+  <main class="main">
+    <div class="page-h"><h1>ورود اکسل بانک</h1></div>
+    <div id="fin-nav"></div>
+
+    <div class="stepper">
+      <div class="st on"><div class="dot">۱</div><span>انتخاب فایل</span></div>
+      <div class="st"><div class="dot">۲</div><span>نگاشت ستون‌ها</span></div>
+      <div class="st"><div class="dot">۳</div><span>پیش‌نمایش و تایید</span></div>
+    </div>
+
+    <!-- مرحله ۱ -->
+    <section class="card glass" data-step="1" style="padding:20px">
+      <div class="grid2" style="margin-bottom:16px">
+        <div class="field"><label>حساب بانکی مقصد</label><select><option>ملت — ۶۱۰۴...۲۳۱۱</option><option>سامان — ۶۲۱۹...۸۸۰۲</option></select></div>
+        <div class="field"><label>قالب بانک (اختیاری)</label><select><option>تشخیص خودکار</option><option>ملت</option><option>سامان</option><option>پاسارگاد</option></select></div>
+      </div>
+      <div class="drop" onclick="finStep(2)"><div class="ico">📄</div><b>فایل اکسل بانک را اینجا رها کن</b><div style="font-size:12px;margin-top:4px">یا کلیک کن — xls / xlsx / csv</div></div>
+      <div style="display:flex;justify-content:flex-start;margin-top:16px"><button class="btn btn-p" onclick="finStep(2)">ادامه</button></div>
+    </section>
+
+    <!-- مرحله ۲: نگاشت ستون‌ها -->
+    <section class="card glass" data-step="2" style="display:none;padding:20px">
+      <p style="color:var(--text-dim);font-size:13px;margin-bottom:14px">ستون‌های فایل تشخیص داده شد. مطمئن شو هرکدام به فیلد درست وصل است (بقیه‌ی ستون‌ها وارد نمی‌شوند).</p>
+      <div class="map-row"><div class="src">تاریخ / ساعت</div><div class="arw">←</div><select><option>تاریخ</option><option>شرح</option><option>واریز</option><option>برداشت</option><option>مانده</option><option>نادیده بگیر</option></select></div>
+      <div class="map-row"><div class="src">شرح سند</div><div class="arw">←</div><select><option>شرح</option><option>تاریخ</option><option>واریز</option><option>برداشت</option><option>مانده</option><option>نادیده بگیر</option></select></div>
+      <div class="map-row"><div class="src">بستانکار (واریز)</div><div class="arw">←</div><select><option>واریز</option><option>برداشت</option><option>مانده</option><option>نادیده بگیر</option></select></div>
+      <div class="map-row"><div class="src">بدهکار (برداشت)</div><div class="arw">←</div><select><option>برداشت</option><option>واریز</option><option>مانده</option><option>نادیده بگیر</option></select></div>
+      <div class="map-row"><div class="src">مانده</div><div class="arw">←</div><select><option>مانده</option><option>نادیده بگیر</option></select></div>
+      <div class="map-row"><div class="src">توضیحات</div><div class="arw">←</div><select><option>توضیحات</option><option>نادیده بگیر</option></select></div>
+      <div style="display:flex;gap:8px;margin-top:18px"><button class="btn btn-p" onclick="finStep(3)">پیش‌نمایش</button><button class="btn" onclick="finStep(1)">بازگشت</button></div>
+    </section>
+
+    <!-- مرحله ۳: پیش‌نمایش -->
+    <section class="card glass" data-step="3" style="display:none">
+      <div class="card-h"><h3>پیش‌نمایش ورود</h3>
+        <div class="side-c">
+          <span class="tag t-ok">۵ ردیف جدید</span>
+          <span class="tag t-bad">۲ تکراری (نادیده)</span>
+        </div>
+      </div>
+      <div class="sheet-wrap" style="border:0;border-radius:0">
+        <table class="sheet">
+          <thead><tr><th class="row-num">#</th><th>تاریخ</th><th>شرح سند</th><th>واریز</th><th>برداشت</th><th>مانده</th><th>وضعیت</th></tr></thead>
+          <tbody>
+            <tr><td class="row-num">۱</td><td><span class="cv">۱۴۰۵/۰۴/۲۴</span></td><td><span class="cv" style="text-align:right">واریز از دکتر آنلاین</span></td><td class="num dep"><span class="cv">۵۰٬۰۰۰٬۰۰۰</span></td><td class="num"><span class="cv">—</span></td><td class="num"><span class="cv">۳۱۲٬۴۱۲٬۰۰۰</span></td><td><span class="tag t-ok">جدید</span></td></tr>
+            <tr><td class="row-num">۲</td><td><span class="cv">۱۴۰۵/۰۴/۲۵</span></td><td><span class="cv" style="text-align:right">حقوق مریم کاظمی</span></td><td class="num"><span class="cv">—</span></td><td class="num wd"><span class="cv">۲۰٬۰۰۰٬۰۰۰</span></td><td class="num"><span class="cv">۲۹۲٬۴۱۲٬۰۰۰</span></td><td><span class="tag t-ok">جدید</span></td></tr>
+            <tr class="dup-row"><td class="row-num">۳</td><td><span class="cv">۱۴۰۵/۰۴/۲۶</span></td><td><span class="cv" style="text-align:right">خرید رپورتاژ</span></td><td class="num"><span class="cv">—</span></td><td class="num wd"><span class="cv">۳٬۵۰۰٬۰۰۰</span></td><td class="num"><span class="cv">۲۸۸٬۹۱۲٬۰۰۰</span></td><td><span class="dup-badge">تکراری</span></td></tr>
+            <tr><td class="row-num">۴</td><td><span class="cv">۱۴۰۵/۰۴/۲۷</span></td><td><span class="cv" style="text-align:right">واریز از پارتیشن پارس</span></td><td class="num dep"><span class="cv">۴۰٬۰۰۰٬۰۰۰</span></td><td class="num"><span class="cv">—</span></td><td class="num"><span class="cv">۳۲۸٬۹۱۲٬۰۰۰</span></td><td><span class="tag t-ok">جدید</span></td></tr>
+            <tr class="dup-row"><td class="row-num">۵</td><td><span class="cv">۱۴۰۵/۰۴/۲۷</span></td><td><span class="cv" style="text-align:right">کارمزد</span></td><td class="num"><span class="cv">—</span></td><td class="num wd"><span class="cv">۱۲٬۰۰۰</span></td><td class="num"><span class="cv">۳۲۸٬۹۰۰٬۰۰۰</span></td><td><span class="dup-badge">تکراری</span></td></tr>
+            <tr><td class="row-num">۶</td><td><span class="cv">۱۴۰۵/۰۴/۲۸</span></td><td><span class="cv" style="text-align:right">هزینه سرور</span></td><td class="num"><span class="cv">—</span></td><td class="num wd"><span class="cv">۶٬۲۰۰٬۰۰۰</span></td><td class="num"><span class="cv">۳۲۲٬۷۱۲٬۰۰۰</span></td><td><span class="tag t-ok">جدید</span></td></tr>
+            <tr><td class="row-num">۷</td><td><span class="cv">۱۴۰۵/۰۴/۲۹</span></td><td><span class="cv" style="text-align:right">حقوق سارا احمدی</span></td><td class="num"><span class="cv">—</span></td><td class="num wd"><span class="cv">۱۸٬۰۰۰٬۰۰۰</span></td><td class="num"><span class="cv">۳۰۴٬۷۱۲٬۰۰۰</span></td><td><span class="tag t-ok">جدید</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-f" style="justify-content:flex-start">
+        <button class="btn btn-p" onclick="location.href='finance-transactions.html'">تایید و ورود ۵ ردیف</button>
+        <button class="btn" onclick="finStep(2)">بازگشت</button>
+      </div>
+    </section>
+
+  </main>
+</div>
+<script src="assets/shell.js"></script>
+<script src="assets/finance.js"></script>
+</body>
+</html>
