@@ -4,6 +4,8 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
+from reports.views import PublicReportView as ReportPublicView
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('dashboard.urls')),
@@ -12,6 +14,8 @@ urlpatterns = [
     path('projects/', include('projects.urls')),
     path('tasks/', include('tasks.urls')),
     path('calendar/', include('calendarapp.urls')),
+    path('reports/', include('reports.urls')),
+    path('r/<uuid:token>/', ReportPublicView.as_view(), name='report_public'),
     path('settings/', include('core.urls')),
 ]
 

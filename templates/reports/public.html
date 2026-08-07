@@ -1,0 +1,74 @@
+{% load static seo_extras %}<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ report.title }} — {{ report.project.name }}</title>
+<link rel="stylesheet" href="{% static 'vendor/vazirmatn/vazirmatn.css' %}">
+<style>
+/* نسخه‌ی چاپ/عمومی — تم روشن (طبق سند) */
+:root{--bg:#F7F8FB;--card:#fff;--text:#1F2937;--dim:#6B7280;--faint:#9CA3AF;--stroke:#E5E7EB;--primary:#2E6BD9;--ok:#059669;--pink:#DB2777}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Vazirmatn,system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.9;font-size:14px}
+.wrap{max-width:900px;margin:0 auto;padding:28px 20px 60px}
+.head{display:flex;align-items:center;gap:14px;border-bottom:2px solid var(--stroke);padding-bottom:18px;margin-bottom:22px}
+.head .mark{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--primary),#7C3AED);color:#fff;display:grid;place-items:center;font-weight:700;font-size:19px;flex:none}
+.head h1{font-size:21px;font-weight:700}
+.head .meta{color:var(--dim);font-size:13px;margin-top:3px}
+.head .print{margin-inline-start:auto}
+.btn{border:1px solid var(--stroke);background:#fff;color:var(--text);font-family:inherit;font-size:13px;padding:8px 16px;border-radius:99px;cursor:pointer}
+.desc{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:20px 22px;margin-bottom:22px;line-height:2}
+.desc img{max-width:100%;border-radius:8px;margin:8px 0}
+.desc h3{margin:10px 0 6px}
+h2.group{font-size:16px;font-weight:700;margin:22px 0 10px;color:var(--primary)}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--stroke);border-radius:12px;overflow:hidden}
+th{background:#F3F4F6;text-align:right;font-size:12px;font-weight:600;color:var(--dim);padding:10px 14px;border-bottom:1px solid var(--stroke)}
+td{padding:11px 14px;border-bottom:1px solid var(--stroke);font-size:13px}
+tr:last-child td{border-bottom:0}
+td a{color:var(--primary);text-decoration:none}
+.foot{text-align:center;color:var(--faint);font-size:12px;margin-top:34px}
+@media print{.print{display:none}body{background:#fff}.desc,table{border-color:#ddd}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div class="mark">{{ report.project.name|first }}</div>
+    <div>
+      <h1>{{ report.title }}</h1>
+      <div class="meta">{{ report.project.name }} — {{ report.date_from|jalali }} تا {{ report.date_to|jalali }}</div>
+    </div>
+    <button class="btn print" onclick="window.print()">چاپ / PDF</button>
+  </div>
+
+  {% if report.description %}<div class="desc">{{ report.description|safe }}</div>{% endif %}
+
+  {% for key, label, items in groups %}
+    <h2 class="group">{{ label }}</h2>
+    <table>
+      <thead><tr>
+        <th>عنوان</th>
+        {% for fk, fl in fields %}<th>{{ fl }}</th>{% endfor %}
+      </tr></thead>
+      <tbody>
+        {% for it in items %}
+          <tr>
+            <td>{{ it.eff_title }}</td>
+            {% for fk, fl in fields %}
+              <td>
+                {% if fk == 'published_url' %}{% with u=it|repfield:fk %}{% if u %}<a href="{{ u }}" target="_blank" rel="noopener">مشاهده ↗</a>{% else %}—{% endif %}{% endwith %}
+                {% else %}{{ it|repfield:fk|default:"—" }}{% endif %}
+              </td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% empty %}
+    <p style="color:var(--dim);text-align:center;padding:30px">محتوایی برای نمایش نیست.</p>
+  {% endfor %}
+
+  <div class="foot">این گزارش توسط سئوپنل تولید شده است.</div>
+</div>
+</body>
+</html>

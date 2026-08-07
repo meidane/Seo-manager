@@ -29,7 +29,7 @@
 | `tasks` | Task, TaskComment | مدل و API کامل |
 | `calendarapp` | — (روی Task) | ماه/AJAX/drag کامل؛ هفته/لیست ناقص |
 | `dashboard` | — (تجمیعی) | کارت‌ها/جدول‌ها/فید کامل؛ نمودارها/تب‌ها ناقص |
-| `reports` | — | **ساخته نشده (گام ۷)** |
+| `reports` | Report, ReportItem | کامل (گام ۷) — بدون snapshot، override، لینک عمومی |
 | `finance` | — | **ساخته نشده (گام ۸)** |
 
 ---
@@ -71,13 +71,31 @@
 - **کش ۶۰ ثانیه‌ای:** طبق سند بخش ۱۴، دور آمار داشبورد `cache.get_or_set` بگذار
   (هنوز نگذاشته‌ام تا در توسعه داده تازه ببینی).
 
-### گزارش‌ها (گام ۷ — ساخته نشده)
-- مدل‌ها: `Report(project,title,date_from,date_to,description,status,public_token,is_public)`
-  و `ReportItem(report,task(FK null),title,task_type,display_date,url,note,is_manual,order)`.
-- **کلید طراحی:** ReportItem یک **snapshot** است (کپی از تسک)، تا ویرایش بعدی تسک
-  گزارشِ تحویل‌شده را عوض نکند. «واکشی تسک‌ها» = کپی تسک‌های done بازه در ReportItemها.
-- لینک عمومی `/r/<uuid>/` بدون `login_required` (تنها استثنا).
-- ماک‌آپ آماده: `mockups/reports.html`, `mockups/report-detail.html`.
+### گزارش‌ها (گام ۷ — کامل ✅، طراحی بازنگری‌شده)
+- **بدون snapshot.** `ReportItem` مرجع زنده به Task است + فیلدهای override
+  (`override_title/override_done_date/override_description`) که فقط روی همان گزارش
+  اثر دارند. نمایش = override اگر پر باشد وگرنه مقدار زنده‌ی تسک (`eff_*` properties).
+- گروه‌بندی نمایش با `BUCKETS` در `reports/models.py`: انتشار / آپدیت / فنی /
+  (رپورتاژ+لینک‌سازی) / سایر. برای تغییر گروه‌ها فقط همین ثابت را دست بزن.
+- **نمایش به مشتری کاملاً قابل‌تنظیم:** `Report.visible_fields` (JSON) فهرست کلید
+  فیلدهای مجاز است؛ `CLIENT_FIELDS` فهرست کامل فیلدهای قابل‌تنظیم. تنظیمات با مودال
+  چک‌باکسی در صفحه‌ی گزارش. نسخه‌ی عمومی فقط این‌ها را رندر می‌کند.
+- توضیحات: ادیتور contenteditable + آپلود عکس (`api/<id>/upload-image/` → Attachment
+  روی Report). پاکسازی با `bleach` در `clean_html` (whitelist تگ‌ها).
+- لینک عمومی `/r/<uuid>/` **بدون** login (تنها استثنا)، تم روشن، دکمه‌ی چاپ/PDF.
+- **TODO باقی‌مانده:** drag reorder ردیف‌ها (API `reorder` آماده، UI نیست)؛ افزودن
+  «از بازه‌ی دیگر» (فعلاً واکشی بازه‌ی دلخواه با from/to هست)؛ ادیتور فعلاً ساده است
+  (اگر TinyMCE خواستی، جای contenteditable بگذار و همان upload endpoint را وصل کن).
+
+### نوع تسک سفارشی (گام بعد — تصمیم‌گرفته‌شده)
+- **جدا از مودال فعلی.** یک بخش `/settings/task-types/` که در آن نوع و فیلدهایش
+  تعریف شود. پیش‌فرض همه‌ی تسک‌ها فقط **عنوان + تاریخ برنامه‌ریزی** دارند.
+- مدل‌های پیشنهادی: `TaskTypeDef(name,color,order)` +
+  `TaskTypeField(type_def FK, key, label, kind[text/textarea/checkbox/number/select/url/date], options, order, required, show_to_client)`.
+  مقادیر در `Task.custom` (JSONField) ذخیره شوند. فیلدهای هسته‌ای (word_count,
+  published_url, review, dates, assignee, status) دست‌نخورده بمانند تا داشبورد نشکند.
+- گزارش‌دهی هم بعداً می‌تواند فیلدهای سفارشی را در `CLIENT_FIELDS` نشان دهد
+  (نگاشت key→label از TaskTypeField).
 
 ### حسابداری (گام ۸ — ساخته نشده)
 - مدل `FinanceEntry(project,report(null),entry_type[debit/credit],title,amount,date,note)`.
@@ -116,7 +134,9 @@ python manage.py runserver
 ## چک‌لیست گام‌های باقی‌مانده (از سند)
 - [x] گام ۶: آمار سینگل پروژه/همکار + تب تقویم آن‌ها + میان‌بر کیبورد بازبینی
       (تقویم قابل‌جاسازی: `static/js/calendar-embed.js` با data-project/data-assignee)
-- [ ] گام ۷: گزارش‌دهی (Report/ReportItem + چاپ + لینک عمومی)
+- [x] گام ۷: گزارش‌دهی (بدون snapshot، override، گروه‌بندی نوع، نمایش قابل‌تنظیم مشتری،
+      توضیحات با آپلود عکس، لینک عمومی + چاپ)
+- [ ] نوع تسک سفارشی: بخش `/settings/task-types/` (بدون دست‌زدن به مودال فعلی)
 - [ ] گام ۸: حسابداری (FinanceEntry + داشبورد مالی + اکسل)
 - [ ] گام ۹: جستجوی سراسری، ریسپانسیو موبایل، empty stateها، ایندکس‌ها، seed_demo
 - [ ] تکمیل‌های TODO بالا (تب‌های داشبورد، دونات/هیت‌مپ، datepicker+workload در مودال،

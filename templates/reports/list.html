@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}گزارش‌ها{% endblock %}
+
+{% block content %}
+  <div class="page-h"><h1>گزارش‌ها</h1>
+    <div class="side-c"><button class="btn btn-p" id="new-report">＋ گزارش جدید</button></div>
+  </div>
+
+  <section class="card glass">
+    {% if reports %}
+      <table>
+        <thead><tr><th>عنوان</th><th>پروژه</th><th>بازه</th><th>وضعیت</th><th>لینک عمومی</th><th></th></tr></thead>
+        <tbody>
+          {% for r in reports %}
+            <tr onclick="location.href='{{ r.get_absolute_url }}'">
+              <td>{{ r.title }}</td><td>{{ r.project.name }}</td>
+              <td class="num-c">{{ r.date_from|jalali }} تا {{ r.date_to|jalali }}</td>
+              <td><span class="tag {% if r.status == 'final' %}t-ok{% else %}t-warn{% endif %}">{{ r.get_status_display }}</span></td>
+              <td>{% if r.is_public %}<a class="lnk" href="{{ r.public_url }}" target="_blank" rel="noopener" onclick="event.stopPropagation()">↗</a>{% else %}<span class="zero">—</span>{% endif %}</td>
+              <td><a class="mini" href="{{ r.get_absolute_url }}" onclick="event.stopPropagation()">مشاهده</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty"><div class="ico">▪</div><h4>هنوز گزارشی ساخته نشده</h4><button class="btn btn-p" id="new-report" style="margin-top:12px">＋ گزارش جدید</button></div>
+    {% endif %}
+  </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#new-report'))return;
+  const opts=`{% for p in projects %}<option value="{{ p.id }}">{{ p.name|escapejs }}</option>{% endfor %}`;
+  App.openModal(`<div class="modal-h"><h3>گزارش جدید</h3><button class="x" onclick="App.closeModal()">×</button></div>
+    <form method="post" action="{% url 'reports:add' %}" class="modal-b">
+      <input type="hidden" name="csrfmiddlewaretoken" value="${App.csrf}">
+      <div class="field"><label>عنوان</label><input class="input" name="title" placeholder="گزارش مرداد ۱۴۰۵" required></div>
+      <div class="field"><label>پروژه</label><select name="project" required>${opts}</select></div>
+      <div class="grid2">
+        <div class="field"><label>از تاریخ (شمسی)</label><input class="input" name="date_from" dir="ltr" placeholder="۱۴۰۵/۰۵/۰۱" required></div>
+        <div class="field"><label>تا تاریخ (شمسی)</label><input class="input" name="date_to" dir="ltr" placeholder="۱۴۰۵/۰۵/۳۱" required></div>
+      </div>
+      <div style="display:flex;gap:8px"><button class="btn btn-p" type="submit">ساخت و ادامه</button><button class="btn" type="button" onclick="App.closeModal()">انصراف</button></div>
+    </form>`);
+});
+</script>
+{% endblock %}

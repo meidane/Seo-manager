@@ -18,7 +18,7 @@
     <a href="{% url 'colleagues:list' %}" class="{% if request.resolver_match.namespace == 'colleagues' %}on{% endif %}">
       <span class="ico">◉</span> همکاران
     </a>
-    <a href="#"><span class="ico">▪</span> گزارش‌ها</a>
+    <a href="{% url 'reports:list' %}" class="{% if request.resolver_match.namespace == 'reports' %}on{% endif %}"><span class="ico">▪</span> گزارش‌ها</a>
     <a href="#"><span class="ico">₮</span> حسابداری</a>
     <div class="nav-label">تنظیمات</div>
     <a href="{% url 'core:holidays' %}" class="{% if request.resolver_match.namespace == 'core' %}on{% endif %}">

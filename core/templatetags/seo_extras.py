@@ -48,6 +48,12 @@ def dictkey(d, key):
         return None
 
 
+@register.filter(name='repfield')
+def repfield(item, key):
+    """مقدار نمایشی یک فیلد از ردیف گزارش با کلید متغیر."""
+    return item.field_value(key)
+
+
 @register.filter(name='timeago')
 def timeago(value):
     """فاصله‌ی زمانی نسبی به فارسی: «۳ روز پیش»."""

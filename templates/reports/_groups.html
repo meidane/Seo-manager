@@ -1,0 +1,31 @@
+{% load seo_extras %}
+{% for key, label, items in groups %}
+  <section class="card glass" style="margin-bottom:14px">
+    <div class="card-h"><h3>{{ label }}</h3><span class="chip">{{ items|length|fa_digits }} مورد</span></div>
+    <table>
+      <thead><tr><th>عنوان</th><th>مسئول</th><th>تاریخ انجام</th><th>لینک</th><th style="width:80px"></th></tr></thead>
+      <tbody>
+        {% for it in items %}
+          <tr>
+            <td><span contenteditable="true" data-item-title="{{ it.id }}" style="outline:none">{{ it.eff_title }}</span></td>
+            <td>{% if it.task.assignee %}{{ it.task.assignee.full_name }}{% else %}<span class="zero">—</span>{% endif %}</td>
+            <td><input class="input" style="max-width:110px;padding:5px 8px" dir="ltr" data-item-date="{{ it.id }}" value="{{ it.eff_done_date|jalali:'%Y/%m/%d' }}"></td>
+            <td>{% if it.eff_url %}<a class="lnk" href="{{ it.eff_url }}" target="_blank" rel="noopener">↗</a>{% else %}<span class="zero">—</span>{% endif %}</td>
+            <td style="white-space:nowrap">
+              <button class="mini" data-toggle-desc="{{ it.id }}">✎ توضیح</button>
+              <button class="mini" data-item-del="{{ it.id }}">حذف</button>
+            </td>
+          </tr>
+          <tr id="desc-{{ it.id }}" style="display:none">
+            <td colspan="5" style="background:rgba(255,255,255,.02)">
+              <div contenteditable="true" data-item-desc="{{ it.id }}" class="rich" style="padding:10px;min-height:50px;outline:none;border:1px solid var(--stroke-soft);border-radius:var(--r-sm)">{{ it.eff_description|safe }}</div>
+              <small style="color:var(--text-faint)">این توضیح فقط برای همین گزارش ذخیره می‌شود.</small>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% empty %}
+  <section class="card glass"><div class="empty"><div class="ico">▪</div><h4>هنوز ردیفی در گزارش نیست</h4><p>با «واکشی تسک‌ها» بازه را بیاور و موارد را اضافه کن.</p></div></section>
+{% endfor %}

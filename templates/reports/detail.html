@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% load static seo_extras %}
+{% block title %}{{ report.title }}{% endblock %}
+
+{% block content %}
+<div data-report="{{ report.pk }}">
+
+  <div class="page-h">
+    <h1 contenteditable="true" id="r-title" style="outline:none;border-bottom:1px dashed transparent" onfocus="this.style.borderColor='var(--stroke)'" onblur="this.style.borderColor='transparent'">{{ report.title }}</h1>
+    <span class="tag {% if report.status == 'final' %}t-ok{% else %}t-warn{% endif %}" id="r-status">{{ report.get_status_display }}</span>
+    <div class="side-c">
+      <button class="btn" id="r-settings">تنظیمات نمایش مشتری</button>
+      <a class="btn" href="{{ report.public_url }}" target="_blank" rel="noopener">پیش‌نمایش/چاپ ↗</a>
+      <button class="btn btn-p" id="r-final">{% if report.status == 'final' %}بازگشت به پیش‌نویس{% else %}نهایی‌سازی{% endif %}</button>
+    </div>
+  </div>
+
+  {# ── لینک عمومی ── #}
+  <section class="glass filters" style="justify-content:space-between">
+    <label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">
+      <input type="checkbox" id="r-public" {% if report.is_public %}checked{% endif %} style="width:auto"> لینک عمومی برای مشتری فعال باشد
+    </label>
+    <span style="display:flex;gap:8px;align-items:center">
+      <input class="input" id="r-link" style="max-width:340px" dir="ltr" readonly value="{{ request.scheme }}://{{ request.get_host }}{{ report.public_url }}">
+      <button class="btn btn-sm" id="r-copy">📋 کپی</button>
+    </span>
+  </section>
+
+  {# ── توضیحات (ادیتور غنی + آپلود عکس) ── #}
+  <section class="card glass">
+    <div class="card-h"><h3>توضیحات</h3>
+      <div class="side-c">
+        <button class="chip" data-cmd="bold"><b>B</b></button>
+        <button class="chip" data-cmd="formatBlock" data-val="h3">عنوان</button>
+        <button class="chip" data-cmd="insertUnorderedList">• لیست</button>
+        <button class="chip" id="r-img">🖼 عکس</button>
+        <input type="file" id="r-file" accept="image/*" hidden>
+      </div>
+    </div>
+    <div id="r-desc" contenteditable="true" class="rich" style="padding:16px 18px;min-height:120px;line-height:2;outline:none">{{ report.description|safe }}</div>
+  </section>
+
+  {# ── افزودن تسک از بازه ── #}
+  <section class="card glass">
+    <div class="card-h"><h3>افزودن تسک</h3>
+      <div class="side-c" style="gap:8px">
+        <input class="input" id="p-from" style="max-width:120px" dir="ltr" value="{{ report.date_from|jalali:'%Y/%m/%d' }}">
+        <input class="input" id="p-to" style="max-width:120px" dir="ltr" value="{{ report.date_to|jalali:'%Y/%m/%d' }}">
+        <button class="btn btn-sm" id="p-fetch">واکشی تسک‌ها</button>
+        <button class="btn btn-sm" id="p-manual">＋ ردیف دستی</button>
+      </div>
+    </div>
+    <div id="pull-results" style="padding:8px 14px"></div>
+    <div id="pull-actions" style="padding:0 14px 14px;display:none">
+      <button class="btn btn-p btn-sm" id="p-add">افزودن انتخاب‌شده‌ها به گزارش</button>
+    </div>
+  </section>
+
+  {# ── ردیف‌های گزارش، گروه‌بندی‌شده بر اساس نوع ── #}
+  <div id="report-items">
+    {% include "reports/_groups.html" %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const RID = {{ report.pk }};
+const CLIENT_FIELDS = [{% for k,l in client_fields %}["{{ k }}","{{ l|escapejs }}"]{% if not forloop.last %},{% endif %}{% endfor %}];
+const VISIBLE = {{ visible_fields|safe }};
+
+// ── عنوان و توضیحات ──
+document.getElementById('r-title').addEventListener('blur',e=>App.fetchJSON(`/reports/api/${RID}/update/`,{method:'PATCH',body:{title:e.target.textContent.trim()}}));
+const desc=document.getElementById('r-desc');
+desc.addEventListener('blur',()=>App.fetchJSON(`/reports/api/${RID}/update/`,{method:'PATCH',body:{description:desc.innerHTML}}).then(()=>App.toast('توضیحات ذخیره شد','ok')));
+document.querySelectorAll('[data-cmd]').forEach(b=>b.onclick=e=>{e.preventDefault();document.execCommand(b.dataset.cmd,false,b.dataset.val||null);desc.focus();});
+
+// ── آپلود عکس ──
+document.getElementById('r-img').onclick=()=>document.getElementById('r-file').click();
+document.getElementById('r-file').onchange=async e=>{
+  const f=e.target.files[0]; if(!f)return;
+  const fd=new FormData(); fd.append('file',f);
+  try{ const d=await App.fetchJSON(`/reports/api/${RID}/upload-image/`,{method:'POST',body:fd});
+    desc.focus(); document.execCommand('insertImage',false,d.url);
+    App.fetchJSON(`/reports/api/${RID}/update/`,{method:'PATCH',body:{description:desc.innerHTML}});
+  }catch(_){}
+};
+
+// ── لینک عمومی ──
+document.getElementById('r-public').onchange=e=>App.fetchJSON(`/reports/api/${RID}/update/`,{method:'PATCH',body:{is_public:e.target.checked}}).then(()=>App.toast(e.target.checked?'لینک فعال شد':'لینک غیرفعال شد','ok'));
+document.getElementById('r-copy').onclick=()=>{navigator.clipboard.writeText(document.getElementById('r-link').value);App.toast('کپی شد','ok');};
+
+// ── نهایی‌سازی ──
+document.getElementById('r-final').onclick=async()=>{
+  const cur=document.getElementById('r-status').textContent.includes('نهایی');
+  await App.fetchJSON(`/reports/api/${RID}/update/`,{method:'PATCH',body:{status:cur?'draft':'final'}});
+  location.reload();
+};
+
+// ── واکشی تسک‌ها ──
+document.getElementById('p-fetch').onclick=async()=>{
+  const d=await App.fetchJSON(`/reports/api/${RID}/pull-tasks/?from=${document.getElementById('p-from').value}&to=${document.getElementById('p-to').value}`);
+  const box=document.getElementById('pull-results');
+  if(!d.groups.length){box.innerHTML='<div class="empty" style="padding:20px">تسک انجام‌شده‌ی جدیدی در این بازه نیست</div>';document.getElementById('pull-actions').style.display='none';return;}
+  box.innerHTML=d.groups.map(g=>`<div style="margin-bottom:10px"><b style="font-size:12px;color:var(--text-dim)">${g.label}</b>`+
+    g.tasks.map(t=>`<label style="display:flex;align-items:center;gap:8px;padding:6px 4px;margin:0;cursor:pointer">
+      <input type="checkbox" class="pick" value="${t.id}" style="width:auto">
+      <span class="ttype" style="background:rgba(${t.color},.16);color:rgb(${t.color})">${t.type_label}</span>
+      <span>${t.title}</span><span style="color:var(--text-faint);font-size:11px">${t.assignee} · ${t.done_date_fa}</span></label>`).join('')+`</div>`).join('');
+  document.getElementById('pull-actions').style.display='block';
+};
+document.getElementById('p-add').onclick=async()=>{
+  const ids=[...document.querySelectorAll('.pick:checked')].map(c=>+c.value);
+  if(!ids.length){App.toast('چیزی انتخاب نشده','warn');return;}
+  await App.fetchJSON(`/reports/api/${RID}/items/`,{method:'POST',body:{task_ids:ids}});
+  App.toast('افزوده شد','ok'); location.reload();
+};
+document.getElementById('p-manual').onclick=async()=>{
+  await App.fetchJSON(`/reports/api/${RID}/manual/`,{method:'POST',body:{title:'ردیف دستی جدید',type:'other'}});
+  location.reload();
+};
+
+// ── ویرایش inline ردیف‌ها ──
+document.addEventListener('blur',async e=>{
+  if(e.target.matches('[data-item-title]')){
+    await App.fetchJSON(`/reports/api/items/${e.target.dataset.itemTitle}/`,{method:'PATCH',body:{override_title:e.target.textContent.trim()}});
+    App.toast('ذخیره شد','ok');
+  }
+  if(e.target.matches('[data-item-desc]')){
+    await App.fetchJSON(`/reports/api/items/${e.target.dataset.itemDesc}/`,{method:'PATCH',body:{override_description:e.target.innerHTML}});
+  }
+},true);
+document.addEventListener('change',async e=>{
+  if(e.target.matches('[data-item-date]')){
+    await App.fetchJSON(`/reports/api/items/${e.target.dataset.itemDate}/`,{method:'PATCH',body:{override_done_date:e.target.value}});
+    App.toast('تاریخ ذخیره شد','ok');
+  }
+});
+document.addEventListener('click',async e=>{
+  const del=e.target.closest('[data-item-del]');
+  if(del){ if(await App.confirm('این ردیف از گزارش حذف شود؟')){await App.fetchJSON(`/reports/api/items/${del.dataset.itemDel}/`,{method:'DELETE'});del.closest('tr').remove();App.toast('حذف شد','ok');} }
+  const ed=e.target.closest('[data-toggle-desc]');
+  if(ed){ const row=document.getElementById('desc-'+ed.dataset.toggleDesc); if(row)row.style.display=row.style.display==='none'?'':'none'; }
+});
+
+// ── تنظیمات نمایش مشتری ──
+document.getElementById('r-settings').onclick=()=>{
+  const boxes=CLIENT_FIELDS.map(([k,l])=>`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;margin:0;cursor:pointer">
+    <input type="checkbox" class="vf" value="${k}" ${VISIBLE.includes(k)?'checked':''} style="width:auto"> ${l}</label>`).join('');
+  App.openModal(`<div class="modal-h"><h3>چه فیلدهایی به مشتری نمایش داده شوند؟</h3><button class="x" onclick="App.closeModal()">×</button></div>
+    <div class="modal-b"><p style="color:var(--text-faint);font-size:12px;margin-bottom:10px">عنوان همیشه نمایش داده می‌شود. بقیه را انتخاب کن.</p>${boxes}</div>
+    <div class="modal-f"><button class="btn btn-p" id="vf-save">ذخیره</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+  document.getElementById('vf-save').onclick=async()=>{
+    const sel=[...document.querySelectorAll('.vf:checked')].map(c=>c.value);
+    await App.fetchJSON(`/reports/api/${RID}/update/`,{method:'PATCH',body:{visible_fields:sel}});
+    App.closeModal(); App.toast('تنظیمات ذخیره شد','ok'); VISIBLE.length=0; sel.forEach(x=>VISIBLE.push(x));
+  };
+};
+</script>
+{% endblock %}
