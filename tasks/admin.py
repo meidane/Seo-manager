@@ -1,6 +1,17 @@
 from django.contrib import admin
 
-from .models import Task, TaskComment
+from .models import Task, TaskComment, TaskTypeDef, TaskTypeField
+
+
+class FieldInline(admin.TabularInline):
+    model = TaskTypeField
+    extra = 1
+
+
+@admin.register(TaskTypeDef)
+class TaskTypeDefAdmin(admin.ModelAdmin):
+    list_display = ('name', 'color', 'is_active', 'order')
+    inlines = [FieldInline]
 
 
 @admin.register(Task)

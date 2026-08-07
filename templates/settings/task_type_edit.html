@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}{{ type_def.name }}{% endblock %}
+
+{% block content %}
+<div data-type="{{ type_def.pk }}">
+  <div class="page-h">
+    <a href="{% url 'task_types:list' %}" class="btn btn-sm">← انواع</a>
+    <h1 id="t-name" contenteditable="true" style="outline:none;border-bottom:1px dashed transparent" onfocus="this.style.borderColor='var(--stroke)'" onblur="this.style.borderColor='transparent'">{{ type_def.name }}</h1>
+    <input type="color" id="t-color" value="{{ type_def.color }}" style="width:40px;height:34px;padding:2px;background:transparent;border:1px solid var(--stroke-soft);border-radius:var(--r-sm);cursor:pointer">
+    <div class="side-c"><button class="btn" id="t-del" style="color:var(--danger)">حذف نوع</button></div>
+  </div>
+
+  {# ── فیلدهای این نوع ── #}
+  <section class="card glass">
+    <div class="card-h"><h3>فیلدهای این نوع</h3><span class="chip" id="f-count">{{ fields|length|fa_digits }} فیلد</span></div>
+    <table id="f-table">
+      <thead><tr><th>برچسب</th><th>نوع فیلد</th><th>اجباری</th><th>نمایش به مشتری</th><th></th></tr></thead>
+      <tbody>
+        {% for f in fields %}
+          <tr data-fid="{{ f.id }}">
+            <td>{{ f.label }}{% if f.kind == 'select' and f.options %}<br><small style="color:var(--text-faint)">{{ f.options }}</small>{% endif %}</td>
+            <td><span class="tag t-info">{{ f.get_kind_display }}</span></td>
+            <td>{% if f.required %}✓{% else %}<span class="zero">—</span>{% endif %}</td>
+            <td>{% if f.show_to_client %}✓{% else %}<span class="zero">—</span>{% endif %}</td>
+            <td><button class="mini f-del" data-id="{{ f.id }}">حذف</button></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if not fields %}<div class="empty" id="f-empty" style="padding:26px"><div class="ico">◫</div><h4>هنوز فیلدی اضافه نشده</h4></div>{% endif %}
+  </section>
+
+  {# ── افزودن فیلد ── #}
+  <section class="card glass" style="margin-top:14px">
+    <div class="card-h"><h3>افزودن فیلد</h3></div>
+    <div class="modal-b">
+      <div class="grid2">
+        <div class="field"><label>برچسب فیلد</label><input class="input" id="nf-label" placeholder="مثلاً کد پیگیری"></div>
+        <div class="field"><label>نوع فیلد</label>
+          <select id="nf-kind">{% for v,l in kind_choices %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select>
+        </div>
+      </div>
+      <div class="field" id="nf-options-wrap" style="display:none"><label>گزینه‌ها (با ویرگول جدا کن)</label><input class="input" id="nf-options" placeholder="کم، متوسط، زیاد"></div>
+      <div class="field"><label>راهنمای فیلد (اختیاری)</label><input class="input" id="nf-placeholder"></div>
+      <div style="display:flex;gap:18px;margin-bottom:14px">
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-required" style="width:auto"> اجباری</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-client" checked style="width:auto"> نمایش به مشتری</label>
+      </div>
+      <button class="btn btn-p" id="nf-add">افزودن فیلد</button>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const TID={{ type_def.pk }};
+// نام و رنگ
+document.getElementById('t-name').addEventListener('blur',e=>App.fetchJSON(`/settings/task-types/api/${TID}/`,{method:'PATCH',body:{name:e.target.textContent.trim()}}));
+document.getElementById('t-color').addEventListener('change',e=>App.fetchJSON(`/settings/task-types/api/${TID}/`,{method:'PATCH',body:{color:e.target.value}}).then(()=>App.toast('ذخیره شد','ok')));
+document.getElementById('t-del').onclick=async()=>{ if(await App.confirm('این نوع و همه‌ی فیلدهایش حذف شوند؟')){await App.fetchJSON(`/settings/task-types/api/${TID}/`,{method:'DELETE'});location.href="{% url 'task_types:list' %}";} };
+
+// نمایش گزینه‌ها فقط برای select
+document.getElementById('nf-kind').onchange=e=>{document.getElementById('nf-options-wrap').style.display=e.target.value==='select'?'':'none';};
+
+// افزودن فیلد
+document.getElementById('nf-add').onclick=async()=>{
+  const label=document.getElementById('nf-label').value.trim();
+  if(!label){App.toast('برچسب لازم است','warn');return;}
+  const body={label, kind:document.getElementById('nf-kind').value,
+    options:document.getElementById('nf-options').value.trim(),
+    placeholder:document.getElementById('nf-placeholder').value.trim(),
+    required:document.getElementById('nf-required').checked,
+    show_to_client:document.getElementById('nf-client').checked};
+  try{ const f=await App.fetchJSON(`/settings/task-types/api/${TID}/fields/`,{method:'POST',body});
+    const empty=document.getElementById('f-empty'); if(empty)empty.remove();
+    const tb=document.querySelector('#f-table tbody');
+    tb.insertAdjacentHTML('beforeend',`<tr data-fid="${f.id}"><td>${f.label}</td><td><span class="tag t-info">${f.kind}</span></td><td>${f.required?'✓':'<span class=zero>—</span>'}</td><td>${f.show_to_client?'✓':'<span class=zero>—</span>'}</td><td><button class="mini f-del" data-id="${f.id}">حذف</button></td></tr>`);
+    document.getElementById('nf-label').value='';document.getElementById('nf-options').value='';document.getElementById('nf-placeholder').value='';
+    App.toast('فیلد افزوده شد','ok');
+  }catch(_){}
+};
+
+// حذف فیلد
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('.f-del'); if(!b)return;
+  if(await App.confirm('این فیلد حذف شود؟')){await App.fetchJSON(`/settings/task-types/api/fields/${b.dataset.id}/`,{method:'DELETE'});b.closest('tr').remove();App.toast('حذف شد','ok');}
+});
+</script>
+{% endblock %}

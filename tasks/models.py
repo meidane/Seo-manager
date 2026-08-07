@@ -71,6 +71,9 @@ class Task(TimeStampedModel):
     project = models.ForeignKey('projects.Project', verbose_name='پروژه', on_delete=models.CASCADE, related_name='tasks')
     assignee = models.ForeignKey('colleagues.Colleague', verbose_name='مسئول', on_delete=models.SET_NULL, null=True, blank=True, related_name='tasks')
     task_type = models.CharField('نوع تسک', max_length=20, choices=TYPE_CHOICES, default=PUBLISH)
+    # نوع سفارشی (اختیاری) + مقادیر فیلدهای سفارشی؛ فیلدهای هسته‌ای بالا دست‌نخورده می‌مانند
+    type_def = models.ForeignKey('tasks.TaskTypeDef', verbose_name='نوع سفارشی', on_delete=models.SET_NULL, null=True, blank=True, related_name='tasks')
+    custom = models.JSONField('فیلدهای سفارشی', default=dict, blank=True)
     update_type = models.CharField('زیرنوع آپدیت', max_length=10, choices=UPDATE_TYPE_CHOICES, blank=True)
     title = models.CharField('عنوان', max_length=255)
     description = models.TextField('توضیحات', blank=True)
@@ -165,6 +168,87 @@ class Task(TimeStampedModel):
             'assignee_id': self.assignee_id,
             'word_count': self.word_count,
             'published_url': self.published_url,
+        }
+
+
+class TaskTypeDef(TimeStampedModel):
+    """نوع تسک سفارشی — کاربر خودش تعریف می‌کند.
+
+    مستقل از انواع built-in مدل Task است. هر نوع مجموعه‌ای از فیلدهای سفارشی
+    دارد که مقادیرشان در Task.custom (JSON) ذخیره می‌شوند. فیلدهای هسته‌ایِ Task
+    (عنوان، تاریخ برنامه، وضعیت، word_count و…) دست‌نخورده می‌مانند تا داشبورد نشکند.
+    """
+
+    name = models.CharField('نام نوع', max_length=80, unique=True)
+    color = models.CharField('رنگ', max_length=7, default='#4183F2')
+    icon = models.CharField('آیکن (اموجی)', max_length=8, blank=True)
+    order = models.PositiveIntegerField('ترتیب', default=0)
+    is_active = models.BooleanField('فعال', default=True)
+
+    class Meta:
+        verbose_name = 'نوع تسک سفارشی'
+        verbose_name_plural = 'انواع تسک سفارشی'
+        ordering = ['order', 'name']
+
+    def __str__(self):
+        return self.name
+
+    def get_absolute_url(self):
+        return reverse('task_types:edit', args=[self.pk])
+
+    def schema(self):
+        """اسکیمای فیلدها برای مصرف فرانت (مودال آینده/گزارش)."""
+        return [f.to_dict() for f in self.fields.all()]
+
+
+class TaskTypeField(models.Model):
+    """یک فیلد سفارشی متعلق به یک TaskTypeDef."""
+
+    TEXT = 'text'
+    TEXTAREA = 'textarea'
+    NUMBER = 'number'
+    CHECKBOX = 'checkbox'
+    SELECT = 'select'
+    URL = 'url'
+    DATE = 'date'
+    KIND_CHOICES = [
+        (TEXT, 'متن کوتاه'), (TEXTAREA, 'متن بلند'), (NUMBER, 'عدد'),
+        (CHECKBOX, 'چک‌باکس'), (SELECT, 'انتخابی'), (URL, 'لینک'), (DATE, 'تاریخ'),
+    ]
+
+    type_def = models.ForeignKey(TaskTypeDef, verbose_name='نوع', on_delete=models.CASCADE, related_name='fields')
+    key = models.CharField('کلید', max_length=40, blank=True)  # خودکار: f<id>
+    label = models.CharField('برچسب', max_length=120)
+    kind = models.CharField('نوع فیلد', max_length=12, choices=KIND_CHOICES, default=TEXT)
+    options = models.CharField('گزینه‌ها (با ویرگول)', max_length=500, blank=True)  # فقط select
+    placeholder = models.CharField('راهنما', max_length=120, blank=True)
+    required = models.BooleanField('اجباری', default=False)
+    show_to_client = models.BooleanField('نمایش به مشتری', default=True)
+    order = models.PositiveIntegerField('ترتیب', default=0)
+
+    class Meta:
+        verbose_name = 'فیلد نوع تسک'
+        verbose_name_plural = 'فیلدهای نوع تسک'
+        ordering = ['order', 'id']
+
+    def __str__(self):
+        return f'{self.label} ({self.get_kind_display()})'
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if not self.key:
+            self.key = f'f{self.pk}'
+            super().save(update_fields=['key'])
+
+    @property
+    def options_list(self):
+        return [o.strip() for o in self.options.split(',') if o.strip()]
+
+    def to_dict(self):
+        return {
+            'key': self.key, 'label': self.label, 'kind': self.kind,
+            'options': self.options_list, 'placeholder': self.placeholder,
+            'required': self.required, 'show_to_client': self.show_to_client,
         }
 
 

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}انواع تسک{% endblock %}
+
+{% block content %}
+  <div class="page-h"><h1>انواع تسک سفارشی</h1>
+    <div class="side-c"><button class="btn btn-p" id="new-type">＋ نوع جدید</button></div>
+  </div>
+
+  <div class="note glass" style="margin:0 0 14px">
+    اینجا نوع تسک و فیلدهای دلخواهش را تعریف می‌کنی. همه‌ی تسک‌ها به‌صورت پیش‌فرض
+    فقط <b>عنوان</b> و <b>تاریخ برنامه‌ریزی</b> دارند؛ هر نوع می‌تواند فیلدهای بیشتری اضافه کند.
+  </div>
+
+  {% if types %}
+    <div class="cards-grid">
+      {% for t in types %}
+        <a href="{% url 'task_types:edit' t.pk %}" class="colleague-card glass">
+          <span class="ca-avatar ca-fallback" style="--c:{{ t.color }}">{{ t.icon|default:t.name|first }}</span>
+          <div class="ca-body"><b>{{ t.name }}</b><span class="ca-roles">{{ t.fields.count|fa_digits }} فیلد</span></div>
+          {% if not t.is_active %}<span class="tag t-mute ca-badge">غیرفعال</span>{% endif %}
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <section class="card glass"><div class="empty"><div class="ico">◫</div><h4>هنوز نوعی تعریف نشده</h4>
+      <button class="btn btn-p" id="new-type" style="margin-top:12px">＋ نوع جدید</button></div></section>
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#new-type'))return;
+  App.openModal(`<div class="modal-h"><h3>نوع تسک جدید</h3><button class="x" onclick="App.closeModal()">×</button></div>
+    <div class="modal-b">
+      <div class="field"><label>نام نوع</label><input class="input" id="t-name" placeholder="مثلاً فنی، ویدیو، سوشال…"></div>
+      <div class="grid2">
+        <div class="field"><label>رنگ</label><input type="color" id="t-color" value="#4183F2" style="width:100%;height:40px;padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--stroke-soft);border-radius:var(--r-sm)"></div>
+        <div class="field"><label>آیکن (اموجی، اختیاری)</label><input class="input" id="t-icon" placeholder="🔧"></div>
+      </div>
+    </div>
+    <div class="modal-f"><button class="btn btn-p" id="t-save">ساخت و ادامه</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+  document.getElementById('t-save').onclick=async()=>{
+    const name=document.getElementById('t-name').value.trim();
+    if(!name){App.toast('نام لازم است','warn');return;}
+    try{ const d=await App.fetchJSON("{% url 'task_types:create' %}",{method:'POST',body:{
+      name, color:document.getElementById('t-color').value, icon:document.getElementById('t-icon').value.trim()}});
+      location.href=d.url;
+    }catch(_){}
+  };
+});
+</script>
+{% endblock %}

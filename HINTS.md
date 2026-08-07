@@ -87,15 +87,19 @@
   «از بازه‌ی دیگر» (فعلاً واکشی بازه‌ی دلخواه با from/to هست)؛ ادیتور فعلاً ساده است
   (اگر TinyMCE خواستی، جای contenteditable بگذار و همان upload endpoint را وصل کن).
 
-### نوع تسک سفارشی (گام بعد — تصمیم‌گرفته‌شده)
-- **جدا از مودال فعلی.** یک بخش `/settings/task-types/` که در آن نوع و فیلدهایش
-  تعریف شود. پیش‌فرض همه‌ی تسک‌ها فقط **عنوان + تاریخ برنامه‌ریزی** دارند.
-- مدل‌های پیشنهادی: `TaskTypeDef(name,color,order)` +
-  `TaskTypeField(type_def FK, key, label, kind[text/textarea/checkbox/number/select/url/date], options, order, required, show_to_client)`.
-  مقادیر در `Task.custom` (JSONField) ذخیره شوند. فیلدهای هسته‌ای (word_count,
-  published_url, review, dates, assignee, status) دست‌نخورده بمانند تا داشبورد نشکند.
-- گزارش‌دهی هم بعداً می‌تواند فیلدهای سفارشی را در `CLIENT_FIELDS` نشان دهد
-  (نگاشت key→label از TaskTypeField).
+### نوع تسک سفارشی (بخش تعریف — کامل ✅ | اتصال به مودال — TODO)
+- بخش `/settings/task-types/` ساخته شد: تعریف نوع (`TaskTypeDef`) + فیلدهایش
+  (`TaskTypeField` با kind: text/textarea/number/checkbox/select/url/date، required،
+  show_to_client). `tasks/type_views.py` + `tasks/type_urls.py`.
+- `Task.type_def` (FK) + `Task.custom` (JSONField) اضافه شد. کلید هر فیلد خودکار `f<id>`.
+  اسکیمای آماده: `TaskTypeDef.schema()` → لیست dictهای فیلد.
+- فیلدهای هسته‌ای Task دست‌نخورده ماند (داشبورد سالم).
+- **TODO — اتصال به مودال تسک (عمداً انجام نشد؛ کاربر گفت مودال فعلی را دست نزن):**
+  در `static/js/tasks.js`، وقتی نوع سفارشی انتخاب شد، `GET` اسکیما (یک endpoint
+  کوچک لازم است که `TaskTypeDef.schema()` را برگرداند)، اینپوت‌ها را داینامیک بساز،
+  و مقادیر را در `custom` جمع کن؛ در `apply_fields` (tasks/api.py) هم `custom` و
+  `type_def` را ذخیره کن. سپس نمایش این فیلدها در لیست/گزارش/بازبینی.
+- گزارش‌دهی می‌تواند بعداً فیلدهای سفارشیِ `show_to_client` را در نسخه‌ی عمومی نشان دهد.
 
 ### حسابداری (گام ۸ — ساخته نشده)
 - مدل `FinanceEntry(project,report(null),entry_type[debit/credit],title,amount,date,note)`.
@@ -136,7 +140,8 @@ python manage.py runserver
       (تقویم قابل‌جاسازی: `static/js/calendar-embed.js` با data-project/data-assignee)
 - [x] گام ۷: گزارش‌دهی (بدون snapshot، override، گروه‌بندی نوع، نمایش قابل‌تنظیم مشتری،
       توضیحات با آپلود عکس، لینک عمومی + چاپ)
-- [ ] نوع تسک سفارشی: بخش `/settings/task-types/` (بدون دست‌زدن به مودال فعلی)
+- [x] نوع تسک سفارشی: بخش `/settings/task-types/` — تعریف نوع + فیلدها (کامل)
+      (اتصال به مودال تسک عمداً نشده؛ جزئیات در بخش «نوع تسک سفارشی» بالا)
 - [ ] گام ۸: حسابداری (FinanceEntry + داشبورد مالی + اکسل)
 - [ ] گام ۹: جستجوی سراسری، ریسپانسیو موبایل، empty stateها، ایندکس‌ها، seed_demo
 - [ ] تکمیل‌های TODO بالا (تب‌های داشبورد، دونات/هیت‌مپ، datepicker+workload در مودال،
