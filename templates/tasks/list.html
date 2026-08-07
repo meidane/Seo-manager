@@ -83,17 +83,10 @@
 
 {% block scripts %}
 <script>
-  window.TASK_CFG = {
-    projects: [{% for p in projects %}["{{ p.id }}","{{ p.name|escapejs }}"]{% if not forloop.last %},{% endif %}{% endfor %}],
-    colleagues: [{% for c in colleagues %}["{{ c.id }}","{{ c.full_name|escapejs }}"]{% if not forloop.last %},{% endif %}{% endfor %}],
-    typeChoices: [{% for v,l in type_choices %}["{{ v }}","{{ l|escapejs }}"]{% if not forloop.last %},{% endif %}{% endfor %}],
-  };
   document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{
     document.querySelectorAll('[data-view]').forEach(x=>x.classList.remove('on'));b.classList.add('on');
     document.querySelector('[data-panel="list"]').style.display=b.dataset.view==='list'?'':'none';
     document.querySelector('[data-panel="kanban"]').style.display=b.dataset.view==='kanban'?'':'none';
   });
 </script>
-<script src="{% static 'js/task-schema.js' %}"></script>
-<script src="{% static 'js/tasks.js' %}"></script>
 {% endblock %}

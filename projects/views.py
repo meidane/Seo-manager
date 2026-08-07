@@ -60,7 +60,7 @@ class ProjectDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
             'overdue': p.tasks.filter(status__in=[Task.TODO, Task.DOING], planned_date__lt=date.today()).count(),
             'words': done_qs.aggregate(s=Sum('word_count'))['s'] or 0,
         }
-        ctx['task_rows'] = p.tasks.select_related('assignee').filter(
+        ctx['task_rows'] = p.tasks.select_related('assignee','type_def').filter(
             Q(planned_date__range=(start, end)) | Q(status=Task.DONE, done_date__range=(start, end))
         ).order_by('-planned_date')[:40]
         ctx['page_title'] = p.name

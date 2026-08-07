@@ -10,6 +10,7 @@ urlpatterns = [
     path('review/', views.TaskReviewView.as_view(), name='review'),
 
     # API
+    path('api/formdata/', api.form_data, name='api_formdata'),
     path('api/', api.task_create, name='api_create'),
     path('api/<int:pk>/', api.task_detail, name='api_detail'),
     path('api/<int:pk>/status/', api.task_status, name='api_status'),

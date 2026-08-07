@@ -122,7 +122,7 @@ def pull_tasks(request, pk):
         d_from, d_to = report.date_from, report.date_to
 
     added = set(report.items.exclude(task__isnull=True).values_list('task_id', flat=True))
-    qs = Task.objects.select_related('assignee').filter(
+    qs = Task.objects.select_related('assignee','type_def').filter(
         project=report.project, done_date__range=(d_from, d_to), status=Task.DONE
     ).exclude(id__in=added)
 

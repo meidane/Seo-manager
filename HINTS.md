@@ -87,19 +87,19 @@
   «از بازه‌ی دیگر» (فعلاً واکشی بازه‌ی دلخواه با from/to هست)؛ ادیتور فعلاً ساده است
   (اگر TinyMCE خواستی، جای contenteditable بگذار و همان upload endpoint را وصل کن).
 
-### نوع تسک سفارشی (بخش تعریف — کامل ✅ | اتصال به مودال — TODO)
-- بخش `/settings/task-types/` ساخته شد: تعریف نوع (`TaskTypeDef`) + فیلدهایش
-  (`TaskTypeField` با kind: text/textarea/number/checkbox/select/url/date، required،
-  show_to_client). `tasks/type_views.py` + `tasks/type_urls.py`.
-- `Task.type_def` (FK) + `Task.custom` (JSONField) اضافه شد. کلید هر فیلد خودکار `f<id>`.
-  اسکیمای آماده: `TaskTypeDef.schema()` → لیست dictهای فیلد.
-- فیلدهای هسته‌ای Task دست‌نخورده ماند (داشبورد سالم).
-- **TODO — اتصال به مودال تسک (عمداً انجام نشد؛ کاربر گفت مودال فعلی را دست نزن):**
-  در `static/js/tasks.js`، وقتی نوع سفارشی انتخاب شد، `GET` اسکیما (یک endpoint
-  کوچک لازم است که `TaskTypeDef.schema()` را برگرداند)، اینپوت‌ها را داینامیک بساز،
-  و مقادیر را در `custom` جمع کن؛ در `apply_fields` (tasks/api.py) هم `custom` و
-  `type_def` را ذخیره کن. سپس نمایش این فیلدها در لیست/گزارش/بازبینی.
-- گزارش‌دهی می‌تواند بعداً فیلدهای سفارشیِ `show_to_client` را در نسخه‌ی عمومی نشان دهد.
+### نوع تسک سفارشی (کامل ✅ — تعریف + اتصال به مودال)
+- بخش `/settings/task-types/`: تعریف نوع (`TaskTypeDef`) + فیلدهایش (`TaskTypeField`،
+  kind: text/textarea/number/checkbox/select/url/date، required، show_to_client، options).
+  `tasks/type_views.py` + `tasks/type_urls.py`. کلید فیلد خودکار `f<id>`.
+- `Task.type_def` (FK) + `Task.custom` (JSONField). فیلدهای هسته‌ای دست‌نخورده (داشبورد سالم).
+- **اتصال به مودال کامل شد:** `GET /tasks/api/formdata/` (پروژه/همکار/انواع built-in و
+  سفارشی + schema). در `static/js/tasks.js` انتخاب نوع سفارشی → رندر داینامیک فیلدها →
+  جمع در `custom` → `apply_fields` ذخیره می‌کند. مودال از **هر صفحه‌ای** کار می‌کند
+  (در `base.html` سراسری لود می‌شود؛ دکمه‌ی `#new-task` هدر).
+- `Task.type_label`/`color_rgb` برای تسکِ نوع سفارشی، نام و رنگ همان نوع را می‌دهند
+  (نمایش درست در لیست/تقویم/کانبان/گزارش).
+- **TODO کوچک باقی‌مانده:** نمایش مقادیر `custom` در جدول لیست/سینگل (فعلاً فقط در مودال
+  دیده می‌شوند)؛ و افزودن فیلدهای سفارشیِ `show_to_client` به نسخه‌ی عمومی گزارش.
 
 ### حسابداری (گام ۸ — ساخته نشده)
 - مدل `FinanceEntry(project,report(null),entry_type[debit/credit],title,amount,date,note)`.

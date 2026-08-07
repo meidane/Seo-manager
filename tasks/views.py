@@ -20,7 +20,7 @@ class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
         start, end = self.get_range(self.request)
         g = self.request.GET
 
-        qs = Task.objects.select_related('project', 'assignee')
+        qs = Task.objects.select_related('project', 'assignee', 'type_def')
         # بازه فقط وقتی اعمال شود که کاربر «همه» را نخواسته باشد
         if g.get('all') != '1':
             qs = qs.filter(planned_date__range=(start, end))
@@ -67,7 +67,7 @@ class TaskReviewView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        qs = Task.objects.select_related('project', 'assignee').filter(
+        qs = Task.objects.select_related('project', 'assignee', 'type_def').filter(
             status=Task.DONE).exclude(published_url='')
         review = self.request.GET.get('review', 'unreviewed')
         if review == 'unreviewed':

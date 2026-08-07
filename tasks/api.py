@@ -60,6 +60,10 @@ def apply_fields(task: Task, data: dict):
     for key, attr in FK_FIELDS.items():
         if key in data:
             setattr(task, attr, data[key] or None)
+    if 'type_def' in data:
+        task.type_def_id = data['type_def'] or None
+    if 'custom' in data and isinstance(data['custom'], dict):
+        task.custom = data['custom']
     if 'planned_date_iso' in data and data['planned_date_iso']:
         # از drag تقویم می‌آید: میلادی ISO
         try:
@@ -77,6 +81,26 @@ def apply_fields(task: Task, data: dict):
     # اگر وضعیت به «انجام شده» رفت و done_date خالی بود، امروز را بگذار
     if task.status == Task.DONE and not task.done_date:
         task.done_date = date.today()
+
+
+@login_required
+@require_http_methods(['GET'])
+def form_data(request):
+    """داده‌ی لازم برای مودال تسک (پروژه‌ها، همکاران، انواع built-in و سفارشی).
+    مودال هنگام باز شدن این را یک‌بار می‌گیرد تا از هر صفحه‌ای کار کند."""
+    from colleagues.models import Colleague
+    from projects.models import Project
+
+    from .models import TaskTypeDef
+    return JsonResponse({
+        'projects': [[p.id, p.name] for p in Project.objects.filter(status=Project.ACTIVE)],
+        'colleagues': [[c.id, c.full_name] for c in Colleague.objects.filter(status=Colleague.ACTIVE)],
+        'typeChoices': list(Task.TYPE_CHOICES),
+        'customTypes': [
+            {'id': t.id, 'name': t.name, 'color': t.color, 'fields': t.schema()}
+            for t in TaskTypeDef.objects.filter(is_active=True)
+        ],
+    })
 
 
 @login_required
@@ -108,6 +132,7 @@ def task_detail(request, pk):
             'anchor_text': task.anchor_text, 'target_url': task.target_url,
             'link_type': task.link_type, 'link_count': task.link_count,
             'review_status': task.review_status, 'review_note': task.review_note,
+            'type_def': task.type_def_id, 'custom': task.custom or {},
         })
         return JsonResponse(d)
     if request.method == 'DELETE':

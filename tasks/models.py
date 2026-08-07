@@ -138,6 +138,8 @@ class Task(TimeStampedModel):
 
     @property
     def type_label(self):
+        if self.type_def_id:  # نوع سفارشی
+            return self.type_def.name
         label = dict(self.TYPE_CHOICES).get(self.task_type, '')
         if self.task_type == self.UPDATE and self.update_type:
             label += ' ' + dict(self.UPDATE_TYPE_CHOICES).get(self.update_type, '')
@@ -145,6 +147,10 @@ class Task(TimeStampedModel):
 
     @property
     def color_rgb(self):
+        if self.type_def_id:  # رنگ نوع سفارشی (hex → rgb)
+            h = self.type_def.color.lstrip('#')
+            if len(h) == 6:
+                return ','.join(str(int(h[i:i + 2], 16)) for i in (0, 2, 4))
         # آپدیت اساسی نارنجی، بقیه طبق نگاشت
         if self.task_type == self.UPDATE and self.update_type == self.MAJOR:
             return '249,115,22'

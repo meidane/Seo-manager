@@ -96,7 +96,7 @@ class ColleagueDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
         # نمودار میله‌ای روزانه
         ctx['daily_bars'] = self._daily(done_qs, start, end)
         # لیست تسک‌های او در بازه
-        ctx['task_rows'] = c.tasks.select_related('project').filter(
+        ctx['task_rows'] = c.tasks.select_related('project','type_def').filter(
             Q(planned_date__range=(start, end)) | done_q).order_by('-planned_date')[:40]
         ctx['page_title'] = c.full_name
         return ctx

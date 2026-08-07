@@ -8,7 +8,7 @@
     <span class="range-note">{{ range_start_fa }} تا {{ range_end_fa }} — {{ range_days|fa_digits }} روز</span>
   {% endif %}
 
-  <button class="btn btn-p" style="margin-inline-start:auto">＋ تسک جدید</button>
+  <button class="btn btn-p" id="new-task" style="margin-inline-start:auto">＋ تسک جدید</button>
   {% if user.avatar %}
     <img class="avatar" src="{{ user.avatar.url }}" alt="">
   {% else %}
