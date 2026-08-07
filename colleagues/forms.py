@@ -16,7 +16,7 @@ class ColleagueForm(forms.ModelForm):
     join_date = forms.CharField(
         label='تاریخ عضویت (شمسی)',
         required=False,
-        widget=forms.TextInput(attrs={'placeholder': '۱۴۰۴/۰۵/۱۵', 'dir': 'ltr'}),
+        widget=forms.TextInput(attrs={'placeholder': '۱۴۰۴/۰۵/۱۵', 'dir': 'ltr', 'class': 'input jdate'}),
     )
 
     class Meta:

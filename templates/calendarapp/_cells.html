@@ -1,13 +1,15 @@
-{% load seo_extras %}{% for c in cells %}<div class="cell{% if c.is_holiday and not c.dim %} off{% endif %}{% if c.dim %} dim{% endif %}{% if c.is_today %} today{% endif %}" data-date="{{ c.gdate }}">
+{% load seo_extras %}{% for c in cells %}<div class="cell{% if c.is_holiday and not c.dim %} off{% endif %}{% if c.dim %} dim{% endif %}{% if c.is_today %} today{% endif %}" data-date="{{ c.gdate }}" data-jdate="{{ c.jdate }}">
   <div class="cell-h">
     <span class="dnum">{{ c.jday_fa }}</span>
     {% if c.holiday_title and not c.dim %}<span class="hol">{{ c.holiday_title }}</span>{% endif %}
     {% if c.tasks %}<span class="cnt">{{ c.tasks|length|fa_digits }}</span>{% endif %}
   </div>
-  {% for t in c.tasks|slice:":4" %}
+  {% if not c.dim %}<button class="cell-add" data-jdate="{{ c.jdate }}" title="تسک جدید در این روز">＋</button>{% endif %}
+  {% for t in c.tasks|slice:":5" %}
     <span class="tk{% if t.done %} done{% endif %}" draggable="true" data-id="{{ t.id }}" data-open-task="{{ t.id }}"
-      style="background:rgba({{ t.color }},.15);border-right:3px solid rgb({{ t.color }});color:rgb({{ t.color }})">
-      {{ t.type_label }}: {{ t.title }}<span class="tk-t">{{ t.time }}</span></span>
+      {% if not t.done %}style="background:rgba({{ t.color }},.15);border-right:3px solid rgb({{ t.color }});color:rgb({{ t.color }})"{% endif %}>
+      {% if t.avatar %}<img class="tk-av" src="{{ t.avatar }}" alt="">{% else %}<span class="tk-av" style="background:{{ t.a_color }}">{{ t.initials }}</span>{% endif %}
+      <span class="tk-tx">{{ t.type_label }}: {{ t.title }}</span>{% if not t.done %}<span class="tk-t">{{ t.time }}</span>{% endif %}</span>
   {% endfor %}
-  {% if c.tasks|length > 4 %}<span class="more">+{{ c.tasks|length|add:"-4"|fa_digits }} مورد دیگر</span>{% endif %}
+  {% if c.tasks|length > 5 %}<span class="more">+{{ c.tasks|length|add:"-5"|fa_digits }} مورد دیگر</span>{% endif %}
 </div>{% endfor %}

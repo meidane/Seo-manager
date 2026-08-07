@@ -350,6 +350,63 @@ tbody tr:last-child td{border-bottom:0}
 .tab-panel{display:none}
 .tab-panel.on{display:block}
 
+/* ── تقویم (گوگل‌کلندری) ── */
+.cal{margin-top:0}
+.cal-bar{display:flex;align-items:center;gap:9px;padding:13px 16px;border-bottom:1px solid var(--stroke-soft);flex-wrap:wrap}
+.cal-bar h3{font-size:15px;font-weight:500;min-width:110px;text-align:center}
+.nav-b{width:28px;height:28px;border-radius:8px;border:1px solid var(--stroke-soft);background:transparent;
+  color:var(--text-dim);cursor:pointer;transition:var(--ease);font-size:14px}
+.nav-b:hover{background:var(--glass-hover);color:var(--text)}
+.grid7{display:grid;grid-template-columns:repeat(7,1fr)}
+.dow{padding:9px 4px;text-align:center;font-size:11.5px;color:var(--text-dim);border-bottom:1px solid var(--stroke-soft)}
+.dow.off{color:#FF9AAB;background:rgba(251,87,115,.045)}
+.cell{min-height:120px;padding:5px;border-inline-start:1px solid var(--stroke-soft);border-bottom:1px solid var(--stroke-soft);
+  position:relative;transition:var(--ease);display:flex;flex-direction:column;gap:3px}
+.cell:nth-child(7n){border-inline-start:0}
+.cell:hover{background:rgba(255,255,255,.022)}
+.cell.off{background:rgba(251,87,115,.045)}
+.cell.dim{opacity:.35}
+.cell.today{box-shadow:inset 0 0 0 1.5px var(--primary);border-radius:9px}
+.cell.drop-hover{background:var(--primary-soft);box-shadow:inset 0 0 0 1.5px var(--primary-ring)}
+.cell-h{display:flex;align-items:center;gap:5px;padding:1px 3px 2px}
+.dnum{font-size:12px;color:var(--text-dim);font-variant-numeric:tabular-nums}
+.cell.off .dnum{color:#FF9AAB} .cell.today .dnum{color:#fff;font-weight:700}
+.hol{font-size:9.5px;color:#FF9AAB;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cnt{margin-inline-start:auto;font-size:9.5px;min-width:16px;height:16px;border-radius:99px;background:rgba(255,255,255,.09);
+  color:var(--text-dim);display:grid;place-items:center;padding:0 4px;flex:none}
+.cell-add{position:absolute;top:5px;inset-inline-start:5px;width:20px;height:20px;border-radius:50%;border:0;
+  background:var(--primary);color:#fff;cursor:pointer;font-size:13px;line-height:1;opacity:0;transition:var(--ease);z-index:4;display:grid;place-items:center}
+.cell:hover .cell-add{opacity:1}
+.cell-add:hover{background:var(--primary-400)}
+.tk{border-radius:6px;padding:3px 6px;font-size:11px;line-height:1.4;cursor:pointer;transition:var(--ease);
+  display:flex;align-items:center;gap:5px;overflow:hidden}
+.tk:hover{transform:translateX(-2px)}
+.tk-av{width:15px;height:15px;border-radius:50%;flex:none;object-fit:cover;display:grid;place-items:center;font-size:8px;color:#fff;font-weight:700;border:1px solid rgba(255,255,255,.25)}
+.tk-tx{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.tk-t{font-size:9px;opacity:.75;flex:none}
+.tk.done{background:rgba(143,160,184,.12);color:var(--text-faint);border-right:3px solid var(--slate);text-decoration:line-through}
+.tk.done .tk-av{filter:grayscale(1);opacity:.7}
+.more{font-size:10.5px;color:var(--text-faint);padding:1px 6px;cursor:pointer}
+.more:hover{color:var(--primary-400)}
+.legend{display:flex;gap:13px;flex-wrap:wrap;padding:11px 16px;font-size:11.5px;color:var(--text-dim)}
+.legend i{width:8px;height:8px;border-radius:2.5px;display:inline-block;margin-inline-end:5px}
+
+/* ── دیت‌پیکر شمسی ── */
+.dp-pop{position:absolute;z-index:300;width:250px;padding:10px;border-radius:var(--r);
+  background:#0B1220;border:1px solid var(--stroke);box-shadow:var(--shadow-lg)}
+.dp-head{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.dp-head h4{flex:1;text-align:center;font-size:13px;font-weight:500}
+.dp-nav{width:24px;height:24px;border-radius:6px;border:1px solid var(--stroke-soft);background:transparent;color:var(--text-dim);cursor:pointer}
+.dp-nav:hover{background:var(--glass-hover);color:var(--text)}
+.dp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.dp-dow{text-align:center;font-size:9.5px;color:var(--text-faint);padding:3px 0}
+.dp-day{text-align:center;font-size:11.5px;padding:6px 0;border-radius:6px;cursor:pointer;transition:var(--ease);color:var(--text)}
+.dp-day:hover{background:var(--primary-soft)}
+.dp-day.dim{opacity:.3}
+.dp-day.today{box-shadow:inset 0 0 0 1px var(--primary)}
+.dp-day.hol{color:#FF9AAB;background:rgba(251,87,115,.08)}
+.dp-day.sel{background:var(--primary);color:#fff}
+
 /* ── پسورد و دکمه‌های ریز ── */
 .pw{font-family:monospace;direction:ltr;display:inline-block;letter-spacing:1px}
 .mini{border:1px solid var(--stroke-soft);background:transparent;color:var(--text-dim);

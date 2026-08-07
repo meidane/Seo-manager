@@ -13,9 +13,9 @@ class ProjectForm(forms.ModelForm):
         widget=forms.CheckboxSelectMultiple,
     )
     contract_start = forms.CharField(label='شروع قرارداد (شمسی)', required=False,
-                                     widget=forms.TextInput(attrs={'dir': 'ltr', 'placeholder': '۱۴۰۴/۰۵/۰۱'}))
+                                     widget=forms.TextInput(attrs={'dir': 'ltr', 'placeholder': '۱۴۰۴/۰۵/۰۱', 'class': 'input jdate'}))
     contract_end = forms.CharField(label='پایان قرارداد (شمسی)', required=False,
-                                   widget=forms.TextInput(attrs={'dir': 'ltr', 'placeholder': '۱۴۰۵/۰۵/۰۱'}))
+                                   widget=forms.TextInput(attrs={'dir': 'ltr', 'placeholder': '۱۴۰۵/۰۵/۰۱', 'class': 'input jdate'}))
 
     class Meta:
         model = Project
