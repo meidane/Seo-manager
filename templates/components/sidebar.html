@@ -19,7 +19,7 @@
       <span class="ico">◉</span> همکاران
     </a>
     <a href="{% url 'reports:list' %}" class="{% if request.resolver_match.namespace == 'reports' %}on{% endif %}"><span class="ico">▪</span> گزارش‌ها</a>
-    <a href="#"><span class="ico">₮</span> حسابداری</a>
+    <a href="{% url 'finance:dashboard' %}" class="{% if request.resolver_match.namespace == 'finance' %}on{% endif %}"><span class="ico">₮</span> حسابداری</a>
     <div class="nav-label">تنظیمات</div>
     <a href="{% url 'task_types:list' %}" class="{% if request.resolver_match.namespace == 'task_types' %}on{% endif %}">
       <span class="ico">◫</span> انواع تسک

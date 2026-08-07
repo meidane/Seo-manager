@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}بانک‌ها و بابت‌ها{% endblock %}
+
+{% block content %}
+  <div class="page-h"><h1>بانک‌ها و بابت‌ها</h1></div>
+  {% include "finance/_nav.html" %}
+
+  <section class="card glass" style="margin-bottom:14px">
+    <div class="card-h"><h3>حساب‌های بانکی</h3><div class="side-c"><button class="btn btn-sm btn-p" id="add-bank">＋ حساب جدید</button></div></div>
+    <div class="cards-grid" style="padding:14px" id="bank-grid">
+      {% for b in banks %}
+        <div class="bank-card glass" data-id="{{ b.id }}"><div class="bname"><span class="blogo" style="background:{{ b.color }}">{{ b.name|first }}</span> {{ b.name }}</div>
+          {% if b.card_number %}<div class="bnum">{{ b.card_number }}</div>{% endif %}
+          <div class="bbal">{{ b.balance|money }}<small> تومان</small></div>
+          <div style="margin-top:10px"><button class="mini bank-del" data-id="{{ b.id }}">حذف</button></div></div>
+      {% empty %}<div class="empty" style="grid-column:1/-1">حسابی تعریف نشده</div>{% endfor %}
+    </div>
+  </section>
+
+  <section class="card glass">
+    <div class="card-h"><h3>بابت‌ها (قابل‌گسترش)</h3><div class="side-c"><button class="btn btn-sm btn-p" id="add-cat">＋ بابت جدید</button></div></div>
+    <div style="padding:14px;display:flex;flex-wrap:wrap;gap:8px" id="cat-list">
+      {% for c in categories %}
+        <span class="tag" data-id="{{ c.id }}" style="background:color-mix(in srgb,{{ c.color }} 18%,transparent);color:{{ c.color }};padding:6px 12px">{{ c.name }}{% if c.is_salary %} 💰{% endif %} <b class="cat-del" data-id="{{ c.id }}" style="cursor:pointer;opacity:.6">×</b></span>
+      {% empty %}<span class="zero">بابتی نیست</span>{% endfor %}
+    </div>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('add-bank').onclick=()=>{
+  App.openModal(`<div class="modal-h"><h3>حساب بانکی جدید</h3><button class="x" onclick="App.closeModal()">×</button></div>
+    <div class="modal-b">
+      <div class="field"><label>نام حساب</label><input class="input" id="b-name" placeholder="ملت — اصلی"></div>
+      <div class="grid2"><div class="field"><label>بانک</label><input class="input" id="b-bank" placeholder="ملت"></div>
+      <div class="field"><label>رنگ</label><input type="color" id="b-color" value="#4183F2" style="width:100%;height:40px;padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--stroke-soft);border-radius:var(--r-sm)"></div></div>
+      <div class="field"><label>شماره کارت/حساب</label><input class="input" id="b-card" dir="ltr"></div>
+      <div class="field"><label>مانده‌ی اولیه (تومان)</label><input class="input" id="b-init" dir="ltr" placeholder="0"></div></div>
+    <div class="modal-f"><button class="btn btn-p" id="b-save">ذخیره</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+  document.getElementById('b-save').onclick=async()=>{
+    const name=document.getElementById('b-name').value.trim(); if(!name){App.toast('نام لازم است','warn');return;}
+    try{ await App.fetchJSON("{% url 'finance:bank_create' %}",{method:'POST',body:{name,bank:document.getElementById('b-bank').value,color:document.getElementById('b-color').value,card_number:document.getElementById('b-card').value,initial_balance:document.getElementById('b-init').value}});
+      location.reload(); }catch(_){}
+  };
+};
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('.bank-del'); if(b){ if(await App.confirm('این حساب و تراکنش‌هایش حذف شوند؟')){ await App.fetchJSON(`/finance/api/banks/${b.dataset.id}/`,{method:'DELETE'}); location.reload(); } }
+  const c=e.target.closest('.cat-del'); if(c){ if(await App.confirm('این بابت حذف شود؟')){ await App.fetchJSON(`/finance/api/categories/${c.dataset.id}/`,{method:'DELETE'}); location.reload(); } }
+});
+document.getElementById('add-cat').onclick=()=>{
+  App.openModal(`<div class="modal-h"><h3>بابت جدید</h3><button class="x" onclick="App.closeModal()">×</button></div>
+    <div class="modal-b"><div class="field"><label>عنوان</label><input class="input" id="c-name" placeholder="مثلاً تبلیغات"></div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="c-sal" style="width:auto"> مربوط به حقوق است</label></div>
+    <div class="modal-f"><button class="btn btn-p" id="c-save">ذخیره</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+  document.getElementById('c-save').onclick=async()=>{
+    const name=document.getElementById('c-name').value.trim(); if(!name){App.toast('عنوان لازم است','warn');return;}
+    try{ await App.fetchJSON("{% url 'finance:category_create' %}",{method:'POST',body:{name,is_salary:document.getElementById('c-sal').checked}}); location.reload(); }catch(_){}
+  };
+};
+</script>
+{% endblock %}

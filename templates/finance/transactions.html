@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}تراکنش‌ها{% endblock %}
+
+{% block content %}
+  <div class="page-h"><h1>تراکنش‌ها</h1><div class="side-c"><a href="{% url 'finance:import' %}" class="btn btn-p">＋ ورود اکسل بانک</a></div></div>
+  {% include "finance/_nav.html" %}
+
+  <form method="get" class="glass filters">
+    <select name="bank" onchange="this.form.submit()"><option value="">همه‌ی بانک‌ها</option>{% for b in banks %}<option value="{{ b.id }}" {% if filters.bank == b.id|stringformat:'s' %}selected{% endif %}>{{ b.name }}</option>{% endfor %}</select>
+    <select name="project" onchange="this.form.submit()"><option value="">همه‌ی پروژه‌ها</option>{% for p in projects %}<option value="{{ p.id }}" {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
+    <select name="category" onchange="this.form.submit()"><option value="">همه‌ی بابت‌ها</option>{% for c in categories %}<option value="{{ c.id }}" {% if filters.category == c.id|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select>
+    <a href="?unassigned=1" class="chip {% if filters.unassigned == '1' %}on{% endif %}">فقط بدون پروژه/بابت</a>
+  </form>
+
+  {% if transactions %}
+  <div class="sheet-wrap">
+    <table class="sheet" id="tx-sheet">
+      <thead><tr>
+        <th class="chk-col"><input type="checkbox" id="check-all" style="width:auto"></th>
+        <th>تاریخ</th><th>شرح سند</th><th>واریز</th><th>برداشت</th><th>مانده</th>
+        <th style="background:rgba(65,131,242,.08)">پروژه</th><th style="background:rgba(65,131,242,.08)">بابت</th><th style="background:rgba(65,131,242,.08)">توضیحات</th>
+      </tr></thead>
+      <tbody>
+        {% for t in transactions %}
+          <tr data-id="{{ t.id }}">
+            <td class="chk-col"><input type="checkbox" class="row-check" data-id="{{ t.id }}" style="width:auto"></td>
+            <td>{{ t.date|jalali }}</td>
+            <td style="text-align:right;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ t.description }}">{{ t.description }}</td>
+            <td class="num {% if t.deposit %}dep{% endif %}">{% if t.deposit %}{{ t.deposit|money }}{% else %}—{% endif %}</td>
+            <td class="num {% if t.withdrawal %}wd{% endif %}">{% if t.withdrawal %}{{ t.withdrawal|money }}{% else %}—{% endif %}</td>
+            <td class="num">{% if t.balance != None %}{{ t.balance|money }}{% else %}—{% endif %}</td>
+            <td class="edit"><select class="tx-f" data-f="project"><option value="">—</option>{% for p in projects %}<option value="{{ p.id }}" {% if t.project_id == p.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></td>
+            <td class="edit"><select class="tx-f" data-f="category"><option value="">—</option>{% for c in categories %}<option value="{{ c.id }}" {% if t.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></td>
+            <td class="edit"><input class="tx-f" data-f="note" value="{{ t.note }}" placeholder="—"></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <section class="card glass"><div class="empty"><div class="ico">▦</div><h4>تراکنشی نیست</h4><a href="{% url 'finance:import' %}" class="btn btn-p" style="margin-top:12px">＋ ورود اکسل بانک</a></div></section>
+  {% endif %}
+
+  <div class="glass" id="bulkbar" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);gap:8px;align-items:center;padding:10px 16px;z-index:30">
+    <span style="font-size:12.5px;color:var(--text-dim)"><b id="bulk-count">0</b> انتخاب شده</span><span style="width:1px;height:20px;background:var(--stroke-soft)"></span>
+    <select id="bulk-project" style="max-width:140px;padding:5px 8px"><option value="">تعیین پروژه…</option>{% for p in projects %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}</select>
+    <select id="bulk-category" style="max-width:130px;padding:5px 8px"><option value="">تعیین بابت…</option>{% for c in categories %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select>
+    <button class="btn btn-sm" style="color:var(--danger)" id="bulk-del">حذف</button>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  const sheet=document.getElementById('tx-sheet'); if(!sheet) return;
+  // ویرایش inline سه ستون
+  sheet.addEventListener('change', async e=>{
+    const el=e.target.closest('.tx-f'); if(!el) return;
+    const id=el.closest('tr').dataset.id;
+    try{ await App.fetchJSON(`/finance/api/tx/${id}/`,{method:'PATCH',body:{[el.dataset.f]:el.value}}); App.toast('ذخیره شد','ok'); }catch(_){}
+  });
+  sheet.addEventListener('blur', async e=>{
+    const el=e.target.closest('input.tx-f'); if(!el) return;
+    const id=el.closest('tr').dataset.id;
+    try{ await App.fetchJSON(`/finance/api/tx/${id}/`,{method:'PATCH',body:{note:el.value}}); }catch(_){}
+  }, true);
+  // اینتر = ردیف بعد
+  sheet.addEventListener('keydown', e=>{ if(e.key==='Enter'&&e.target.matches('.tx-f')){ e.preventDefault();
+    const tr=e.target.closest('tr').nextElementSibling; if(tr){ const same=tr.querySelector(`.tx-f[data-f="${e.target.dataset.f}"]`); if(same)same.focus(); } } });
+  // انتخاب و گروهی
+  const bar=document.getElementById('bulkbar');
+  const selected=()=>[...sheet.querySelectorAll('.row-check:checked')].map(c=>+c.dataset.id);
+  function refresh(){ const n=selected().length; bar.style.display=n?'flex':'none'; document.getElementById('bulk-count').textContent=n.toLocaleString('fa-IR'); }
+  sheet.addEventListener('change', e=>{
+    if(e.target.id==='check-all'){ sheet.querySelectorAll('.row-check').forEach(c=>c.checked=e.target.checked); refresh(); }
+    else if(e.target.classList.contains('row-check')) refresh();
+  });
+  async function bulk(action, extra){ const ids=selected(); if(!ids.length)return;
+    try{ await App.fetchJSON('/finance/api/tx/bulk/',{method:'POST',body:Object.assign({ids,action},extra)}); App.toast('انجام شد','ok'); setTimeout(()=>location.reload(),300); }catch(_){} }
+  document.getElementById('bulk-project').onchange=e=>{ if(e.target.value) bulk('set_project',{project:e.target.value}); };
+  document.getElementById('bulk-category').onchange=e=>{ if(e.target.value) bulk('set_category',{category:e.target.value}); };
+  document.getElementById('bulk-del').onclick=async()=>{ if(await App.confirm('تراکنش‌های انتخاب‌شده حذف شوند؟')) bulk('delete',{}); };
+})();
+</script>
+{% endblock %}

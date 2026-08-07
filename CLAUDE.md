@@ -16,7 +16,7 @@
 - `calendarapp/` — تقویم شمسی (بدون مدل؛ منطق در calendar_logic.py) + دیت‌پیکر
 - `dashboard/` — ویو تجمیعی
 - `reports/` — Report/ReportItem (بدون snapshot، override، لینک عمومی مشتری)
-- `finance/` — **هنوز ساخته نشده** (بعدی)
+- `finance/` — حسابداری (پایه): BankAccount, Category(بابت), Transaction(+ایمپورت اکسل), Payroll
 
 ## قوانین طلایی (نقض نکن)
 1. **تاریخ‌ها در DB میلادی‌اند.** شمسی فقط در نمایش (`|jalali`) و ورودی (`parse_jalali`).

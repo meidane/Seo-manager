@@ -350,6 +350,52 @@ tbody tr:last-child td{border-bottom:0}
 .tab-panel{display:none}
 .tab-panel.on{display:block}
 
+/* ═══ حسابداری ═══ */
+.fin-nav{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:16px;background:rgba(255,255,255,.03);
+  border:1px solid var(--stroke-soft);border-radius:var(--r-full);padding:4px;width:fit-content}
+.fin-nav a{padding:7px 16px;border-radius:var(--r-full);font-size:13px;color:var(--text-dim);transition:var(--ease)}
+.fin-nav a:hover{background:var(--glass);color:var(--text)}
+.fin-nav a.on{background:linear-gradient(135deg,var(--primary),var(--primary-600));color:#fff;font-weight:500}
+.sect{display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--stroke-soft)}
+.sect:last-child{border-bottom:0}
+.sect .name{font-size:13px;font-weight:500}
+.sect .tris{display:flex;gap:16px;font-size:12px}
+.sect .tris span{display:flex;flex-direction:column}
+.sect .tris b{font-size:14px;font-variant-numeric:tabular-nums}
+.mini-bar{height:5px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden;margin-top:5px}
+.mini-bar i{display:block;height:100%;border-radius:99px}
+.bank-card{padding:16px 18px;position:relative;overflow:hidden}
+.bank-card .bname{display:flex;align-items:center;gap:9px;font-size:13.5px;font-weight:500;margin-bottom:10px}
+.bank-card .blogo{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-size:15px;flex:none;color:#fff}
+.bank-card .bnum{font-size:11px;color:var(--text-faint);direction:ltr;letter-spacing:1px}
+.bank-card .bbal{font-size:22px;font-weight:700;margin-top:8px;font-variant-numeric:tabular-nums}
+.bank-card .bbal small{font-size:13px;font-weight:400;color:var(--text-dim)}
+.dep{color:#6FE3C4} .wd{color:#FFA3B3}
+.sheet-wrap{overflow-x:auto;border:1px solid var(--stroke-soft);border-radius:var(--r)}
+table.sheet{border-collapse:collapse;width:100%;font-size:12.5px;min-width:960px}
+table.sheet th{background:rgba(255,255,255,.04);position:sticky;top:0;z-index:5;padding:9px 10px;
+  border:1px solid var(--stroke-soft);font-weight:500;color:var(--text-dim);white-space:nowrap;text-align:center}
+table.sheet td{padding:8px 10px;border:1px solid var(--stroke-soft);text-align:center;height:36px}
+table.sheet td.num{font-variant-numeric:tabular-nums;text-align:left;direction:ltr}
+table.sheet td.edit{background:rgba(65,131,242,.04)}
+table.sheet td.edit select,table.sheet td.edit input{padding:4px 6px;font-size:12px;background:transparent;border:0}
+table.sheet td.edit select:focus,table.sheet td.edit input:focus{background:var(--bg)}
+table.sheet tr:hover td{background:rgba(255,255,255,.02)}
+.chk-col{width:34px}
+.stepper{display:flex;gap:0;margin-bottom:20px;max-width:560px}
+.stepper .st{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;position:relative}
+.stepper .st .dot{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:13px;
+  background:var(--glass);border:1px solid var(--stroke);color:var(--text-dim);z-index:2}
+.stepper .st.on .dot{background:linear-gradient(135deg,var(--primary),var(--primary-600));color:#fff;border-color:transparent}
+.stepper .st.done .dot{background:rgba(45,212,167,.2);color:#6FE3C4;border-color:transparent}
+.stepper .st span{font-size:11.5px;color:var(--text-dim)}
+.stepper .st::after{content:"";position:absolute;top:15px;inset-inline-end:50%;width:100%;height:1px;background:var(--stroke-soft);z-index:1}
+.stepper .st:first-child::after{display:none}
+.dup-row td{opacity:.45}
+.dup-badge{font-size:9.5px;background:rgba(251,87,115,.18);color:#FFA3B3;padding:1px 6px;border-radius:99px}
+.pay-comp{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.pay-comp .c{font-size:11px;padding:3px 10px;border-radius:var(--r-full);background:var(--glass);border:1px solid var(--stroke-soft)}
+
 /* ── آپلود و گالری فایل ── */
 .drop{border:2px dashed var(--stroke);border-radius:var(--r);padding:34px 20px;text-align:center;
   color:var(--text-dim);transition:var(--ease);cursor:pointer}

@@ -38,6 +38,7 @@ LOCAL_APPS = [
     'tasks',
     'calendarapp',
     'reports',
+    'finance',
 ]
 
 THIRD_PARTY_APPS = [

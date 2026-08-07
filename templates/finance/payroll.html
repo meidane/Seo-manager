@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}حقوق{% endblock %}
+
+{% block content %}
+  <div class="page-h"><h1>صورت‌حساب حقوق</h1><div class="side-c"><button class="btn btn-p" id="add-pay">＋ صدور حقوق</button></div></div>
+  {% include "finance/_nav.html" %}
+
+  <section class="card glass">
+    {% if payrolls %}
+      <table>
+        <thead><tr><th>همکار</th><th>ماه</th><th>اجزا</th><th>جمع</th><th>پرداخت‌شده</th><th>مانده</th><th>وضعیت</th><th></th></tr></thead>
+        <tbody>
+          {% for p in payrolls %}
+            <tr data-id="{{ p.id }}">
+              <td><b>{{ p.colleague.full_name }}</b></td>
+              <td class="num-c">{{ p.year|fa_digits }}/{{ p.month|fa_digits }}</td>
+              <td>{% for it in p.items.all %}<span class="tag t-mute" style="margin:1px">{{ it.title }}: {{ it.amount|money }}</span>{% endfor %}</td>
+              <td class="num-c" style="font-weight:700">{{ p.total|money }}</td>
+              <td class="num-c"><input class="pay-paid input" data-id="{{ p.id }}" dir="ltr" style="max-width:120px;padding:5px 8px" value="{{ p.paid_amount|floatformat:0 }}"></td>
+              <td class="num-c {% if p.remaining > 0 %}red-n{% else %}zero{% endif %}">{{ p.remaining|money }}</td>
+              <td>{% if p.status == 'paid' %}<span class="tag t-ok">تسویه</span>{% elif p.status == 'partial' %}<span class="tag t-warn">ناقص</span>{% else %}<span class="tag t-bad">پرداخت‌نشده</span>{% endif %}</td>
+              <td><button class="mini pay-del" data-id="{{ p.id }}">حذف</button></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty"><div class="ico">💰</div><h4>هنوز صورت‌حساب حقوقی نیست</h4><button class="btn btn-p" id="add-pay2" style="margin-top:12px">＋ صدور حقوق</button></div>
+    {% endif %}
+  </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openPay(){
+  const cols=`{% for c in colleagues %}<option value="{{ c.id }}">{{ c.full_name|escapejs }}</option>{% endfor %}`;
+  App.openModal(`<div class="modal-h"><h3>صدور حقوق</h3><button class="x" onclick="App.closeModal()">×</button></div>
+    <div class="modal-b">
+      <div class="grid3"><div class="field"><label>همکار</label><select id="p-col">${cols}</select></div>
+        <div class="field"><label>سال</label><input class="input" id="p-year" dir="ltr" value="۱۴۰۵"></div>
+        <div class="field"><label>ماه</label><input class="input" id="p-month" dir="ltr" value="۵"></div></div>
+      <label>اجزای حقوق</label>
+      <div id="p-items">
+        <div class="grid2" style="margin-bottom:8px"><input class="input pi-t" placeholder="حقوق پایه"><input class="input pi-a" dir="ltr" placeholder="مبلغ"></div>
+      </div>
+      <button class="mini" id="p-add-item" style="margin-bottom:6px">＋ افزودن جزء</button>
+    </div>
+    <div class="modal-f"><button class="btn btn-p" id="p-save">صدور</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+  document.getElementById('p-add-item').onclick=()=>{ const d=document.createElement('div'); d.className='grid2'; d.style.marginBottom='8px';
+    d.innerHTML='<input class="input pi-t" placeholder="عنوان"><input class="input pi-a" dir="ltr" placeholder="مبلغ">'; document.getElementById('p-items').appendChild(d); };
+  document.getElementById('p-save').onclick=async()=>{
+    const items=[...document.querySelectorAll('#p-items .grid2')].map(r=>({title:r.querySelector('.pi-t').value.trim(),amount:r.querySelector('.pi-a').value})).filter(x=>x.title);
+    try{ await App.fetchJSON("{% url 'finance:payroll_create' %}",{method:'POST',body:{colleague:document.getElementById('p-col').value,year:document.getElementById('p-year').value.replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)),month:document.getElementById('p-month').value.replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)),items}}); location.reload(); }catch(_){}
+  };
+}
+document.getElementById('add-pay').onclick=openPay;
+const p2=document.getElementById('add-pay2'); if(p2)p2.onclick=openPay;
+document.addEventListener('change',async e=>{ if(e.target.classList.contains('pay-paid')){
+  try{ const d=await App.fetchJSON(`/finance/api/payroll/${e.target.dataset.id}/`,{method:'PATCH',body:{paid_amount:e.target.value}}); App.toast('ذخیره شد','ok'); setTimeout(()=>location.reload(),400);}catch(_){}
+}});
+document.addEventListener('click',async e=>{ const b=e.target.closest('.pay-del'); if(b){ if(await App.confirm('این صورت‌حساب حذف شود؟')){ await App.fetchJSON(`/finance/api/payroll/${b.dataset.id}/`,{method:'DELETE'}); location.reload(); } } });
+</script>
+{% endblock %}
