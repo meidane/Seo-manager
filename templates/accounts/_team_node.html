@@ -1,0 +1,13 @@
+{% load seo_extras %}
+<div class="team-node" data-team="{{ node.id }}" style="margin-inline-start:{{ depth }}px">
+  <span class="team-name">{% if depth %}↳ {% endif %}{{ node.name }}</span>
+  <span class="team-count">{{ node.count|fa_digits }} نفر</span>
+  <span class="team-tools">
+    <i class="t-sub" data-id="{{ node.id }}" title="افزودن زیرمجموعه">＋</i>
+    <i class="t-ren" data-id="{{ node.id }}" data-name="{{ node.name }}" title="تغییر نام">✏️</i>
+    <i class="t-del" data-id="{{ node.id }}" title="حذف">🗑</i>
+  </span>
+</div>
+{% for child in node.children %}
+  {% include "accounts/_team_node.html" with node=child depth=depth|add:22 %}
+{% endfor %}

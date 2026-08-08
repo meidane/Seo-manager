@@ -9,7 +9,7 @@
 ## نقشه‌ی اپ‌ها (یک خط هر کدام)
 - `config/` — تنظیمات، urls ریشه، wsgi/asgi
 - `core/` — پایه‌ها: TimeStampedModel, Attachment, ActivityLog, Holiday + jalali/daterange/crypto/htmlsan + templatetags + editor_upload
-- `accounts/` — User سفارشی + Team، ورود/خروج
+- `accounts/` — هویتِ چندشرکتی: Organization→Team→زیرمجموعه، Membership/نقش، صفحه‌ی افراد (`docs/PLATFORM.md`)
 - `colleagues/` — Colleague (CRUD + آمار سینگل + جدول+اسپارک‌لاین)
 - `projects/` — Project + Credential(رمزنگاری) + فایل‌ها؛ سینگل با تب‌ها
 - `tasks/` — **قلب سیستم**: Task, TaskComment, TaskTypeDef/Field؛ api.py + مودال سراسری

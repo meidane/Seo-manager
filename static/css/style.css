@@ -534,3 +534,11 @@ table.sheet tr:hover td{background:rgba(255,255,255,.02)}
 .report-tools i:hover{opacity:1}
 .report-body{font-size:13px;line-height:1.8}
 .report-empty{color:var(--text-faint);font-size:12px;padding:6px 0}
+
+/* درختِ تیم‌ها در صفحه‌ی افراد و دسترسی‌ها */
+.team-node{display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid var(--stroke-soft)}
+.team-node .team-name{font-size:13px}
+.team-node .team-count{font-size:11px;color:var(--text-faint)}
+.team-tools{margin-inline-start:auto;display:flex;gap:8px}
+.team-tools i{cursor:pointer;font-style:normal;opacity:.6;font-size:12.5px}
+.team-tools i:hover{opacity:1}

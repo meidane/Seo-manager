@@ -1,8 +1,8 @@
 {% load static %}
 <aside class="side">
   <div class="brand">
-    <div class="brand-mark">س</div>
-    <div><b>سئوپنل</b><span>مدیریت پروژه‌های سئو</span></div>
+    <div class="brand-mark">{{ current_org.name|first|default:"پ" }}</div>
+    <div><b>{{ current_org.name|default:"پنل مدیریت" }}</b><span>مدیریت پروژه و تیم</span></div>
   </div>
   <nav class="nav">
     <a href="{% url 'dashboard:index' %}" class="{% if request.resolver_match.namespace == 'dashboard' %}on{% endif %}">
@@ -21,6 +21,11 @@
     <a href="{% url 'reports:list' %}" class="{% if request.resolver_match.namespace == 'reports' %}on{% endif %}"><span class="ico">▪</span> گزارش‌ها</a>
     <a href="{% url 'finance:dashboard' %}" class="{% if request.resolver_match.namespace == 'finance' %}on{% endif %}"><span class="ico">₮</span> حسابداری</a>
     <div class="nav-label">تنظیمات</div>
+    {% if 'manage_people' in org_perms %}
+    <a href="{% url 'accounts:people' %}" class="{% if request.resolver_match.url_name == 'people' %}on{% endif %}">
+      <span class="ico">◍</span> افراد و دسترسی‌ها
+    </a>
+    {% endif %}
     <a href="{% url 'task_types:list' %}" class="{% if request.resolver_match.namespace == 'task_types' %}on{% endif %}">
       <span class="ico">◫</span> انواع تسک
     </a>
