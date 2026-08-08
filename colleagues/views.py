@@ -59,7 +59,7 @@ class ColleagueListView(LoginRequiredMixin, DateRangeMixin, ListView):
             words=Sum('tasks__word_count', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
             open=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING])),
             overdue=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING], tasks__planned_date__lt=date.today())),
-        )
+        ).order_by('status', 'full_name')  # ترتیب صریح برای صفحه‌بندیِ پایدار
 
     def get_context_data(self, **kwargs):
         from collections import defaultdict
