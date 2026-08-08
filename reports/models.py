@@ -12,6 +12,7 @@ import uuid
 from django.db import models
 from django.urls import reverse
 
+from accounts.tenancy import TenantManager, stamp_org
 from core.models import TimeStampedModel
 
 # فیلدهایی که در نسخه‌ی عمومی قابل نمایش/مخفی‌شدن‌اند (عنوان همیشه هست)
@@ -56,10 +57,15 @@ class Report(TimeStampedModel):
     is_public = models.BooleanField('لینک عمومی فعال', default=False)
     visible_fields = models.JSONField('فیلدهای قابل‌نمایش به مشتری', default=list, blank=True)
 
+    organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
+    objects = TenantManager()
+    all_objects = models.Manager()
+
     class Meta:
         verbose_name = 'گزارش'
         verbose_name_plural = 'گزارش‌ها'
         ordering = ['-created_at']
+        base_manager_name = 'all_objects'
 
     def __str__(self):
         return f'{self.title} — {self.project.name}'
@@ -67,6 +73,9 @@ class Report(TimeStampedModel):
     def save(self, *args, **kwargs):
         if not self.visible_fields:
             self.visible_fields = list(DEFAULT_VISIBLE)
+        if self.organization_id is None and self.project_id:
+            self.organization_id = self.project.organization_id
+        stamp_org(self)
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):

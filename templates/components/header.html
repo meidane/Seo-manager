@@ -15,9 +15,20 @@
   {% endif %}
 
   <button class="btn btn-p" id="new-task" style="margin-inline-start:auto">＋ تسک جدید</button>
+
+  {% if my_orgs|length > 1 %}
+    <select id="org-switch" class="org-switch" title="تعویض سازمان">
+      {% for o in my_orgs %}<option value="{{ o.id }}" {% if o.id == current_org.id %}selected{% endif %}>{{ o.name }}</option>{% endfor %}
+    </select>
+  {% endif %}
+
   {% if user.avatar %}
     <img class="avatar" src="{{ user.avatar.url }}" alt="">
   {% else %}
     <span class="avatar">{{ user.username|first|upper }}</span>
   {% endif %}
 </div>
+<script>
+(function(){var s=document.getElementById('org-switch');if(!s)return;
+ s.onchange=function(){App.fetchJSON("{% url 'accounts:switch_org' %}",{method:'POST',body:{organization:s.value}}).then(function(){location.href='/';});};})();
+</script>

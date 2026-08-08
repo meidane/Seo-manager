@@ -10,6 +10,7 @@ import hashlib
 
 from django.db import models
 
+from accounts.tenancy import TenantManager, stamp_org
 from core.models import TimeStampedModel
 
 
@@ -21,10 +22,19 @@ class BankAccount(TimeStampedModel):
     initial_balance = models.DecimalField('مانده‌ی اولیه', max_digits=16, decimal_places=0, default=0)
     is_active = models.BooleanField('فعال', default=True)
 
+    organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
+    objects = TenantManager()
+    all_objects = models.Manager()
+
     class Meta:
         verbose_name = 'حساب بانکی'
         verbose_name_plural = 'حساب‌های بانکی'
         ordering = ['name']
+        base_manager_name = 'all_objects'
+
+    def save(self, *args, **kwargs):
+        stamp_org(self)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
@@ -39,15 +49,25 @@ class BankAccount(TimeStampedModel):
 class Category(models.Model):
     """«بابت» — قابل‌گسترش توسط کاربر. مثلاً سئو، طراحی سایت، فنی، تولید محتوا، حقوق."""
 
-    name = models.CharField('عنوان بابت', max_length=80, unique=True)
+    name = models.CharField('عنوان بابت', max_length=80)
     color = models.CharField('رنگ', max_length=7, default='#8FA0B8')
     is_salary = models.BooleanField('مربوط به حقوق', default=False)
     order = models.PositiveIntegerField('ترتیب', default=0)
+
+    organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
+    objects = TenantManager()
+    all_objects = models.Manager()
 
     class Meta:
         verbose_name = 'بابت'
         verbose_name_plural = 'بابت‌ها'
         ordering = ['order', 'name']
+        base_manager_name = 'all_objects'
+        unique_together = ('organization', 'name')
+
+    def save(self, *args, **kwargs):
+        stamp_org(self)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
@@ -70,14 +90,25 @@ class Transaction(TimeStampedModel):
 
     import_hash = models.CharField('هش تشخیص تکراری', max_length=64, db_index=True, blank=True)
 
+    organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
+    objects = TenantManager()
+    all_objects = models.Manager()
+
     class Meta:
         verbose_name = 'تراکنش'
         verbose_name_plural = 'تراکنش‌ها'
         ordering = ['-date', '-id']
+        base_manager_name = 'all_objects'
         indexes = [
             models.Index(fields=['bank_account', 'date']),
             models.Index(fields=['project', 'category']),
         ]
+
+    def save(self, *args, **kwargs):
+        if self.organization_id is None and self.bank_account_id:
+            self.organization_id = self.bank_account.organization_id
+        stamp_org(self)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f'{self.date} — {self.description[:30]}'
@@ -97,11 +128,22 @@ class Payroll(TimeStampedModel):
     paid_amount = models.DecimalField('پرداخت‌شده', max_digits=16, decimal_places=0, default=0)
     note = models.CharField('یادداشت', max_length=255, blank=True)
 
+    organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
+    objects = TenantManager()
+    all_objects = models.Manager()
+
     class Meta:
         verbose_name = 'حقوق'
         verbose_name_plural = 'حقوق‌ها'
         ordering = ['-year', '-month']
+        base_manager_name = 'all_objects'
         unique_together = [('colleague', 'year', 'month')]
+
+    def save(self, *args, **kwargs):
+        if self.organization_id is None and self.colleague_id:
+            self.organization_id = self.colleague.organization_id
+        stamp_org(self)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f'{self.colleague} — {self.year}/{self.month}'

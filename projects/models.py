@@ -8,6 +8,7 @@ from django.db import models
 from django.urls import reverse
 from django.utils import timezone
 
+from accounts.tenancy import TenantManager, stamp_org
 from core.crypto import decrypt, encrypt
 from core.models import Attachment, TimeStampedModel
 
@@ -59,10 +60,19 @@ class Project(TimeStampedModel):
 
     files = GenericRelation(Attachment)
 
+    organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
+    objects = TenantManager()
+    all_objects = models.Manager()
+
     class Meta:
         verbose_name = 'پروژه'
         verbose_name_plural = 'پروژه‌ها'
         ordering = ['status', 'name']  # فعال‌ها بالا
+        base_manager_name = 'all_objects'
+
+    def save(self, *args, **kwargs):
+        stamp_org(self)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name

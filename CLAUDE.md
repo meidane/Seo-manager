@@ -26,6 +26,8 @@
 5. **آمار با `annotate(filter=Q(...))`**، نه حلقه‌ی پایتونی.
 6. **بازه‌ی زمانی با `DateRangeMixin`** (`core/daterange.py`) — در همه‌ی صفحات آماری.
 7. **منبع واحد را تکرار نکن** (جدول زیر). خروجی ادیتور همیشه با `core.htmlsan.clean_html` پاکسازی شود.
+8. **چندشرکتی (tenant):** مدل‌های اصلی به سازمان اسکوپ‌اند. `Model.objects` = فیلترشده به
+   سازمانِ جاری؛ `Model.all_objects` = بدون فیلتر (migration/command/عمومی). جزئیات: `accounts/CLAUDE.md` + `docs/PLATFORM.md`.
 
 ## منبع‌های واحد (هرگز منطق موازی نساز)
 | منبع | فایل |

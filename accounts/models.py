@@ -12,7 +12,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils.text import slugify
 
-from .permissions import MEMBER, ROLE_CHOICES, role_can, role_perms
+from .permissions import MEMBER, ROLE_CHOICES, ROLE_PERMS, role_perms
 
 
 class Organization(models.Model):
@@ -78,6 +78,7 @@ class User(AbstractUser):
         Team, verbose_name='تیم (قدیمی)', on_delete=models.SET_NULL,
         null=True, blank=True, related_name='legacy_members')
     avatar = models.ImageField('آواتار', upload_to='avatars/', null=True, blank=True)
+    phone = models.CharField('شماره تماس', max_length=20, blank=True, db_index=True)
 
     class Meta:
         verbose_name = 'کاربر'
@@ -108,14 +109,28 @@ class Membership(models.Model):
         ordering = ['-joined_at']
 
     def __str__(self):
-        return f'{self.user} @ {self.organization} ({self.get_role_display()})'
-
-    def can(self, perm: str) -> bool:
-        return self.is_active and role_can(self.role, perm)
+        return f'{self.user} @ {self.organization} ({self.role})'
 
     @property
     def perms(self) -> set:
-        return role_perms(self.role) if self.is_active else set()
+        """مجموعه‌ی دسترسی‌ها؛ اول از رکوردِ Role سازمان، وگرنه پیش‌فرض ثابت.
+        مالک همیشه '*' (همه) دارد."""
+        if not self.is_active:
+            return set()
+        r = Role.objects.filter(organization_id=self.organization_id, key=self.role).first()
+        if r:
+            return {'*'} if r.key == 'owner' else set(r.perms or [])
+        # fallback اگر Role هنوز seed نشده باشد
+        return {'*'} if self.role == 'owner' else role_perms(self.role)
+
+    def can(self, perm: str) -> bool:
+        p = self.perms
+        return '*' in p or perm in p
+
+    @property
+    def role_label(self):
+        r = Role.objects.filter(organization_id=self.organization_id, key=self.role).first()
+        return r.name if r else dict(ROLE_CHOICES).get(self.role, self.role)
 
 
 class TeamMembership(models.Model):
@@ -132,3 +147,36 @@ class TeamMembership(models.Model):
 
     def __str__(self):
         return f'{self.user} → {self.team}'
+
+
+class Role(models.Model):
+    """نقشِ قابل‌تعریف per سازمان (ساده). نقش‌های پیش‌فرض `is_builtin=True`اند و هر
+    سازمان می‌تواند نقشِ سفارشی با ترکیبِ دلخواهِ دسترسی‌ها بسازد.
+
+    `key` شناسه‌ی نقش داخلِ سازمان است (`Membership.role` به همین اشاره می‌کند)؛
+    `perms` فهرست کلیدهای دسترسی (permissions.PERMS). نقشِ `owner` همیشه همه‌ی
+    دسترسی‌ها را دارد (در `Membership.perms` هندل شده)."""
+
+    organization = models.ForeignKey(Organization, verbose_name='سازمان', on_delete=models.CASCADE, related_name='roles')
+    key = models.CharField('کلید', max_length=32)
+    name = models.CharField('نام نقش', max_length=60)
+    perms = models.JSONField('دسترسی‌ها', default=list, blank=True)
+    is_builtin = models.BooleanField('پیش‌فرض', default=False)
+
+    class Meta:
+        verbose_name = 'نقش'
+        verbose_name_plural = 'نقش‌ها'
+        unique_together = ('organization', 'key')
+        ordering = ['name']
+
+    def __str__(self):
+        return f'{self.name} @ {self.organization}'
+
+
+def seed_roles(organization):
+    """نقش‌های پیش‌فرض را برای یک سازمان می‌سازد (اجرای مکرر ایمن)."""
+    for key, name in ROLE_CHOICES:
+        Role.objects.get_or_create(
+            organization=organization, key=key,
+            defaults={'name': name, 'perms': sorted(ROLE_PERMS.get(key, set())),
+                      'is_builtin': True})

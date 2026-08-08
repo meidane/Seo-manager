@@ -11,6 +11,7 @@ from django.conf import settings
 from django.db import models
 from django.urls import reverse
 
+from accounts.tenancy import TenantManager, stamp_org
 from core.models import TimeStampedModel
 
 # رنگ هر نوع تسک (RGB) — با پالت بخش ۲.۳ هم‌خوان؛ در فرانت هم در task-schema.js هست
@@ -110,15 +111,27 @@ class Task(TimeStampedModel):
     ai_score = models.PositiveIntegerField('امتیاز AI', null=True, blank=True)       # فاز ۳
     ai_report = models.JSONField('گزارش AI', null=True, blank=True)                  # فاز ۳
 
+    organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
+    objects = TenantManager()
+    all_objects = models.Manager()
+
     class Meta:
         verbose_name = 'تسک'
         verbose_name_plural = 'تسک‌ها'
         ordering = ['planned_date', 'planned_time']
+        base_manager_name = 'all_objects'
         indexes = [
             models.Index(fields=['project', 'status', 'planned_date']),
             models.Index(fields=['assignee', 'status', 'done_date']),
             models.Index(fields=['status', 'planned_date']),
         ]
+
+    def save(self, *args, **kwargs):
+        # سازمان را از پروژه بگیر (منبعِ درست)؛ وگرنه از سازمانِ جاری
+        if self.organization_id is None and self.project_id:
+            self.organization_id = self.project.organization_id
+        stamp_org(self)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title
@@ -187,7 +200,7 @@ class TaskTypeDef(TimeStampedModel):
     (عنوان، تاریخ برنامه، وضعیت، word_count و…) دست‌نخورده می‌مانند تا داشبورد نشکند.
     """
 
-    name = models.CharField('نام نوع', max_length=80, unique=True)
+    name = models.CharField('نام نوع', max_length=80)
     color = models.CharField('رنگ', max_length=7, default='#4183F2')
     icon = models.CharField('آیکن (اموجی)', max_length=8, blank=True)
     order = models.PositiveIntegerField('ترتیب', default=0)
@@ -196,10 +209,20 @@ class TaskTypeDef(TimeStampedModel):
     # آمار داشبورد کار کنند. خالی = نوع کاملاً سفارشی.
     builtin_key = models.CharField('کلید built-in', max_length=20, blank=True)
 
+    organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
+    objects = TenantManager()
+    all_objects = models.Manager()
+
     class Meta:
         verbose_name = 'نوع تسک سفارشی'
         verbose_name_plural = 'انواع تسک سفارشی'
         ordering = ['order', 'name']
+        base_manager_name = 'all_objects'
+        unique_together = ('organization', 'name')
+
+    def save(self, *args, **kwargs):
+        stamp_org(self)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name

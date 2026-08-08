@@ -1,0 +1,40 @@
+{% load static %}<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ثبت‌نام — پنل مدیریت</title>
+  <link rel="stylesheet" href="{% static 'vendor/vazirmatn/vazirmatn.css' %}">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-card glass">
+    <div class="brand">
+      <div class="brand-mark">پ</div>
+      <div><b>پنل مدیریت</b><span>ساختِ شرکت جدید</span></div>
+    </div>
+    <h2>ثبت‌نام شرکت</h2>
+    <p class="sub">شرکت خود را بساز و مالکِ آن شو</p>
+
+    {% if error %}<div class="auth-err">{{ error }}</div>{% endif %}
+
+    <form method="post" action="{% url 'accounts:signup' %}">
+      {% csrf_token %}
+      <div class="field"><label>نام شرکت / کسب‌وکار *</label>
+        <input type="text" name="org_name" value="{{ form.org_name|default:'' }}" autofocus required></div>
+      <div class="field"><label>نام و نام خانوادگی</label>
+        <input type="text" name="full_name" value="{{ form.full_name|default:'' }}"></div>
+      <div class="field"><label>شماره تماس</label>
+        <input type="text" name="phone" dir="ltr" value="{{ form.phone|default:'' }}"></div>
+      <div class="field"><label>نام کاربری *</label>
+        <input type="text" name="username" dir="ltr" value="{{ form.username|default:'' }}" required></div>
+      <div class="field"><label>رمز عبور *</label>
+        <input type="password" name="password" dir="ltr" required></div>
+      <button type="submit" class="btn btn-p" style="width:100%;justify-content:center;margin-top:6px">ساختِ شرکت و ورود</button>
+    </form>
+    <p class="sub" style="margin-top:14px;text-align:center">حساب داری؟ <a href="{% url 'accounts:login' %}">ورود</a></p>
+  </div>
+</div>
+</body>
+</html>

@@ -542,3 +542,7 @@ table.sheet tr:hover td{background:rgba(255,255,255,.02)}
 .team-tools{margin-inline-start:auto;display:flex;gap:8px}
 .team-tools i{cursor:pointer;font-style:normal;opacity:.6;font-size:12.5px}
 .team-tools i:hover{opacity:1}
+
+/* سوییچرِ سازمان در هدر */
+.org-switch{max-width:170px;padding:6px 10px;font-size:12.5px;border-radius:var(--r-sm);
+  background:rgba(255,255,255,.04);border:1px solid var(--stroke-soft);color:var(--text)}

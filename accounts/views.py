@@ -5,18 +5,20 @@
 """
 import json
 
+from django.contrib.auth import login
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.views.decorators.http import require_http_methods
 from django.views.generic import TemplateView
 
-from .models import Membership, Team, TeamMembership, User
-from .permissions import PERM_LABELS, ROLE_CHOICES
+from .models import Membership, Organization, Role, Team, TeamMembership, User, seed_roles
+from .permissions import PERM_LABELS, PERMS
 
 
 class LoginView(auth_views.LoginView):
@@ -30,14 +32,9 @@ class LogoutView(auth_views.LogoutView):
 
 # ── کمکی ────────────────────────────────────────────────────────────────
 
-def _current_org(request):
-    m = request.user.default_membership()
-    return m.organization if m else None
-
-
 def _require(request, perm):
-    """سازمانِ جاری را برمی‌گرداند یا اگر دسترسی نبود، 403."""
-    m = request.user.default_membership()
+    """سازمانِ جاری (از میدل‌ور) را برمی‌گرداند یا اگر دسترسی نبود، 403."""
+    m = getattr(request, 'membership', None)
     if not m or not m.can(perm):
         raise PermissionDenied('دسترسی کافی نداری')
     return m.organization
@@ -80,13 +77,16 @@ class PeopleView(LoginRequiredMixin, TemplateView):
         rows = []
         for m in members:
             rows.append({'m': m, 'teams': tm.get(m.user_id, [])})
+        role_objs = list(org.roles.all())
         ctx.update({
             'org': org,
             'rows': rows,
             'teams_flat': list(org.teams.select_related('parent').all()),
             'team_tree': _team_tree(org),
-            'roles': ROLE_CHOICES,
-            'perm_labels': PERM_LABELS,
+            'roles': [(r.key, r.name) for r in role_objs],
+            'role_objs': role_objs,
+            'all_perms': list(PERM_LABELS.items()),
+            'perm_label_map': PERM_LABELS,
             'page_title': 'افراد و دسترسی‌ها',
         })
         return ctx
@@ -145,12 +145,13 @@ def person_create(request):
         return JsonResponse({'detail': 'نام‌کاربری و رمز لازم است'}, status=400)
     if User.objects.filter(username=username).exists():
         return JsonResponse({'detail': 'این نام‌کاربری قبلاً ثبت شده'}, status=400)
-    role = d.get('role') if d.get('role') in dict(ROLE_CHOICES) else 'member'
+    role = d.get('role') if org.roles.filter(key=d.get('role')).exists() else 'member'
     u = User.objects.create_user(
         username=username, password=password,
         first_name=(d.get('first_name') or '').strip(),
         last_name=(d.get('last_name') or '').strip(),
-        email=(d.get('email') or '').strip())
+        email=(d.get('email') or '').strip(),
+        phone=(d.get('phone') or '').strip())
     Membership.objects.create(user=u, organization=org, role=role)
     _set_teams(u, org, d.get('teams'))
     return JsonResponse({'id': u.id}, status=201)
@@ -167,7 +168,7 @@ def person_edit(request, pk):
         m.delete()
         return JsonResponse({'ok': True})
     d = _body(request)
-    if d.get('role') in dict(ROLE_CHOICES):
+    if d.get('role') and org.roles.filter(key=d['role']).exists():
         # نگذار آخرین مالک از مالکی خارج شود
         if m.role == 'owner' and d['role'] != 'owner' and \
            Membership.objects.filter(organization=org, role='owner').count() <= 1:
@@ -183,3 +184,113 @@ def person_edit(request, pk):
     if 'teams' in d:
         _set_teams(m.user, org, d.get('teams'))
     return JsonResponse({'ok': True})
+
+
+@login_required
+@require_http_methods(['POST'])
+def person_invite(request):
+    """دعوتِ فردی که «قبلاً ثبت‌نام کرده» با شماره‌ی تماس، به سازمانِ جاری."""
+    org = _require(request, 'manage_people')
+    d = _body(request)
+    phone = (d.get('phone') or '').strip()
+    if not phone:
+        return JsonResponse({'detail': 'شماره‌ی تماس لازم است'}, status=400)
+    role = d.get('role') if org.roles.filter(key=d.get('role')).exists() else 'member'
+    u = User.objects.filter(phone=phone).first()
+    if not u:
+        return JsonResponse({'detail': 'کاربری با این شماره ثبت‌نام نکرده است'}, status=400)
+    if Membership.objects.filter(user=u, organization=org).exists():
+        return JsonResponse({'detail': 'این فرد قبلاً عضو سازمان است'}, status=400)
+    Membership.objects.create(user=u, organization=org, role=role)
+    return JsonResponse({'ok': True}, status=201)
+
+
+# ── API: نقش‌های سفارشی ───────────────────────────────────────────────────
+
+@login_required
+@require_http_methods(['POST'])
+def role_create(request):
+    org = _require(request, 'manage_org')
+    d = _body(request)
+    name = (d.get('name') or '').strip()
+    if not name:
+        return JsonResponse({'detail': 'نام نقش لازم است'}, status=400)
+    perms = [p for p in (d.get('perms') or []) if p in PERMS]
+    import re
+    base = (re.sub(r'[^a-z0-9]+', '_', name.lower()).strip('_') or 'role')[:24]
+    key, i = base, 1
+    while org.roles.filter(key=key).exists():
+        i += 1
+        key = f'{base}{i}'
+    r = Role.objects.create(organization=org, key=key, name=name, perms=perms, is_builtin=False)
+    return JsonResponse({'id': r.id, 'key': r.key}, status=201)
+
+
+@login_required
+@require_http_methods(['PATCH', 'DELETE'])
+def role_edit(request, pk):
+    org = _require(request, 'manage_org')
+    r = get_object_or_404(Role, pk=pk, organization=org)
+    if request.method == 'DELETE':
+        if r.is_builtin:
+            return JsonResponse({'detail': 'نقش پیش‌فرض حذف نمی‌شود'}, status=400)
+        if Membership.objects.filter(organization=org, role=r.key).exists():
+            return JsonResponse({'detail': 'این نقش به افرادی اختصاص دارد'}, status=400)
+        r.delete()
+        return JsonResponse({'ok': True})
+    d = _body(request)
+    if d.get('name'):
+        r.name = d['name'].strip()
+    if 'perms' in d and r.key != 'owner':  # مالک همیشه همه‌ی دسترسی‌ها
+        r.perms = [p for p in d['perms'] if p in PERMS]
+    r.save(update_fields=['name', 'perms'])
+    return JsonResponse({'ok': True})
+
+
+# ── سوییچرِ سازمان و ثبت‌نام ────────────────────────────────────────────────
+
+@login_required
+@require_http_methods(['POST'])
+def switch_org(request):
+    oid = _body(request).get('organization')
+    if oid and request.user.memberships.filter(organization_id=oid, is_active=True).exists():
+        request.session['active_org_id'] = int(oid)
+        return JsonResponse({'ok': True})
+    return JsonResponse({'detail': 'به این سازمان دسترسی نداری'}, status=403)
+
+
+@require_http_methods(['GET', 'POST'])
+def signup(request):
+    """ثبت‌نامِ آزاد: کاربرِ مالک + سازمانِ جدید + نقش‌های پیش‌فرض."""
+    if request.user.is_authenticated:
+        return redirect('dashboard:index')
+    if request.method == 'GET':
+        return render(request, 'registration/signup.html')
+
+    p = request.POST
+    org_name = (p.get('org_name') or '').strip()
+    username = (p.get('username') or '').strip()
+    password = p.get('password') or ''
+    phone = (p.get('phone') or '').strip()
+    full_name = (p.get('full_name') or '').strip()
+    err = None
+    if not (org_name and username and password):
+        err = 'نام شرکت، نام‌کاربری و رمز الزامی است'
+    elif User.objects.filter(username=username).exists():
+        err = 'این نام‌کاربری قبلاً ثبت شده'
+    elif len(password) < 6:
+        err = 'رمز عبور حداقل ۶ کاراکتر باشد'
+    if err:
+        return render(request, 'registration/signup.html', {'error': err, 'form': p})
+
+    first, _, last = full_name.partition(' ')
+    with transaction.atomic():
+        org = Organization.objects.create(name=org_name)
+        seed_roles(org)
+        user = User.objects.create_user(
+            username=username, password=password, phone=phone,
+            first_name=first, last_name=last)
+        Membership.objects.create(user=user, organization=org, role='owner')
+    login(request, user)
+    request.session['active_org_id'] = org.id
+    return redirect('dashboard:index')

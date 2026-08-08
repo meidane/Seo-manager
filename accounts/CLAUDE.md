@@ -1,34 +1,39 @@
-# accounts/ — هویت و سازمان (چندشرکتی — مقدمات)
+# accounts/ — هویت، سازمان و چندشرکتی (tenant)
 
-> نقشه‌ی کاملِ تبدیل به پلتفرمِ چندشرکتی: **`docs/PLATFORM.md`**.
+> نقشه‌ی کامل: **`docs/PLATFORM.md`**.
 
 ## مدل‌ها
-- **Organization** (شرکت/کسب‌وکار) — بالاترین سطحِ tenant؛ `name, slug(auto), is_active`.
-- **Team** — `organization(FK)` + `parent(self-FK)` برای **زیرمجموعه** (چند سطح).
-- **User** (`AUTH_USER_MODEL='accounts.User'`) — `avatar` + `team` (**قدیمی/deprecated**؛
-  منبعِ اصلیِ عضویت جدول‌های جدیدند). `default_membership()` = سازمانِ جاری.
-- **Membership** (user↔org) — `role` + `is_active`. `can('perm')` و `.perms`.
-- **TeamMembership** (user↔team) — عضویت در تیم/زیرمجموعه.
+- **Organization** (شرکت) — بالاترین سطحِ tenant؛ `name, slug(auto), is_active`.
+- **Team** — `organization` + `parent`(self) برای زیرمجموعه (چند سطح).
+- **User** — `avatar, phone` + `team`(deprecated). `default_membership()`.
+- **Membership** (user↔org) — `role`(کلید Role)، `is_active`. `.perms` / `.can(perm)` /
+  `.role_label`. مالک همیشه `'*'` (همه).
+- **TeamMembership** (user↔team).
+- **Role** (per org) — `key, name, perms(JSON), is_builtin`. `seed_roles(org)` ۵ نقشِ
+  پیش‌فرض می‌سازد؛ سازمان می‌تواند نقشِ سفارشی هم بسازد.
 
-## نقش/دسترسی (`permissions.py`)
-نقش‌ها: owner/admin/manager/member/viewer. کلیدها: `manage_org, manage_people,
-manage_projects, manage_tasks, manage_finance, review, view_reports`. نگاشت در `ROLE_PERMS`.
-بررسی: `Membership.can(perm)`؛ در تمپلیت `{% if 'x' in org_perms %}` (از context_processor).
+## چندشرکتی (`tenancy.py`) — مهم
+- **سازمانِ جاری** در thread-local؛ `CurrentOrgMiddleware` آن را از session
+  (`active_org_id`) یا اولین عضویت resolve و روی `request.organization/membership` می‌گذارد.
+  مسیرهای `/admin/` اسکوپ نمی‌شوند.
+- **`TenantManager`**: مدل‌های tenant `objects` را به سازمانِ جاری فیلتر می‌کنند.
+  **قانون:** خواندنِ اسکوپ‌شده = `Model.objects`؛ خواندنِ بدون فیلتر (migration/command/عمومی)
+  = `Model.all_objects`. در `save()` سازمان از سازمانِ جاری استمپ می‌شود (`stamp_org`).
+- مدل‌های tenant: Project, Colleague, Task, TaskTypeDef, Report, BankAccount, Category,
+  Transaction, Payroll. (Holiday **عمومیِ ملی** است، اسکوپ نمی‌شود.)
+- **تله:** management commandها سازمانِ جاری ندارند → `objects` بدون فیلتر برمی‌گرداند؛
+  seedهای per-org باید سازمان را صریح بدهند یا `set_current_org` کنند.
 
-## صفحه/API
-- **`/settings/people/`** (`PeopleView`) — مدیریتِ تیم‌ها/زیرمجموعه‌ها + افراد و نقش‌ها.
-  محافظت با `_require(request,'manage_people')`. تمپلیت `accounts/people.html`
-  (+ include بازگشتیِ `accounts/_team_node.html`).
-- API: `team_create`, `team_edit`(PATCH/DELETE), `person_create`, `person_edit`(PATCH/DELETE).
-  «حداقل یک مالک باید بماند» در person_edit تضمین می‌شود.
-- ورود/خروج: `LoginView/LogoutView`؛ `registration/login.html`.
+## صفحه/API (`/settings/people/`)
+مدیریتِ تیم‌ها/زیرمجموعه‌ها، افراد+نقش، **دعوت با شماره‌ی تماس** (فردِ ثبت‌نام‌کرده)،
+و **نقش‌های سفارشی**. محافظت با `_require(request, perm)`.
+API: `team_create/edit`, `person_create/edit`, `person_invite`, `role_create/edit`, `switch_org`.
+
+## ثبت‌نام و سوییچر
+- **`/signup/`** — ثبت‌نامِ آزاد: کاربرِ مالک + سازمان + `seed_roles`. (`registration/signup.html`)
+- **سوییچرِ سازمان** در هدر (اگر کاربر در چند سازمان باشد) → `switch_org` (session).
 
 ## context_processor
-`accounts.context_processors.org` → `current_org, current_membership, org_perms`
-(در settings ثبت شده).
-
-## ⚠️ مهم (فاز بعدی)
-داده‌ی اپ‌های دیگر (Project/Task/…) هنوز به سازمان **اسکوپ نشده** — نصبِ فعلی تک‌شرکتی است.
-برای چندشرکتیِ واقعی، فاز ۱ در `docs/PLATFORM.md` (افزودن `organization` + فیلترِ کوئری‌ها).
+`accounts.context_processors.org` → `current_org, current_membership, org_perms, my_orgs`.
 
 > اگر فیلد به User اضافه کردی، مراقب migration و `createsuperuser` باش.
