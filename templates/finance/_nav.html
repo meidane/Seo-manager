@@ -1,0 +1,7 @@
+<div class="fin-nav">
+  <a href="{% url 'finance:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}on{% endif %}">داشبورد</a>
+  <a href="{% url 'finance:transactions' %}" class="{% if request.resolver_match.url_name == 'transactions' %}on{% endif %}">تراکنش‌ها</a>
+  <a href="{% url 'finance:import' %}" class="{% if request.resolver_match.url_name == 'import' %}on{% endif %}">ورود اکسل</a>
+  <a href="{% url 'finance:banks' %}" class="{% if request.resolver_match.url_name == 'banks' %}on{% endif %}">بانک‌ها و بابت‌ها</a>
+  <a href="{% url 'finance:payroll' %}" class="{% if request.resolver_match.url_name == 'payroll' %}on{% endif %}">حقوق</a>
+</div>

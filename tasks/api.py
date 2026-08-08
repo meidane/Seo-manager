@@ -24,7 +24,7 @@ TEXT_FIELDS = [
     'update_type', 'link_type', 'review_note',
 ]
 CHOICE_FIELDS = ['task_type', 'status', 'priority']
-INT_FIELDS = ['word_count', 'current_rank', 'target_rank', 'link_count']
+INT_FIELDS = ['word_count', 'current_rank', 'link_count', 'estimate_minutes']
 DECIMAL_FIELDS = ['media_cost']
 FK_FIELDS = {'project': 'project_id', 'assignee': 'assignee_id'}
 
@@ -51,6 +51,9 @@ def apply_fields(task: Task, data: dict):
     for f in TEXT_FIELDS + CHOICE_FIELDS:
         if f in data:
             setattr(task, f, data[f] or '')
+    if 'description' in data:
+        from core.htmlsan import clean_html
+        task.description = clean_html(data['description'])
     for f in INT_FIELDS:
         if f in data:
             setattr(task, f, data[f] or None)
@@ -97,10 +100,18 @@ def form_data(request):
         'colleagues': [[c.id, c.full_name] for c in Colleague.objects.filter(status=Colleague.ACTIVE)],
         'typeChoices': list(Task.TYPE_CHOICES),
         'customTypes': [
-            {'id': t.id, 'name': t.name, 'color': t.color, 'fields': t.schema()}
+            {'id': t.id, 'name': t.name, 'color': t.color, 'icon': t.icon,
+             'builtin_key': t.builtin_key, 'fields': t.schema()}
             for t in TaskTypeDef.objects.filter(is_active=True)
         ],
     })
+
+
+def _publish_url_error(task):
+    """تسک انتشارِ «انجام‌شده» بدون لینک انتشار مجاز نیست (الزام لینک)."""
+    if task.task_type == Task.PUBLISH and task.status == Task.DONE and not task.published_url:
+        return 'برای تسک انتشارِ انجام‌شده، وارد کردن «لینک انتشار» الزامی است.'
+    return None
 
 
 @login_required
@@ -111,6 +122,9 @@ def task_create(request):
         return JsonResponse({'detail': 'عنوان و پروژه لازم است'}, status=400)
     task = Task(created_by=request.user, planned_date=date.today())
     apply_fields(task, data)
+    err = _publish_url_error(task)
+    if err:
+        return JsonResponse({'detail': err}, status=400)
     task.save()
     return JsonResponse(task.to_dict(), status=201)
 
@@ -127,7 +141,7 @@ def task_detail(request, pk):
             'description': task.description, 'seo_title': task.seo_title,
             'keywords': task.keywords, 'lsi_keywords': task.lsi_keywords,
             'source_url': task.source_url, 'current_rank': task.current_rank,
-            'target_rank': task.target_rank, 'media_name': task.media_name,
+            'estimate_minutes': task.estimate_minutes, 'media_name': task.media_name,
             'media_cost': str(task.media_cost) if task.media_cost else '',
             'anchor_text': task.anchor_text, 'target_url': task.target_url,
             'link_type': task.link_type, 'link_count': task.link_count,
@@ -140,6 +154,9 @@ def task_detail(request, pk):
         return JsonResponse({'ok': True})
     # PATCH
     apply_fields(task, _body(request))
+    err = _publish_url_error(task)
+    if err:
+        return JsonResponse({'detail': err}, status=400)
     task.save()
     return JsonResponse(task.to_dict())
 
@@ -156,6 +173,9 @@ def task_status(request, pk):
     task.status = new_status
     if new_status == Task.DONE and not task.done_date:
         task.done_date = date.today()
+    err = _publish_url_error(task)
+    if err:
+        return JsonResponse({'detail': err}, status=400)
     task.save(update_fields=['status', 'done_date', 'updated_at'])
     return JsonResponse(task.to_dict())
 
@@ -169,12 +189,20 @@ def task_review(request, pk):
     status = data.get('review_status')
     if status not in dict(Task.REVIEW_CHOICES):
         return JsonResponse({'detail': 'وضعیت بازبینی نامعتبر'}, status=400)
+    from core.htmlsan import clean_html
     task.review_status = status
-    task.review_note = data.get('review_note', task.review_note)
+    if 'review_note' in data:
+        task.review_note = clean_html(data['review_note'])
     task.reviewed_by = request.user
     task.reviewed_at = timezone.now()
-    task.save(update_fields=['review_status', 'review_note', 'reviewed_by', 'reviewed_at', 'updated_at'])
-    return JsonResponse({'ok': True, 'review_status': task.review_status})
+    fields = ['review_status', 'review_note', 'reviewed_by', 'reviewed_at', 'updated_at']
+    # «نیاز به اصلاح» → تسک از حالت انجام‌شده برمی‌گردد تا دوباره انجام شود
+    if status == Task.NEEDS_FIX and task.status == Task.DONE:
+        task.status = Task.DOING
+        task.done_date = None
+        fields += ['status', 'done_date']
+    task.save(update_fields=fields)
+    return JsonResponse({'ok': True, 'review_status': task.review_status, 'status': task.status})
 
 
 def _next_workday(d: date, holidays: set) -> date:

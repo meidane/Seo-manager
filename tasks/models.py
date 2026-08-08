@@ -88,10 +88,10 @@ class Task(TimeStampedModel):
     keywords = models.TextField('کلمات کلیدی', blank=True)
     lsi_keywords = models.TextField('کلمات LSI', blank=True)
     seo_title = models.CharField('عنوان سئو', max_length=255, blank=True)
-    current_rank = models.PositiveIntegerField('جایگاه فعلی', null=True, blank=True)
-    target_rank = models.PositiveIntegerField('جایگاه هدف', null=True, blank=True)
-    published_url = models.URLField('لینک انتشار', blank=True)
+    current_rank = models.PositiveIntegerField('جایگاه فعلی', null=True, blank=True)  # فقط آپدیت
+    published_url = models.URLField('لینک انتشار', blank=True)  # انتشار/رپورتاژ
     source_url = models.URLField('آدرس مطلب فعلی', blank=True)  # فقط آپدیت
+    estimate_minutes = models.PositiveIntegerField('تخمین زمان (دقیقه)', null=True, blank=True)
 
     # ── رپورتاژ ──
     media_name = models.CharField('نام رسانه', max_length=150, blank=True)
@@ -172,8 +172,12 @@ class Task(TimeStampedModel):
             'project_id': self.project_id,
             'assignee': self.assignee.full_name if self.assignee else '',
             'assignee_id': self.assignee_id,
+            'avatar': (self.assignee.avatar.url if self.assignee and self.assignee.avatar else ''),
+            'initials': self.assignee.initials if self.assignee else '',
+            'a_color': self.assignee.color if self.assignee else '#8FA0B8',
             'word_count': self.word_count,
             'published_url': self.published_url,
+            'estimate_minutes': self.estimate_minutes,
         }
 
 
@@ -190,6 +194,9 @@ class TaskTypeDef(TimeStampedModel):
     icon = models.CharField('آیکن (اموجی)', max_length=8, blank=True)
     order = models.PositiveIntegerField('ترتیب', default=0)
     is_active = models.BooleanField('فعال', default=True)
+    # اگر نوع built-in باشد، کلیدش اینجاست (publish/update/...) تا فیلدهای هسته‌ای و
+    # آمار داشبورد کار کنند. خالی = نوع کاملاً سفارشی.
+    builtin_key = models.CharField('کلید built-in', max_length=20, blank=True)
 
     class Meta:
         verbose_name = 'نوع تسک سفارشی'

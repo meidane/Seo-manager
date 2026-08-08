@@ -4,7 +4,7 @@
 (function () {
   'use strict';
   const S = window.TASK_SCHEMA;
-  const ALWAYS = ['project', 'assignee', 'task_type', 'title', 'planned_date', 'status', 'priority', 'description'];
+  const ALWAYS = ['project', 'assignee', 'task_type', 'title', 'planned_date', 'status', 'priority', 'description', 'estimate_minutes'];
 
   let cfg = null;
   async function ensureCfg() {
@@ -17,18 +17,20 @@
     return `<div class="field" data-f="${id}"><label>${label}</label>${inner}</div>`;
   }
 
+  // همه‌ی انواع از رکوردهای TaskTypeDef (built-in + سفارشی). اگر seed نشده باشد، از typeChoices می‌سازد.
+  function typeList() {
+    if (cfg.customTypes && cfg.customTypes.length) return cfg.customTypes;
+    return cfg.typeChoices.map(([k, l]) => ({ id: 'b:' + k, name: l, builtin_key: k, fields: [] }));
+  }
+  function findType(v) { return typeList().find((t) => String(t.id) === String(v)); }
   function typeOptions(sel) {
-    let h = cfg.typeChoices.map(([v, l]) => opt(v, l, sel)).join('');
-    if (cfg.customTypes.length) {
-      h += '<optgroup label="انواع سفارشی">' +
-        cfg.customTypes.map((t) => opt('custom:' + t.id, t.name, sel)).join('') + '</optgroup>';
-    }
-    return h;
+    return typeList().map((t) => opt(t.id, (t.icon ? t.icon + ' ' : '') + t.name, sel)).join('');
   }
 
   function modalHtml(t) {
     t = t || {};
-    const typeSel = t.type_def ? 'custom:' + t.type_def : (t.type || 'publish');
+    const _bt = typeList().find((x) => x.builtin_key === (t.type || 'publish'));
+    const typeSel = t.type_def || (_bt ? _bt.id : (typeList()[0] || {}).id);
     return `
     <div class="modal-h"><h3>${t.id ? 'ویرایش تسک' : 'تسک جدید'}</h3><button class="x" onclick="App.closeModal()">×</button></div>
     <div class="modal-b" id="tform">
@@ -42,9 +44,10 @@
         ${field('priority', 'اولویت', `<select id="f-priority"><option value="low">کم</option><option value="med">متوسط</option><option value="high">زیاد</option></select>`)}
       </div>
       ${field('title', 'عنوان', `<input id="f-title" class="input" value="${esc(t.title)}">`)}
-      <div class="grid2">
-        ${field('planned_date', 'تاریخ برنامه (شمسی)', `<input id="f-planned_date" class="input" dir="ltr" placeholder="۱۴۰۵/۰۵/۱۵" value="${t.planned_date_fa || ''}">`)}
+      <div class="grid3">
+        ${field('planned_date', 'تاریخ برنامه (شمسی)', `<input id="f-planned_date" class="input jdate" dir="ltr" readonly placeholder="۱۴۰۵/۰۵/۱۵" value="${t.planned_date_fa || ''}">`)}
         ${field('status', 'وضعیت', `<select id="f-status"><option value="todo">در انتظار</option><option value="doing">در حال انجام</option><option value="done">انجام شده</option><option value="cancelled">لغو شده</option></select>`)}
+        ${field('estimate_minutes', 'تخمین زمان (دقیقه)', `<input id="f-estimate_minutes" class="input" type="number" dir="ltr" placeholder="۶۰" value="${t.estimate_minutes || ''}">`)}
       </div>
 
       <!-- فیلدهای سفارشی نوع (داینامیک) -->
@@ -57,10 +60,7 @@
       </div>
       ${field('keywords', 'کلمات کلیدی', `<input id="f-keywords" class="input" value="${esc(t.keywords)}">`)}
       ${field('lsi_keywords', 'کلمات LSI', `<input id="f-lsi_keywords" class="input" value="${esc(t.lsi_keywords)}">`)}
-      <div class="grid2">
-        ${field('current_rank', 'جایگاه فعلی', `<input id="f-current_rank" class="input" type="number" value="${t.current_rank || ''}">`)}
-        ${field('target_rank', 'جایگاه هدف', `<input id="f-target_rank" class="input" type="number" value="${t.target_rank || ''}">`)}
-      </div>
+      ${field('current_rank', 'جایگاه فعلی', `<input id="f-current_rank" class="input" type="number" value="${t.current_rank || ''}">`)}
       ${field('published_url', 'لینک انتشار', `<input id="f-published_url" class="input" dir="ltr" value="${esc(t.published_url)}">`)}
       ${field('source_url', 'آدرس مطلب فعلی', `<input id="f-source_url" class="input" dir="ltr" value="${esc(t.source_url)}">`)}
       <div class="grid2">
@@ -75,7 +75,7 @@
         ${field('link_type', 'نوع لینک', `<select id="f-link_type"><option value="">—</option><option value="comment">کامنت</option><option value="profile">پروفایل</option><option value="forum">فروم</option><option value="directory">دایرکتوری</option><option value="social">سوشال</option><option value="other">سایر</option></select>`)}
         ${field('link_count', 'تعداد لینک', `<input id="f-link_count" class="input" type="number" value="${t.link_count || ''}">`)}
       </div>
-      ${field('description', 'توضیحات', `<textarea id="f-description" rows="3">${esc(t.description)}</textarea>`)}
+      ${field('description', 'توضیحات', `<textarea id="f-description" class="rich-editor" rows="3">${esc(t.description)}</textarea>`)}
     </div>
     <div class="modal-f">
       <button class="btn btn-p" id="t-save">ذخیره</button>
@@ -88,10 +88,9 @@
   function esc(v) { return (v == null ? '' : String(v)).replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
 
   // ── رندر فیلدهای سفارشی یک نوع ──
-  function renderCustom(typeId, values) {
-    const t = cfg.customTypes.find((x) => String(x.id) === String(typeId));
+  function renderCustom(t, values) {
     const box = document.getElementById('custom-fields');
-    if (!t) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    if (!t || !t.fields || !t.fields.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
     values = values || {};
     box.style.display = '';
     box.innerHTML = t.fields.map((f) => {
@@ -108,36 +107,36 @@
   }
 
   function applyVisibility(loadedCustom) {
-    const val = document.getElementById('f-task_type').value;
-    const isCustom = val.startsWith('custom:');
-    const on = isCustom ? new Set() : S.fieldsFor(val);
+    const ty = findType(document.getElementById('f-task_type').value);
+    const bk = ty ? ty.builtin_key : '';
+    const on = bk ? S.fieldsFor(bk) : new Set();
     document.querySelectorAll('#tform [data-f]').forEach((el) => {
       const f = el.dataset.f;
       if (ALWAYS.includes(f)) return;
-      if (f === 'update_type') { el.style.display = (!isCustom && val === 'update') ? '' : 'none'; return; }
+      if (f === 'update_type') { el.style.display = (bk === 'update') ? '' : 'none'; return; }
       el.style.display = on.has(f) ? '' : 'none';
     });
-    if (isCustom) renderCustom(val.split(':')[1], loadedCustom);
-    else { const b = document.getElementById('custom-fields'); b.style.display = 'none'; b.innerHTML = ''; }
+    renderCustom(ty, loadedCustom);
   }
 
   function collect() {
+    if (window.RichText) RichText.save();  // TinyMCE → textarea
     const g = (id) => { const e = document.getElementById(id); return e ? e.value : ''; };
-    const typeVal = g('f-task_type');
-    const isCustom = typeVal.startsWith('custom:');
+    const ty = findType(g('f-task_type'));
+    const bk = ty ? ty.builtin_key : '';
     const p = {
       project: g('f-project'), assignee: g('f-assignee'),
-      task_type: isCustom ? 'other' : typeVal,
-      type_def: isCustom ? +typeVal.split(':')[1] : null,
+      task_type: bk || 'other',
+      type_def: (ty && typeof ty.id === 'number') ? ty.id : null,
       update_type: g('f-update_type'), priority: g('f-priority'), title: g('f-title'),
       planned_date: g('f-planned_date'), status: g('f-status'), word_count: g('f-word_count'),
       seo_title: g('f-seo_title'), keywords: g('f-keywords'), lsi_keywords: g('f-lsi_keywords'),
-      current_rank: g('f-current_rank'), target_rank: g('f-target_rank'), published_url: g('f-published_url'),
+      current_rank: g('f-current_rank'), published_url: g('f-published_url'), estimate_minutes: g('f-estimate_minutes'),
       source_url: g('f-source_url'), media_name: g('f-media_name'), media_cost: g('f-media_cost'),
       anchor_text: g('f-anchor_text'), target_url: g('f-target_url'), link_type: g('f-link_type'),
       link_count: g('f-link_count'), description: g('f-description'),
     };
-    if (isCustom) {
+    if (ty && ty.fields && ty.fields.length) {
       const custom = {};
       document.querySelectorAll('#custom-fields .cf').forEach((el) => {
         custom[el.dataset.key] = el.type === 'checkbox' ? el.checked : el.value;
@@ -147,9 +146,9 @@
     return p;
   }
 
-  async function openTask(id) {
+  async function openTask(id, prefill) {
     await ensureCfg();
-    let data = {};
+    let data = prefill || {};
     if (id) { try { data = await App.fetchJSON(`/tasks/api/${id}/`); } catch (_) { return; } }
     App.openModal(modalHtml(data));
     if (data.status) document.getElementById('f-status').value = data.status;
@@ -158,6 +157,7 @@
     const loaded = data.custom || {};
     document.getElementById('f-task_type').addEventListener('change', () => applyVisibility(loaded));
     applyVisibility(loaded);
+    if (window.RichText) RichText.init('#f-description');  // ادیتور غنی توضیحات
 
     const save = async (again) => {
       const payload = collect();
@@ -177,11 +177,51 @@
   }
   window.openTask = openTask;
 
+  // ── بازبینی: نوشتن موارد نیاز به اصلاح (TinyMCE) ──
+  async function openFixModal(id) {
+    App.openModal(
+      `<div class="modal-h"><h3>موارد نیاز به اصلاح</h3><button class="x" onclick="App.closeModal()">×</button></div>
+       <div class="modal-b"><p style="color:var(--text-dim);font-size:12px;margin-bottom:8px">توضیح بده چه چیزی باید اصلاح شود (بولد و عکس هم می‌توانی بگذاری). با ثبت، تسک از حالت انجام‌شده خارج و برای اصلاح برمی‌گردد.</p>
+         <textarea id="fix-note" class="rich-editor" rows="5"></textarea></div>
+       <div class="modal-f"><button class="btn btn-p" id="fix-save">ثبت و بازگرداندن برای اصلاح</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+    if (window.RichText) RichText.init('#fix-note');
+    document.getElementById('fix-save').onclick = async () => {
+      if (window.RichText) RichText.save();
+      const note = document.getElementById('fix-note').value;
+      try {
+        await App.fetchJSON(`/tasks/api/${id}/review/`, { method: 'PATCH', body: { review_status: 'needs_fix', review_note: note } });
+        App.toast('برای اصلاح علامت خورد', 'ok'); App.closeModal(); setTimeout(() => location.reload(), 300);
+      } catch (_) {}
+    };
+  }
+  window.openFixModal = openFixModal;
+
+  // ── نمایش موارد نیاز به اصلاح (تگ کنار عنوان) ──
+  async function showFixNote(id) {
+    try {
+      const t = await App.fetchJSON(`/tasks/api/${id}/`);
+      App.openModal(
+        `<div class="modal-h"><h3>موارد نیاز به اصلاح</h3><button class="x" onclick="App.closeModal()">×</button></div>
+         <div class="modal-b"><div class="rich">${t.review_note || '<span style="color:var(--text-faint)">توضیحی ثبت نشده</span>'}</div></div>
+         <div class="modal-f"><button class="btn btn-p" onclick="App.closeModal()">فهمیدم</button>
+           <button class="btn" onclick="App.closeModal();window.openTask(${id})">باز کردن تسک</button></div>`);
+    } catch (_) {}
+  }
+  window.showFixNote = showFixNote;
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-fix-note]');
+    if (t) { e.stopPropagation(); showFixNote(t.dataset.fixNote); }
+  });
+
   // ── تغییر سریع وضعیت از دراپ‌داون ردیف ──
   document.addEventListener('change', async (e) => {
     if (e.target.matches('.row-status')) {
-      try { await App.fetchJSON(`/tasks/api/${e.target.dataset.id}/status/`, { method: 'PATCH', body: { status: e.target.value } }); App.toast('وضعیت به‌روز شد', 'ok'); }
-      catch (_) {}
+      const sel = e.target;
+      try {
+        await App.fetchJSON(`/tasks/api/${sel.dataset.id}/status/`, { method: 'PATCH', body: { status: sel.value } });
+        sel.className = 'row-status st-' + sel.value;
+        App.toast('وضعیت به‌روز شد', 'ok');
+      } catch (_) {}
     }
   });
 

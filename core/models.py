@@ -58,6 +58,20 @@ class Attachment(models.Model):
     def __str__(self):
         return self.title or self.original_name or f'پیوست #{self.pk}'
 
+    @property
+    def is_image(self):
+        return (self.mime or '').startswith('image/') or \
+            (self.original_name or '').lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp'))
+
+    @property
+    def size_h(self):
+        n = self.size or 0
+        for unit in ('B', 'KB', 'MB', 'GB'):
+            if n < 1024:
+                return f'{n:.0f} {unit}'
+            n /= 1024
+        return f'{n:.0f} TB'
+
 
 class ActivityLog(models.Model):
     """ثبت فعالیت‌ها — کی چه کاری روی چه چیزی انجام داد."""

@@ -1,6 +1,12 @@
 {% load seo_extras %}
 <div class="topbar glass">
-  <div class="search"><span>⌕</span> جستجو در پروژه‌ها، تسک‌ها، همکاران<span class="kbd">Ctrl K</span></div>
+  <form class="search" method="get" action="{% url 'tasks:list' %}">
+    <span>⌕</span>
+    <input type="text" name="q" placeholder="جستجو در عنوان تسک‌ها…" autocomplete="off"
+           style="border:0;background:transparent;color:var(--text);flex:1;outline:none;font-family:inherit;font-size:13px"
+           value="{{ request.GET.q|default:'' }}">
+    <input type="hidden" name="all" value="1">
+  </form>
 
   {% include "components/daterange.html" %}
 

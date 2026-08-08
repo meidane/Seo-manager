@@ -10,7 +10,7 @@
     <span class="tag {% if report.status == 'final' %}t-ok{% else %}t-warn{% endif %}" id="r-status">{{ report.get_status_display }}</span>
     <div class="side-c">
       <button class="btn" id="r-settings">تنظیمات نمایش مشتری</button>
-      <a class="btn" href="{{ report.public_url }}" target="_blank" rel="noopener">پیش‌نمایش/چاپ ↗</a>
+      <a class="btn" href="{% url 'reports:preview' report.pk %}" target="_blank" rel="noopener">پیش‌نمایش مشتری ↗</a>
       <button class="btn btn-p" id="r-final">{% if report.status == 'final' %}بازگشت به پیش‌نویس{% else %}نهایی‌سازی{% endif %}</button>
     </div>
   </div>
@@ -44,8 +44,8 @@
   <section class="card glass">
     <div class="card-h"><h3>افزودن تسک</h3>
       <div class="side-c" style="gap:8px">
-        <input class="input" id="p-from" style="max-width:120px" dir="ltr" value="{{ report.date_from|jalali:'%Y/%m/%d' }}">
-        <input class="input" id="p-to" style="max-width:120px" dir="ltr" value="{{ report.date_to|jalali:'%Y/%m/%d' }}">
+        <input class="input jdate" id="p-from" style="max-width:120px" dir="ltr" value="{{ report.date_from|jalali:'%Y/%m/%d' }}">
+        <input class="input jdate" id="p-to" style="max-width:120px" dir="ltr" value="{{ report.date_to|jalali:'%Y/%m/%d' }}">
         <button class="btn btn-sm" id="p-fetch">واکشی تسک‌ها</button>
         <button class="btn btn-sm" id="p-manual">＋ ردیف دستی</button>
       </div>

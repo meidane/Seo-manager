@@ -37,21 +37,54 @@ def donut_segments(pairs):
     return segs
 
 
-class ColleagueListView(LoginRequiredMixin, ListView):
+class ColleagueListView(LoginRequiredMixin, DateRangeMixin, ListView):
+    """لیست جدولی همکاران با آمار بازه‌ای + اسپارک‌لاین روند (مثل داشبورد)."""
+
     model = Colleague
     template_name = 'colleagues/list.html'
     context_object_name = 'colleagues'
-    paginate_by = 24
+    paginate_by = 50
 
     def get_queryset(self):
+        from datetime import date
+
+        start, end = self.get_range(self.request)
+        self._start, self._end = start, end
         qs = super().get_queryset()
         query = self.request.GET.get('q', '').strip()
         if query:
             qs = qs.filter(Q(full_name__icontains=query) | Q(email__icontains=query))
-        return qs
+        return qs.annotate(
+            done=Count('tasks', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
+            words=Sum('tasks__word_count', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
+            open=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING])),
+            overdue=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING], tasks__planned_date__lt=date.today())),
+        )
 
     def get_context_data(self, **kwargs):
+        from collections import defaultdict
+        from datetime import timedelta
+
         ctx = super().get_context_data(**kwargs)
+        ctx.update(self.range_context())
+        colleagues = ctx['colleagues']
+
+        # اسپارک‌لاین ۱۴ روزه: یک کوئری برای همه، گروه‌بندی در پایتون
+        span_end = self._end
+        span_start = span_end - timedelta(days=13)
+        rows = Task.objects.filter(
+            status=Task.DONE, done_date__range=(span_start, span_end)
+        ).values_list('assignee_id', 'done_date')
+        series = defaultdict(lambda: [0] * 14)
+        for aid, d in rows:
+            idx = (d - span_start).days
+            if 0 <= idx < 14:
+                series[aid][idx] += 1
+        for c in colleagues:
+            raw = series.get(c.id, [0] * 14)
+            mx = max(raw) or 1
+            c.spark = [max(round(v / mx * 100), 5) if v else 5 for v in raw]
+
         ctx['page_title'] = 'همکاران'
         ctx['q'] = self.request.GET.get('q', '')
         return ctx

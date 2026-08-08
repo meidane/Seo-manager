@@ -1,5 +1,5 @@
-/* calendar-page.js — ناوبری ماه با AJAX + drag & drop تغییر تاریخ تسک.
-   رندر اولیه سمت سرور است؛ اینجا فقط ماه‌های بعدی را از API می‌سازیم. */
+/* calendar-page.js — تقویم گوگل‌کلندری: ناوبری AJAX، آواتار نویسنده، انجام‌شده‌ی
+   طوسی ته سلول، دکمه‌ی + با hover، درگ‌ودراپ تسک بین روزها. */
 (function () {
   'use strict';
   let { year, month } = window.CAL_INIT;
@@ -15,18 +15,24 @@
     return p.toString();
   };
 
+  function av(t) {
+    return t.avatar
+      ? `<img class="tk-av" src="${t.avatar}" alt="">`
+      : `<span class="tk-av" style="background:${t.a_color}">${t.initials || ''}</span>`;
+  }
   function chip(t) {
-    return `<span class="tk${t.done ? ' done' : ''}" draggable="true" data-id="${t.id}" data-open-task="${t.id}" ` +
-      `style="background:rgba(${t.color},.15);border-right:3px solid rgb(${t.color});color:rgb(${t.color})">` +
-      `${t.type_label}: ${t.title}<span class="tk-t">${t.time}</span></span>`;
+    const style = t.done ? '' : `style="background:rgba(${t.color},.15);border-right:3px solid rgb(${t.color});color:rgb(${t.color})"`;
+    return `<span class="tk${t.done ? ' done' : ''}" draggable="true" data-id="${t.id}" data-open-task="${t.id}" ${style}>` +
+      `${av(t)}<span class="tk-tx">${t.type_label}: ${t.title}</span>${t.done ? '' : `<span class="tk-t">${t.time}</span>`}</span>`;
   }
   function cellHtml(c) {
-    let h = `<div class="cell${c.is_holiday && !c.dim ? ' off' : ''}${c.dim ? ' dim' : ''}${c.is_today ? ' today' : ''}" data-date="${c.gdate}">` +
+    let h = `<div class="cell${c.is_holiday && !c.dim ? ' off' : ''}${c.dim ? ' dim' : ''}${c.is_today ? ' today' : ''}" data-date="${c.gdate}" data-jdate="${c.jdate}">` +
       `<div class="cell-h"><span class="dnum">${c.jday_fa}</span>` +
       `${c.holiday_title && !c.dim ? `<span class="hol">${c.holiday_title}</span>` : ''}` +
       `${c.tasks.length ? `<span class="cnt">${c.tasks.length.toLocaleString('fa-IR')}</span>` : ''}</div>`;
-    c.tasks.slice(0, 4).forEach((t) => (h += chip(t)));
-    if (c.tasks.length > 4) h += `<span class="more">+${(c.tasks.length - 4).toLocaleString('fa-IR')} مورد دیگر</span>`;
+    if (!c.dim) h += `<button class="cell-add" data-jdate="${c.jdate}" title="تسک جدید در این روز">＋</button>`;
+    c.tasks.slice(0, 5).forEach((t) => (h += chip(t)));
+    if (c.tasks.length > 5) h += `<span class="more">+${(c.tasks.length - 5).toLocaleString('fa-IR')} مورد دیگر</span>`;
     return h + '</div>';
   }
 
@@ -41,29 +47,32 @@
 
   function prev() { month--; if (month < 1) { month = 12; year--; } load(); }
   function next() { month++; if (month > 12) { month = 1; year++; } load(); }
-
   document.getElementById('cal-prev').onclick = prev;
   document.getElementById('cal-next').onclick = next;
   document.getElementById('cal-today').onclick = () => { year = window.CAL_INIT.year; month = window.CAL_INIT.month; load(); };
-  ['f-project', 'f-assignee', 'f-type'].forEach((id) => {
-    const el = document.getElementById(id); if (el) el.onchange = load;
+  ['f-project', 'f-assignee', 'f-type'].forEach((id) => { const el = document.getElementById(id); if (el) el.onchange = load; });
+
+  // ── دکمه‌ی + هر روز → مودال تسک با تاریخ پرشده ──
+  grid.addEventListener('click', (e) => {
+    const add = e.target.closest('.cell-add');
+    if (add && window.openTask) { e.stopPropagation(); window.openTask(null, { planned_date_fa: add.dataset.jdate }); }
   });
 
-  // ── drag & drop: انداختن چیپ روی سلول → PATCH تاریخ برنامه ──
+  // ── درگ‌ودراپ: چیپ روی سلول → PATCH تاریخ برنامه ──
   function bindDnd() {
     grid.querySelectorAll('.tk[draggable]').forEach((tk) => {
-      tk.addEventListener('dragstart', (e) => { e.dataTransfer.setData('id', tk.dataset.id); e.stopPropagation(); });
+      tk.addEventListener('dragstart', (e) => { e.dataTransfer.setData('id', tk.dataset.id); tk.style.opacity = '.4'; });
+      tk.addEventListener('dragend', () => { tk.style.opacity = ''; });
     });
     grid.querySelectorAll('.cell[data-date]').forEach((cell) => {
-      cell.addEventListener('dragover', (e) => e.preventDefault());
+      cell.addEventListener('dragover', (e) => { e.preventDefault(); cell.classList.add('drop-hover'); });
+      cell.addEventListener('dragleave', () => cell.classList.remove('drop-hover'));
       cell.addEventListener('drop', async (e) => {
-        e.preventDefault();
+        e.preventDefault(); cell.classList.remove('drop-hover');
         const id = e.dataTransfer.getData('id');
         if (!id) return;
-        try {
-          await App.fetchJSON(`/tasks/api/${id}/`, { method: 'PATCH', body: { planned_date_iso: cell.dataset.date } });
-          load();
-        } catch (_) {}
+        try { await App.fetchJSON(`/tasks/api/${id}/`, { method: 'PATCH', body: { planned_date_iso: cell.dataset.date } }); load(); }
+        catch (_) {}
       });
     });
   }

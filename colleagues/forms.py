@@ -16,7 +16,7 @@ class ColleagueForm(forms.ModelForm):
     join_date = forms.CharField(
         label='تاریخ عضویت (شمسی)',
         required=False,
-        widget=forms.TextInput(attrs={'placeholder': '۱۴۰۴/۰۵/۱۵', 'dir': 'ltr'}),
+        widget=forms.TextInput(attrs={'placeholder': '۱۴۰۴/۰۵/۱۵', 'dir': 'ltr', 'class': 'input jdate'}),
     )
 
     class Meta:
@@ -34,6 +34,12 @@ class ColleagueForm(forms.ModelForm):
                 self.fields['join_date'].initial = format_jalali(
                     self.instance.join_date, fa_digits=False
                 )
+
+        self.fields['description'].widget.attrs.update({'class': 'rich-editor'})
+
+    def clean_description(self):
+        from core.htmlsan import clean_html
+        return clean_html(self.cleaned_data.get('description', ''))
 
     def clean_join_date(self):
         value = (self.cleaned_data.get('join_date') or '').strip()

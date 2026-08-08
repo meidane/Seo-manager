@@ -33,13 +33,13 @@
           {% for t in tasks %}
             <tr data-open-task="{{ t.id }}" {% if t.is_overdue %}class="overdue-l"{% endif %}>
               <td><input type="checkbox" class="row-check" data-id="{{ t.id }}"></td>
-              <td><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span> {{ t.title }}</td>
+              <td><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span> {{ t.title }}{% if t.review_status == 'needs_fix' %} <span class="tag t-warn" data-fix-note="{{ t.id }}" style="cursor:pointer">⚠ نیاز به اصلاح</span>{% endif %}</td>
               <td>{{ t.project.name }}</td>
               <td>{{ t.assignee.full_name|default:"—" }}</td>
               <td>{{ t.planned_date|jalali }}</td>
               <td>{% if t.done_date %}{{ t.done_date|jalali }}{% else %}<span class="zero">—</span>{% endif %}</td>
               <td>
-                <select class="row-status" data-id="{{ t.id }}" style="padding:3px 8px;font-size:12px">
+                <select class="row-status st-{{ t.status }}" data-id="{{ t.id }}" style="padding:3px 8px;font-size:12px">
                   {% for v,l in status_choices %}<option value="{{ v }}" {% if t.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
                 </select>
               </td>

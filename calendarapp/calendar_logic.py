@@ -64,6 +64,7 @@ def _cell(jd, dim_flag, tasks_by_date, holiday_map, today_g):
     return {
         'jday': jd.day,
         'jday_fa': to_fa_digits(jd.day),
+        'jdate': jd.strftime('%Y/%m/%d'),  # شمسی لاتین، برای پرکردن فیلد تاریخ مودال
         'gdate': g.isoformat(),
         'dim': dim_flag,
         'is_today': g == today_g,

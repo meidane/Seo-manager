@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}ورود اکسل{% endblock %}
+
+{% block content %}
+  <div class="page-h"><h1>ورود اکسل بانک</h1></div>
+  {% include "finance/_nav.html" %}
+
+  <div class="stepper">
+    <div class="st on" data-st="1"><div class="dot">۱</div><span>انتخاب فایل</span></div>
+    <div class="st" data-st="2"><div class="dot">۲</div><span>پیش‌نمایش و تایید</span></div>
+  </div>
+
+  <section class="card glass" data-step="1" style="padding:20px">
+    <div class="field" style="max-width:340px"><label>حساب بانکی مقصد</label>
+      <select id="imp-bank">{% for b in banks %}<option value="{{ b.id }}">{{ b.name }}</option>{% empty %}<option value="">ابتدا یک حساب بساز</option>{% endfor %}</select></div>
+    <div class="drop" id="imp-drop"><input type="file" id="imp-file" accept=".xlsx,.xls" hidden>
+      <div class="ico">📄</div><b>فایل اکسل بانک را اینجا رها کن یا کلیک کن</b>
+      <div style="font-size:12px;margin-top:4px;color:var(--text-faint)">ساختار: ردیف | تاریخ | شرح سند | واریز | برداشت | مانده | توضیحات</div></div>
+  </section>
+
+  <section class="card glass" data-step="2" style="display:none">
+    <div class="card-h"><h3>پیش‌نمایش</h3><div class="side-c"><span class="tag t-ok" id="cnt-new">۰ جدید</span><span class="tag t-bad" id="cnt-dup">۰ تکراری</span></div></div>
+    <div class="sheet-wrap" style="border:0"><table class="sheet"><thead><tr><th>تاریخ</th><th>شرح سند</th><th>واریز</th><th>برداشت</th><th>مانده</th><th>وضعیت</th></tr></thead><tbody id="prev-body"></tbody></table></div>
+    <div class="modal-f" style="justify-content:flex-start"><button class="btn btn-p" id="imp-confirm">تایید و ورود ردیف‌های جدید</button><button class="btn" onclick="location.reload()">بازگشت</button></div>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let PREVIEW=null;
+const drop=document.getElementById('imp-drop'), input=document.getElementById('imp-file');
+function step(n){ document.querySelectorAll('[data-step]').forEach(el=>el.style.display=+el.dataset.step===n?'':'none');
+  document.querySelectorAll('.stepper .st').forEach(el=>{el.classList.toggle('on',+el.dataset.st===n);el.classList.toggle('done',+el.dataset.st<n);}); }
+drop.onclick=()=>input.click();
+drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});
+drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
+drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over'); if(e.dataTransfer.files[0]) upload(e.dataTransfer.files[0]);});
+input.onchange=e=>{ if(e.target.files[0]) upload(e.target.files[0]); };
+async function upload(file){
+  const bank=document.getElementById('imp-bank').value; if(!bank){App.toast('حساب را انتخاب کن','warn');return;}
+  const fd=new FormData(); fd.append('file',file); fd.append('bank',bank);
+  try{ const d=await App.fetchJSON("{% url 'finance:import_preview' %}",{method:'POST',body:fd});
+    PREVIEW={bank, rows:d.rows};
+    document.getElementById('cnt-new').textContent=d.new.toLocaleString('fa-IR')+' جدید';
+    document.getElementById('cnt-dup').textContent=d.dup.toLocaleString('fa-IR')+' تکراری';
+    document.getElementById('prev-body').innerHTML=d.rows.map(r=>`<tr class="${r.dup?'dup-row':''}">
+      <td>${r.date_fa}</td><td style="text-align:right">${r.description||'—'}</td>
+      <td class="num ${r.deposit?'dep':''}">${r.deposit?r.deposit.toLocaleString('fa-IR'):'—'}</td>
+      <td class="num ${r.withdrawal?'wd':''}">${r.withdrawal?r.withdrawal.toLocaleString('fa-IR'):'—'}</td>
+      <td class="num">${r.balance!=null?r.balance.toLocaleString('fa-IR'):'—'}</td>
+      <td>${r.dup?'<span class="dup-badge">تکراری</span>':'<span class="tag t-ok">جدید</span>'}</td></tr>`).join('');
+    step(2);
+  }catch(_){}
+}
+document.getElementById('imp-confirm').onclick=async()=>{
+  if(!PREVIEW)return;
+  try{ const d=await App.fetchJSON("{% url 'finance:import_confirm' %}",{method:'POST',body:PREVIEW});
+    App.toast(`${d.created} ردیف وارد شد`,'ok'); setTimeout(()=>location.href="{% url 'finance:transactions' %}",600);
+  }catch(_){}
+};
+</script>
+{% endblock %}

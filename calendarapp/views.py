@@ -32,6 +32,9 @@ def _tasks_by_date(qs):
     grouped = defaultdict(list)
     for t in qs:
         grouped[t.planned_date].append(t.to_dict())
+    # انجام‌شده‌ها ته سلول (طوسی)، بقیه بر اساس ساعت
+    for day in grouped.values():
+        day.sort(key=lambda d: (d['done'], d['time']))
     return grouped
 
 
@@ -80,6 +83,20 @@ def calendar_api(request):
     return JsonResponse({
         'year': jyear, 'month': jmonth, 'title': month_title(jyear, jmonth), 'days': cells,
     })
+
+
+@login_required
+def picker_api(request):
+    """شبکه‌ی ماه فقط با پرچم تعطیلی/امروز — برای دیت‌پیکر فیلدهای تاریخ."""
+    jyear, jmonth = _resolve_ym(request)
+    start, end = month_bounds_gregorian(jyear, jmonth)
+    cells = build_month(jyear, jmonth, {}, _holiday_map(start, end))
+    days = [{
+        'jday_fa': c['jday_fa'], 'jdate': c['jdate'], 'gdate': c['gdate'],
+        'dim': c['dim'], 'is_today': c['is_today'], 'is_holiday': c['is_holiday'],
+        'holiday_title': c['holiday_title'],
+    } for c in cells]
+    return JsonResponse({'year': jyear, 'month': jmonth, 'title': month_title(jyear, jmonth), 'days': days})
 
 
 @login_required

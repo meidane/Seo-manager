@@ -106,6 +106,21 @@ class PublicReportView(DetailView):
         return ctx
 
 
+class ReportPreviewView(LoginRequiredMixin, DetailView):
+    """پیش‌نمایش دقیقِ آنچه مشتری می‌بیند — برای صاحب گزارش، بدون نیاز به عمومی‌کردن."""
+
+    model = Report
+    template_name = 'reports/public.html'
+    context_object_name = 'report'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['groups'] = self.object.grouped_items()
+        ctx['fields'] = [(k, lbl) for k, lbl in CLIENT_FIELDS if self.object.sees(k)]
+        ctx['is_preview'] = True
+        return ctx
+
+
 # ── API ──────────────────────────────────────────────────────────────────
 
 @login_required

@@ -4,11 +4,12 @@
 window.TASK_SCHEMA = {
   // گروه‌های فیلد و اینکه هر گروه برای کدام نوع‌ها فعال است
   groups: {
-    content: { // تعداد کلمه، کلمات کلیدی، LSI، عنوان سئو، جایگاه، لینک انتشار
-      fields: ['word_count', 'keywords', 'lsi_keywords', 'seo_title', 'current_rank', 'target_rank', 'published_url'],
+    content: { // تعداد کلمه، کلمات کلیدی، LSI، عنوان سئو
+      fields: ['word_count', 'keywords', 'lsi_keywords', 'seo_title'],
       types: ['publish', 'update', 'reportage'],
     },
-    update_only: { fields: ['source_url'], types: ['update'] },
+    published: { fields: ['published_url'], types: ['publish', 'reportage'] }, // انتشار ندارد در آپدیت
+    update_only: { fields: ['source_url', 'current_rank'], types: ['update'] }, // جایگاه فعلی و آدرس فعلی فقط آپدیت
     reportage: { fields: ['media_name', 'media_cost'], types: ['reportage'] },
     anchor: { fields: ['anchor_text', 'target_url'], types: ['reportage', 'linkbuilding'] },
     link: { fields: ['link_type', 'link_count'], types: ['linkbuilding'] },
