@@ -51,6 +51,9 @@
         ${field('estimate_minutes', 'تخمین زمان (دقیقه)', `<input id="f-estimate_minutes" class="input" type="number" dir="ltr" placeholder="۶۰" value="${t.estimate_minutes || ''}">`)}
       </div>
 
+      ${recurBarHtml(t)}
+      ${t.id ? '<div id="kpi-box" style="display:none;margin-top:8px"></div>' : ''}
+
       <!-- فیلدهای سفارشی نوع (داینامیک) -->
       <div id="custom-fields" style="display:none"></div>
 
@@ -98,6 +101,63 @@
   }
 
   function esc(v) { return (v == null ? '' : String(v)).replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+
+  // ── نوار تکرار (فقط تسک جدید؛ برای تسکِ موجودِ تکرارشونده فقط بنر حذف سری) ──
+  function recurBarHtml(t) {
+    if (t.id) {
+      if (t.recurrence) return `<div class="rec-bar" style="color:var(--text-dim)">🔁 این تسک بخشی از یک سری تکرار است.
+        <button type="button" class="btn btn-sm" id="rec-del" data-id="${t.recurrence}" style="color:var(--danger)">حذف کل سریِ آینده</button></div>`;
+      return '';
+    }
+    const wk = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];  // شنبه=۰ .. جمعه=۶
+    return `<div class="rec-wrap"><label>تکرار</label>
+      <div class="rec-bar" id="rec-opts">
+        <span class="rec-opt on" data-freq="">یک‌بار</span>
+        <span class="rec-opt" data-freq="daily">روزانه</span>
+        <span class="rec-opt" data-freq="weekly">هفتگی</span>
+        <span class="rec-opt" data-freq="monthly">ماهانه</span>
+      </div>
+      <div class="rec-bar" id="rec-cfg" style="display:none">
+        <label style="margin:0">هر</label><input class="input" id="rec-interval" type="number" dir="ltr" value="1" style="max-width:60px">
+        <b id="rec-unit"></b>
+        <span id="rec-weekdays" style="display:none;gap:4px">${wk.map((w, i) => `<span class="rec-opt" data-wd="${i}">${w}</span>`).join('')}</span>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="rec-skip" checked style="width:auto"> رد کردن تعطیلات</label>
+      </div></div>`;
+  }
+
+  function wireRecur() {
+    const opts = document.getElementById('rec-opts');
+    if (!opts) return;
+    const cfg = document.getElementById('rec-cfg');
+    const units = { daily: 'روز', weekly: 'هفته', monthly: 'ماه' };
+    opts.addEventListener('click', (e) => {
+      const o = e.target.closest('.rec-opt'); if (!o) return;
+      opts.querySelectorAll('.rec-opt').forEach((x) => x.classList.remove('on'));
+      o.classList.add('on');
+      const f = o.dataset.freq;
+      cfg.style.display = f ? 'flex' : 'none';
+      document.getElementById('rec-unit').textContent = units[f] || '';
+      document.getElementById('rec-weekdays').style.display = (f === 'weekly') ? 'flex' : 'none';
+    });
+    document.getElementById('rec-weekdays').addEventListener('click', (e) => {
+      const w = e.target.closest('.rec-opt'); if (w) w.classList.toggle('on');
+    });
+  }
+
+  // ── نمایشِ فقط‌خواندنیِ KPIها در مودال (کارمند ببیند طبق چه سنجیده می‌شود) ──
+  async function initKpis(id) {
+    const box = document.getElementById('kpi-box'); if (!box) return;
+    try {
+      const d = await App.fetchJSON(`/tasks/api/${id}/kpis/`);
+      if (!d.has) { box.style.display = 'none'; return; }
+      box.style.display = '';
+      box.innerHTML = `<label style="font-weight:700">شاخص‌های کیفیت (KPI)${d.cap ? ` — امتیاز: ${d.total}/${d.cap}` : ''}</label>` +
+        d.kpis.map((k) => `<div class="kpi-item"><div class="kpi-head"><b>${esc(k.title)}</b>
+          <span class="tag t-mute">سقف ${k.cap}</span>${k.given != null ? `<span class="tag t-ok">امتیاز: ${k.given}</span>` : ''}
+          ${k.description ? `<span class="kpi-info" title="${esc(k.description)}">ℹ️</span>` : ''}</div>
+          ${k.has_checklist ? `<div class="kpi-items">${k.items.map((it) => `<div class="kpi-ci"><span>${esc(it.title)} <b>(${it.score})</b></span></div>`).join('')}</div>` : ''}</div>`).join('');
+    } catch (_) {}
+  }
 
   // ── جعبه‌ی «موارد نیاز به اصلاح» بالای مودال + تاریخچه (جدیدترین باز، قبلی‌ها جمع) ──
   function reviewNotesHtml(t) {
@@ -167,6 +227,18 @@
         custom[el.dataset.key] = el.type === 'checkbox' ? el.checked : el.value;
       });
       p.custom = custom;
+    }
+    // تکرار (فقط تسک جدید)
+    const recOpts = document.getElementById('rec-opts');
+    if (recOpts) {
+      const freq = recOpts.querySelector('.rec-opt.on').dataset.freq;
+      if (freq) {
+        p.recurrence = {
+          freq, interval: +document.getElementById('rec-interval').value || 1,
+          skip_holidays: document.getElementById('rec-skip').checked,
+          weekdays: [...document.querySelectorAll('#rec-weekdays .rec-opt.on')].map((x) => +x.dataset.wd),
+        };
+      }
     }
     return p;
   }
@@ -251,7 +323,14 @@
       document.querySelectorAll('[data-fix-item]').forEach((el, i) => { if (i > 0) el.style.display = ''; });
       histBtn.style.display = 'none';
     };
-    if (id) initReports(id);  // بخش گزارش کار (فقط تسک موجود)
+    wireRecur();               // نوار تکرار (تسک جدید)
+    if (id) { initReports(id); initKpis(id); }  // گزارش + نمایش KPI (تسک موجود)
+    const recDel = document.getElementById('rec-del');
+    if (recDel) recDel.onclick = async () => {
+      if (await App.confirm('کلِ سریِ آینده‌ی این تکرار حذف شود؟ (تسک‌های انجام‌شده می‌مانند)')) {
+        try { await App.fetchJSON(`/tasks/api/recurrence/${recDel.dataset.id}/`, { method: 'DELETE' }); App.closeModal(); location.reload(); } catch (_) {}
+      }
+    };
 
     const save = async (again) => {
       const payload = collect();

@@ -546,3 +546,23 @@ table.sheet tr:hover td{background:rgba(255,255,255,.02)}
 /* سوییچرِ سازمان در هدر */
 .org-switch{max-width:170px;padding:6px 10px;font-size:12.5px;border-radius:var(--r-sm);
   background:rgba(255,255,255,.04);border:1px solid var(--stroke-soft);color:var(--text)}
+
+/* KPIها (مدیریت نوع تسک + مودال/بازبینی) */
+.kpi-item{border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:8px;background:rgba(255,255,255,.02)}
+.kpi-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.kpi-tools{margin-inline-start:auto;display:flex;gap:8px}
+.kpi-tools i,.ci-del{cursor:pointer;font-style:normal;opacity:.65;font-size:12.5px}
+.kpi-tools i:hover,.ci-del:hover{opacity:1}
+.kpi-items{margin-top:8px;padding-inline-start:6px;display:flex;flex-direction:column;gap:5px}
+.kpi-ci{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:var(--text-dim)}
+.kpi-info{font-style:normal}
+.kpi-score-row{display:flex;align-items:center;gap:8px;margin:6px 0}
+.kpi-score-row input[type=number]{max-width:80px}
+
+/* پیش‌نمای تسک تکرارشونده در تقویم (کم‌رنگ/خط‌چین) */
+.tk.placeholder{opacity:.5;border:1px dashed var(--stroke)!important;background:transparent!important;filter:grayscale(.3)}
+.tk.placeholder .tk-t{display:none}
+/* بخشِ تکرار در مودال تسک */
+.rec-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:12.5px}
+.rec-opt{padding:5px 10px;border-radius:99px;border:1px solid var(--stroke-soft);cursor:pointer;background:rgba(255,255,255,.03)}
+.rec-opt.on{background:var(--primary-soft);border-color:var(--primary-ring);color:var(--primary-400)}

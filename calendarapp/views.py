@@ -16,7 +16,8 @@ from .calendar_logic import build_month, month_bounds_gregorian, month_title
 
 
 def _filtered_tasks(request, start, end):
-    qs = Task.objects.select_related('project', 'assignee', 'type_def').filter(planned_date__range=(start, end))
+    # تقویم پیش‌نماهای تکرار را هم نشان می‌دهد (کم‌رنگ)
+    qs = Task.objects.with_placeholders().select_related('project', 'assignee', 'type_def').filter(planned_date__range=(start, end))
     if request.GET.get('project'):
         qs = qs.filter(project_id=request.GET['project'])
     if request.GET.get('assignee'):

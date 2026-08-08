@@ -5,7 +5,7 @@
 
 قانون تاریخ: planned_date و done_date میلادی‌اند؛ تبدیل شمسی فقط در نمایش.
 """
-from datetime import date, time
+from datetime import date, time, timedelta
 
 from django.conf import settings
 from django.db import models
@@ -13,6 +13,17 @@ from django.urls import reverse
 
 from accounts.tenancy import TenantManager, stamp_org
 from core.models import TimeStampedModel
+
+
+class TaskManager(TenantManager):
+    """مثل TenantManager (اسکوپِ سازمان) ولی پیش‌نماهای تکرار را هم پنهان می‌کند.
+    تقویم برای دیدنِ پیش‌نماها از `with_placeholders()` استفاده می‌کند."""
+
+    def get_queryset(self):
+        return super().get_queryset().filter(is_placeholder=False)
+
+    def with_placeholders(self):
+        return super().get_queryset()
 
 # رنگ هر نوع تسک (RGB) — با پالت بخش ۲.۳ هم‌خوان؛ در فرانت هم در task-schema.js هست
 TYPE_COLORS = {
@@ -111,8 +122,12 @@ class Task(TimeStampedModel):
     ai_score = models.PositiveIntegerField('امتیاز AI', null=True, blank=True)       # فاز ۳
     ai_report = models.JSONField('گزارش AI', null=True, blank=True)                  # فاز ۳
 
+    # ── تکرارشونده ──
+    recurrence = models.ForeignKey('tasks.RecurrenceRule', verbose_name='قاعده تکرار', on_delete=models.SET_NULL, null=True, blank=True, related_name='tasks')
+    is_placeholder = models.BooleanField('پیش‌نمای تکرار', default=False)  # در تقویم کم‌رنگ؛ خارج از آمار/بازبینی
+
     organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
-    objects = TenantManager()
+    objects = TaskManager()
     all_objects = models.Manager()
 
     class Meta:
@@ -189,6 +204,8 @@ class Task(TimeStampedModel):
             'word_count': self.word_count,
             'published_url': self.published_url,
             'estimate_minutes': self.estimate_minutes,
+            'is_placeholder': self.is_placeholder,
+            'recurring': bool(self.recurrence_id),
         }
 
 
@@ -303,6 +320,168 @@ class TaskReviewNote(models.Model):
 
     def __str__(self):
         return f'اصلاحِ تسک {self.task_id}'
+
+
+class TaskTypeKPI(models.Model):
+    """یک KPI (شاخص کیفیت) متعلق به یک نوع تسک. کارمند آن را می‌بیند و مدیر در
+    بازبینی امتیازش می‌دهد. می‌تواند با چک‌لیست باشد (امتیاز = جمع آیتم‌های تیک‌خورده)
+    یا بدون چک‌لیست (مدیر عددِ ۰..max_score می‌دهد)."""
+
+    type_def = models.ForeignKey(TaskTypeDef, verbose_name='نوع تسک', on_delete=models.CASCADE, related_name='kpis')
+    title = models.CharField('عنوان', max_length=120)
+    max_score = models.PositiveIntegerField('حداکثر امتیاز', default=10)
+    description = models.TextField('توضیحات', blank=True)  # پشت آیکن نمایش داده می‌شود
+    has_checklist = models.BooleanField('چک‌لیستی', default=False)
+    order = models.PositiveIntegerField('ترتیب', default=0)
+
+    class Meta:
+        verbose_name = 'KPI نوع تسک'
+        verbose_name_plural = 'KPIهای نوع تسک'
+        ordering = ['order', 'id']
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def cap(self):
+        """سقفِ مؤثر: در حالت چک‌لیستی جمعِ امتیازِ آیتم‌ها، وگرنه max_score."""
+        if self.has_checklist:
+            return sum(i.score for i in self.items.all())
+        return self.max_score
+
+    def to_dict(self):
+        return {
+            'id': self.id, 'title': self.title, 'max_score': self.max_score,
+            'description': self.description, 'has_checklist': self.has_checklist,
+            'cap': self.cap,
+            'items': [{'id': i.id, 'title': i.title, 'score': i.score,
+                       'description': i.description} for i in self.items.all()],
+        }
+
+
+class KPIChecklistItem(models.Model):
+    """یک آیتمِ چک‌لیست زیرِ یک KPI (تیک‌خوردنی، با امتیاز و توضیح مستقل)."""
+
+    kpi = models.ForeignKey(TaskTypeKPI, verbose_name='KPI', on_delete=models.CASCADE, related_name='items')
+    title = models.CharField('عنوان', max_length=160)
+    score = models.PositiveIntegerField('امتیاز', default=0)
+    description = models.TextField('توضیحات', blank=True)
+    order = models.PositiveIntegerField('ترتیب', default=0)
+
+    class Meta:
+        verbose_name = 'آیتم چک‌لیست KPI'
+        verbose_name_plural = 'آیتم‌های چک‌لیست KPI'
+        ordering = ['order', 'id']
+
+    def __str__(self):
+        return self.title
+
+
+class TaskKPIScore(models.Model):
+    """امتیازِ ثبت‌شده‌ی یک KPI روی یک تسکِ مشخص (توسط مدیر در بازبینی)."""
+
+    task = models.ForeignKey(Task, verbose_name='تسک', on_delete=models.CASCADE, related_name='kpi_scores')
+    kpi = models.ForeignKey(TaskTypeKPI, verbose_name='KPI', on_delete=models.CASCADE, related_name='scores')
+    score = models.PositiveIntegerField('امتیاز', default=0)
+    checked_items = models.JSONField('آیتم‌های تیک‌خورده', default=list, blank=True)  # لیست id
+    scored_by = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name='بازبین', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    scored_at = models.DateTimeField('زمان امتیاز', auto_now=True)
+
+    class Meta:
+        verbose_name = 'امتیاز KPI تسک'
+        verbose_name_plural = 'امتیازهای KPI تسک'
+        unique_together = ('task', 'kpi')
+
+    def __str__(self):
+        return f'{self.task_id}/{self.kpi_id}: {self.score}'
+
+
+class RecurrenceRule(models.Model):
+    """قاعده‌ی تکرارِ تسک — با «تولید تنبل»: همیشه فقط یک تسکِ واقعی + یک پیش‌نما
+    (placeholder) جلوتر ساخته می‌شود؛ با انجام‌شدنِ تسکِ فعلی، پیش‌نما واقعی و
+    پیش‌نمای بعدی ساخته می‌شود. این‌طور تقویم شلوغ نمی‌شود."""
+
+    DAILY = 'daily'
+    WEEKLY = 'weekly'
+    MONTHLY = 'monthly'
+    FREQ_CHOICES = [(DAILY, 'روزانه'), (WEEKLY, 'هفتگی'), (MONTHLY, 'ماهانه')]
+
+    freq = models.CharField('تکرار', max_length=8, choices=FREQ_CHOICES, default=WEEKLY)
+    interval = models.PositiveIntegerField('فاصله (هر N)', default=1)
+    weekdays = models.CharField('روزهای هفته', max_length=20, blank=True)  # شمسی: شنبه=۰..جمعه=۶، با ویرگول
+    start_date = models.DateField('شروع')
+    end_date = models.DateField('پایان', null=True, blank=True)
+    count = models.PositiveIntegerField('تعداد کل', null=True, blank=True)
+    skip_holidays = models.BooleanField('رد کردن تعطیلات', default=True)
+    active = models.BooleanField('فعال', default=True)
+
+    organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
+    objects = TenantManager()
+    all_objects = models.Manager()
+
+    class Meta:
+        verbose_name = 'قاعده تکرار'
+        verbose_name_plural = 'قواعد تکرار'
+        base_manager_name = 'all_objects'
+
+    def __str__(self):
+        return f'{self.get_freq_display()} ×{self.interval}'
+
+    def save(self, *args, **kwargs):
+        stamp_org(self)
+        super().save(*args, **kwargs)
+
+    # ── منطق تاریخ بعدی ──
+    def _weekday_set(self):
+        from core.jalali import g2j
+        return {int(x) for x in self.weekdays.split(',') if x.strip().isdigit()}
+
+    @staticmethod
+    def _jwd(d):
+        """weekday شمسی: شنبه=۰ .. جمعه=۶."""
+        from core.jalali import g2j
+        return g2j(d).weekday()
+
+    def next_date(self, after):
+        """اولین تاریخِ رخدادِ بعدی، اکیداً بعد از `after`."""
+        from core.jalali import g2j, j2g
+        if self.freq == self.DAILY:
+            nxt = after + timedelta(days=self.interval)
+        elif self.freq == self.WEEKLY:
+            wds = self._weekday_set()
+            if wds:
+                # روزِ بعدیِ عضوِ مجموعه؛ حداکثر تا ۷ روز جلو
+                d = after + timedelta(days=1)
+                for _ in range(7):
+                    if self._jwd(d) in wds:
+                        nxt = d
+                        break
+                    d += timedelta(days=1)
+                else:
+                    nxt = after + timedelta(days=7 * self.interval)
+            else:
+                nxt = after + timedelta(days=7 * self.interval)
+        else:  # MONTHLY — همان روزِ شمسی در ماهِ بعد
+            jt = g2j(after)
+            y, m = jt.year, jt.month + self.interval
+            y += (m - 1) // 12
+            m = (m - 1) % 12 + 1
+            day = min(jt.day, 31 if m <= 6 else (30 if m <= 11 else 29))
+            nxt = j2g(y, m, day)
+        return self._skip(nxt)
+
+    def _skip(self, d):
+        """اگر skip_holidays فعال است و روز تعطیل/جمعه بود، به روز کاریِ بعد برو."""
+        if not self.skip_holidays:
+            return d
+        from core.models import Holiday
+        for _ in range(14):
+            is_fri = self._jwd(d) == 6
+            is_off = Holiday.objects.filter(date=d, is_off=True).exists()
+            if not is_fri and not is_off:
+                return d
+            d += timedelta(days=1)
+        return d
 
 
 class TaskComment(models.Model):

@@ -17,6 +17,7 @@
       {% if t.keywords %}<div class="rev-kw">{% for kw in t.keywords|slice:":120" %}{% endfor %}<span class="tag t-mute">{{ t.keywords }}</span></div>{% endif %}
       <div class="rev-actions">
         <a href="{{ t.published_url }}" target="_blank" rel="noopener" class="btn btn-p">باز کردن مطلب ↗</a>
+        <button class="btn" onclick="window.scoreKpis({{ t.id }})" style="border-color:rgba(65,131,242,.4);color:#8FB8FF">★ امتیاز کیفیت</button>
         <button class="btn rev-ok" data-id="{{ t.id }}" style="border-color:rgba(45,212,167,.4);color:#6FE3C4">✓ تایید</button>
         <button class="btn" onclick="window.openFixModal({{ t.id }})" style="border-color:rgba(249,115,22,.4);color:#FDBA8C">⚠ نیاز به اصلاح</button>
       </div>
@@ -35,6 +36,36 @@ async function review(id, status){
   }catch(_){}
 }
 document.querySelectorAll('.rev-ok').forEach(b=>b.onclick=()=>review(b.dataset.id,'approved'));
+
+// ── امتیازدهی KPI (مدیر) ──
+async function scoreKpis(id){
+  let d; try{ d=await App.fetchJSON(`/tasks/api/${id}/kpis/`); }catch(_){ return; }
+  if(!d.has){ App.toast('برای این نوع تسک KPI تعریف نشده','warn'); return; }
+  const body=d.kpis.map(k=>{
+    if(k.has_checklist){
+      const items=k.items.map(it=>`<label style="display:flex;align-items:center;gap:8px;margin:0;padding:3px 0;cursor:pointer">
+        <input type="checkbox" class="kci" data-score="${it.score}" value="${it.id}" ${(k.checked||[]).includes(it.id)?'checked':''} style="width:auto"> ${it.title} <b>(${it.score})</b>${it.description?` <span class="kpi-info" title="${it.description.replace(/"/g,'&quot;')}">ℹ️</span>`:''}</label>`).join('');
+      return `<div class="kpi-item" data-kpi="${k.id}" data-checklist="1"><div class="kpi-head"><b>${k.title}</b><span class="tag t-mute">سقف ${k.cap}</span><span class="kscore tag t-ok">۰</span></div><div class="kpi-items">${items}</div></div>`;
+    }
+    return `<div class="kpi-item" data-kpi="${k.id}"><div class="kpi-head"><b>${k.title}</b><span class="tag t-mute">سقف ${k.max_score}</span><input class="input knum" type="number" dir="ltr" min="0" max="${k.max_score}" value="${k.given!=null?k.given:0}" style="max-width:80px"></div></div>`;
+  }).join('');
+  App.openModal(`<div class="modal-h"><h3>امتیاز کیفیت (KPI)</h3><button class="x" onclick="App.closeModal()">×</button></div>
+    <div class="modal-b">${body}</div>
+    <div class="modal-f"><button class="btn btn-p" id="ks-save">ذخیره امتیاز</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+  function recompute(){ document.querySelectorAll('.kpi-item[data-checklist]').forEach(el=>{
+    let s=0; el.querySelectorAll('.kci:checked').forEach(c=>s+=+c.dataset.score); el.querySelector('.kscore').textContent=s; }); }
+  document.querySelectorAll('.kci').forEach(c=>c.onchange=recompute); recompute();
+  document.getElementById('ks-save').onclick=async()=>{
+    const scores=[...document.querySelectorAll('.kpi-item')].map(el=>{
+      const kpi=+el.dataset.kpi;
+      if(el.dataset.checklist){ const boxes=[...el.querySelectorAll('.kci:checked')];
+        return {kpi,score:boxes.reduce((a,c)=>a+ +c.dataset.score,0),checked_items:boxes.map(c=>+c.value)}; }
+      return {kpi,score:+el.querySelector('.knum').value||0,checked_items:[]};
+    });
+    try{ await App.fetchJSON(`/tasks/api/${id}/kpi-score/`,{method:'POST',body:{scores}}); App.toast('امتیاز ثبت شد','ok'); App.closeModal(); }catch(_){}
+  };
+}
+window.scoreKpis=scoreKpis;
 
 // ── میان‌بر کیبورد: J/K حرکت، Enter باز کردن لینک، A تایید ──
 const cards=[...document.querySelectorAll('.rev-card')];

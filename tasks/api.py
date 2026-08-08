@@ -108,8 +108,9 @@ def form_data(request):
         'typeChoices': list(Task.TYPE_CHOICES),
         'customTypes': [
             {'id': t.id, 'name': t.name, 'color': t.color, 'icon': t.icon,
-             'builtin_key': t.builtin_key, 'fields': t.schema()}
-            for t in TaskTypeDef.objects.filter(is_active=True)
+             'builtin_key': t.builtin_key, 'fields': t.schema(),
+             'kpis': [k.to_dict() for k in t.kpis.prefetch_related('items')]}
+            for t in TaskTypeDef.objects.filter(is_active=True).prefetch_related('kpis')
         ],
     })
 
@@ -133,7 +134,32 @@ def task_create(request):
     if err:
         return JsonResponse({'detail': err}, status=400)
     task.save()
+    # تکرارشونده: قاعده را بساز و اولین پیش‌نما را تولید کن (تولید تنبل)
+    rec = data.get('recurrence')
+    if rec and rec.get('freq'):
+        _attach_recurrence(task, rec)
     return JsonResponse(task.to_dict(), status=201)
+
+
+def _attach_recurrence(task, rec):
+    """قاعده‌ی تکرار را بساز، به تسک وصل کن و اولین پیش‌نما را تولید کن."""
+    from .models import RecurrenceRule
+    from .recurrence import start_series
+    freq = rec.get('freq')
+    if freq not in dict(RecurrenceRule.FREQ_CHOICES):
+        return
+    weekdays = ''
+    if isinstance(rec.get('weekdays'), list):
+        weekdays = ','.join(str(int(x)) for x in rec['weekdays'] if str(x).isdigit())
+    rule = RecurrenceRule.objects.create(
+        freq=freq, interval=max(1, int(rec.get('interval') or 1)),
+        weekdays=weekdays, start_date=task.planned_date,
+        end_date=_pdate(rec.get('end_date')) or None,
+        count=int(rec['count']) if rec.get('count') else None,
+        skip_holidays=bool(rec.get('skip_holidays', True)))
+    task.recurrence = rule
+    task.save(update_fields=['recurrence'])
+    start_series(task)
 
 
 @login_required
@@ -155,17 +181,22 @@ def task_detail(request, pk):
             'review_status': task.review_status, 'review_note': task.review_note,
             'review_notes': _review_notes(task),
             'type_def': task.type_def_id, 'custom': task.custom or {},
+            'recurrence': task.recurrence_id,
         })
         return JsonResponse(d)
     if request.method == 'DELETE':
         task.delete()
         return JsonResponse({'ok': True})
     # PATCH
+    was_done = task.status == Task.DONE
     apply_fields(task, _body(request))
     err = _publish_url_error(task)
     if err:
         return JsonResponse({'detail': err}, status=400)
     task.save()
+    if not was_done and task.status == Task.DONE and task.recurrence_id and not task.is_placeholder:
+        from .recurrence import advance
+        advance(task)
     return JsonResponse(task.to_dict())
 
 
@@ -178,6 +209,7 @@ def task_status(request, pk):
     new_status = data.get('status')
     if new_status not in dict(Task.STATUS_CHOICES):
         return JsonResponse({'detail': 'وضعیت نامعتبر'}, status=400)
+    was_done = task.status == Task.DONE
     task.status = new_status
     fields = ['status', 'done_date', 'updated_at']
     if new_status == Task.DONE and not task.done_date:
@@ -191,6 +223,10 @@ def task_status(request, pk):
     if err:
         return JsonResponse({'detail': err}, status=400)
     task.save(update_fields=fields)
+    # تکرارشونده: با ورود به «انجام‌شده» رخدادِ بعدی تولید می‌شود (یک‌بار)
+    if not was_done and new_status == Task.DONE and task.recurrence_id and not task.is_placeholder:
+        from .recurrence import advance
+        advance(task)
     return JsonResponse(task.to_dict())
 
 
@@ -238,6 +274,56 @@ def _review_notes(task):
             'when': format_jalali(lt) + ' ' + lt.strftime('%H:%M'),
         })
     return out
+
+
+# ── API: KPI (نمایش به کارمند + امتیازدهیِ مدیر) ───────────────────────────
+
+@login_required
+@require_http_methods(['GET'])
+def task_kpis(request, pk):
+    task = get_object_or_404(Task, pk=pk)
+    kpis = list(task.type_def.kpis.prefetch_related('items')) if task.type_def_id else []
+    scores = {s.kpi_id: s for s in task.kpi_scores.all()}
+    out, total, cap = [], 0, 0
+    for k in kpis:
+        s = scores.get(k.id)
+        kd = k.to_dict()
+        kd['given'] = s.score if s else None
+        kd['checked'] = s.checked_items if s else []
+        out.append(kd)
+        cap += k.cap
+        total += (s.score if s else 0)
+    return JsonResponse({'kpis': out, 'total': total, 'cap': cap, 'has': bool(kpis)})
+
+
+@login_required
+@require_http_methods(['POST'])
+def task_kpi_score(request, pk):
+    from .models import TaskKPIScore, TaskTypeKPI
+    task = get_object_or_404(Task, pk=pk)
+    for item in _body(request).get('scores', []):
+        kpi = TaskTypeKPI.objects.filter(pk=item.get('kpi'), type_def_id=task.type_def_id).first()
+        if not kpi:
+            continue
+        score = max(0, min(int(item.get('score') or 0), kpi.cap or kpi.max_score))
+        TaskKPIScore.objects.update_or_create(
+            task=task, kpi=kpi,
+            defaults={'score': score, 'checked_items': item.get('checked_items') or [],
+                      'scored_by': request.user})
+    return JsonResponse({'ok': True})
+
+
+# ── API: حذفِ کلِ سریِ تکرار ────────────────────────────────────────────────
+
+@login_required
+@require_http_methods(['DELETE'])
+def recurrence_delete(request, pk):
+    from .models import RecurrenceRule
+    rule = get_object_or_404(RecurrenceRule, pk=pk)  # org-scoped
+    # تسک‌های آینده/انجام‌نشده و پیش‌نماها حذف؛ تسک‌های انجام‌شده می‌مانند (recurrence=None)
+    Task.all_objects.filter(recurrence=rule).exclude(status=Task.DONE).delete()
+    rule.delete()
+    return JsonResponse({'ok': True})
 
 
 def _next_workday(d: date, holidays: set) -> date:

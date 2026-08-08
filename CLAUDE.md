@@ -40,6 +40,8 @@
 | فیلدهای قابل‌نمایش به مشتری | `reports/models.py: CLIENT_FIELDS` + `Report.visible_fields` |
 | پاکسازی HTML ادیتور | `core/htmlsan.py: clean_html` |
 | رنگ/برچسب نوع تسک | `tasks/models.py: Task.type_label / color_rgb` (+ `TYPE_COLORS`) |
+| KPI (تعریف/امتیاز/سقف) | `tasks/models.py: TaskTypeKPI/KPIChecklistItem/TaskKPIScore` |
+| تکرارِ تسک (تولید تنبل) | `tasks/recurrence.py` + `RecurrenceRule` |
 | ادیتور غنی | `static/js/richtext.js` (کلاس `rich-editor`) |
 | دیت‌پیکر شمسی | `static/js/datepicker.js` (کلاس `jdate`) |
 

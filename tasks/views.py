@@ -20,7 +20,8 @@ class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
         start, end = self.get_range(self.request)
         g = self.request.GET
 
-        qs = Task.objects.select_related('project', 'assignee', 'type_def')
+        # پیش‌نماهای تکرار (placeholder) فقط در تقویم دیده می‌شوند، نه در لیست/کانبان
+        qs = Task.objects.filter(is_placeholder=False).select_related('project', 'assignee', 'type_def')
         # بازه فقط وقتی اعمال شود که کاربر «همه» را نخواسته باشد
         if g.get('all') != '1':
             qs = qs.filter(planned_date__range=(start, end))

@@ -12,7 +12,7 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_http_methods
 from django.views.generic import DetailView, ListView
 
-from .models import TaskTypeDef, TaskTypeField
+from .models import KPIChecklistItem, TaskTypeDef, TaskTypeField, TaskTypeKPI
 
 
 def _body(request):
@@ -42,6 +42,7 @@ class TaskTypeEditView(LoginRequiredMixin, DetailView):
         ctx = super().get_context_data(**kwargs)
         ctx['fields'] = self.object.fields.all()
         ctx['kind_choices'] = TaskTypeField.KIND_CHOICES
+        ctx['kpis'] = self.object.kpis.prefetch_related('items')
         ctx['page_title'] = self.object.name
         return ctx
 
@@ -128,3 +129,78 @@ def field_reorder(request, pk):
     for i, fid in enumerate(_body(request).get('order', [])):
         t.fields.filter(id=fid).update(order=i)
     return JsonResponse({'ok': True})
+
+
+# ── API: KPI ───────────────────────────────────────────────────────────────
+
+def _kpi(request, pk):
+    """KPI با تضمینِ تعلق به سازمانِ جاری."""
+    return get_object_or_404(TaskTypeKPI, pk=pk, type_def__organization=request.organization)
+
+
+@login_required
+@require_http_methods(['POST'])
+def kpi_create(request, pk):
+    t = get_object_or_404(TaskTypeDef, pk=pk)  # org-scoped (TenantManager)
+    d = _body(request)
+    title = (d.get('title') or '').strip()
+    if not title:
+        return JsonResponse({'detail': 'عنوان KPI لازم است'}, status=400)
+    k = TaskTypeKPI.objects.create(
+        type_def=t, title=title, max_score=int(d.get('max_score') or 10),
+        description=d.get('description', ''), has_checklist=bool(d.get('has_checklist')),
+        order=t.kpis.count())
+    return JsonResponse(k.to_dict(), status=201)
+
+
+@login_required
+@require_http_methods(['PATCH', 'DELETE'])
+def kpi_edit(request, pk):
+    k = _kpi(request, pk)
+    if request.method == 'DELETE':
+        k.delete()
+        return JsonResponse({'ok': True})
+    d = _body(request)
+    if 'title' in d:
+        k.title = (d['title'] or '').strip()
+    if 'max_score' in d:
+        k.max_score = int(d['max_score'] or 0)
+    if 'description' in d:
+        k.description = d['description'] or ''
+    if 'has_checklist' in d:
+        k.has_checklist = bool(d['has_checklist'])
+    k.save()
+    return JsonResponse(k.to_dict())
+
+
+@login_required
+@require_http_methods(['POST'])
+def kpi_item_create(request, pk):
+    k = _kpi(request, pk)
+    d = _body(request)
+    title = (d.get('title') or '').strip()
+    if not title:
+        return JsonResponse({'detail': 'عنوان آیتم لازم است'}, status=400)
+    it = KPIChecklistItem.objects.create(
+        kpi=k, title=title, score=int(d.get('score') or 0),
+        description=d.get('description', ''), order=k.items.count())
+    return JsonResponse({'id': it.id, 'kpi': k.to_dict()}, status=201)
+
+
+@login_required
+@require_http_methods(['PATCH', 'DELETE'])
+def kpi_item_edit(request, pk):
+    it = get_object_or_404(KPIChecklistItem, pk=pk, kpi__type_def__organization=request.organization)
+    if request.method == 'DELETE':
+        kpi = it.kpi
+        it.delete()
+        return JsonResponse({'ok': True, 'kpi': kpi.to_dict()})
+    d = _body(request)
+    if 'title' in d:
+        it.title = (d['title'] or '').strip()
+    if 'score' in d:
+        it.score = int(d['score'] or 0)
+    if 'description' in d:
+        it.description = d['description'] or ''
+    it.save()
+    return JsonResponse({'ok': True, 'kpi': it.kpi.to_dict()})

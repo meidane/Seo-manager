@@ -50,6 +50,38 @@
       <button class="btn btn-p" id="nf-add">افزودن فیلد</button>
     </div>
   </section>
+
+  {# ── KPIها (شاخص‌های کیفیت) ── #}
+  <section class="card glass" style="margin-top:14px">
+    <div class="card-h"><h3>KPIها — شاخص‌های کیفیت</h3><div class="side-c"><button class="btn btn-sm btn-p" id="add-kpi">＋ KPI</button></div></div>
+    <div style="padding:12px 14px" id="kpi-list">
+      {% for k in kpis %}
+        <div class="kpi-item" data-kpi="{{ k.id }}">
+          <div class="kpi-head">
+            <b>{{ k.title }}</b>
+            <span class="tag t-mute">سقف: {{ k.cap|fa_digits }}</span>
+            {% if k.has_checklist %}<span class="tag t-info" style="font-size:10px">چک‌لیستی</span>{% endif %}
+            {% if k.description %}<i class="kpi-info" title="توضیحات" data-desc="{{ k.description }}" style="cursor:pointer">ℹ️</i>{% endif %}
+            <span class="kpi-tools">
+              <i class="kpi-edit" data-id="{{ k.id }}" data-title="{{ k.title }}" data-max="{{ k.max_score }}" data-desc="{{ k.description }}" data-cl="{{ k.has_checklist|yesno:'1,0' }}">✏️</i>
+              <i class="kpi-del" data-id="{{ k.id }}">🗑</i>
+            </span>
+          </div>
+          {% if k.has_checklist %}
+            <div class="kpi-items">
+              {% for it in k.items.all %}
+                <div class="kpi-ci"><span>{{ it.title }} <b>({{ it.score|fa_digits }})</b>{% if it.description %} <i class="kpi-info" data-desc="{{ it.description }}" style="cursor:pointer">ℹ️</i>{% endif %}</span>
+                  <i class="ci-del" data-id="{{ it.id }}" style="cursor:pointer;opacity:.6">×</i></div>
+              {% endfor %}
+              <button class="mini ci-add" data-kpi="{{ k.id }}">＋ آیتم چک‌لیست</button>
+            </div>
+          {% endif %}
+        </div>
+      {% empty %}
+        <div class="zero">هنوز KPI تعریف نشده — مثلاً «تصویر» (سقف ۵) و «محتوا» (چک‌لیستی).</div>
+      {% endfor %}
+    </div>
+  </section>
 </div>
 {% endblock %}
 
@@ -86,6 +118,45 @@ document.getElementById('nf-add').onclick=async()=>{
 document.addEventListener('click',async e=>{
   const b=e.target.closest('.f-del'); if(!b)return;
   if(await App.confirm('این فیلد حذف شود؟')){await App.fetchJSON(`/settings/task-types/api/fields/${b.dataset.id}/`,{method:'DELETE'});b.closest('tr').remove();App.toast('حذف شد','ok');}
+});
+
+// ── KPIها ──
+function kpiModal(d){
+  d=d||{};
+  App.openModal(`<div class="modal-h"><h3>${d.id?'ویرایش KPI':'KPI جدید'}</h3><button class="x" onclick="App.closeModal()">×</button></div>
+    <div class="modal-b">
+      <div class="grid2"><div class="field"><label>عنوان</label><input class="input" id="k-title" value="${d.title||''}"></div>
+        <div class="field"><label>حداکثر امتیاز (بدون چک‌لیست)</label><input class="input" id="k-max" type="number" dir="ltr" value="${d.max||10}"></div></div>
+      <div class="field"><label>توضیحات (پشت آیکن ℹ نمایش داده می‌شود)</label><textarea class="input" id="k-desc" rows="2">${d.desc||''}</textarea></div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="k-cl" ${d.cl=='1'?'checked':''} style="width:auto"> چک‌لیستی (امتیاز = جمع آیتم‌های تیک‌خورده)</label>
+    </div>
+    <div class="modal-f"><button class="btn btn-p" id="k-save">ذخیره</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+  document.getElementById('k-save').onclick=async()=>{
+    const title=document.getElementById('k-title').value.trim(); if(!title){App.toast('عنوان لازم است','warn');return;}
+    const body={title,max_score:+document.getElementById('k-max').value||0,description:document.getElementById('k-desc').value.trim(),has_checklist:document.getElementById('k-cl').checked};
+    try{ if(d.id) await App.fetchJSON(`/settings/task-types/api/kpi/${d.id}/`,{method:'PATCH',body});
+         else await App.fetchJSON(`/settings/task-types/api/${TID}/kpis/`,{method:'POST',body});
+         location.reload(); }catch(_){}
+  };
+}
+document.getElementById('add-kpi').onclick=()=>kpiModal(null);
+document.getElementById('kpi-list').addEventListener('click',async e=>{
+  const info=e.target.closest('.kpi-info'), ed=e.target.closest('.kpi-edit'), del=e.target.closest('.kpi-del'),
+        add=e.target.closest('.ci-add'), cid=e.target.closest('.ci-del');
+  if(info){ App.openModal(`<div class="modal-h"><h3>توضیحات</h3><button class="x" onclick="App.closeModal()">×</button></div><div class="modal-b"><div class="rich">${info.dataset.desc}</div></div><div class="modal-f"><button class="btn btn-p" onclick="App.closeModal()">فهمیدم</button></div>`); }
+  if(ed){ kpiModal({id:ed.dataset.id,title:ed.dataset.title,max:ed.dataset.max,desc:ed.dataset.desc,cl:ed.dataset.cl}); }
+  if(del){ if(await App.confirm('این KPI حذف شود؟')){await App.fetchJSON(`/settings/task-types/api/kpi/${del.dataset.id}/`,{method:'DELETE'});location.reload();} }
+  if(add){ const kid=add.dataset.kpi;
+    App.openModal(`<div class="modal-h"><h3>آیتم چک‌لیست</h3><button class="x" onclick="App.closeModal()">×</button></div>
+      <div class="modal-b"><div class="grid2"><div class="field"><label>عنوان</label><input class="input" id="ci-t"></div>
+        <div class="field"><label>امتیاز</label><input class="input" id="ci-s" type="number" dir="ltr" value="1"></div></div>
+        <div class="field"><label>توضیحات (اختیاری)</label><textarea class="input" id="ci-d" rows="2"></textarea></div></div>
+      <div class="modal-f"><button class="btn btn-p" id="ci-save">افزودن</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+    document.getElementById('ci-save').onclick=async()=>{ const t=document.getElementById('ci-t').value.trim(); if(!t){App.toast('عنوان لازم است','warn');return;}
+      try{ await App.fetchJSON(`/settings/task-types/api/kpi/${kid}/items/`,{method:'POST',body:{title:t,score:+document.getElementById('ci-s').value||0,description:document.getElementById('ci-d').value.trim()}}); location.reload(); }catch(_){}
+    };
+  }
+  if(cid){ if(await App.confirm('این آیتم حذف شود؟')){await App.fetchJSON(`/settings/task-types/api/kpi-item/${cid.dataset.id}/`,{method:'DELETE'});location.reload();} }
 });
 </script>
 {% endblock %}

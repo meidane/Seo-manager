@@ -6,7 +6,7 @@
   </div>
   {% if not c.dim %}<button class="cell-add" data-jdate="{{ c.jdate }}" title="تسک جدید در این روز">＋</button>{% endif %}
   {% for t in c.tasks|slice:":5" %}
-    <span class="tk{% if t.done %} done{% endif %}" draggable="true" data-id="{{ t.id }}" data-open-task="{{ t.id }}"
+    <span class="tk{% if t.done %} done{% endif %}{% if t.is_placeholder %} placeholder{% endif %}" draggable="true" data-id="{{ t.id }}" data-open-task="{{ t.id }}"
       {% if not t.done %}style="background:rgba({{ t.color }},.15);border-right:3px solid rgb({{ t.color }});color:rgb({{ t.color }})"{% endif %}>
       {% if t.avatar %}<img class="tk-av" src="{{ t.avatar }}" alt="">{% else %}<span class="tk-av" style="background:{{ t.a_color }}">{{ t.initials }}</span>{% endif %}
       <span class="tk-tx">{{ t.type_label }}: {{ t.title }}</span>{% if not t.done %}<span class="tk-t">{{ t.time }}</span>{% endif %}</span>

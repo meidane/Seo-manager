@@ -15,6 +15,17 @@
   خالی = کاملاً سفارشی. `seed_task_types` انواع پیش‌فرض را می‌سازد (اجرای مکرر ایمن).
   مودال از `form_data.customTypes` درایو می‌شود؛ انتخاب نوع → `task_type=builtin_key||other`
   + `type_def=id` + فیلدهای سفارشی. `TaskTypeDef.schema()` → لیست فیلد.
+- **TaskTypeKPI / KPIChecklistItem / TaskKPIScore** — شاخص‌های کیفیتِ هر نوع تسک.
+  KPI با/بدون چک‌لیست؛ `cap` = جمع آیتم‌ها (چک‌لیستی) یا `max_score`. مدیر در بازبینی
+  امتیاز می‌دهد (`TaskKPIScore`، unique(task,kpi)). کارمند در مودال فقط‌خواندنی می‌بیند.
+  مدیریت در صفحه‌ی نوع تسک؛ API در `type_views.py` (`kpi_*`). امتیازدهی/نمایش: `api.py`
+  (`task_kpis` GET، `task_kpi_score` POST). دکمه‌ی «★ امتیاز کیفیت» در `review.html`.
+- **RecurrenceRule** (+ `Task.recurrence`, `Task.is_placeholder`) — تکرارِ تنبل: همیشه
+  «۱ واقعی + ۱ پیش‌نما». منطق در `recurrence.py` (`start_series`, `advance`, `create_placeholder`).
+  با done شدنِ تسکِ واقعی، پیش‌نما واقعی و پیش‌نمای بعدی ساخته می‌شود (در `task_status` و
+  `task_detail` PATCH، فقط در گذارِ به done). **`Task.objects` پیش‌نماها را پنهان می‌کند**
+  (`TaskManager`)؛ تقویم با `Task.objects.with_placeholders()` نشانشان می‌دهد (کلاس `.placeholder`).
+  حذف سری: `api.recurrence_delete` (تسک‌های done می‌مانند). ساخت: نوار تکرار در مودال (تسک جدید).
 - **TaskComment** — «گزارشِ کار» ته مودال تسک (body = HTML پاکسازی‌شده). API:
   `comments/` (GET/POST) + `comment/<id>/` (PATCH/DELETE؛ فقط نویسنده یا ادمین). در tasks.js:
   `initReports(id)` ادیتور دوم TinyMCE (`#f-report`) + لیست ساده با آیکن ویرایش/حذف.
