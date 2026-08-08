@@ -20,3 +20,14 @@ db.sqlite3-journal
 .DS_Store
 .idea/
 .vscode/
+/source/Lib/site-packages
+source/pyvenv.cfg
+source/Scripts/activate
+source/Scripts/activate.bat
+source/Scripts/Activate.ps1
+source/Scripts/deactivate.bat
+source/Scripts/pip.exe
+source/Scripts/pip3.10.exe
+source/Scripts/pip3.exe
+source/Scripts/python.exe
+source/Scripts/pythonw.exe
