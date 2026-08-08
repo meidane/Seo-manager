@@ -16,5 +16,6 @@ urlpatterns = [
     path('api/<int:pk>/status/', api.task_status, name='api_status'),
     path('api/<int:pk>/review/', api.task_review, name='api_review'),
     path('api/<int:pk>/comments/', api.task_comments, name='api_comments'),
+    path('api/comment/<int:pk>/', api.task_comment_edit, name='api_comment_edit'),
     path('api/bulk/', api.task_bulk, name='api_bulk'),
 ]

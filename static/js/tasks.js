@@ -77,6 +77,17 @@
         ${field('link_count', 'تعداد لینک', `<input id="f-link_count" class="input" type="number" value="${t.link_count || ''}">`)}
       </div>
       ${field('description', 'توضیحات', `<textarea id="f-description" class="rich-editor" rows="3">${esc(t.description)}</textarea>`)}
+
+      <!-- گزارش کار (فقط برای تسک موجود) -->
+      ${t.id ? `<div class="report-sec">
+        <label style="font-weight:700">گزارش</label>
+        <textarea id="f-report" class="rich-editor" rows="3"></textarea>
+        <div style="margin-top:6px;display:flex;gap:8px;align-items:center">
+          <button type="button" class="btn btn-sm btn-p" id="report-send">ارسال گزارش</button>
+          <button type="button" class="btn btn-sm" id="report-cancel" style="display:none">لغو ویرایش</button>
+        </div>
+        <div id="report-list" class="report-list"></div>
+      </div>` : ''}
     </div>
     <div class="modal-f">
       <button class="btn btn-p" id="t-save">ذخیره</button>
@@ -160,6 +171,65 @@
     return p;
   }
 
+  // ── بخش «گزارش» ته مودال تسک (ادیتور TinyMCE + لیست ساده + ویرایش/حذف) ──
+  function reportItemHtml(r) {
+    const tools = r.mine ? `<span class="report-tools">
+        <i class="rep-edit" data-id="${r.id}" title="ویرایش">✏️</i>
+        <i class="rep-del" data-id="${r.id}" title="حذف">🗑</i></span>` : '';
+    return `<div class="report-item" data-id="${r.id}">
+        <div class="report-meta">${esc(r.author)}${r.author ? ' · ' : ''}${esc(r.at)}${tools}</div>
+        <div class="rich report-body">${r.body}</div></div>`;
+  }
+
+  function initReports(id) {
+    if (window.RichText) RichText.init('#f-report');
+    let editingId = null;
+    const listEl = document.getElementById('report-list');
+    const sendBtn = document.getElementById('report-send');
+    const cancelBtn = document.getElementById('report-cancel');
+    if (!listEl || !sendBtn) return;
+    const getBody = () => { if (window.RichText) RichText.save(); const e = document.getElementById('f-report'); return e ? e.value : ''; };
+    const setBody = (html) => {
+      const e = document.getElementById('f-report'); if (!e) return;
+      const ed = window.tinymce && window.tinymce.get(e.id);
+      if (ed) ed.setContent(html || ''); else e.value = html || '';
+    };
+    function reset() { editingId = null; setBody(''); sendBtn.textContent = 'ارسال گزارش'; cancelBtn.style.display = 'none'; }
+    async function load() {
+      try {
+        const d = await App.fetchJSON(`/tasks/api/${id}/comments/`);
+        listEl.innerHTML = d.comments.length
+          ? d.comments.map(reportItemHtml).join('')
+          : '<div class="report-empty">هنوز گزارشی ثبت نشده</div>';
+      } catch (_) {}
+    }
+    sendBtn.onclick = async () => {
+      const body = getBody().trim();
+      if (!body || body === '<p></p>') { App.toast('متن گزارش لازم است', 'warn'); return; }
+      try {
+        if (editingId) await App.fetchJSON(`/tasks/api/comment/${editingId}/`, { method: 'PATCH', body: { body } });
+        else await App.fetchJSON(`/tasks/api/${id}/comments/`, { method: 'POST', body: { body } });
+        reset(); App.toast('گزارش ثبت شد', 'ok'); load();
+      } catch (_) {}
+    };
+    cancelBtn.onclick = reset;
+    listEl.onclick = async (e) => {
+      const ed = e.target.closest('.rep-edit');
+      const del = e.target.closest('.rep-del');
+      if (ed) {
+        const item = ed.closest('.report-item');
+        editingId = ed.dataset.id;
+        setBody(item.querySelector('.report-body').innerHTML);
+        sendBtn.textContent = 'ذخیره ویرایش'; cancelBtn.style.display = '';
+        document.getElementById('f-report').scrollIntoView({ block: 'center' });
+      }
+      if (del && await App.confirm('این گزارش حذف شود؟')) {
+        try { await App.fetchJSON(`/tasks/api/comment/${del.dataset.id}/`, { method: 'DELETE' }); if (editingId === del.dataset.id) reset(); load(); } catch (_) {}
+      }
+    };
+    load();
+  }
+
   async function openTask(id, prefill) {
     await ensureCfg();
     if (!id && (!cfg.projects || !cfg.projects.length)) {
@@ -181,6 +251,7 @@
       document.querySelectorAll('[data-fix-item]').forEach((el, i) => { if (i > 0) el.style.display = ''; });
       histBtn.style.display = 'none';
     };
+    if (id) initReports(id);  // بخش گزارش کار (فقط تسک موجود)
 
     const save = async (again) => {
       const payload = collect();

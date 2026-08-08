@@ -15,7 +15,9 @@
   خالی = کاملاً سفارشی. `seed_task_types` انواع پیش‌فرض را می‌سازد (اجرای مکرر ایمن).
   مودال از `form_data.customTypes` درایو می‌شود؛ انتخاب نوع → `task_type=builtin_key||other`
   + `type_def=id` + فیلدهای سفارشی. `TaskTypeDef.schema()` → لیست فیلد.
-- **TaskComment**.
+- **TaskComment** — «گزارشِ کار» ته مودال تسک (body = HTML پاکسازی‌شده). API:
+  `comments/` (GET/POST) + `comment/<id>/` (PATCH/DELETE؛ فقط نویسنده یا ادمین). در tasks.js:
+  `initReports(id)` ادیتور دوم TinyMCE (`#f-report`) + لیست ساده با آیکن ویرایش/حذف.
 - **TaskReviewNote** — تاریخچه‌ی «نیاز به اصلاح» (note HTML، author، created_at؛ جدیدترین اول).
 
 ## فایل‌ها

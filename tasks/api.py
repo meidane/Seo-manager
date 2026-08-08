@@ -289,17 +289,50 @@ def task_bulk(request):
     return JsonResponse({'ok': True, 'count': len(ids)})
 
 
+def _comment_dict(c, user):
+    """یک گزارش (کامنت) برای فرانت؛ `mine` = قابل ویرایش/حذف توسط کاربر فعلی."""
+    from django.utils import timezone as _tz
+    from core.jalali import format_jalali
+    lt = _tz.localtime(c.created_at)
+    return {
+        'id': c.id,
+        'author': (c.author.get_full_name() or c.author.get_username()) if c.author else '',
+        'body': c.body,
+        'at': format_jalali(lt) + ' ' + lt.strftime('%H:%M'),
+        'mine': bool(c.author_id == user.id or user.is_staff),
+    }
+
+
 @login_required
 @require_http_methods(['GET', 'POST'])
 def task_comments(request, pk):
+    """گزارش‌های کار روی یک تسک (لیست/افزودن). بدنه HTML (TinyMCE) پاکسازی می‌شود."""
     task = get_object_or_404(Task, pk=pk)
     if request.method == 'GET':
-        items = [{'author': str(c.author), 'body': c.body,
-                  'at': c.created_at.strftime('%Y-%m-%d %H:%M')} for c in task.comments.all()]
+        items = [_comment_dict(c, request.user) for c in task.comments.select_related('author')]
         return JsonResponse({'comments': items})
-    body = _body(request).get('body', '').strip()
+    from core.htmlsan import clean_html
+    body = clean_html(_body(request).get('body', '')).strip()
     if not body:
-        return JsonResponse({'detail': 'متن لازم است'}, status=400)
+        return JsonResponse({'detail': 'متن گزارش لازم است'}, status=400)
     c = TaskComment.objects.create(task=task, author=request.user, body=body)
-    return JsonResponse({'author': str(c.author), 'body': c.body,
-                         'at': c.created_at.strftime('%Y-%m-%d %H:%M')}, status=201)
+    return JsonResponse(_comment_dict(c, request.user), status=201)
+
+
+@login_required
+@require_http_methods(['PATCH', 'DELETE'])
+def task_comment_edit(request, pk):
+    """ویرایش/حذف یک گزارش — فقط نویسنده یا کاربر ادمین."""
+    c = get_object_or_404(TaskComment, pk=pk)
+    if not (c.author_id == request.user.id or request.user.is_staff):
+        return JsonResponse({'detail': 'اجازه‌ی این کار را نداری'}, status=403)
+    if request.method == 'DELETE':
+        c.delete()
+        return JsonResponse({'ok': True})
+    from core.htmlsan import clean_html
+    body = clean_html(_body(request).get('body', '')).strip()
+    if not body:
+        return JsonResponse({'detail': 'متن گزارش لازم است'}, status=400)
+    c.body = body
+    c.save(update_fields=['body'])
+    return JsonResponse(_comment_dict(c, request.user))
