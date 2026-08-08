@@ -263,6 +263,25 @@ class TaskTypeField(models.Model):
         }
 
 
+class TaskReviewNote(models.Model):
+    """تاریخچه‌ی «نیاز به اصلاح» — هر بار که مدیر تسک را برای اصلاح برمی‌گرداند،
+    یک رکورد جدید ثبت می‌شود تا سوابق قبلی (ممکن است ۲–۳ بار) هم قابل‌مشاهده بماند.
+    آخرین رکورد همان مقدار `Task.review_note` هم هست (برای سازگاری/دسترسی سریع)."""
+
+    task = models.ForeignKey(Task, verbose_name='تسک', on_delete=models.CASCADE, related_name='review_notes')
+    note = models.TextField('یادداشت نیاز به اصلاح')  # HTML پاکسازی‌شده
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name='بازبین', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    created_at = models.DateTimeField('زمان', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'یادداشت بازبینی تسک'
+        verbose_name_plural = 'یادداشت‌های بازبینی تسک'
+        ordering = ['-created_at']  # جدیدترین اول
+
+    def __str__(self):
+        return f'اصلاحِ تسک {self.task_id}'
+
+
 class TaskComment(models.Model):
     task = models.ForeignKey(Task, verbose_name='تسک', on_delete=models.CASCADE, related_name='comments')
     author = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name='نویسنده', on_delete=models.SET_NULL, null=True)

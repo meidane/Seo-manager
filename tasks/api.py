@@ -153,6 +153,7 @@ def task_detail(request, pk):
             'anchor_text': task.anchor_text, 'target_url': task.target_url,
             'link_type': task.link_type, 'link_count': task.link_count,
             'review_status': task.review_status, 'review_note': task.review_note,
+            'review_notes': _review_notes(task),
             'type_def': task.type_def_id, 'custom': task.custom or {},
         })
         return JsonResponse(d)
@@ -204,8 +205,10 @@ def task_review(request, pk):
         return JsonResponse({'detail': 'وضعیت بازبینی نامعتبر'}, status=400)
     from core.htmlsan import clean_html
     task.review_status = status
+    note_html = ''
     if 'review_note' in data:
-        task.review_note = clean_html(data['review_note'])
+        note_html = clean_html(data['review_note'])
+        task.review_note = note_html
     task.reviewed_by = request.user
     task.reviewed_at = timezone.now()
     fields = ['review_status', 'review_note', 'reviewed_by', 'reviewed_at', 'updated_at']
@@ -215,7 +218,26 @@ def task_review(request, pk):
         task.done_date = None
         fields += ['status', 'done_date']
     task.save(update_fields=fields)
+    # ثبت در تاریخچه‌ی نیاز به اصلاح (فقط وقتی needs_fix با یادداشت است)
+    if status == Task.NEEDS_FIX and note_html:
+        from .models import TaskReviewNote
+        TaskReviewNote.objects.create(task=task, note=note_html, author=request.user)
     return JsonResponse({'ok': True, 'review_status': task.review_status, 'status': task.status})
+
+
+def _review_notes(task):
+    """تاریخچه‌ی نیاز به اصلاح برای مودال (جدیدترین اول)."""
+    from django.utils import timezone as _tz
+    from core.jalali import format_jalali
+    out = []
+    for n in task.review_notes.select_related('author'):
+        lt = _tz.localtime(n.created_at)
+        out.append({
+            'note': n.note,
+            'author': n.author.get_full_name() or n.author.get_username() if n.author else '',
+            'when': format_jalali(lt) + ' ' + lt.strftime('%H:%M'),
+        })
+    return out
 
 
 def _next_workday(d: date, holidays: set) -> date:

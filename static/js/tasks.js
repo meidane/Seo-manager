@@ -34,6 +34,7 @@
     return `
     <div class="modal-h"><h3>${t.id ? 'ویرایش تسک' : 'تسک جدید'}</h3><button class="x" onclick="App.closeModal()">×</button></div>
     <div class="modal-b" id="tform">
+      ${reviewNotesHtml(t)}
       <div class="grid3">
         ${field('project', 'پروژه', `<select id="f-project">${cfg.projects.map(([v, l]) => opt(v, l, t.project_id)).join('')}</select>`)}
         ${field('assignee', 'مسئول', `<select id="f-assignee"><option value="">—</option>${cfg.colleagues.map(([v, l]) => opt(v, l, t.assignee_id)).join('')}</select>`)}
@@ -86,6 +87,19 @@
   }
 
   function esc(v) { return (v == null ? '' : String(v)).replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+
+  // ── جعبه‌ی «موارد نیاز به اصلاح» بالای مودال + تاریخچه (جدیدترین باز، قبلی‌ها جمع) ──
+  function reviewNotesHtml(t) {
+    const ns = (t && t.review_notes) || [];
+    if (!ns.length) return '';
+    // note از سرور با clean_html پاکسازی شده؛ درج مستقیم HTML امن است
+    const item = (n, i) => `<div class="fixnote-item" data-fix-item${i > 0 ? ' style="display:none"' : ''}>
+        <div class="fixnote-meta">${esc(n.author)}${n.author ? ' · ' : ''}${esc(n.when)}${i === 0 ? ' <b>(آخرین)</b>' : ''}</div>
+        <div class="rich">${n.note}</div></div>`;
+    const more = ns.length > 1
+      ? `<button type="button" class="mini" id="fix-hist-toggle" style="margin-top:6px">نمایش سوابق قبلی (${ns.length - 1})</button>` : '';
+    return `<div class="fixnote-box"><div class="fixnote-h">⚠ موارد نیاز به اصلاح</div>${ns.map(item).join('')}${more}</div>`;
+  }
 
   // ── رندر فیلدهای سفارشی یک نوع ──
   function renderCustom(t, values) {
@@ -162,6 +176,11 @@
     document.getElementById('f-task_type').addEventListener('change', () => applyVisibility(loaded));
     applyVisibility(loaded);
     if (window.RichText) RichText.init('#f-description');  // ادیتور غنی توضیحات
+    const histBtn = document.getElementById('fix-hist-toggle');  // باز کردن سوابق قبلی نیاز به اصلاح
+    if (histBtn) histBtn.onclick = () => {
+      document.querySelectorAll('[data-fix-item]').forEach((el, i) => { if (i > 0) el.style.display = ''; });
+      histBtn.style.display = 'none';
+    };
 
     const save = async (again) => {
       const payload = collect();
@@ -200,21 +219,11 @@
   }
   window.openFixModal = openFixModal;
 
-  // ── نمایش موارد نیاز به اصلاح (تگ کنار عنوان) ──
-  async function showFixNote(id) {
-    try {
-      const t = await App.fetchJSON(`/tasks/api/${id}/`);
-      App.openModal(
-        `<div class="modal-h"><h3>موارد نیاز به اصلاح</h3><button class="x" onclick="App.closeModal()">×</button></div>
-         <div class="modal-b"><div class="rich">${t.review_note || '<span style="color:var(--text-faint)">توضیحی ثبت نشده</span>'}</div></div>
-         <div class="modal-f"><button class="btn btn-p" onclick="App.closeModal()">فهمیدم</button>
-           <button class="btn" onclick="App.closeModal();window.openTask(${id})">باز کردن تسک</button></div>`);
-    } catch (_) {}
-  }
-  window.showFixNote = showFixNote;
+  // ── کلیک روی تگ «نیاز به اصلاح» → مودالِ تسک باز می‌شود؛ موارد و تاریخچه بالای همان مودال
+  //    نمایش داده می‌شوند (دیگر مودال‌روی‌مودال نداریم). ──
   document.addEventListener('click', (e) => {
     const t = e.target.closest('[data-fix-note]');
-    if (t) { e.stopPropagation(); showFixNote(t.dataset.fixNote); }
+    if (t) { e.stopImmediatePropagation(); e.preventDefault(); openTask(t.dataset.fixNote); }
   });
 
   // ── تغییر سریع وضعیت از دراپ‌داون ردیف ──

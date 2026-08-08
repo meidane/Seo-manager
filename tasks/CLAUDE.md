@@ -16,6 +16,7 @@
   مودال از `form_data.customTypes` درایو می‌شود؛ انتخاب نوع → `task_type=builtin_key||other`
   + `type_def=id` + فیلدهای سفارشی. `TaskTypeDef.schema()` → لیست فیلد.
 - **TaskComment**.
+- **TaskReviewNote** — تاریخچه‌ی «نیاز به اصلاح» (note HTML، author، created_at؛ جدیدترین اول).
 
 ## فایل‌ها
 - `api.py` — همه‌ی API JSON. **`apply_fields` منبع واحد ذخیره‌ی فیلد است.**
@@ -43,7 +44,11 @@
 ## بازبینی (review)
 `task_review`: `needs_fix` → تسک از `done` به `doing` برمی‌گردد و `done_date` پاک می‌شود؛
 `review_note` (HTML، پاکسازی با clean_html) با مودال TinyMCE نوشته می‌شود. در لیست، تگ
-«⚠ نیاز به اصلاح» کنار عنوان (`data-fix-note`) → `showFixNote(id)` نوت را نشان می‌دهد.
+«⚠ نیاز به اصلاح» کنار عنوان (`data-fix-note`) → کلیک، **مودالِ خودِ تسک** را باز می‌کند
+(دیگر مودال‌روی‌مودال نیست). موارد و تاریخچه بالای مودال در جعبه‌ی `.fixnote-box` می‌آیند.
+**تاریخچه:** هر بار `needs_fix` با یادداشت → یک رکورد **`TaskReviewNote`** (جدیدترین اول).
+`task_detail` آن‌ها را در `review_notes` می‌فرستد؛ `reviewNotesHtml(t)` در tasks.js رندر می‌کند
+(آخرین باز، قبلی‌ها با دکمه‌ی «سوابق قبلی» جمع).
 **چرخه:** تسکِ `needs_fix` وقتی دوباره `done` شود، `review_status` به `unreviewed`
 برمی‌گردد (بازبینی مجدد مدیر) — در `task_status` و `apply_fields` هر دو.
 

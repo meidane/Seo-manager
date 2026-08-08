@@ -516,3 +516,10 @@ table.sheet tr:hover td{background:rgba(255,255,255,.02)}
 
 /* عکس‌های محتوای غنی (توضیحات تسک/گزارش/بازبینی) هرگز از عرض جعبه بیرون نزنند */
 .rich img,#r-desc img,[data-item-desc] img,[contenteditable] img{max-width:100%;height:auto;border-radius:6px}
+
+/* جعبه‌ی «موارد نیاز به اصلاح» بالای مودال تسک + تاریخچه */
+.fixnote-box{background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.35);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:14px}
+.fixnote-h{color:#FDBA8C;font-weight:700;font-size:13px;margin-bottom:6px}
+.fixnote-item{padding:7px 0;border-top:1px dashed var(--stroke-soft)}
+.fixnote-item[data-fix-item]:first-of-type{border-top:0}
+.fixnote-meta{font-size:11px;color:var(--text-faint);margin-bottom:3px}
