@@ -44,10 +44,8 @@ class Task(TimeStampedModel):
     TODO = 'todo'
     DOING = 'doing'
     DONE = 'done'
-    CANCELLED = 'cancelled'
     STATUS_CHOICES = [
-        (TODO, 'در انتظار'), (DOING, 'در حال انجام'),
-        (DONE, 'انجام شده'), (CANCELLED, 'لغو شده'),
+        (TODO, 'در انتظار'), (DOING, 'در حال انجام'), (DONE, 'انجام شده'),
     ]
 
     LOW = 'low'

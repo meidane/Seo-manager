@@ -34,7 +34,7 @@ PRESET_LABELS = {
     'custom': 'دلخواه',
 }
 
-DEFAULT_RANGE = '30'
+DEFAULT_RANGE = 'this_month'
 
 
 def _resolve_preset(key: str, ref: date) -> tuple[date, date]:
@@ -59,7 +59,7 @@ def _resolve_preset(key: str, ref: date) -> tuple[date, date]:
         # پایان ماه گذشته = یک روز قبل از اول ماه جاری
         this_start = j2g(jt.year, jt.month, 1)
         return start, this_start - timedelta(days=1)
-    days = PRESETS.get(key, PRESETS[DEFAULT_RANGE])
+    days = PRESETS.get(key, 30)
     return ref - timedelta(days=days), ref
 
 

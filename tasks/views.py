@@ -49,7 +49,6 @@ class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
             'todo': qs.filter(status=Task.TODO),
             'doing': qs.filter(status=Task.DOING),
             'done': qs.filter(status=Task.DONE),
-            'cancelled': qs.filter(status=Task.CANCELLED),
         }
         ctx['projects'] = Project.objects.filter(status=Project.ACTIVE)
         ctx['colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)

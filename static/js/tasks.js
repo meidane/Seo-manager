@@ -46,7 +46,7 @@
       ${field('title', 'عنوان', `<input id="f-title" class="input" value="${esc(t.title)}">`)}
       <div class="grid3">
         ${field('planned_date', 'تاریخ برنامه (شمسی)', `<input id="f-planned_date" class="input jdate" dir="ltr" readonly placeholder="۱۴۰۵/۰۵/۱۵" value="${t.planned_date_fa || ''}">`)}
-        ${field('status', 'وضعیت', `<select id="f-status"><option value="todo">در انتظار</option><option value="doing">در حال انجام</option><option value="done">انجام شده</option><option value="cancelled">لغو شده</option></select>`)}
+        ${field('status', 'وضعیت', `<select id="f-status"><option value="todo">در انتظار</option><option value="doing">در حال انجام</option><option value="done">انجام شده</option></select>`)}
         ${field('estimate_minutes', 'تخمین زمان (دقیقه)', `<input id="f-estimate_minutes" class="input" type="number" dir="ltr" placeholder="۶۰" value="${t.estimate_minutes || ''}">`)}
       </div>
 
@@ -148,6 +148,10 @@
 
   async function openTask(id, prefill) {
     await ensureCfg();
+    if (!id && (!cfg.projects || !cfg.projects.length)) {
+      App.toast('ابتدا یک پروژه بساز؛ تسک بدون پروژه ثبت نمی‌شود.', 'warn');
+      return;
+    }
     let data = prefill || {};
     if (id) { try { data = await App.fetchJSON(`/tasks/api/${id}/`); } catch (_) { return; } }
     App.openModal(modalHtml(data));

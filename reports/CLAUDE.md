@@ -20,7 +20,9 @@
 - نسخه‌ی عمومی: `/r/<uuid>/` (بدون login؛ `report_public`؛ فقط اگر `is_public`)، تم روشن، چاپ.
 - **پیش‌نمایش مالک:** `/reports/<id>/preview/` (`ReportPreviewView`، login) — همان تمپلیت public،
   بدون نیاز به عمومی‌کردن (`is_preview` بنر می‌گذارد). دکمه‌ی «پیش‌نمایش مشتری» به این می‌رود.
-- تمپلیت‌ها: `list/detail/_groups/public`. توضیحات: contenteditable + آپلود عکس.
+- تمپلیت‌ها: `list/detail/_groups/public`. **توضیحات: TinyMCE (`textarea.rich-editor`)**
+  با دکمه‌ی «ذخیره توضیحات» → PATCH `description`. عکس با کشیدن‌ورهاکردن مستقیم در ادیتور
+  (آپلود به `/api/editor/upload/`). ردیف‌ها هنوز contenteditable inline‌اند.
 
 ## نکات
 - برای مخفی‌کردن فیلد از مشتری فقط `visible_fields` را تغییر بده (نسخه‌ی عمومی همان را می‌خواند).

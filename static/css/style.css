@@ -513,3 +513,6 @@ table.sheet tr:hover td{background:rgba(255,255,255,.02)}
   .topbar{flex-wrap:wrap}
 }
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* عکس‌های محتوای غنی (توضیحات تسک/گزارش/بازبینی) هرگز از عرض جعبه بیرون نزنند */
+.rich img,#r-desc img,[data-item-desc] img,[contenteditable] img{max-width:100%;height:auto;border-radius:6px}

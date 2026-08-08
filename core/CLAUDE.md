@@ -17,4 +17,8 @@
 ## ویوها / دستورها
 - `views.py`: `HolidayListView` (`/settings/holidays/`) + **`editor_upload`** (`/api/editor/upload/`
   در config/urls؛ آپلود عکس ادیتور، فقط تصویر، سقف ۲۰MB).
-- `management/commands/seed_holidays.py` — از `core/data/holidays_<year>.json`.
+- `management/commands/seed_holidays.py` — از `core/data/holidays_<year>.json`. آرگومان
+  انعطاف‌پذیر: `1405` · چند سال `1405 1406` · بازه `1405-1408` · بی‌آرگومان = همه‌ی فایل‌ها.
+  داده‌ی ۱۴۰۵–۱۴۰۸ موجود است (خورشیدی ثابت + قمریِ محاسبه‌شده). **قمری‌ها بر پایه‌ی
+  تقویم رصدیِ ایران (ام‌القری +۱ روز)‌اند و ممکن است ±۱ روز جابه‌جا شوند؛ JSON ویرایش‌پذیر.**
+  اسکریپت تولیدِ داده (یک‌بارمصرف، نیازِ `hijridate`) در تاریخچه هست؛ seed خودش وابستگی ندارد.

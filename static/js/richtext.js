@@ -36,8 +36,12 @@
         plugins: 'lists link image table autoresize code',
         toolbar: 'bold italic | h2 h3 | bullist numlist | link image table | code',
         autoresize_bottom_margin: 12,
-        content_style: 'body{font-family:Vazirmatn,system-ui,sans-serif;font-size:14px;line-height:1.9}',
+        content_style: 'body{font-family:Vazirmatn,system-ui,sans-serif;font-size:14px;line-height:1.9}'
+          + 'img{max-width:100%;height:auto;border-radius:6px}',
         automatic_uploads: true,
+        // کشیدن‌ورهاکردن عکس در خودِ ادیتور + چسباندن عکس از کلیپ‌بورد، مستقیم آپلود می‌شود
+        paste_data_images: true,
+        images_file_types: 'jpeg,jpg,png,gif,webp,svg',
         images_upload_handler: uploadHandler,
         setup: (ed) => { ed.on('change', () => ed.save()); },
       });

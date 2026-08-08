@@ -84,6 +84,9 @@ def apply_fields(task: Task, data: dict):
     # اگر وضعیت به «انجام شده» رفت و done_date خالی بود، امروز را بگذار
     if task.status == Task.DONE and not task.done_date:
         task.done_date = date.today()
+    # تسکِ «نیاز به اصلاح» که دوباره انجام شد → «بررسی‌نشده» (برای بازبینی مجدد مدیر)
+    if task.status == Task.DONE and task.review_status == Task.NEEDS_FIX:
+        task.review_status = Task.UNREVIEWED
 
 
 @login_required
@@ -95,8 +98,12 @@ def form_data(request):
     from projects.models import Project
 
     from .models import TaskTypeDef
+    # همه‌ی پروژه‌ها (فعال‌ها اول) — نه فقط فعال؛ وگرنه اگر پروژه‌ای غیرفعال شود
+    # یا هیچ پروژه‌ی فعالی نباشد، دراپ‌داونِ مودال خالی می‌شود و ذخیره‌ی تسک
+    # با خطای «عنوان و پروژه لازم است» شکست می‌خورد.
+    projects = Project.objects.order_by('status', 'name')  # active قبل از inactive
     return JsonResponse({
-        'projects': [[p.id, p.name] for p in Project.objects.filter(status=Project.ACTIVE)],
+        'projects': [[p.id, p.name] for p in projects],
         'colleagues': [[c.id, c.full_name] for c in Colleague.objects.filter(status=Colleague.ACTIVE)],
         'typeChoices': list(Task.TYPE_CHOICES),
         'customTypes': [
@@ -171,12 +178,18 @@ def task_status(request, pk):
     if new_status not in dict(Task.STATUS_CHOICES):
         return JsonResponse({'detail': 'وضعیت نامعتبر'}, status=400)
     task.status = new_status
+    fields = ['status', 'done_date', 'updated_at']
     if new_status == Task.DONE and not task.done_date:
         task.done_date = date.today()
+    # تسکی که «نیاز به اصلاح» بوده، با انجام‌شدنِ دوباره به «بررسی‌نشده» برمی‌گردد
+    # تا مدیر دوباره بازبینی کند.
+    if new_status == Task.DONE and task.review_status == Task.NEEDS_FIX:
+        task.review_status = Task.UNREVIEWED
+        fields.append('review_status')
     err = _publish_url_error(task)
     if err:
         return JsonResponse({'detail': err}, status=400)
-    task.save(update_fields=['status', 'done_date', 'updated_at'])
+    task.save(update_fields=fields)
     return JsonResponse(task.to_dict())
 
 

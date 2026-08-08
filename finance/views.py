@@ -291,11 +291,14 @@ def import_confirm(request):
         h = row.get('hash')
         if not h or h in existing:
             continue
+        note = row.get('user_note', '')
         Transaction.objects.create(
             bank_account=bank, date=_dt.date.fromisoformat(row['date']), time=row.get('time', ''),
             description=row.get('description', ''), deposit=row.get('deposit', 0),
             withdrawal=row.get('withdrawal', 0),
-            balance=row.get('balance'), user_note=row.get('user_note', ''),
+            balance=row.get('balance'), user_note=note,
+            # ستون «توضیحات کاربر» اکسل مستقیم در فیلد قابل‌ویرایشِ «توضیحات» می‌نشیند
+            note=note,
             import_hash=h, created_by=request.user)
         existing.add(h)
         created += 1

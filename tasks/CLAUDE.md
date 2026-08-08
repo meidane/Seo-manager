@@ -36,10 +36,21 @@
 ۱) فیلد در `models.py` (+migration) ۲) گروه در `task-schema.js` ۳) لیست مناسب در
 `apply_fields` (TEXT/INT/DECIMAL/CHOICE). برای نمایش در لیست/تقویم، `to_dict` را هم ببین.
 
+## وضعیت‌ها
+`STATUS_CHOICES` = `todo/doing/done` (وضعیت «لغو شده/cancelled» حذف شد — migration 0006
+مقادیر قبلی را به `todo` برمی‌گرداند).
+
 ## بازبینی (review)
 `task_review`: `needs_fix` → تسک از `done` به `doing` برمی‌گردد و `done_date` پاک می‌شود؛
 `review_note` (HTML، پاکسازی با clean_html) با مودال TinyMCE نوشته می‌شود. در لیست، تگ
 «⚠ نیاز به اصلاح» کنار عنوان (`data-fix-note`) → `showFixNote(id)` نوت را نشان می‌دهد.
+**چرخه:** تسکِ `needs_fix` وقتی دوباره `done` شود، `review_status` به `unreviewed`
+برمی‌گردد (بازبینی مجدد مدیر) — در `task_status` و `apply_fields` هر دو.
+
+## نکته‌ی form_data
+`form_data` **همه‌ی** پروژه‌ها را برمی‌گرداند (فعال اول)، نه فقط `ACTIVE`؛ وگرنه اگر
+پروژه غیرفعال شود یا پروژه‌ی فعالی نباشد، دراپ‌داون خالی و ذخیره با «عنوان و پروژه لازم است»
+شکست می‌خورد (باگ رفع‌شده).
 
 ## دستور
 `python manage.py seed_task_types` — ساخت انواع پیش‌فرض قابل‌مدیریت.

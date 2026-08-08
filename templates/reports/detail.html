@@ -26,18 +26,12 @@
     </span>
   </section>
 
-  {# ── توضیحات (ادیتور غنی + آپلود عکس) ── #}
+  {# ── توضیحات (ادیتور غنی TinyMCE + کشیدن‌ورهاکردن مستقیم عکس) ── #}
   <section class="card glass">
     <div class="card-h"><h3>توضیحات</h3>
-      <div class="side-c">
-        <button class="chip" data-cmd="bold"><b>B</b></button>
-        <button class="chip" data-cmd="formatBlock" data-val="h3">عنوان</button>
-        <button class="chip" data-cmd="insertUnorderedList">• لیست</button>
-        <button class="chip" id="r-img">🖼 عکس</button>
-        <input type="file" id="r-file" accept="image/*" hidden>
-      </div>
+      <div class="side-c"><button class="btn btn-sm btn-p" id="r-desc-save">ذخیره توضیحات</button></div>
     </div>
-    <div id="r-desc" contenteditable="true" class="rich" style="padding:16px 18px;min-height:120px;line-height:2;outline:none">{{ report.description|safe }}</div>
+    <div style="padding:12px 14px"><textarea id="r-desc" class="rich-editor" rows="6">{{ report.description }}</textarea></div>
   </section>
 
   {# ── افزودن تسک از بازه ── #}
@@ -70,22 +64,11 @@ const RID = {{ report.pk }};
 const CLIENT_FIELDS = [{% for k,l in client_fields %}["{{ k }}","{{ l|escapejs }}"]{% if not forloop.last %},{% endif %}{% endfor %}];
 const VISIBLE = {{ visible_fields|safe }};
 
-// ── عنوان و توضیحات ──
+// ── عنوان و توضیحات (TinyMCE) ──
 document.getElementById('r-title').addEventListener('blur',e=>App.fetchJSON(`/reports/api/${RID}/update/`,{method:'PATCH',body:{title:e.target.textContent.trim()}}));
 const desc=document.getElementById('r-desc');
-desc.addEventListener('blur',()=>App.fetchJSON(`/reports/api/${RID}/update/`,{method:'PATCH',body:{description:desc.innerHTML}}).then(()=>App.toast('توضیحات ذخیره شد','ok')));
-document.querySelectorAll('[data-cmd]').forEach(b=>b.onclick=e=>{e.preventDefault();document.execCommand(b.dataset.cmd,false,b.dataset.val||null);desc.focus();});
-
-// ── آپلود عکس ──
-document.getElementById('r-img').onclick=()=>document.getElementById('r-file').click();
-document.getElementById('r-file').onchange=async e=>{
-  const f=e.target.files[0]; if(!f)return;
-  const fd=new FormData(); fd.append('file',f);
-  try{ const d=await App.fetchJSON(`/reports/api/${RID}/upload-image/`,{method:'POST',body:fd});
-    desc.focus(); document.execCommand('insertImage',false,d.url);
-    App.fetchJSON(`/reports/api/${RID}/update/`,{method:'PATCH',body:{description:desc.innerHTML}});
-  }catch(_){}
-};
+function saveDesc(){ if(window.RichText)RichText.save(); return App.fetchJSON(`/reports/api/${RID}/update/`,{method:'PATCH',body:{description:desc.value}}); }
+document.getElementById('r-desc-save').onclick=()=>saveDesc().then(()=>App.toast('توضیحات ذخیره شد','ok'));
 
 // ── لینک عمومی ──
 document.getElementById('r-public').onchange=e=>App.fetchJSON(`/reports/api/${RID}/update/`,{method:'PATCH',body:{is_public:e.target.checked}}).then(()=>App.toast(e.target.checked?'لینک فعال شد':'لینک غیرفعال شد','ok'));
