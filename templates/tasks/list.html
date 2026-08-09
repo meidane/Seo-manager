@@ -5,7 +5,6 @@
 {% block content %}
   <div class="page-h"><h1>تسک‌ها</h1>
     <div class="side-c">
-      <div class="range"><button class="on" data-view="list">لیست</button><button data-view="kanban">کانبان</button></div>
       <button class="btn btn-p" id="new-task">＋ تسک جدید</button>
     </div>
   </div>
@@ -25,7 +24,7 @@
   </form>
 
   {# ── لیست ── #}
-  <section class="card glass" data-panel="list">
+  <section class="card glass">
     {% if tasks %}
       <table>
         <thead><tr><th style="width:28px"><input type="checkbox" id="check-all"></th><th>عنوان</th><th>پروژه</th><th>مسئول</th><th>تاریخ برنامه</th><th>تاریخ انجام</th><th>وضعیت</th><th>🔗</th></tr></thead>
@@ -53,25 +52,6 @@
     {% endif %}
   </section>
 
-  {# ── کانبان ── #}
-  <div data-panel="kanban" style="display:none">
-    <div class="kanban">
-      {% for key,label in status_choices %}
-        <section class="card glass kcol">
-          <div class="kcol-h">{{ label }} <span class="cnt">{{ kanban|dictkey:key|length|fa_digits }}</span></div>
-          <div class="kcol-b" data-status="{{ key }}">
-            {% for t in kanban|dictkey:key %}
-              <div class="kcard" draggable="true" data-id="{{ t.id }}" data-open-task="{{ t.id }}">
-                <span class="kt">{{ t.title }}</span>
-                <div class="km"><i class="dot" style="background:rgb({{ t.color_rgb }})"></i>{{ t.project.name }} · {{ t.assignee.full_name|default:"—" }}</div>
-              </div>
-            {% endfor %}
-          </div>
-        </section>
-      {% endfor %}
-    </div>
-  </div>
-
   {# ── نوار عملیات گروهی ── #}
   <div class="glass" id="bulkbar" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);gap:8px;align-items:center;padding:10px 16px;z-index:30">
     <span style="font-size:12.5px;color:var(--text-dim)"><b id="bulk-count">0</b> تسک انتخاب شده</span><span class="sep" style="width:1px;height:20px;background:var(--stroke-soft)"></span>
@@ -79,14 +59,4 @@
     <button class="btn btn-sm" onclick="TaskBulk.shift(-7)">−۱ هفته</button>
     <button class="btn btn-sm" onclick="TaskBulk.done()">علامت انجام‌شده</button>
   </div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-  document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{
-    document.querySelectorAll('[data-view]').forEach(x=>x.classList.remove('on'));b.classList.add('on');
-    document.querySelector('[data-panel="list"]').style.display=b.dataset.view==='list'?'':'none';
-    document.querySelector('[data-panel="kanban"]').style.display=b.dataset.view==='kanban'?'':'none';
-  });
-</script>
 {% endblock %}

@@ -80,9 +80,8 @@
       root.className = 'modal-backdrop';
       root.innerHTML = '<div class="modal glass"></div>';
       document.body.appendChild(root);
-      root.addEventListener('click', (e) => {
-        if (e.target === root) closeModal();
-      });
+      // کلیک بیرونِ مودال آن را نمی‌بندد تا دادهٔ در حال ویرایش/ثبت از دست نرود
+      // (بستن فقط با دکمهٔ × یا انصراف). Esc هم غیرفعال شد تا داده نپرد.
     }
     return root;
   }
@@ -90,16 +89,11 @@
     const root = ensureModalRoot();
     root.querySelector('.modal').innerHTML = html;
     root.classList.add('open');
-    document.addEventListener('keydown', escToClose);
     return root;
   }
   function closeModal() {
     const root = document.getElementById('modal-root');
     if (root) root.classList.remove('open');
-    document.removeEventListener('keydown', escToClose);
-  }
-  function escToClose(e) {
-    if (e.key === 'Escape') closeModal();
   }
 
   /* ── تأیید ── جایگزین confirm بومی با ظاهر شیشه‌ای ── */

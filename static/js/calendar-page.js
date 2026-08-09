@@ -9,7 +9,7 @@
   const q = () => {
     const p = new URLSearchParams({ year, month });
     ['project', 'assignee', 'type'].forEach((k) => {
-      const el = document.getElementById('f-' + k);
+      const el = document.getElementById('cal-f-' + k);
       if (el && el.value) p.set(k, el.value);
     });
     return p.toString();
@@ -50,7 +50,7 @@
   document.getElementById('cal-prev').onclick = prev;
   document.getElementById('cal-next').onclick = next;
   document.getElementById('cal-today').onclick = () => { year = window.CAL_INIT.year; month = window.CAL_INIT.month; load(); };
-  ['f-project', 'f-assignee', 'f-type'].forEach((id) => { const el = document.getElementById(id); if (el) el.onchange = load; });
+  ['cal-f-project', 'cal-f-assignee', 'cal-f-type'].forEach((id) => { const el = document.getElementById(id); if (el) el.onchange = load; });
 
   // ── دکمه‌ی + هر روز → مودال تسک با تاریخ پرشده ──
   grid.addEventListener('click', (e) => {

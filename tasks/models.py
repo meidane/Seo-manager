@@ -225,6 +225,7 @@ class TaskTypeDef(TimeStampedModel):
     # اگر نوع built-in باشد، کلیدش اینجاست (publish/update/...) تا فیلدهای هسته‌ای و
     # آمار داشبورد کار کنند. خالی = نوع کاملاً سفارشی.
     builtin_key = models.CharField('کلید built-in', max_length=20, blank=True)
+    requires_review = models.BooleanField('نیاز به بازبینی دارد', default=False)
 
     organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
     objects = TenantManager()

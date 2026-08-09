@@ -8,6 +8,7 @@
     <a href="{% url 'task_types:list' %}" class="btn btn-sm">← انواع</a>
     <h1 id="t-name" contenteditable="true" style="outline:none;border-bottom:1px dashed transparent" onfocus="this.style.borderColor='var(--stroke)'" onblur="this.style.borderColor='transparent'">{{ type_def.name }}</h1>
     <input type="color" id="t-color" value="{{ type_def.color }}" style="width:40px;height:34px;padding:2px;background:transparent;border:1px solid var(--stroke-soft);border-radius:var(--r-sm);cursor:pointer">
+    <label style="display:flex;align-items:center;gap:7px;cursor:pointer;margin:0;font-size:13px"><input type="checkbox" id="t-review" {% if type_def.requires_review %}checked{% endif %} style="width:auto"> نیاز به بازبینی دارد</label>
     <div class="side-c"><button class="btn" id="t-del" style="color:var(--danger)">حذف نوع</button></div>
   </div>
 
@@ -91,6 +92,7 @@ const TID={{ type_def.pk }};
 // نام و رنگ
 document.getElementById('t-name').addEventListener('blur',e=>App.fetchJSON(`/settings/task-types/api/${TID}/`,{method:'PATCH',body:{name:e.target.textContent.trim()}}));
 document.getElementById('t-color').addEventListener('change',e=>App.fetchJSON(`/settings/task-types/api/${TID}/`,{method:'PATCH',body:{color:e.target.value}}).then(()=>App.toast('ذخیره شد','ok')));
+document.getElementById('t-review').addEventListener('change',e=>App.fetchJSON(`/settings/task-types/api/${TID}/`,{method:'PATCH',body:{requires_review:e.target.checked}}).then(()=>App.toast('ذخیره شد','ok')));
 document.getElementById('t-del').onclick=async()=>{ if(await App.confirm('این نوع و همه‌ی فیلدهایش حذف شوند؟')){await App.fetchJSON(`/settings/task-types/api/${TID}/`,{method:'DELETE'});location.href="{% url 'task_types:list' %}";} };
 
 // نمایش گزینه‌ها فقط برای select

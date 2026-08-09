@@ -411,15 +411,4 @@
   }
   window.TaskBulk = { shift: (d) => bulk('shift_date', { days: d, skip_holidays: true }), done: () => bulk('mark_done', {}) };
 
-  // ── کانبان drag & drop ──
-  document.querySelectorAll('.kcard[draggable]').forEach((c) => c.addEventListener('dragstart', (e) => e.dataTransfer.setData('id', c.dataset.id)));
-  document.querySelectorAll('.kcol-b[data-status]').forEach((col) => {
-    col.addEventListener('dragover', (e) => e.preventDefault());
-    col.addEventListener('drop', async (e) => {
-      e.preventDefault();
-      const id = e.dataTransfer.getData('id');
-      try { await App.fetchJSON(`/tasks/api/${id}/status/`, { method: 'PATCH', body: { status: col.dataset.status } }); location.reload(); }
-      catch (_) {}
-    });
-  });
 })();

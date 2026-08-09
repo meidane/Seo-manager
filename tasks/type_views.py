@@ -78,6 +78,8 @@ def type_edit(request, pk):
             setattr(t, f, d[f])
     if 'is_active' in d:
         t.is_active = bool(d['is_active'])
+    if 'requires_review' in d:
+        t.requires_review = bool(d['requires_review'])
     t.save()
     return JsonResponse({'ok': True})
 

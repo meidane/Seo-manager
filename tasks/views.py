@@ -46,11 +46,6 @@ class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
 
         ctx.update(self.range_context())
         ctx['tasks'] = qs
-        ctx['kanban'] = {
-            'todo': qs.filter(status=Task.TODO),
-            'doing': qs.filter(status=Task.DOING),
-            'done': qs.filter(status=Task.DONE),
-        }
         ctx['projects'] = Project.objects.filter(status=Project.ACTIVE)
         ctx['colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)
         ctx['type_choices'] = Task.TYPE_CHOICES
@@ -67,8 +62,9 @@ class TaskReviewView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        # فقط تسک‌های انجام‌شده‌ای که نوعشان «نیاز به بازبینی» دارد
         qs = Task.objects.select_related('project', 'assignee', 'type_def').filter(
-            status=Task.DONE).exclude(published_url='')
+            status=Task.DONE, type_def__requires_review=True)
         review = self.request.GET.get('review', 'unreviewed')
         if review == 'unreviewed':
             qs = qs.filter(review_status=Task.UNREVIEWED)

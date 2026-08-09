@@ -10,9 +10,9 @@
       <button class="nav-b" id="cal-prev">‹</button>
       <button class="btn btn-sm" id="cal-today">برو به امروز</button>
       <div class="side-c" style="margin-inline-start:auto;display:flex;gap:6px;flex-wrap:wrap">
-        <select id="f-project" style="max-width:150px"><option value="">همه‌ی پروژه‌ها</option>{% for p in projects %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}</select>
-        <select id="f-assignee" style="max-width:150px"><option value="">همه‌ی همکاران</option>{% for c in colleagues %}<option value="{{ c.id }}">{{ c.full_name }}</option>{% endfor %}</select>
-        <select id="f-type" style="max-width:130px"><option value="">همه‌ی انواع</option>{% for v,l in type_choices %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select>
+        <select id="cal-f-project" style="max-width:150px"><option value="">همه‌ی پروژه‌ها</option>{% for p in projects %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}</select>
+        <select id="cal-f-assignee" style="max-width:150px"><option value="">همه‌ی همکاران</option>{% for c in colleagues %}<option value="{{ c.id }}">{{ c.full_name }}</option>{% endfor %}</select>
+        <select id="cal-f-type" style="max-width:130px"><option value="">همه‌ی انواع</option>{% for v,l in type_choices %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select>
       </div>
     </div>
     <div class="grid7">

@@ -16,7 +16,8 @@
       <div class="rev-meta"><span>پروژه: <b>{{ t.project.name }}</b></span><span>نویسنده: <b>{{ t.assignee.full_name|default:"—" }}</b></span><span>تاریخ: <b>{{ t.done_date|jalali_long }}</b></span>{% if t.word_count %}<span>تعداد کلمه: <b>{{ t.word_count|fa_digits }}</b></span>{% endif %}</div>
       {% if t.keywords %}<div class="rev-kw">{% for kw in t.keywords|slice:":120" %}{% endfor %}<span class="tag t-mute">{{ t.keywords }}</span></div>{% endif %}
       <div class="rev-actions">
-        <a href="{{ t.published_url }}" target="_blank" rel="noopener" class="btn btn-p">باز کردن مطلب ↗</a>
+        {% if t.published_url %}<a href="{{ t.published_url }}" target="_blank" rel="noopener" class="btn btn-p">باز کردن مطلب ↗</a>{% endif %}
+        <button class="btn" onclick="window.openTask({{ t.id }})">باز کردن تسک</button>
         <button class="btn" onclick="window.scoreKpis({{ t.id }})" style="border-color:rgba(65,131,242,.4);color:#8FB8FF">★ امتیاز کیفیت</button>
         <button class="btn rev-ok" data-id="{{ t.id }}" style="border-color:rgba(45,212,167,.4);color:#6FE3C4">✓ تایید</button>
         <button class="btn" onclick="window.openFixModal({{ t.id }})" style="border-color:rgba(249,115,22,.4);color:#FDBA8C">⚠ نیاز به اصلاح</button>
