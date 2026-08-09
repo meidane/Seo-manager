@@ -20,32 +20,36 @@ class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
         start, end = self.get_range(self.request)
         g = self.request.GET
 
-        # پیش‌نماهای تکرار (placeholder) فقط در تقویم دیده می‌شوند، نه در لیست/کانبان
-        qs = Task.objects.filter(is_placeholder=False).select_related('project', 'assignee', 'type_def')
-        # بازه فقط وقتی اعمال شود که کاربر «همه» را نخواسته باشد
-        if g.get('all') != '1':
-            qs = qs.filter(planned_date__range=(start, end))
-
+        # پیش‌نماهای تکرار (placeholder) فقط در تقویم دیده می‌شوند، نه در لیست
+        base = Task.objects.filter(is_placeholder=False).select_related('project', 'assignee', 'type_def')
+        # فیلترهای غیر-تاریخی (روی همه اعمال می‌شوند)
         if g.get('project'):
-            qs = qs.filter(project_id=g['project'])
+            base = base.filter(project_id=g['project'])
         if g.get('assignee'):
-            qs = qs.filter(assignee_id=g['assignee'])
+            base = base.filter(assignee_id=g['assignee'])
         if g.get('type'):
-            qs = qs.filter(task_type=g['type'])
+            base = base.filter(task_type=g['type'])
         if g.get('status'):
-            qs = qs.filter(status=g['status'])
+            base = base.filter(status=g['status'])
         if g.get('priority'):
-            qs = qs.filter(priority=g['priority'])
+            base = base.filter(priority=g['priority'])
         if g.get('review'):
-            qs = qs.filter(review_status=g['review'])
+            base = base.filter(review_status=g['review'])
         if g.get('overdue') == '1':
             from datetime import date
-            qs = qs.filter(status__in=[Task.TODO, Task.DOING], planned_date__lt=date.today())
+            base = base.filter(status__in=[Task.TODO, Task.DOING], planned_date__lt=date.today())
         if g.get('q'):
-            qs = qs.filter(title__icontains=g['q'])
+            base = base.filter(title__icontains=g['q'])
 
         ctx.update(self.range_context())
-        ctx['tasks'] = qs
+        if g.get('all') == '1':
+            ctx['tasks'] = base
+            ctx['future_tasks'] = []
+        else:
+            ctx['tasks'] = base.filter(planned_date__range=(start, end))
+            # #۳: تسک‌های آینده (پس از پایانِ بازه، هنوز انجام‌نشده) در انتهای لیست
+            ctx['future_tasks'] = base.filter(planned_date__gt=end).exclude(
+                status=Task.DONE).order_by('planned_date', 'planned_time')[:100]
         ctx['projects'] = Project.objects.filter(status=Project.ACTIVE)
         ctx['colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)
         ctx['type_choices'] = Task.TYPE_CHOICES

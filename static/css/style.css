@@ -543,6 +543,11 @@ table.sheet tr:hover td{background:rgba(255,255,255,.02)}
 .team-tools i{cursor:pointer;font-style:normal;opacity:.6;font-size:12.5px}
 .team-tools i:hover{opacity:1}
 
+/* بازه‌ی دلخواه (دو فیلد شروع/پایان) */
+.range-custom{position:absolute;top:calc(100% + 6px);inset-inline-end:0;z-index:40;display:flex;gap:8px;align-items:flex-end;padding:10px 12px;border-radius:var(--r-sm)}
+.range-custom .field label{font-size:10px;color:var(--text-faint)}
+.range-custom .input{max-width:120px;padding:6px 8px;font-size:12px}
+
 /* تایمر تسک (ستون زمان) */
 .timer-cell{white-space:nowrap;display:flex;align-items:center;gap:6px}
 .timer-cell .tbtn{border:0;background:rgba(255,255,255,.06);color:var(--text);width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;display:grid;place-items:center}

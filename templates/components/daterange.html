@@ -1,9 +1,31 @@
 {# انتخابگر بازه‌ی زمانی سراسری — روی کل صفحه اثر می‌گذارد و در session ذخیره می‌شود #}
-<div class="range">
+<div class="range" style="position:relative">
   <a href="?range=today"  class="{% if range_key == 'today' %}on{% endif %}">امروز</a>
   <a href="?range=7"      class="{% if range_key == '7' %}on{% endif %}">۷ روز</a>
   <a href="?range=30"     class="{% if range_key == '30' %}on{% endif %}">۳۰ روز</a>
   <a href="?range=90"     class="{% if range_key == '90' %}on{% endif %}">۹۰ روز</a>
   <a href="?range=this_month" class="{% if range_key == 'this_month' %}on{% endif %}">این ماه</a>
-  <a href="#" class="{% if range_key == 'custom' %}on{% endif %}">دلخواه</a>
+  <a href="#" id="rc-toggle" class="{% if range_key == 'custom' %}on{% endif %}">دلخواه</a>
+
+  {# #۱: بازه‌ی دلخواه با دو فیلد شروع/پایان #}
+  <div id="rc-box" class="range-custom glass" style="display:none">
+    <div class="field" style="margin:0"><label>از</label><input class="input jdate" id="rc-from" dir="ltr" readonly placeholder="۱۴۰۵/۰۵/۰۱" value="{% if range_key == 'custom' %}{{ range_start_fa }}{% endif %}"></div>
+    <div class="field" style="margin:0"><label>تا</label><input class="input jdate" id="rc-to" dir="ltr" readonly placeholder="۱۴۰۵/۰۵/۳۱" value="{% if range_key == 'custom' %}{{ range_end_fa }}{% endif %}"></div>
+    <button class="btn btn-sm btn-p" id="rc-apply">اعمال</button>
+  </div>
 </div>
+<script>
+(function () {
+  var toggle = document.getElementById('rc-toggle'), box = document.getElementById('rc-box');
+  if (!toggle || !box) return;
+  toggle.onclick = function (e) { e.preventDefault(); box.style.display = box.style.display === 'none' ? 'flex' : 'none'; };
+  document.getElementById('rc-apply').onclick = function () {
+    var f = document.getElementById('rc-from').value.trim(), t = document.getElementById('rc-to').value.trim();
+    if (!f || !t) { if (window.App) App.toast('هر دو تاریخ را انتخاب کن', 'warn'); return; }
+    var u = new URL(location.href);
+    u.searchParams.delete('range');
+    u.searchParams.set('from', f); u.searchParams.set('to', t);
+    location.href = u.pathname + '?' + u.searchParams.toString();
+  };
+})();
+</script>

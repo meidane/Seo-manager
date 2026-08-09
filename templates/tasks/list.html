@@ -57,6 +57,27 @@
     {% endif %}
   </section>
 
+  {# ── #۳: تسک‌های آینده (بعد از پایان بازه) در انتهای لیست ── #}
+  {% if future_tasks %}
+    <section class="card glass" style="margin-top:14px">
+      <div class="card-h"><h3>تسک‌های آینده</h3><span class="chip">{{ future_tasks|length|fa_digits }} مورد بعد از این بازه</span></div>
+      <table>
+        <thead><tr><th>عنوان</th><th>پروژه</th><th>مسئول</th><th>تاریخ برنامه</th><th>وضعیت</th></tr></thead>
+        <tbody>
+          {% for t in future_tasks %}
+            <tr data-open-task="{{ t.id }}" style="opacity:.72">
+              <td><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span> {{ t.title }}</td>
+              <td>{{ t.project.name }}</td>
+              <td>{{ t.assignee.full_name|default:"—" }}</td>
+              <td>{{ t.planned_date|jalali }}</td>
+              <td><span class="tag t-mute">{{ t.get_status_display }}</span></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  {% endif %}
+
   {# ── نوار عملیات گروهی ── #}
   <div class="glass" id="bulkbar" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);gap:8px;align-items:center;padding:10px 16px;z-index:30">
     <span style="font-size:12.5px;color:var(--text-dim)"><b id="bulk-count">0</b> تسک انتخاب شده</span><span class="sep" style="width:1px;height:20px;background:var(--stroke-soft)"></span>
