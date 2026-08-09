@@ -52,6 +52,9 @@ class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
         ctx['status_choices'] = Task.STATUS_CHOICES
         ctx['page_title'] = 'تسک‌ها'
         ctx['filters'] = g
+        # ویرایشِ مستقیمِ زمان فقط برای مدیران (نقش‌های دارای دسترسیِ review)
+        m = getattr(self.request, 'membership', None)
+        ctx['can_edit_time'] = bool(m and m.can('review'))
         return ctx
 
 

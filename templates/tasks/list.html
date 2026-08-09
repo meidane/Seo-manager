@@ -27,7 +27,7 @@
   <section class="card glass">
     {% if tasks %}
       <table>
-        <thead><tr><th style="width:28px"><input type="checkbox" id="check-all"></th><th>عنوان</th><th>پروژه</th><th>مسئول</th><th>تاریخ برنامه</th><th>تاریخ انجام</th><th>وضعیت</th><th>🔗</th></tr></thead>
+        <thead><tr><th style="width:28px"><input type="checkbox" id="check-all"></th><th>عنوان</th><th>پروژه</th><th>مسئول</th><th>تاریخ برنامه</th><th>تاریخ انجام</th><th>وضعیت</th><th>زمان</th><th>🔗</th></tr></thead>
         <tbody>
           {% for t in tasks %}
             <tr data-open-task="{{ t.id }}" {% if t.is_overdue %}class="overdue-l"{% endif %}>
@@ -41,6 +41,11 @@
                 <select class="row-status st-{{ t.status }}" data-id="{{ t.id }}" style="padding:3px 8px;font-size:12px">
                   {% for v,l in status_choices %}<option value="{{ v }}" {% if t.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
                 </select>
+              </td>
+              <td class="timer-cell" data-id="{{ t.id }}" data-spent="{{ t.spent_minutes }}" data-running="{% if t.timer_started_at %}1{% else %}0{% endif %}" data-started="{% if t.timer_started_at %}{{ t.timer_started_at|date:'c' }}{% endif %}">
+                <button class="tbtn" title="شروع/توقف تایمر">▶</button>
+                <span class="tval">{{ t.spent_minutes|hours }}</span>
+                {% if can_edit_time %}<i class="tedit" title="ویرایش زمان (مدیر)">✏️</i>{% endif %}
               </td>
               <td>{% if t.published_url %}<a class="lnk" href="{{ t.published_url }}" target="_blank" rel="noopener">↗</a>{% else %}<span class="lnk" style="opacity:.3">↗</span>{% endif %}</td>
             </tr>

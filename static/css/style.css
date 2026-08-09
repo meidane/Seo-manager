@@ -543,6 +543,15 @@ table.sheet tr:hover td{background:rgba(255,255,255,.02)}
 .team-tools i{cursor:pointer;font-style:normal;opacity:.6;font-size:12.5px}
 .team-tools i:hover{opacity:1}
 
+/* تایمر تسک (ستون زمان) */
+.timer-cell{white-space:nowrap;display:flex;align-items:center;gap:6px}
+.timer-cell .tbtn{border:0;background:rgba(255,255,255,.06);color:var(--text);width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;display:grid;place-items:center}
+.timer-cell.running .tbtn{background:var(--danger);color:#fff}
+.timer-cell .tval{font-variant-numeric:tabular-nums;font-size:12px;color:var(--text-dim);min-width:34px}
+.timer-cell.running .tval{color:#6FE3C4}
+.timer-cell .tedit{cursor:pointer;opacity:.5;font-size:11px}
+.timer-cell .tedit:hover{opacity:1}
+
 /* سوییچرِ سازمان در هدر */
 .org-switch{max-width:170px;padding:6px 10px;font-size:12.5px;border-radius:var(--r-sm);
   background:rgba(255,255,255,.04);border:1px solid var(--stroke-soft);color:var(--text)}

@@ -239,6 +239,38 @@ def task_status(request, pk):
 
 
 @login_required
+@require_http_methods(['POST', 'PATCH'])
+def task_timer(request, pk):
+    """تایمرِ کارِ تسک. POST {action:start|stop} برای همه؛ PATCH {minutes} فقط مدیران."""
+    task = get_object_or_404(Task, pk=pk)
+    if request.method == 'PATCH':
+        m = getattr(request, 'membership', None)
+        if not m or not m.can('review'):
+            return JsonResponse({'detail': 'فقط مدیران می‌توانند زمان را ویرایش کنند'}, status=403)
+        try:
+            task.spent_minutes = max(0, int(_body(request).get('minutes') or 0))
+        except (ValueError, TypeError):
+            return JsonResponse({'detail': 'عدد نامعتبر'}, status=400)
+        task.save(update_fields=['spent_minutes', 'updated_at'])
+        return JsonResponse({'spent_minutes': task.spent_minutes, 'timer_running': bool(task.timer_started_at)})
+    # POST start/stop
+    action = _body(request).get('action')
+    now = timezone.now()
+    if action == 'start' and not task.timer_started_at:
+        task.timer_started_at = now
+        task.save(update_fields=['timer_started_at', 'updated_at'])
+    elif action == 'stop' and task.timer_started_at:
+        elapsed = int((now - task.timer_started_at).total_seconds() // 60)
+        task.spent_minutes = (task.spent_minutes or 0) + max(0, elapsed)
+        task.timer_started_at = None
+        task.save(update_fields=['spent_minutes', 'timer_started_at', 'updated_at'])
+    elif action not in ('start', 'stop'):
+        return JsonResponse({'detail': 'action نامعتبر'}, status=400)
+    return JsonResponse({'spent_minutes': task.spent_minutes, 'timer_running': bool(task.timer_started_at),
+                         'timer_started': task.timer_started_at.isoformat() if task.timer_started_at else None})
+
+
+@login_required
 @require_http_methods(['PATCH'])
 def task_review(request, pk):
     """تایید / نیاز به اصلاح (از فید بازبینی و صفحه‌ی بازبینی)."""

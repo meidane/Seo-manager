@@ -102,6 +102,9 @@ class Task(TimeStampedModel):
     published_url = models.URLField('لینک انتشار', blank=True)  # انتشار/رپورتاژ
     source_url = models.URLField('آدرس مطلب فعلی', blank=True)  # فقط آپدیت
     estimate_minutes = models.PositiveIntegerField('تخمین زمان (دقیقه)', null=True, blank=True)
+    # ── زمانِ واقعیِ کارکرد (تایمر) ──
+    spent_minutes = models.PositiveIntegerField('زمان کارکرد (دقیقه)', default=0)
+    timer_started_at = models.DateTimeField('شروع تایمر جاری', null=True, blank=True)
 
     # ── رپورتاژ ──
     media_name = models.CharField('نام رسانه', max_length=150, blank=True)
@@ -206,6 +209,9 @@ class Task(TimeStampedModel):
             'estimate_minutes': self.estimate_minutes,
             'is_placeholder': self.is_placeholder,
             'recurring': bool(self.recurrence_id),
+            'spent_minutes': self.spent_minutes,
+            'timer_running': bool(self.timer_started_at),
+            'timer_started': self.timer_started_at.isoformat() if self.timer_started_at else None,
         }
 
 

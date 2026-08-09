@@ -411,4 +411,42 @@
   }
   window.TaskBulk = { shift: (d) => bulk('shift_date', { days: d, skip_holidays: true }), done: () => bulk('mark_done', {}) };
 
+  // ── تایمر تسک (ستون «زمان» لیست) ──
+  function fmtMin(m) { m = Math.max(0, Math.round(m)); const h = Math.floor(m / 60), mm = m % 60; return h ? `${h}:${String(mm).padStart(2, '0')}` : `${mm}د`; }
+  document.querySelectorAll('.timer-cell').forEach((cell) => {
+    const id = cell.dataset.id;
+    const val = cell.querySelector('.tval');
+    const btn = cell.querySelector('.tbtn');
+    const edit = cell.querySelector('.tedit');
+    let running = cell.dataset.running === '1';
+    let started = cell.dataset.started ? new Date(cell.dataset.started) : null;
+    let base = +cell.dataset.spent || 0;
+    let ticker = null;
+    function render() {
+      if (running && started) {
+        val.textContent = fmtMin(base + (Date.now() - started.getTime()) / 60000);
+        btn.textContent = '⏸'; cell.classList.add('running');
+      } else { val.textContent = fmtMin(base); btn.textContent = '▶'; cell.classList.remove('running'); }
+    }
+    function startTick() { if (!ticker) ticker = setInterval(render, 15000); }
+    function stopTick() { if (ticker) { clearInterval(ticker); ticker = null; } }
+    if (running) startTick();
+    render();
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      try {
+        const d = await App.fetchJSON(`/tasks/api/${id}/timer/`, { method: 'POST', body: { action: running ? 'stop' : 'start' } });
+        base = d.spent_minutes; running = d.timer_running; started = d.timer_started ? new Date(d.timer_started) : null;
+        running ? startTick() : stopTick();
+        render();
+      } catch (_) {}
+    };
+    if (edit) edit.onclick = async (e) => {
+      e.stopPropagation();
+      const cur = prompt('زمان کارکرد (دقیقه):', base);
+      if (cur === null) return;
+      try { const d = await App.fetchJSON(`/tasks/api/${id}/timer/`, { method: 'PATCH', body: { minutes: cur } }); base = d.spent_minutes; render(); } catch (_) {}
+    };
+  });
+
 })();

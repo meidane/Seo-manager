@@ -57,7 +57,7 @@ class ColleagueListView(LoginRequiredMixin, DateRangeMixin, ListView):
         return qs.annotate(
             planned=Count('tasks', filter=Q(tasks__planned_date__range=(start, end))),
             done=Count('tasks', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
-            minutes=Sum('tasks__estimate_minutes', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
+            minutes=Sum('tasks__spent_minutes', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
             overdue=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING], tasks__planned_date__lt=date.today())),
         ).order_by('status', 'full_name')  # ترتیب صریح برای صفحه‌بندیِ پایدار
 
@@ -112,7 +112,7 @@ class ColleagueDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
         done = done_qs.count()
         words = done_qs.aggregate(s=Sum('word_count'))['s'] or 0
         planned = c.tasks.filter(planned_date__range=(start, end)).count()
-        minutes = done_qs.aggregate(s=Sum('estimate_minutes'))['s'] or 0
+        minutes = done_qs.aggregate(s=Sum('spent_minutes'))['s'] or 0
         open_count = c.tasks.filter(status__in=[Task.TODO, Task.DOING]).count()
         overdue = c.tasks.filter(status__in=[Task.TODO, Task.DOING], planned_date__lt=date.today()).count()
 
