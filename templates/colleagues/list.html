@@ -16,17 +16,17 @@
     <div class="card-h"><h3>عملکرد همکاران در بازه</h3></div>
     {% if colleagues %}
       <table>
-        <thead><tr><th>همکار</th><th>انجام‌شده</th><th>کلمات</th><th>باز</th><th>عقب‌افتاده</th><th>روند ۱۴ روز</th><th>وضعیت</th></tr></thead>
+        <thead><tr><th>همکار</th><th>برنامه‌ریزی</th><th>انجام‌شده</th><th>عقب‌افتاده</th><th>جمع ساعت</th><th>روند ۱۴ روز</th><th>وضعیت</th></tr></thead>
         <tbody>
           {% for c in colleagues %}
             <tr onclick="location.href='{{ c.get_absolute_url }}'" {% if not c.is_active %}style="opacity:.5"{% endif %}>
               <td><div class="who">
                 {% if c.avatar %}<img src="{{ c.avatar.url }}">{% else %}<span class="fb" style="background:color-mix(in srgb,{{ c.color }} 22%,transparent);color:{{ c.color }}">{{ c.initials }}</span>{% endif %}
                 <span><b>{{ c.full_name }}</b><span>{{ c.roles_display|default:"—" }}</span></span></div></td>
+              <td class="num-c">{{ c.planned|fa_digits }}</td>
               <td class="num-c">{{ c.done|fa_digits }}</td>
-              <td class="num-c {% if not c.words %}zero{% endif %}">{{ c.words|default:0|fa_digits }}</td>
-              <td class="num-c">{{ c.open|fa_digits }}</td>
               <td class="num-c {% if c.overdue %}red-n{% else %}zero{% endif %}">{{ c.overdue|fa_digits }}</td>
+              <td class="num-c {% if not c.minutes %}zero{% endif %}">{{ c.minutes|hours }}</td>
               <td><div class="spark">{% for h in c.spark %}<i style="height:{{ h }}%"></i>{% endfor %}</div></td>
               <td>{% if c.is_active %}<span class="tag t-ok">فعال</span>{% else %}<span class="tag t-mute">غیرفعال</span>{% endif %}</td>
             </tr>

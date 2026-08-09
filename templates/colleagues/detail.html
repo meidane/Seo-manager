@@ -25,11 +25,11 @@
 
   {# ── کارت‌های آمار بازه ── #}
   <div class="stats" style="grid-template-columns:repeat(6,1fr)">
+    <div class="stat glass"><div class="lab">برنامه‌ریزی</div><div class="num">{{ stats.planned|fa_digits }}</div></div>
     <div class="stat glass"><div class="lab">انجام‌شده</div><div class="num">{{ stats.done|fa_digits }}</div></div>
-    <div class="stat glass"><div class="lab">باز</div><div class="num">{{ stats.open|fa_digits }}</div></div>
+    <div class="stat glass"><div class="lab">تعداد کلمه</div><div class="num">{{ stats.words|fa_digits }}</div></div>
+    <div class="stat glass"><div class="lab">جمع ساعت</div><div class="num">{{ stats.minutes|hours }}</div></div>
     <div class="stat glass"><div class="lab">عقب‌افتاده</div><div class="num" style="color:#FF9AAB">{{ stats.overdue|fa_digits }}</div></div>
-    <div class="stat glass"><div class="lab">مجموع کلمات</div><div class="num">{{ stats.words|fa_digits }}</div></div>
-    <div class="stat glass"><div class="lab">میانگین کلمه</div><div class="num">{{ stats.avg_words|fa_digits }}</div></div>
     <div class="stat glass"><div class="lab">تحویل به‌موقع</div><div class="num">{{ stats.on_time|fa_digits }}٪</div></div>
   </div>
 
@@ -73,8 +73,15 @@
         <table><tbody>{% for row in by_project %}<tr><td>{{ row.project__name }}</td><td class="num-c" style="text-align:left">{{ row.n|fa_digits }}</td></tr>{% empty %}<tr><td class="zero">داده‌ای نیست</td></tr>{% endfor %}</tbody></table>
       </section>
     </div>
-    <section class="card glass" style="margin-top:14px"><div class="card-h"><h3>روند روزانه</h3></div>
-      <div class="chart-wrap"><div class="spark" style="height:80px;gap:4px;align-items:flex-end">{% for b in daily_bars %}<i style="height:{{ b.h }}%;flex:1;min-width:5px"></i>{% endfor %}</div></div>
+    <section class="card glass" style="margin-top:14px"><div class="card-h"><h3>روند روزانه (تعداد تسکِ انجام‌شده)</h3></div>
+      <div class="chart-wrap" style="display:flex;gap:8px;align-items:stretch;padding:6px 10px 4px">
+        <div style="display:flex;flex-direction:column;justify-content:space-between;font-size:10px;color:var(--text-faint);text-align:left;min-width:16px">
+          <span>{{ daily_max|fa_digits }}</span><span>۰</span></div>
+        <div style="flex:1">
+          <div class="spark" style="height:80px;gap:4px;align-items:flex-end">{% for b in daily_bars %}<i style="height:{{ b.h }}%;flex:1;min-width:5px" title="{{ b.n|fa_digits }}"></i>{% endfor %}</div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-faint);margin-top:3px"><span>{{ daily_from|fa_digits }}</span><span>{{ daily_to|fa_digits }}</span></div>
+        </div>
+      </div>
     </section>
   </div>
 

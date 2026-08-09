@@ -18,7 +18,7 @@
       <div style="overflow-x:auto">
       <table style="min-width:920px">
         <thead><tr>
-          <th>پروژه</th><th>برنامه</th><th>انجام</th><th>باقی</th><th>عقب</th><th>کلمات</th>
+          <th>پروژه</th><th>برنامه</th><th>انجام</th><th>باقی</th><th>عقب</th><th>جمع ساعت</th>
           <th>پیشرفت</th><th>آخرین گزارش</th><th>آخرین پرداخت</th><th>وضعیت</th>
         </tr></thead>
         <tbody>
@@ -29,7 +29,7 @@
               <td class="num-c {% if not p.done %}zero{% endif %}">{{ p.done|fa_digits }}</td>
               <td class="num-c {% if not p.remaining %}zero{% endif %}">{{ p.remaining|fa_digits }}</td>
               <td class="num-c {% if p.overdue %}red-n{% else %}zero{% endif %}">{{ p.overdue|fa_digits }}</td>
-              <td class="num-c {% if not p.words %}zero{% endif %}">{{ p.words|default:0|fa_digits }}</td>
+              <td class="num-c {% if not p.minutes %}zero{% endif %}">{{ p.minutes|hours }}</td>
               <td><div class="bar {% if p.state.0 == 'ok' or p.state.0 == 'info' %}ok{% elif p.state.0 == 'bad' %}bad{% endif %}"><i style="width:{{ p.progress }}%"></i></div></td>
               <td>{% if p.last_report %}{{ p.last_report|jalali }}{% else %}<span class="zero">—</span>{% endif %}</td>
               <td title="پس از فعال‌شدن حسابداری تکمیل می‌شود"><span class="zero">—</span></td>

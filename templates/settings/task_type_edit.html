@@ -47,6 +47,7 @@
       <div style="display:flex;gap:18px;margin-bottom:14px">
         <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-required" style="width:auto"> اجباری</label>
         <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-client" checked style="width:auto"> نمایش به مشتری</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-wordsrc" style="width:auto"> منبعِ تعداد کلمه</label>
       </div>
       <button class="btn btn-p" id="nf-add">افزودن فیلد</button>
     </div>
@@ -106,7 +107,8 @@ document.getElementById('nf-add').onclick=async()=>{
     options:document.getElementById('nf-options').value.trim(),
     placeholder:document.getElementById('nf-placeholder').value.trim(),
     required:document.getElementById('nf-required').checked,
-    show_to_client:document.getElementById('nf-client').checked};
+    show_to_client:document.getElementById('nf-client').checked,
+    is_word_source:document.getElementById('nf-wordsrc').checked};
   try{ const f=await App.fetchJSON(`/settings/task-types/api/${TID}/fields/`,{method:'POST',body});
     const empty=document.getElementById('f-empty'); if(empty)empty.remove();
     const tb=document.querySelector('#f-table tbody');

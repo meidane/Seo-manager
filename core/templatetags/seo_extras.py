@@ -27,6 +27,19 @@ def fa_digits(value):
     return j.to_fa_digits(value)
 
 
+@register.filter(name='hours')
+def hours(minutes):
+    """دقیقه → ساعت (عددِ فارسی، مثلاً «۲.۵»). صفر/خالی → «۰»."""
+    try:
+        m = int(minutes or 0)
+    except (ValueError, TypeError):
+        return '۰'
+    if not m:
+        return '۰'
+    s = f'{m / 60:.1f}'.rstrip('0').rstrip('.')
+    return j.to_fa_digits(s)
+
+
 @register.filter(name='money')
 def money(value):
     """قالب‌بندی مبلغ با جداکننده‌ی هزارگان و ارقام فارسی."""

@@ -40,6 +40,7 @@ class ProjectListView(LoginRequiredMixin, DateRangeMixin, ListView):
             planned=Count('tasks', filter=Q(tasks__planned_date__range=(start, end))),
             done=Count('tasks', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
             words=Sum('tasks__word_count', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
+            minutes=Sum('tasks__estimate_minutes', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
             overdue=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING], tasks__planned_date__lt=date.today())),
             last_report=Max('reports__date_to'),
         ).order_by('status', 'name')  # ترتیب صریح برای صفحه‌بندیِ پایدار

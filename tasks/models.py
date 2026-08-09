@@ -276,6 +276,8 @@ class TaskTypeField(models.Model):
     placeholder = models.CharField('راهنما', max_length=120, blank=True)
     required = models.BooleanField('اجباری', default=False)
     show_to_client = models.BooleanField('نمایش به مشتری', default=True)
+    # این فیلد به‌عنوان «تعداد کلمه» شناخته شود تا در آمار (همکار/داشبورد) حساب شود
+    is_word_source = models.BooleanField('منبعِ تعداد کلمه', default=False)
     order = models.PositiveIntegerField('ترتیب', default=0)
 
     class Meta:

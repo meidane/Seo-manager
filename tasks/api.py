@@ -67,6 +67,14 @@ def apply_fields(task: Task, data: dict):
         task.type_def_id = data['type_def'] or None
     if 'custom' in data and isinstance(data['custom'], dict):
         task.custom = data['custom']
+    # اگر نوعِ سفارشی یک فیلد را «منبع تعداد کلمه» علامت زده باشد، word_count را از آن پر کن
+    if task.type_def_id and isinstance(task.custom, dict):
+        src = task.type_def.fields.filter(is_word_source=True).first()
+        if src and task.custom.get(src.key) not in (None, ''):
+            try:
+                task.word_count = int(task.custom[src.key])
+            except (ValueError, TypeError):
+                pass
     if 'planned_date_iso' in data and data['planned_date_iso']:
         # از drag تقویم می‌آید: میلادی ISO
         try:

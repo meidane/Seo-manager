@@ -46,6 +46,14 @@
 `/tasks/` لیست · `/tasks/review/` بازبینی · `/tasks/api/...` (formdata, create, `<id>/`,
 `<id>/status`, `<id>/review`, `<id>/comments`, `bulk`) · `/settings/task-types/...`
 
+## نکات نوع تسک
+- **`TaskTypeDef.requires_review`**: اگر true، تسک‌های done این نوع در صفحهٔ بازبینی می‌آیند
+  (چک‌باکس در صفحهٔ نوع). صفحهٔ بازبینی بر همین فیلتر می‌شود، نه `published_url`.
+- **`TaskTypeField.is_word_source`**: فیلدِ سفارشی‌ای که مقدارش در `apply_fields` به
+  `Task.word_count` کپی می‌شود (تا آمار کلمهٔ انواع سفارشی هم کار کند).
+- «جمع ساعت» در آمار = `Sum(estimate_minutes)` (فیلتر `hours` در seo_extras؛ دقیقه→ساعت).
+  با تایمرِ فاز بعد به زمانِ واقعی سوییچ می‌شود.
+
 ## افزودن فیلد به تسک = ۳ نقطه
 ۱) فیلد در `models.py` (+migration) ۲) گروه در `task-schema.js` ۳) لیست مناسب در
 `apply_fields` (TEXT/INT/DECIMAL/CHOICE). برای نمایش در لیست/تقویم، `to_dict` را هم ببین.

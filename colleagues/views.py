@@ -55,9 +55,9 @@ class ColleagueListView(LoginRequiredMixin, DateRangeMixin, ListView):
         if query:
             qs = qs.filter(Q(full_name__icontains=query) | Q(email__icontains=query))
         return qs.annotate(
+            planned=Count('tasks', filter=Q(tasks__planned_date__range=(start, end))),
             done=Count('tasks', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
-            words=Sum('tasks__word_count', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
-            open=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING])),
+            minutes=Sum('tasks__estimate_minutes', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
             overdue=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING], tasks__planned_date__lt=date.today())),
         ).order_by('status', 'full_name')  # ترتیب صریح برای صفحه‌بندیِ پایدار
 
@@ -103,36 +103,66 @@ class ColleagueDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
         ctx.update(self.range_context())
         c = self.object
 
+        from datetime import date
+
+        from core.jalali import format_jalali
         done_q = Q(status=Task.DONE, done_date__range=(start, end))
         done_qs = c.tasks.filter(done_q)
 
         done = done_qs.count()
         words = done_qs.aggregate(s=Sum('word_count'))['s'] or 0
+        planned = c.tasks.filter(planned_date__range=(start, end)).count()
+        minutes = done_qs.aggregate(s=Sum('estimate_minutes'))['s'] or 0
         open_count = c.tasks.filter(status__in=[Task.TODO, Task.DOING]).count()
-        from datetime import date
         overdue = c.tasks.filter(status__in=[Task.TODO, Task.DOING], planned_date__lt=date.today()).count()
 
         # نرخ تحویل به‌موقع: انجام‌شده‌هایی که done_date <= planned_date
         on_time = sum(1 for t in done_qs.only('done_date', 'planned_date') if t.done_date and t.done_date <= t.planned_date)
 
         ctx['stats'] = {
-            'done': done, 'open': open_count, 'overdue': overdue, 'words': words,
-            'avg_words': round(words / done) if done else 0,
+            'planned': planned, 'done': done, 'open': open_count, 'overdue': overdue,
+            'words': words, 'minutes': minutes, 'avg_words': round(words / done) if done else 0,
             'on_time': round(on_time / done * 100) if done else 0,
         }
 
-        # تفکیک نوع تسک (دونات) و پروژه
-        type_pairs = list(done_qs.values_list('task_type').annotate(n=Count('id')).values_list('task_type', 'n'))
-        ctx['donut'] = donut_segments(type_pairs)
+        # تفکیک نوع تسک (دونات) بر اساس نوعِ مؤثر (سفارشی یا built-in) و پروژه
+        ctx['donut'] = self._donut(done_qs)
         ctx['by_project'] = list(done_qs.values('project__name').annotate(n=Count('id')).order_by('-n'))
 
-        # نمودار میله‌ای روزانه
-        ctx['daily_bars'] = self._daily(done_qs, start, end)
+        # نمودار میله‌ای روزانه (+ محور برای #۱۵)
+        bars, dmax = self._daily(done_qs, start, end)
+        ctx['daily_bars'] = bars
+        ctx['daily_max'] = dmax
+        ctx['daily_from'] = format_jalali(start, '%m/%d')
+        ctx['daily_to'] = format_jalali(end, '%m/%d')
         # لیست تسک‌های او در بازه
         ctx['task_rows'] = c.tasks.select_related('project','type_def').filter(
             Q(planned_date__range=(start, end)) | done_q).order_by('-planned_date')[:40]
         ctx['page_title'] = c.full_name
         return ctx
+
+    @staticmethod
+    def _donut(done_qs):
+        """قطعه‌های دونات بر اساس نوعِ مؤثر: نوع سفارشی (نام/رنگِ خودش) وگرنه built-in."""
+        from collections import defaultdict
+        buckets = defaultdict(lambda: {'n': 0, 'label': '', 'color': ''})
+        for t in done_qs.select_related('type_def'):
+            if t.type_def_id:
+                key, label, color = f'd{t.type_def_id}', t.type_def.name, t.type_def.color
+            else:
+                key = t.task_type
+                label, color = TYPE_LABEL.get(key, key), TYPE_HEX.get(key, '#8FA0B8')
+            b = buckets[key]
+            b['n'] += 1
+            b['label'], b['color'] = label, color
+        total = sum(b['n'] for b in buckets.values()) or 1
+        segs, offset = [], 0.0
+        for b in sorted(buckets.values(), key=lambda x: -x['n']):
+            pct = b['n'] / total * 100
+            segs.append({'label': b['label'], 'color': b['color'], 'pct': round(pct),
+                         'dash': round(pct, 2), 'rest': round(100 - pct, 2), 'offset': round(-offset, 2)})
+            offset += pct
+        return segs
 
     @staticmethod
     def _daily(qs, start, end):
@@ -142,7 +172,9 @@ class ColleagueDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
                 counts[d] = counts.get(d, 0) + 1
         mx = max(counts.values()) if counts else 1
         span = min((end - start).days + 1, 31)
-        return [{'h': round(counts.get(start + timedelta(days=i), 0) / mx * 100)} for i in range(span)]
+        bars = [{'h': round(counts.get(start + timedelta(days=i), 0) / mx * 100),
+                 'n': counts.get(start + timedelta(days=i), 0)} for i in range(span)]
+        return bars, mx
 
 
 class ColleagueCreateView(LoginRequiredMixin, CreateView):

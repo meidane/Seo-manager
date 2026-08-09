@@ -48,13 +48,13 @@ class DashboardView(LoginRequiredMixin, DateRangeMixin, TemplateView):
         prev_done = Task.objects.filter(prev_done_q).count()
         remaining = Task.objects.filter(open_q, planned_date__range=(start, end)).count()
         overdue = Task.objects.filter(open_q, planned_date__lt=today).count()
-        words = Task.objects.filter(done_q).aggregate(s=Sum('word_count'))['s'] or 0
-        prev_words = Task.objects.filter(prev_done_q).aggregate(s=Sum('word_count'))['s'] or 0
+        minutes = Task.objects.filter(done_q).aggregate(s=Sum('estimate_minutes'))['s'] or 0
+        prev_minutes = Task.objects.filter(prev_done_q).aggregate(s=Sum('estimate_minutes'))['s'] or 0
 
         ctx['cards'] = {
             'done': done_count, 'done_pct': _pct(done_count, prev_done),
             'remaining': remaining, 'overdue': overdue,
-            'words': words, 'words_pct': _pct(words, prev_words),
+            'minutes': minutes, 'minutes_pct': _pct(minutes, prev_minutes),
             'balance': 0,  # هینت: از FinanceEntry (گام ۸) محاسبه شود
         }
 
@@ -75,7 +75,7 @@ class DashboardView(LoginRequiredMixin, DateRangeMixin, TemplateView):
         projects = list(Project.objects.filter(status=Project.ACTIVE).annotate(
             planned=Count('tasks', filter=Q(tasks__planned_date__range=(start, end))),
             done=Count('tasks', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
-            words=Sum('tasks__word_count', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
+            minutes=Sum('tasks__estimate_minutes', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
             overdue=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING], tasks__planned_date__lt=today)),
             last_activity=Max('tasks__updated_at'),
         ))
@@ -100,9 +100,9 @@ class DashboardView(LoginRequiredMixin, DateRangeMixin, TemplateView):
 
         # ── ردیف ۴ (راست): عملکرد همکاران در بازه ──
         colleagues = list(Colleague.objects.filter(status=Colleague.ACTIVE).annotate(
+            planned=Count('tasks', filter=Q(tasks__planned_date__range=(start, end))),
             done=Count('tasks', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
-            words=Sum('tasks__word_count', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
-            open=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING])),
+            minutes=Sum('tasks__estimate_minutes', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
             overdue=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING], tasks__planned_date__lt=today)),
         ))
         ctx['colleagues'] = colleagues

@@ -98,7 +98,8 @@ def field_create(request, pk):
     f = TaskTypeField.objects.create(
         type_def=t, label=label, kind=kind, options=d.get('options', ''),
         placeholder=d.get('placeholder', ''), required=bool(d.get('required')),
-        show_to_client=bool(d.get('show_to_client', True)), order=t.fields.count(),
+        show_to_client=bool(d.get('show_to_client', True)),
+        is_word_source=bool(d.get('is_word_source')), order=t.fields.count(),
     )
     return JsonResponse({'id': f.id, 'key': f.key, 'label': f.label,
                          'kind': f.get_kind_display(), 'required': f.required,
