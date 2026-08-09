@@ -9,6 +9,9 @@
 - `views.py` — `CalendarView` (SSR اول)، `calendar_api` (ناوبری AJAX + فیلتر project/assignee/type)،
   `picker_api` (فقط پرچم تعطیلی/امروز برای دیت‌پیکر)، `workload_api` (بار کاری همکار برای مودال).
   `_tasks_by_date` تسک‌های انجام‌شده را ته سلول مرتب می‌کند (طوسی).
+  **`_virtual_recurrence`/`_merge_virtual`**: رخدادهای آینده‌ی قواعدِ تکرار را به‌صورت
+  «مجازی» (بدون ساختِ رکورد، با `raw_next_date`) برای نمایشِ محوِ کلِ ماه اضافه می‌کند
+  (کلاس `.tk.virtual`، غیرقابل‌کلیک). تاریخ‌هایی که تسکِ واقعی دارند رد می‌شوند.
 - `static/js/calendar-page.js` — رندر سلول‌ها، آواتار نویسنده، دکمه‌ی + (hover → `openTask(null,{planned_date_fa})`),
   درگ‌ودراپ بین روزها (`PATCH planned_date_iso`).
 - `static/js/calendar-embed.js` — تقویم قابل‌جاسازی در تب‌ها (`data-project`/`data-assignee`).

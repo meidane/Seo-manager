@@ -22,7 +22,8 @@
   }
   function chip(t) {
     const style = t.done ? '' : `style="background:rgba(${t.color},.15);border-right:3px solid rgb(${t.color});color:rgb(${t.color})"`;
-    return `<span class="tk${t.done ? ' done' : ''}${t.is_placeholder ? ' placeholder' : ''}" draggable="true" data-id="${t.id}" data-open-task="${t.id}" ${style}>` +
+    const attrs = t.virtual ? '' : ` draggable="true" data-id="${t.id}" data-open-task="${t.id}"`;
+    return `<span class="tk${t.done ? ' done' : ''}${t.is_placeholder ? ' placeholder' : ''}${t.virtual ? ' virtual' : ''}"${attrs} ${style}>` +
       `${av(t)}<span class="tk-tx">${t.type_label}: ${t.title}</span>${t.done ? '' : `<span class="tk-t">${t.time}</span>`}</span>`;
   }
   function cellHtml(c) {

@@ -452,7 +452,11 @@ class RecurrenceRule(models.Model):
         return g2j(d).weekday()
 
     def next_date(self, after):
-        """اولین تاریخِ رخدادِ بعدی، اکیداً بعد از `after`."""
+        """اولین تاریخِ رخدادِ بعدی (با رعایتِ رد کردنِ تعطیلات)."""
+        return self._skip(self.raw_next_date(after))
+
+    def raw_next_date(self, after):
+        """تاریخِ رخدادِ بعدی بدون رد کردنِ تعطیلات (برای شمارشِ سریعِ نمای تقویم)."""
         from core.jalali import g2j, j2g
         if self.freq == self.DAILY:
             nxt = after + timedelta(days=self.interval)
@@ -477,7 +481,7 @@ class RecurrenceRule(models.Model):
             m = (m - 1) % 12 + 1
             day = min(jt.day, 31 if m <= 6 else (30 if m <= 11 else 29))
             nxt = j2g(y, m, day)
-        return self._skip(nxt)
+        return nxt
 
     def _skip(self, d):
         """اگر skip_holidays فعال است و روز تعطیل/جمعه بود، به روز کاریِ بعد برو."""

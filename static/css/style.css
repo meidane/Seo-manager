@@ -575,6 +575,7 @@ table.sheet tr:hover td{background:rgba(255,255,255,.02)}
 
 /* پیش‌نمای تسک تکرارشونده در تقویم (کم‌رنگ/خط‌چین) */
 .tk.placeholder{opacity:.5;border:1px dashed var(--stroke)!important;background:transparent!important;filter:grayscale(.3)}
+.tk.virtual{opacity:.36;cursor:default;pointer-events:none}
 .tk.placeholder .tk-t{display:none}
 /* بخشِ تکرار در مودال تسک */
 .rec-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:12.5px}

@@ -43,6 +43,38 @@ def _holiday_map(start, end):
     return {h.date: h.title for h in Holiday.objects.filter(is_off=True, date__range=(start, end))}
 
 
+def _virtual_recurrence(start, end):
+    """#۲: رخدادهای آینده‌ی قواعدِ تکرار را به‌صورت «مجازی» (بدون ساختِ رکورد) برای
+    نمایشِ محوِ کلِ ماه در تقویم برمی‌گرداند. تاریخ‌هایی که تسکِ واقعی دارند رد می‌شوند."""
+    from collections import defaultdict
+
+    from tasks.models import RecurrenceRule, Task
+    out = defaultdict(list)
+    for rule in RecurrenceRule.objects.filter(active=True):
+        tmpl = Task.all_objects.filter(recurrence=rule).order_by('planned_date').first()
+        if not tmpl:
+            continue
+        real_dates = set(Task.all_objects.filter(recurrence=rule).values_list('planned_date', flat=True))
+        d, steps = rule.start_date, 0
+        while d <= end and steps < 400:
+            if rule.end_date and d > rule.end_date:
+                break
+            if d >= start and d not in real_dates:
+                vd = tmpl.to_dict()
+                vd.update(id=None, virtual=True, is_placeholder=True, done=False, overdue=False)
+                out[d].append(vd)
+            d = rule.raw_next_date(d)
+            steps += 1
+    return out
+
+
+def _merge_virtual(tbd, start, end):
+    """رخدادهای مجازی تکرار را ته سلولِ هر روز اضافه می‌کند."""
+    for d, items in _virtual_recurrence(start, end).items():
+        tbd.setdefault(d, []).extend(items)
+    return tbd
+
+
 def _resolve_ym(request):
     today = jdatetime.date.today()
     try:
@@ -61,7 +93,7 @@ class CalendarView(LoginRequiredMixin, TemplateView):
         jyear, jmonth = _resolve_ym(self.request)
         start, end = month_bounds_gregorian(jyear, jmonth)
         qs = _filtered_tasks(self.request, start, end)
-        cells = build_month(jyear, jmonth, _tasks_by_date(qs), _holiday_map(start, end))
+        cells = build_month(jyear, jmonth, _merge_virtual(_tasks_by_date(qs), start, end), _holiday_map(start, end))
 
         ctx['cells'] = cells
         ctx['jyear'] = jyear
