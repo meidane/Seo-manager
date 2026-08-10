@@ -6,7 +6,8 @@
 - `calendar_logic.py` — منطق ماتریس ماه در **پایتون** (نه JS). `build_month(jyear, jmonth,
   tasks_by_date, holiday_map)`. **weekday شمسی: شنبه=۰، جمعه=۶.** هر سلول `jdate` (شمسی لاتین)
   برای پرکردن فیلد تاریخ دارد.
-- `views.py` — `CalendarView` (SSR اول)، `calendar_api` (ناوبری AJAX + فیلتر project/assignee/type)،
+- `views.py` — `CalendarView` (SSR اول)، `calendar_api` (ناوبری AJAX + فیلتر project/assignee/type_def —
+  فیلترِ نوع دیگر با `task_type` خام نیست، با `type_def`(id)؛ `?type=` قدیمی فقط fallback است)،
   `picker_api` (فقط پرچم تعطیلی/امروز برای دیت‌پیکر)، `workload_api` (بار کاری همکار برای مودال).
   `_tasks_by_date` تسک‌های انجام‌شده را ته سلول مرتب می‌کند (طوسی).
   **`_virtual_recurrence`/`_merge_virtual`**: رخدادهای آینده‌ی قواعدِ تکرار را به‌صورت

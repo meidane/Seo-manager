@@ -44,6 +44,17 @@ SEO_TYPES = [
         ],
         'kpis': [],
     },
+    {
+        'name': 'بروزرسانی محتوا', 'color': '#FBBF24', 'icon': '♻️', 'review': True, 'order': 23,
+        'fields': [
+            ('نوع بروزرسانی', 'select', False, 'سطحی، اساسی'),
+            ('آدرس مطلب فعلی', 'url', False, ''),
+            ('جایگاه فعلی', 'number', False, ''),
+            ('کلمات کلیدی', 'text', False, ''),
+            ('تعداد کلمه', 'number', True, ''),
+        ],
+        'kpis': [],
+    },
 ]
 
 

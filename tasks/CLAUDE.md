@@ -1,18 +1,23 @@
 # tasks/ — قلب سیستم
 
 ## مدل‌ها (`models.py`)
-- **Task** — یک مدل واحد، فیلدهای `null=True`، نمایش شرطی در فرانت.
-  - مشترک: `project, assignee, task_type, update_type, title, description, planned_date,
-    planned_time(default time(8,0)), status, done_date, priority, estimate_minutes`
-  - محتوایی: `word_count, keywords, lsi_keywords, seo_title` (انتشار/آپدیت/رپورتاژ)
-  - `published_url` (انتشار/رپورتاژ — نه آپدیت) · `source_url, current_rank` (فقط آپدیت)
-  - رپورتاژ: `media_name, media_cost, anchor_text, target_url` · لینک‌سازی: `link_type, link_count`
+- **Task** — یک مدل واحد، فیلدهای `null=True`. **هسته‌ی عمومی همیشه در مودال دیده می‌شود:**
+  `project, assignee, task_type, title, description, planned_date, planned_time(default
+  time(8,0)), status, priority, estimate_minutes` (+ تکرار). بقیه فقط فیلدِ سفارشیِ نوع‌اند.
+  - ستون‌های قدیمیِ سئوِ هارد‌کد (`word_count, keywords, lsi_keywords, seo_title,
+    published_url, source_url, current_rank, media_name, media_cost, anchor_text, target_url,
+    link_type, link_count, update_type`) **در مودال دیگر نیستند** (پاک‌سازیِ گام ۱) — در DB و
+    `apply_fields`/`to_dict` برای سازگاری با دادهٔ قدیمی مانده‌اند، اما مسیرِ جدید همه‌شان را
+    به `TaskTypeField` سفارشی می‌برد (`is_word_source` هنوز `word_count` را پر می‌کند، چون آن یکی
+    برای آمار/annotate لازم است — تنها استثنا).
   - بازبینی: `review_status, review_note, reviewed_by/at, ai_*` (فاز۳)
   - **سفارشی:** `type_def`(FK TaskTypeDef) + `custom`(JSON). فیلدهای هسته‌ای دست‌نخورده.
   - propertyها: `is_overdue, is_done, type_label, color_rgb, to_dict()` (شامل آواتار برای تقویم)
 - **TaskTypeDef / TaskTypeField** — همه‌ی انواع (built-in + سفارشی) اینجا رکورد دارند.
   `builtin_key` پرشده = نوع پیش‌فرض (فیلدهای هسته‌ای + آمار داشبورد با همین کار می‌کنند)؛
-  خالی = کاملاً سفارشی. `seed_task_types` انواع پیش‌فرض را می‌سازد (اجرای مکرر ایمن).
+  خالی = کاملاً سفارشی. `seed_task_types` فقط `tech`/`other` عمومی را می‌سازد (بدون فیلدِ
+  اختصاصی) + هر نوعِ سئوِ قدیمیِ فعال (publish/update/reportage/linkbuilding) را بازنشسته
+  می‌کند (`is_active=False`، اجرای مکرر ایمن) — جایگزینشان بستهٔ `seo/` است.
   مودال از `form_data.customTypes` درایو می‌شود؛ انتخاب نوع → `task_type=builtin_key||other`
   + `type_def=id` + فیلدهای سفارشی. `TaskTypeDef.schema()` → لیست فیلد.
 - **TaskTypeKPI / KPIChecklistItem / TaskKPIScore** — شاخص‌های کیفیتِ هر نوع تسک.
@@ -54,9 +59,12 @@
 - «جمع ساعت» در آمار = `Sum(estimate_minutes)` (فیلتر `hours` در seo_extras؛ دقیقه→ساعت).
   با تایمرِ فاز بعد به زمانِ واقعی سوییچ می‌شود.
 
-## افزودن فیلد به تسک = ۳ نقطه
-۱) فیلد در `models.py` (+migration) ۲) گروه در `task-schema.js` ۳) لیست مناسب در
-`apply_fields` (TEXT/INT/DECIMAL/CHOICE). برای نمایش در لیست/تقویم، `to_dict` را هم ببین.
+## افزودن فیلد به تسک
+تقریباً همیشه **فیلدِ سفارشیِ نوع** است، نه فیلدِ هسته‌ای: از `/settings/task-types/`
+(یا برای بستهٔ عمودیِ جدید، یک seed مثل `seo/seed_seo.py`) یک `TaskTypeField` بساز —
+خودکار در مودال (`tasks.js: renderCustom`) و در ستون‌های قابل‌سفارشی‌سازیِ لیست تسک‌ها
+(`core/columns.py: custom_field_columns`) ظاهر می‌شود. فقط اگر واقعاً همه‌ی انواعِ سیستم
+(حتی سئوهای بعدی) به آن نیاز دارند فیلدِ هسته‌ایِ جدید در `models.py` اضافه کن.
 
 ## وضعیت‌ها
 `STATUS_CHOICES` = `todo/doing/done` (وضعیت «لغو شده/cancelled» حذف شد — migration 0006
@@ -79,7 +87,8 @@
 شکست می‌خورد (باگ رفع‌شده).
 
 ## دستور
-`python manage.py seed_task_types` — ساخت انواع پیش‌فرض قابل‌مدیریت.
+`python manage.py seed_task_types` — ساخت `tech`/`other` عمومی + بازنشستگیِ سئوهای قدیمی.
+برای سئو: `python manage.py seed_seo` (اپِ `seo/`).
 
 ## TODO
 - نمایش مقادیر `custom` در جدول لیست/سینگل (فعلاً فقط در مودال).

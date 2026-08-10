@@ -3,9 +3,6 @@
    به App (app.js) و TASK_SCHEMA (task-schema.js) وابسته است. */
 (function () {
   'use strict';
-  const S = window.TASK_SCHEMA;
-  const ALWAYS = ['project', 'assignee', 'task_type', 'title', 'planned_date', 'status', 'priority', 'description', 'estimate_minutes'];
-
   let cfg = null;
   async function ensureCfg() {
     if (!cfg) cfg = await App.fetchJSON('/tasks/api/formdata/');
@@ -29,7 +26,7 @@
 
   function modalHtml(t) {
     t = t || {};
-    const _bt = typeList().find((x) => x.builtin_key === (t.type || 'publish'));
+    const _bt = typeList().find((x) => x.builtin_key === (t.type || 'other'));
     const typeSel = t.type_def || (_bt ? _bt.id : (typeList()[0] || {}).id);
     return `
     <div class="modal-h"><h3>${t.id ? 'ویرایش تسک' : 'تسک جدید'}</h3><button class="x" onclick="App.closeModal()">×</button></div>
@@ -40,10 +37,7 @@
         ${field('assignee', 'مسئول', `<select id="f-assignee"><option value="">—</option>${cfg.colleagues.map(([v, l]) => opt(v, l, t.assignee_id)).join('')}</select>`)}
         ${field('task_type', 'نوع تسک', `<select id="f-task_type">${typeOptions(typeSel)}</select>`)}
       </div>
-      <div class="grid2">
-        ${field('update_type', 'زیرنوع', `<select id="f-update_type"><option value="">—</option><option value="minor"${t.update_type === 'minor' ? ' selected' : ''}>سطحی</option><option value="major"${t.update_type === 'major' ? ' selected' : ''}>اساسی</option></select>`)}
-        ${field('priority', 'اولویت', `<select id="f-priority"><option value="low">کم</option><option value="med">متوسط</option><option value="high">زیاد</option></select>`)}
-      </div>
+      ${field('priority', 'اولویت', `<select id="f-priority"><option value="low">کم</option><option value="med">متوسط</option><option value="high">زیاد</option></select>`)}
       ${field('title', 'عنوان', `<input id="f-title" class="input" value="${esc(t.title)}">`)}
       <div class="grid3">
         ${field('planned_date', 'تاریخ برنامه (شمسی)', `<input id="f-planned_date" class="input jdate" dir="ltr" readonly placeholder="۱۴۰۵/۰۵/۱۵" value="${t.planned_date_fa || ''}">`)}
@@ -54,31 +48,9 @@
       ${recurBarHtml(t)}
       ${t.id ? '<div id="kpi-box" style="display:none;margin-top:8px"></div>' : ''}
 
-      <!-- فیلدهای سفارشی نوع (داینامیک) -->
+      <!-- فیلدهای سفارشی نوع (داینامیک، از TaskTypeDef.fields) -->
       <div id="custom-fields" style="display:none"></div>
 
-      <!-- فیلدهای built-in محتوایی -->
-      <div class="grid2">
-        ${field('word_count', 'تعداد کلمه', `<input id="f-word_count" class="input" type="number" value="${t.word_count || ''}">`)}
-        ${field('seo_title', 'عنوان سئو', `<input id="f-seo_title" class="input" value="${esc(t.seo_title)}">`)}
-      </div>
-      ${field('keywords', 'کلمات کلیدی', `<input id="f-keywords" class="input" value="${esc(t.keywords)}">`)}
-      ${field('lsi_keywords', 'کلمات LSI', `<input id="f-lsi_keywords" class="input" value="${esc(t.lsi_keywords)}">`)}
-      ${field('current_rank', 'جایگاه فعلی', `<input id="f-current_rank" class="input" type="number" value="${t.current_rank || ''}">`)}
-      ${field('published_url', 'لینک انتشار', `<input id="f-published_url" class="input" dir="ltr" value="${esc(t.published_url)}">`)}
-      ${field('source_url', 'آدرس مطلب فعلی', `<input id="f-source_url" class="input" dir="ltr" value="${esc(t.source_url)}">`)}
-      <div class="grid2">
-        ${field('media_name', 'نام رسانه', `<input id="f-media_name" class="input" value="${esc(t.media_name)}">`)}
-        ${field('media_cost', 'هزینه رپورتاژ', `<input id="f-media_cost" class="input" type="number" value="${t.media_cost || ''}">`)}
-      </div>
-      <div class="grid2">
-        ${field('anchor_text', 'انکر تکست', `<input id="f-anchor_text" class="input" value="${esc(t.anchor_text)}">`)}
-        ${field('target_url', 'لینک مقصد', `<input id="f-target_url" class="input" dir="ltr" value="${esc(t.target_url)}">`)}
-      </div>
-      <div class="grid2">
-        ${field('link_type', 'نوع لینک', `<select id="f-link_type"><option value="">—</option><option value="comment">کامنت</option><option value="profile">پروفایل</option><option value="forum">فروم</option><option value="directory">دایرکتوری</option><option value="social">سوشال</option><option value="other">سایر</option></select>`)}
-        ${field('link_count', 'تعداد لینک', `<input id="f-link_count" class="input" type="number" value="${t.link_count || ''}">`)}
-      </div>
       ${field('description', 'توضیحات', `<textarea id="f-description" class="rich-editor" rows="3">${esc(t.description)}</textarea>`)}
 
       <!-- گزارش کار (فقط برای تسک موجود) -->
@@ -191,16 +163,10 @@
     }).join('');
   }
 
+  // نمایش فیلدها دیگر برحسبِ نوعِ built-in نیست: فیلدهای عمومی همیشه دیده می‌شوند،
+  // فقط فیلدهای سفارشیِ همان نوع (renderCustom) داینامیک اضافه/عوض می‌شوند.
   function applyVisibility(loadedCustom) {
     const ty = findType(document.getElementById('f-task_type').value);
-    const bk = ty ? ty.builtin_key : '';
-    const on = bk ? S.fieldsFor(bk) : new Set();
-    document.querySelectorAll('#tform [data-f]').forEach((el) => {
-      const f = el.dataset.f;
-      if (ALWAYS.includes(f)) return;
-      if (f === 'update_type') { el.style.display = (bk === 'update') ? '' : 'none'; return; }
-      el.style.display = on.has(f) ? '' : 'none';
-    });
     renderCustom(ty, loadedCustom);
   }
 
@@ -213,13 +179,9 @@
       project: g('f-project'), assignee: g('f-assignee'),
       task_type: bk || 'other',
       type_def: (ty && typeof ty.id === 'number') ? ty.id : null,
-      update_type: g('f-update_type'), priority: g('f-priority'), title: g('f-title'),
-      planned_date: g('f-planned_date'), status: g('f-status'), word_count: g('f-word_count'),
-      seo_title: g('f-seo_title'), keywords: g('f-keywords'), lsi_keywords: g('f-lsi_keywords'),
-      current_rank: g('f-current_rank'), published_url: g('f-published_url'), estimate_minutes: g('f-estimate_minutes'),
-      source_url: g('f-source_url'), media_name: g('f-media_name'), media_cost: g('f-media_cost'),
-      anchor_text: g('f-anchor_text'), target_url: g('f-target_url'), link_type: g('f-link_type'),
-      link_count: g('f-link_count'), description: g('f-description'),
+      priority: g('f-priority'), title: g('f-title'),
+      planned_date: g('f-planned_date'), status: g('f-status'),
+      estimate_minutes: g('f-estimate_minutes'), description: g('f-description'),
     };
     if (ty && ty.fields && ty.fields.length) {
       const custom = {};

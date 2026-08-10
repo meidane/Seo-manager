@@ -10,7 +10,7 @@ from django.views.generic import TemplateView
 from colleagues.models import Colleague
 from core.models import Holiday
 from projects.models import Project
-from tasks.models import Task
+from tasks.models import Task, TaskTypeDef
 
 from .calendar_logic import build_month, month_bounds_gregorian, month_title
 
@@ -22,7 +22,9 @@ def _filtered_tasks(request, start, end):
         qs = qs.filter(project_id=request.GET['project'])
     if request.GET.get('assignee'):
         qs = qs.filter(assignee_id=request.GET['assignee'])
-    if request.GET.get('type'):
+    if request.GET.get('type_def'):
+        qs = qs.filter(type_def_id=request.GET['type_def'])
+    elif request.GET.get('type'):  # سازگاری با لینک‌های قدیمی
         qs = qs.filter(task_type=request.GET['type'])
     if request.GET.get('status'):
         qs = qs.filter(status=request.GET['status'])
@@ -101,14 +103,14 @@ class CalendarView(LoginRequiredMixin, TemplateView):
         ctx['month_title'] = month_title(jyear, jmonth)
         ctx['projects'] = Project.objects.filter(status=Project.ACTIVE)
         ctx['colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)
-        ctx['type_choices'] = Task.TYPE_CHOICES
+        ctx['task_types'] = TaskTypeDef.objects.filter(is_active=True)
         ctx['page_title'] = 'تقویم'
         return ctx
 
 
 @login_required
 def calendar_api(request):
-    """داده‌ی ماه برای ناوبری AJAX. GET ?year=&month=&project=&assignee=&type="""
+    """داده‌ی ماه برای ناوبری AJAX. GET ?year=&month=&project=&assignee=&type_def="""
     jyear, jmonth = _resolve_ym(request)
     start, end = month_bounds_gregorian(jyear, jmonth)
     qs = _filtered_tasks(request, start, end)

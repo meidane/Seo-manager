@@ -14,8 +14,8 @@
       {% for p in projects %}<option value="{{ p.id }}" {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
     <select name="assignee" onchange="this.form.submit()"><option value="">همه‌ی همکاران</option>
       {% for c in colleagues %}<option value="{{ c.id }}" {% if filters.assignee == c.id|stringformat:'s' %}selected{% endif %}>{{ c.full_name }}</option>{% endfor %}</select>
-    <select name="type" onchange="this.form.submit()"><option value="">همه‌ی انواع</option>
-      {% for v,l in type_choices %}<option value="{{ v }}" {% if filters.type == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+    <select name="type_def" onchange="this.form.submit()"><option value="">همه‌ی انواع</option>
+      {% for t in task_types %}<option value="{{ t.id }}" {% if filters.type_def == t.id|stringformat:'s' %}selected{% endif %}>{{ t.icon }} {{ t.name }}</option>{% endfor %}</select>
     <select name="status" onchange="this.form.submit()"><option value="">همه‌ی وضعیت‌ها</option>
       {% for v,l in status_choices %}<option value="{{ v }}" {% if filters.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
     <span class="sep"></span>
@@ -28,7 +28,7 @@
     {% if tasks %}
       <div class="tsheet-wrap">
       <table class="tsheet">
-        <thead><tr><th style="width:26px"><input type="checkbox" id="check-all"></th><th style="width:26px"></th><th style="min-width:200px">عنوان</th><th>پروژه</th><th>مسئول</th><th>تاریخ برنامه</th><th>تاریخ انجام</th><th>وضعیت</th><th>زمان</th><th>🔗</th></tr></thead>
+        <thead><tr><th style="width:26px"><input type="checkbox" id="check-all"></th><th style="width:26px"></th><th style="min-width:200px">عنوان</th><th>پروژه</th><th>مسئول</th><th>تاریخ برنامه</th><th>تاریخ انجام</th><th>وضعیت</th><th>زمان</th>{% for c in extra_columns %}<th>{{ c.label }}</th>{% endfor %}</tr></thead>
         <tbody>
           {% for t in tasks %}
             <tr data-id="{{ t.id }}" {% if t.is_overdue %}class="overdue-l"{% endif %}>
@@ -49,7 +49,7 @@
                 <span class="tval">{{ t.spent_minutes|hours }}</span>
                 {% if can_edit_time %}<i class="tedit" title="ویرایش زمان (مدیر)">✏️</i>{% endif %}
               </td>
-              <td>{% if t.published_url %}<a class="lnk" href="{{ t.published_url }}" target="_blank" rel="noopener">↗</a>{% else %}<span class="lnk" style="opacity:.3">↗</span>{% endif %}</td>
+              {% for c in extra_columns %}<td>{% column_cell t c %}</td>{% endfor %}
             </tr>
           {% endfor %}
         </tbody>

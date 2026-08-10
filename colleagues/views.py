@@ -6,7 +6,9 @@ from django.db.models import Count, Q, Sum
 from django.shortcuts import get_object_or_404, redirect
 from django.views.generic import CreateView, DetailView, ListView, UpdateView, View
 
+from core.columns import get_columns
 from core.daterange import DateRangeMixin
+from core.models import ColumnConfig
 from tasks.models import Task
 
 from .forms import ColleagueForm
@@ -57,6 +59,7 @@ class ColleagueListView(LoginRequiredMixin, DateRangeMixin, ListView):
         return qs.annotate(
             planned=Count('tasks', filter=Q(tasks__planned_date__range=(start, end))),
             done=Count('tasks', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
+            words=Sum('tasks__word_count', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
             minutes=Sum('tasks__spent_minutes', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
             overdue=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING], tasks__planned_date__lt=date.today())),
         ).order_by('status', 'full_name')  # ترتیب صریح برای صفحه‌بندیِ پایدار
@@ -85,6 +88,7 @@ class ColleagueListView(LoginRequiredMixin, DateRangeMixin, ListView):
             mx = max(raw) or 1
             c.spark = [max(round(v / mx * 100), 5) if v else 5 for v in raw]
 
+        ctx['columns'] = get_columns(ColumnConfig.COLLEAGUES, ColumnConfig.PAGE)
         ctx['page_title'] = 'همکاران'
         ctx['q'] = self.request.GET.get('q', '')
         return ctx

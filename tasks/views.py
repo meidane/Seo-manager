@@ -4,10 +4,12 @@ from django.db.models import Q
 from django.views.generic import TemplateView
 
 from colleagues.models import Colleague
+from core.columns import get_columns
 from core.daterange import DateRangeMixin
+from core.models import ColumnConfig
 from projects.models import Project
 
-from .models import Task
+from .models import Task, TaskTypeDef
 
 
 class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
@@ -27,7 +29,9 @@ class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
             base = base.filter(project_id=g['project'])
         if g.get('assignee'):
             base = base.filter(assignee_id=g['assignee'])
-        if g.get('type'):
+        if g.get('type_def'):
+            base = base.filter(type_def_id=g['type_def'])
+        elif g.get('type'):  # سازگاری با لینک‌های قدیمی (نوع built-inِ خام)
             base = base.filter(task_type=g['type'])
         if g.get('status'):
             base = base.filter(status=g['status'])
@@ -55,8 +59,11 @@ class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
         # همهٔ پروژه‌ها/همکاران برای دراپ‌داون‌های ویرایشِ زندهٔ جدول (نه فقط فعال)
         ctx['all_projects'] = Project.objects.order_by('status', 'name')
         ctx['all_colleagues'] = Colleague.objects.order_by('status', 'full_name')
-        ctx['type_choices'] = Task.TYPE_CHOICES
+        # انواعِ فعال (built-in عمومی + سفارشی) برای دراپ‌داونِ فیلتر «نوع»
+        ctx['task_types'] = TaskTypeDef.objects.filter(is_active=True)
         ctx['status_choices'] = Task.STATUS_CHOICES
+        # ستون‌های اضافیِ قابل‌سفارشی‌سازی (بعد از ستون‌های ثابت جدول) — /settings/columns/
+        ctx['extra_columns'] = get_columns(ColumnConfig.TASKS, ColumnConfig.PAGE)
         ctx['page_title'] = 'تسک‌ها'
         ctx['filters'] = g
         # ویرایشِ مستقیمِ زمان فقط برای مدیران (نقش‌های دارای دسترسیِ review)

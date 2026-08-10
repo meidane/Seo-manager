@@ -8,6 +8,8 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
+from accounts.tenancy import TenantManager, stamp_org
+
 
 class TimeStampedModel(models.Model):
     """مدل انتزاعی با زمان ایجاد/ویرایش و سازنده."""
@@ -128,3 +130,41 @@ class Holiday(models.Model):
 
     def __str__(self):
         return f'{self.title} ({self.date})'
+
+
+class ColumnConfig(models.Model):
+    """سفارشی‌سازیِ ستون‌های یک جدول برای یک سازمان — منبعِ واحدِ «کدام ستون‌ها، به
+    چه ترتیبی» دیده شوند. کاتالوگِ ستون‌های موجود (برچسب/حالتِ نمایش) در `core/columns.py`
+    است؛ اینجا فقط فهرستِ کلیدهای انتخاب‌شده ذخیره می‌شود (بدون تکرارِ برچسب/حالت).
+    اگر رکوردی نباشد یا `keys` خالی باشد، `core.columns.get_columns` پیش‌فرضِ کاتالوگ
+    را برمی‌گرداند — یعنی صفحه بدون تنظیم هم کار می‌کند."""
+
+    TASKS = 'tasks'
+    PROJECTS = 'projects'
+    COLLEAGUES = 'colleagues'
+    TABLE_CHOICES = [(TASKS, 'تسک‌ها'), (PROJECTS, 'پروژه‌ها'), (COLLEAGUES, 'همکاران')]
+
+    PAGE = 'page'
+    DASHBOARD = 'dashboard'
+    SCOPE_CHOICES = [(PAGE, 'صفحه‌ی خودش'), (DASHBOARD, 'داشبورد')]
+
+    table = models.CharField('جدول', max_length=12, choices=TABLE_CHOICES)
+    scope = models.CharField('محل نمایش', max_length=10, choices=SCOPE_CHOICES)
+    keys = models.JSONField('کلیدهای ستون (به ترتیب)', default=list, blank=True)
+
+    organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
+    objects = TenantManager()
+    all_objects = models.Manager()
+
+    class Meta:
+        verbose_name = 'تنظیمِ ستون‌ها'
+        verbose_name_plural = 'تنظیمِ ستون‌ها'
+        base_manager_name = 'all_objects'
+        unique_together = ('organization', 'table', 'scope')
+
+    def save(self, *args, **kwargs):
+        stamp_org(self)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.get_table_display()} — {self.get_scope_display()}'

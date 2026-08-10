@@ -609,6 +609,17 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .kpi-score-row{display:flex;align-items:center;gap:8px;margin:6px 0}
 .kpi-score-row input[type=number]{max-width:80px}
 
+/* سفارشی‌سازیِ ستون‌ها — /settings/columns/ */
+.col-list{display:flex;flex-direction:column;gap:2px;padding:10px 14px}
+.col-row{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:var(--r-sm);border:1px solid transparent}
+.col-row:hover{background:rgba(255,255,255,.03);border-color:var(--stroke-soft)}
+.col-row label{display:flex;align-items:center;gap:8px;margin:0;font-size:13px;cursor:pointer;flex:1}
+.col-row input[type=checkbox]{width:auto}
+.col-row.off{opacity:.5}
+.col-arrows{display:flex;gap:4px}
+.col-arrows i{cursor:pointer;font-style:normal;opacity:.55;font-size:11px;width:20px;height:20px;display:grid;place-items:center;border-radius:5px}
+.col-arrows i:hover{opacity:1;background:rgba(255,255,255,.06)}
+
 /* پیش‌نمای تسک تکرارشونده در تقویم (کم‌رنگ/خط‌چین) */
 .tk.placeholder{opacity:.5;border:1px dashed var(--stroke)!important;background:transparent!important;filter:grayscale(.3)}
 .tk.virtual{opacity:.36;cursor:default;pointer-events:none}

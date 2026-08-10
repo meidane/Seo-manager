@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}سفارشی‌سازی ستون‌ها{% endblock %}
+
+{% block content %}
+  <div class="page-h"><h1>سفارشی‌سازی ستون‌ها</h1></div>
+
+  <div class="note glass" style="margin:0 0 14px">
+    برای هر جدول، تیک بزن کدام ستون‌ها دیده شوند و با ▲/▼ ترتیبشان را عوض کن.
+    فیلدهای سفارشیِ هر نوع تسک (از «انواع تسک») هم اینجا به‌صورت خودکار در فهرستِ
+    تسک‌ها اضافه می‌شوند.
+  </div>
+
+  {% for s in sections %}
+    <section class="card glass" style="margin-bottom:14px" data-table="{{ s.table }}" data-scope="{{ s.scope }}">
+      <div class="card-h"><h3>{{ s.title }}</h3><button class="btn btn-sm btn-p col-save">ذخیره</button></div>
+      <div class="col-list">
+        {% for it in s.items %}
+          <div class="col-row {% if not it.checked %}off{% endif %}" data-key="{{ it.key }}">
+            <label><input type="checkbox" class="col-chk" {% if it.checked %}checked{% endif %}> {{ it.label }}</label>
+            <span class="col-arrows"><i class="col-up" title="بالاتر">▲</i><i class="col-down" title="پایین‌تر">▼</i></span>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  {% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.col-row .col-chk').forEach(chk => {
+  chk.addEventListener('change', () => chk.closest('.col-row').classList.toggle('off', !chk.checked));
+});
+document.addEventListener('click', e => {
+  const up = e.target.closest('.col-up'), down = e.target.closest('.col-down');
+  if (!up && !down) return;
+  const row = e.target.closest('.col-row');
+  if (up && row.previousElementSibling) row.parentNode.insertBefore(row, row.previousElementSibling);
+  if (down && row.nextElementSibling) row.parentNode.insertBefore(row.nextElementSibling, row);
+});
+document.querySelectorAll('.col-save').forEach(btn => {
+  btn.onclick = async () => {
+    const sec = btn.closest('section');
+    const keys = [...sec.querySelectorAll('.col-row')]
+      .filter(r => r.querySelector('.col-chk').checked)
+      .map(r => r.dataset.key);
+    try {
+      await App.fetchJSON("{% url 'core:columns_save' %}", {
+        method: 'POST', body: { table: sec.dataset.table, scope: sec.dataset.scope, keys },
+      });
+      App.toast('ذخیره شد', 'ok');
+    } catch (_) {}
+  };
+});
+</script>
+{% endblock %}

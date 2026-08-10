@@ -17,7 +17,9 @@ from django.db.models import Count, Max, Q, Sum
 from django.views.generic import TemplateView
 
 from colleagues.models import Colleague
+from core.columns import get_columns
 from core.daterange import DateRangeMixin
+from core.models import ColumnConfig
 from projects.models import Project
 from tasks.models import Task
 
@@ -75,9 +77,11 @@ class DashboardView(LoginRequiredMixin, DateRangeMixin, TemplateView):
         projects = list(Project.objects.filter(status=Project.ACTIVE).annotate(
             planned=Count('tasks', filter=Q(tasks__planned_date__range=(start, end))),
             done=Count('tasks', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
+            words=Sum('tasks__word_count', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
             minutes=Sum('tasks__spent_minutes', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
             overdue=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING], tasks__planned_date__lt=today)),
             last_activity=Max('tasks__updated_at'),
+            last_report=Max('reports__date_to'),
         ))
         for p in projects:
             p.remaining = max(p.planned - p.done, 0)
@@ -97,15 +101,18 @@ class DashboardView(LoginRequiredMixin, DateRangeMixin, TemplateView):
         order = {'bad': 0, 'warn': 1, 'ok': 2, 'info': 3}
         projects.sort(key=lambda p: (order[p.state[0]], -p.overdue))
         ctx['projects'] = projects
+        ctx['project_columns'] = get_columns(ColumnConfig.PROJECTS, ColumnConfig.DASHBOARD)
 
         # ── ردیف ۴ (راست): عملکرد همکاران در بازه ──
         colleagues = list(Colleague.objects.filter(status=Colleague.ACTIVE).annotate(
             planned=Count('tasks', filter=Q(tasks__planned_date__range=(start, end))),
             done=Count('tasks', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
+            words=Sum('tasks__word_count', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
             minutes=Sum('tasks__spent_minutes', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
             overdue=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING], tasks__planned_date__lt=today)),
         ))
         ctx['colleagues'] = colleagues
+        ctx['colleague_columns'] = get_columns(ColumnConfig.COLLEAGUES, ColumnConfig.DASHBOARD)
 
         # ── ردیف ۴ (چپ): فید بازبینی ──
         ctx['review_feed'] = Task.objects.select_related('project', 'assignee').filter(

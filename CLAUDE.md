@@ -8,7 +8,7 @@
 
 ## نقشه‌ی اپ‌ها (یک خط هر کدام)
 - `config/` — تنظیمات، urls ریشه، wsgi/asgi
-- `core/` — پایه‌ها: TimeStampedModel, Attachment, ActivityLog, Holiday + jalali/daterange/crypto/htmlsan + templatetags + editor_upload
+- `core/` — پایه‌ها: TimeStampedModel, Attachment, ActivityLog, Holiday, ColumnConfig(+`columns.py` کاتالوگ) + jalali/daterange/crypto/htmlsan + templatetags + editor_upload
 - `accounts/` — هویتِ چندشرکتی: Organization→Team→زیرمجموعه، Membership/نقش، صفحه‌ی افراد (`docs/PLATFORM.md`)
 - `colleagues/` — Colleague (CRUD + آمار سینگل + جدول+اسپارک‌لاین)
 - `projects/` — Project + Credential(رمزنگاری) + فایل‌ها؛ سینگل با تب‌ها
@@ -17,7 +17,7 @@
 - `dashboard/` — ویو تجمیعی
 - `reports/` — Report/ReportItem (بدون snapshot، override، لینک عمومی مشتری)
 - `finance/` — حسابداری (پایه): BankAccount, Category(بابت), Transaction(+ایمپورت اکسل), Payroll
-- `seo/` — بستهٔ عمودیِ سئو (بدون مدل): فقط `seed_seo` (انواع تسکِ سئو + فیلد سفارشی + KPI). الگوی «بسته برای هر شرکت».
+- `seo/` — بستهٔ عمودیِ سئو (بدون مدل): فقط `seed_seo` (۴ نوع تسکِ سئوِ کاملاً سفارشی + فیلد + KPI). الگوی «بسته برای هر شرکت» — برای مشتریِ بعدی یک اپِ مشابه بساز.
 
 ## قوانین طلایی (نقض نکن)
 1. **تاریخ‌ها در DB میلادی‌اند.** شمسی فقط در نمایش (`|jalali`) و ورودی (`parse_jalali`).
@@ -34,9 +34,10 @@
 | منبع | فایل |
 |---|---|
 | ذخیره‌ی فیلد تسک (create/update) | `tasks/api.py: apply_fields` |
-| نمایش فیلد بر اساس نوع (مودال) | `static/js/task-schema.js` |
+| فیلدهای اختصاصیِ نوع در مودال (نه هسته‌ای) | `TaskTypeDef.fields` → `tasks.js: renderCustom` (هسته فقط ۱۰ فیلد عمومی دارد؛ `task-schema.js` فقط fallback برچسب/رنگِ tech/other) |
 | داده‌ی مودال تسک (پروژه/همکار/انواع) | `tasks/api.py: form_data` → `/tasks/api/formdata/` |
 | بازه‌ی سراسری | `core/daterange.py: DateRangeMixin` |
+| کاتالوگِ ستون‌های قابل‌سفارشی‌سازی (تسک/پروژه/همکار) | `core/columns.py: get_catalog/get_columns/cell_value` + `core/models.py: ColumnConfig` + تگ `{% column_cell %}` |
 | گروه‌بندی نوع در گزارش | `reports/models.py: BUCKETS` |
 | فیلدهای قابل‌نمایش به مشتری | `reports/models.py: CLIENT_FIELDS` + `Report.visible_fields` |
 | پاکسازی HTML ادیتور | `core/htmlsan.py: clean_html` |
@@ -72,6 +73,10 @@ python manage.py collectstatic --noinput  # فقط برای تست مرورگر/
 6. push فقط با URL کوچک‌حروف `meidane/seo-manager`.
 7. panic گذرای `cryptography` → `pip install --force-reinstall cryptography` یا اجرای دوباره.
 8. **تست:** توکن CSRF بعد از لاگین می‌چرخد؛ برای POST فرم از مقدارِ کوکیِ `csrftoken` فعلی استفاده کن.
+9. `QuerySet.update()` یک `int` برمی‌گرداند نه tuple — `n, _ = qs.update(...)` ارور می‌دهد.
+10. انواعِ تسکِ built-inِ سئویی (انتشار/آپدیت/رپورتاژ/لینک‌سازی) بازنشسته شدند؛ فقط `tech`/`other`
+    عمومی مانده‌اند و بستهٔ `seo/` جایگزینِ کاملاً سفارشی‌شان است. فیلترِ نوع در لیست/تقویم
+    دیگر با `task_type` نیست، با `type_def` (id) — `?type=` قدیمی فقط fallback است.
 
 ## انضباط نگه‌داری (مهم)
 **به‌روزرسانی هینت بخشی از همان تغییر است.** وقتی فیلد/الگو/تله/منبع‌واحدِ جدید اضافه شد،

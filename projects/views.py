@@ -8,8 +8,9 @@ from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.http import require_http_methods
 from django.views.generic import CreateView, DetailView, ListView, UpdateView, View
 
+from core.columns import get_columns
 from core.daterange import DateRangeMixin
-from core.models import ActivityLog
+from core.models import ActivityLog, ColumnConfig
 
 from .forms import ProjectForm
 from .models import Credential, Project
@@ -43,6 +44,7 @@ class ProjectListView(LoginRequiredMixin, DateRangeMixin, ListView):
             minutes=Sum('tasks__spent_minutes', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
             overdue=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING], tasks__planned_date__lt=date.today())),
             last_report=Max('reports__date_to'),
+            last_activity=Max('tasks__updated_at'),
         ).order_by('status', 'name')  # ترتیب صریح برای صفحه‌بندیِ پایدار
 
     def get_context_data(self, **kwargs):
@@ -63,6 +65,7 @@ class ProjectListView(LoginRequiredMixin, DateRangeMixin, ListView):
                 p.state = ('ok', 'روی روال')
             else:
                 p.state = ('info', 'جلوتر')
+        ctx['columns'] = get_columns(ColumnConfig.PROJECTS, ColumnConfig.PAGE)
         ctx['page_title'] = 'پروژه‌ها'
         ctx['q'] = self.request.GET.get('q', '')
         return ctx
