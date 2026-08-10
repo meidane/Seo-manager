@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from django.views.generic import ListView, TemplateView
 
-from .columns import get_catalog
+from .columns import get_catalog, resolve_state
 from .models import ColumnConfig, Holiday
 
 IMAGE_EXTS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
@@ -64,17 +64,15 @@ class ColumnsSettingsView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        cfgs = {(c.table, c.scope): c.keys for c in ColumnConfig.objects.all()}
         sections = []
         for table, scope, title in COLUMN_SECTIONS:
-            catalog = get_catalog(table)
+            catalog, saved, configured = resolve_state(table, scope)
             by_key = {c['key']: c for c in catalog}
-            saved = cfgs.get((table, scope)) or []
-            # ترتیب: کلیدهای ذخیره‌شده (فعال) اول، بعد بقیه‌ی کاتالوگ (غیرفعال)
+            # ترتیب: کلیدهای فعال (ذخیره‌شده یا پیش‌فرض) اول، بعد بقیه‌ی کاتالوگ (غیرفعال)
             ordered = [by_key[k] for k in saved if k in by_key]
             ordered += [c for c in catalog if c['key'] not in saved]
             items = [{'key': c['key'], 'label': c['label'], 'checked': c['key'] in saved} for c in ordered]
-            sections.append({'table': table, 'scope': scope, 'title': title, 'items': items})
+            sections.append({'table': table, 'scope': scope, 'title': title, 'items': items, 'configured': configured})
         ctx['sections'] = sections
         ctx['page_title'] = 'سفارشی‌سازی ستون‌ها'
         return ctx
@@ -96,4 +94,16 @@ def columns_save(request):
     valid_keys = {c['key'] for c in get_catalog(table)}
     keys = [k for k in keys if k in valid_keys]
     ColumnConfig.objects.update_or_create(table=table, scope=scope, defaults={'keys': keys})
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_http_methods(['POST'])
+def columns_reset(request):
+    """حذفِ تنظیمِ ذخیره‌شده = برگشت به پیش‌فرضِ کاتالوگ (نه «خالی»). بدنه: {table, scope}."""
+    try:
+        data = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'detail': 'بدنه نامعتبر'}, status=400)
+    ColumnConfig.objects.filter(table=data.get('table'), scope=data.get('scope')).delete()
     return JsonResponse({'ok': True})

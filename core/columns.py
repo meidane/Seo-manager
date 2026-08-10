@@ -71,16 +71,24 @@ def get_catalog(table):
     return base
 
 
+def resolve_state(table, scope):
+    """(کاتالوگ, کلیدهای مؤثر, پیکربندی‌شده؟) — یک‌بار محاسبه، هم `get_columns`
+    هم صفحهٔ تنظیمات از همین می‌خوانند تا هیچ‌وقت ناهم‌خوان نشوند.
+    **بدونِ رکوردِ ColumnConfig** = پیش‌فرضِ کاتالوگ. **رکوردِ خالی (کاربر همه را
+    برداشته و ذخیره کرده)** = واقعاً هیچ ستونی، نه بازگشت به پیش‌فرض."""
+    catalog = get_catalog(table)
+    cfg = ColumnConfig.objects.filter(table=table, scope=scope).first()
+    if cfg is not None:
+        return catalog, list(cfg.keys), True
+    defaults = [c['key'] for c in catalog if c.get('default')] or [c['key'] for c in catalog[:6]]
+    return catalog, defaults, False
+
+
 def get_columns(table, scope):
     """فهرستِ ستون‌های فعالِ سازمانِ جاری برای یک جدول/محل — کلید+برچسب+حالتِ نمایش."""
-    catalog = get_catalog(table)
+    catalog, keys, _ = resolve_state(table, scope)
     by_key = {c['key']: c for c in catalog}
-    cfg = ColumnConfig.objects.filter(table=table, scope=scope).first()
-    if cfg and cfg.keys:
-        cols = [by_key[k] for k in cfg.keys if k in by_key]
-        if cols:
-            return cols
-    return [c for c in catalog if c.get('default')] or catalog[:6]
+    return [by_key[k] for k in keys if k in by_key]
 
 
 def cell_value(obj, col):

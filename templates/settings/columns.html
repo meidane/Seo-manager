@@ -13,7 +13,13 @@
 
   {% for s in sections %}
     <section class="card glass" style="margin-bottom:14px" data-table="{{ s.table }}" data-scope="{{ s.scope }}">
-      <div class="card-h"><h3>{{ s.title }}</h3><button class="btn btn-sm btn-p col-save">ذخیره</button></div>
+      <div class="card-h"><h3>{{ s.title }}</h3>
+        <div class="side-c">
+          <span class="tag {% if s.configured %}t-info{% else %}t-mute{% endif %}">{% if s.configured %}سفارشی‌شده{% else %}پیش‌فرض{% endif %}</span>
+          {% if s.configured %}<button class="btn btn-sm col-reset">بازگشت به پیش‌فرض</button>{% endif %}
+          <button class="btn btn-sm btn-p col-save">ذخیره</button>
+        </div>
+      </div>
       <div class="col-list">
         {% for it in s.items %}
           <div class="col-row {% if not it.checked %}off{% endif %}" data-key="{{ it.key }}">
@@ -48,7 +54,20 @@ document.querySelectorAll('.col-save').forEach(btn => {
       await App.fetchJSON("{% url 'core:columns_save' %}", {
         method: 'POST', body: { table: sec.dataset.table, scope: sec.dataset.scope, keys },
       });
-      App.toast('ذخیره شد', 'ok');
+      App.toast(keys.length ? 'ذخیره شد' : 'ذخیره شد — هیچ ستونِ اضافه‌ای نمایش داده نمی‌شود', 'ok');
+      location.reload();
+    } catch (_) {}
+  };
+});
+document.querySelectorAll('.col-reset').forEach(btn => {
+  btn.onclick = async () => {
+    const sec = btn.closest('section');
+    try {
+      await App.fetchJSON("{% url 'core:columns_reset' %}", {
+        method: 'POST', body: { table: sec.dataset.table, scope: sec.dataset.scope },
+      });
+      App.toast('به پیش‌فرض برگشت', 'ok');
+      location.reload();
     } catch (_) {}
   };
 });
