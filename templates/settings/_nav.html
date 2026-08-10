@@ -1,0 +1,17 @@
+<div class="settings-nav">
+  {% if 'manage_people' in org_perms %}
+    <a href="{% url 'accounts:people' %}" class="{% if request.resolver_match.app_name == 'accounts' and request.resolver_match.url_name == 'people' %}on{% endif %}">افراد و نقش‌ها</a>
+  {% endif %}
+  {% if 'manage_task_types' in org_perms %}
+    <a href="{% url 'task_types:list' %}" class="{% if request.resolver_match.app_name == 'task_types' %}on{% endif %}">انواع تسک</a>
+  {% endif %}
+  {% if 'manage_columns' in org_perms %}
+    <a href="{% url 'core:columns' %}" class="{% if request.resolver_match.url_name == 'columns' %}on{% endif %}">ستون‌ها</a>
+  {% endif %}
+  {% if 'manage_holidays' in org_perms %}
+    <a href="{% url 'core:holidays' %}" class="{% if request.resolver_match.url_name == 'holidays' %}on{% endif %}">تعطیلات</a>
+  {% endif %}
+  {% if 'manage_org' in org_perms %}
+    <a href="{% url 'accounts:api_tokens' %}" class="{% if request.resolver_match.url_name == 'api_tokens' %}on{% endif %}">توکن‌های API</a>
+  {% endif %}
+</div>

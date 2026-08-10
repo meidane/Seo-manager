@@ -3,6 +3,7 @@
 {% block title %}{{ type_def.name }}{% endblock %}
 
 {% block content %}
+{% include "settings/_nav.html" %}
 <div data-type="{{ type_def.pk }}">
   <div class="page-h">
     <a href="{% url 'task_types:list' %}" class="btn btn-sm">← انواع</a>

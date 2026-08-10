@@ -119,6 +119,15 @@
     });
   }
 
+  /* ── دعوت‌نامه‌ها ── بنرِ سراسری + صفحه‌ی /invites/ هر دو از این دلیگیت استفاده می‌کنند ── */
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.invite-accept, .invite-reject');
+    if (!btn) return;
+    fetchJSON(btn.dataset.url, { method: 'POST' })
+      .then(() => window.location.reload())
+      .catch(() => {});
+  });
+
   /* ── نمای عمومی ── */
   window.App = {
     csrf: CSRF,

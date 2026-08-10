@@ -11,6 +11,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from django.views.generic import ListView, TemplateView
 
+from accounts.access import require_perm
+
 from .columns import get_catalog, resolve_state
 from .models import ColumnConfig, Holiday
 
@@ -45,6 +47,10 @@ class HolidayListView(LoginRequiredMixin, ListView):
     context_object_name = 'holidays'
     paginate_by = 50
 
+    def dispatch(self, request, *args, **kwargs):
+        require_perm(request, 'manage_holidays')
+        return super().dispatch(request, *args, **kwargs)
+
 
 # ── سفارشی‌سازیِ ستون‌ها `/settings/columns/` ───────────────────────────────
 # پنج بخشِ قابل‌تنظیم: تسک‌ها(صفحه)، پروژه‌ها(صفحه/داشبورد)، همکاران(صفحه/داشبورد).
@@ -61,6 +67,10 @@ class ColumnsSettingsView(LoginRequiredMixin, TemplateView):
     """تنظیمِ ستون‌های قابل‌نمایش/ترتیبشان برای هر جدول+محل — per سازمان."""
 
     template_name = 'settings/columns.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        require_perm(request, 'manage_columns')
+        return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -82,6 +92,7 @@ class ColumnsSettingsView(LoginRequiredMixin, TemplateView):
 @require_http_methods(['POST'])
 def columns_save(request):
     """ذخیره‌ی ترتیب/انتخابِ ستون‌های یک (table, scope). بدنه: {table, scope, keys:[...]}."""
+    require_perm(request, 'manage_columns')
     try:
         data = json.loads(request.body or '{}')
     except json.JSONDecodeError:
@@ -101,6 +112,7 @@ def columns_save(request):
 @require_http_methods(['POST'])
 def columns_reset(request):
     """حذفِ تنظیمِ ذخیره‌شده = برگشت به پیش‌فرضِ کاتالوگ (نه «خالی»). بدنه: {table, scope}."""
+    require_perm(request, 'manage_columns')
     try:
         data = json.loads(request.body or '{}')
     except json.JSONDecodeError:

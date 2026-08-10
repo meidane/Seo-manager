@@ -17,6 +17,18 @@ from core.models import Holiday
 
 from .models import Task, TaskComment
 
+
+def _task_perm_ok(request, task, perm):
+    """دسترسیِ ویرایش/حذفِ یک تسکِ مشخص: نقش باید `perm` را داشته باشد؛ اگر
+    `own_tasks_only` هم داشت، فقط روی تسکِ خودش (assignee = همکارِ متصل به کاربر)."""
+    m = getattr(request, 'membership', None)
+    if not m or not m.can(perm):
+        return False
+    if m.can('own_tasks_only'):
+        colleague = getattr(request.user, 'colleague', None)
+        return bool(colleague and task.assignee_id == colleague.id)
+    return True
+
 # فیلدهایی که مستقیم از بدنه‌ی JSON پذیرفته می‌شوند (بقیه محاسباتی/سیستمی‌اند)
 TEXT_FIELDS = [
     'title', 'description', 'seo_title', 'keywords', 'lsi_keywords',
@@ -193,9 +205,13 @@ def task_detail(request, pk):
         })
         return JsonResponse(d)
     if request.method == 'DELETE':
+        if not _task_perm_ok(request, task, 'delete_task'):
+            return JsonResponse({'detail': 'دسترسیِ حذفِ این تسک را نداری'}, status=403)
         task.delete()
         return JsonResponse({'ok': True})
     # PATCH
+    if not _task_perm_ok(request, task, 'edit_task'):
+        return JsonResponse({'detail': 'دسترسیِ ویرایشِ این تسک را نداری'}, status=403)
     was_done = task.status == Task.DONE
     apply_fields(task, _body(request))
     err = _publish_url_error(task)
@@ -213,6 +229,8 @@ def task_detail(request, pk):
 def task_status(request, pk):
     """تغییر سریع وضعیت (دراپ‌داون ردیف و drag کانبان)."""
     task = get_object_or_404(Task, pk=pk)
+    if not _task_perm_ok(request, task, 'edit_task'):
+        return JsonResponse({'detail': 'دسترسیِ ویرایشِ این تسک را نداری'}, status=403)
     data = _body(request)
     new_status = data.get('status')
     if new_status not in dict(Task.STATUS_CHOICES):
@@ -283,8 +301,16 @@ def task_timer(request, pk):
 @login_required
 @require_http_methods(['PATCH'])
 def task_review(request, pk):
-    """تایید / نیاز به اصلاح (از فید بازبینی و صفحه‌ی بازبینی)."""
+    """تایید / نیاز به اصلاح (از فید بازبینی و صفحه‌ی بازبینی). مجاز برای کسی که
+    دسترسیِ سازمانیِ `review` دارد، یا مدیرِ مستقیمِ همکارِ این تسک باشد."""
     task = get_object_or_404(Task, pk=pk)
+    m = getattr(request, 'membership', None)
+    is_org_reviewer = bool(m and m.can('review'))
+    is_direct_manager = bool(
+        task.assignee_id and task.assignee.manager_id
+        and task.assignee.manager.user_id == request.user.id)
+    if not is_org_reviewer and not is_direct_manager:
+        return JsonResponse({'detail': 'دسترسیِ بازبینیِ این تسک را نداری'}, status=403)
     data = _body(request)
     status = data.get('review_status')
     if status not in dict(Task.REVIEW_CHOICES):
@@ -387,10 +413,16 @@ def _next_workday(d: date, holidays: set) -> date:
 @require_http_methods(['POST'])
 def task_bulk(request):
     """عملیات گروهی: تغییر/جابه‌جایی تاریخ، مسئول، وضعیت، پروژه، انجام‌شده."""
+    m = getattr(request, 'membership', None)
+    if not m or not m.can('edit_task'):
+        return JsonResponse({'detail': 'دسترسیِ ویرایشِ تسک را نداری'}, status=403)
     data = _body(request)
     ids = data.get('ids', [])
     action = data.get('action')
     qs = Task.objects.filter(id__in=ids)
+    if m.can('own_tasks_only'):
+        colleague = getattr(request.user, 'colleague', None)
+        qs = qs.filter(assignee_id=colleague.id if colleague else -1)
     if not ids or not action:
         return JsonResponse({'detail': 'ids و action لازم است'}, status=400)
 

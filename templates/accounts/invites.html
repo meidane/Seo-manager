@@ -1,0 +1,46 @@
+{% load static %}<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>دعوت‌نامه‌ها — پنل مدیریت</title>
+  <link rel="stylesheet" href="{% static 'vendor/vazirmatn/vazirmatn.css' %}">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-card glass wide">
+    <div class="brand">
+      <div class="brand-mark">پ</div>
+      <div><b>پنل مدیریت</b><span>مدیریت پروژه و تیم</span></div>
+    </div>
+    <h2>دعوت‌نامه‌ها</h2>
+    <p class="sub">هنوز عضوِ هیچ سازمانی نیستی — دعوت‌نامه‌ای که برایت ثبت شده را قبول یا رد کن.</p>
+
+    {% if invites %}
+      <div class="invite-list">
+        {% for inv in invites %}
+          <div class="invite-item" data-id="{{ inv.pk }}">
+            <div class="invite-info">
+              <b>{{ inv.organization.name }}</b>
+              <span class="sub">نقش: {{ inv.role_label }} · دعوت‌کننده: {{ inv.invited_by.get_full_name|default:inv.invited_by.username }}</span>
+            </div>
+            <div class="invite-actions">
+              <button type="button" class="btn btn-p invite-accept" data-url="{% url 'accounts:invite_accept' inv.pk %}">قبول</button>
+              <button type="button" class="btn invite-reject" data-url="{% url 'accounts:invite_reject' inv.pk %}">رد</button>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="sub">دعوت‌نامه‌ی در انتظاری نداری. اگر منتظرِ دعوت به یک سازمان هستی، از مدیر آن سازمان بخواه دعوتت کند.</p>
+    {% endif %}
+
+    <p class="sub" style="margin-top:14px;text-align:center">
+      <a href="{% url 'accounts:logout' %}">خروج از حساب</a>
+    </p>
+  </div>
+</div>
+<script src="{% static 'js/app.js' %}"></script>
+</body>
+</html>

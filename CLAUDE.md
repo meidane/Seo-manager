@@ -9,9 +9,9 @@
 ## نقشه‌ی اپ‌ها (یک خط هر کدام)
 - `config/` — تنظیمات، urls ریشه، wsgi/asgi
 - `core/` — پایه‌ها: TimeStampedModel, Attachment, ActivityLog, Holiday, ColumnConfig(+`columns.py` کاتالوگ) + jalali/daterange/crypto/htmlsan + templatetags + editor_upload
-- `accounts/` — هویتِ چندشرکتی: Organization→Team→زیرمجموعه، Membership/نقش، صفحه‌ی افراد (`docs/PLATFORM.md`)
-- `colleagues/` — Colleague (CRUD + آمار سینگل + جدول+اسپارک‌لاین)
-- `projects/` — Project + Credential(رمزنگاری) + فایل‌ها؛ سینگل با تب‌ها
+- `accounts/` — هویتِ چندشرکتی: Organization→Team→زیرمجموعه، Membership/نقشِ سفارشی، دعوت‌نامه(Invite)، صفحه‌ی افراد (`docs/PLATFORM.md`)
+- `colleagues/` — Colleague (CRUD + آمار سینگل + جدول+اسپارک‌لاین + مدیر/needs_review + دسترسی به سیستم)
+- `projects/` — Project + Credential(رمزنگاری) + فایل‌ها + `members`(گیتِ دسترسیِ واقعی)؛ سینگل با تب‌ها
 - `tasks/` — **قلب سیستم**: Task, TaskComment, TaskTypeDef/Field؛ api.py + مودال سراسری
 - `calendarapp/` — تقویم شمسی (بدون مدل؛ منطق در calendar_logic.py) + دیت‌پیکر
 - `dashboard/` — ویو تجمیعی
@@ -50,6 +50,10 @@
 | تکرارِ تسک (تولید تنبل) | `tasks/recurrence.py` + `RecurrenceRule` |
 | ادیتور غنی | `static/js/richtext.js` (کلاس `rich-editor`) |
 | دیت‌پیکر شمسی | `static/js/datepicker.js` (کلاس `jdate`) |
+| چکِ دسترسیِ سازمانی در ویو/API | `accounts/access.py: require_perm/has_perm` |
+| فهرستِ id پروژه‌های قابل‌دیدنِ کاربرِ جاری | `projects/access.py: accessible_project_ids` |
+| دعوت‌نامه‌ی در انتظار (نه عضویتِ فوری) | `accounts/models.py: Invite` (+ `docs/PLATFORM.md`) |
+| نوارِ تبِ صفحاتِ تنظیمات | `templates/settings/_nav.html` (کلاسِ CSS: `.settings-nav`) |
 
 ## دستورهای کلیدی
 ```bash
@@ -85,6 +89,16 @@ python manage.py collectstatic --noinput  # فقط برای تست مرورگر/
     fetchِ کراس‌سایت نمی‌فرستد، حتی اگر همان مرورگرِ لاگین‌شده باشد. توکنِ API استفاده کن.
 12. `ColumnConfig`: نبودِ رکورد = پیش‌فرض؛ رکوردِ خالی = **واقعاً هیچ‌کدام**، نه پیش‌فرض
     (باگِ قبلی: `if cfg and cfg.keys` این دو را قاطی می‌کرد و ذخیره‌ی خالی بی‌اثر می‌شد).
+13. `Membership.perms` برای مالک `{'*'}` است، ولی تمپلیت‌ها `{% if 'x' in org_perms %}`
+    رشته‌ی دقیق می‌خواهند — سرورساید همیشه با `.can(perm)` چک کن (نه `in` روی `perms`
+    خام)؛ در context processor `'*'` به `set(PERMS)` باز شده تا لینک‌های گیت‌شده برای
+    مالک هم دیده شوند.
+14. `accessible_project_ids(request)` می‌تواند `None` (بدونِ محدودیت) یا لیست برگرداند —
+    همیشه `if ids is not None: qs = qs.filter(...)`؛ چک کردنِ `if ids:` اشتباه است چون
+    لیستِ خالیِ معتبر (کاربرِ بدونِ colleague) را هم فیلتر می‌کند.
+15. کاربرِ لاگین‌شده‌ی بدونِ سازمان (دعوتی تازه، هنوز قبول نکرده) با `OrgRequiredMiddleware`
+    به `/invites/` می‌افتد؛ مسیرِ جدیدی که باید بدونِ سازمان هم در دسترس باشد را به
+    `_ORG_LESS_ALLOWED` در `accounts/tenancy.py` اضافه کن، وگرنه ریدایرکت‌لوپ می‌شود.
 
 ## انضباط نگه‌داری (مهم)
 **به‌روزرسانی هینت بخشی از همان تغییر است.** وقتی فیلد/الگو/تله/منبع‌واحدِ جدید اضافه شد،

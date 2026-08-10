@@ -9,15 +9,28 @@
 
 def org(request):
     user = getattr(request, 'user', None)
-    organization = getattr(request, 'organization', None)
-    membership = getattr(request, 'membership', None)
-    if not user or not user.is_authenticated or organization is None:
+    if not user or not user.is_authenticated:
         return {}
+
+    from .models import Invite
+    pending_invites = list(
+        Invite.objects.filter(user=user, status=Invite.PENDING).select_related('organization'))
+
+    organization = getattr(request, 'organization', None)
+    if organization is None:
+        return {'pending_invites': pending_invites}
+
+    membership = getattr(request, 'membership', None)
     my_orgs = [m.organization for m in
                user.memberships.filter(is_active=True).select_related('organization')]
+    perms = membership.perms if membership else set()
+    if '*' in perms:  # مالک: '*' یعنی همه، ولی چک‌های تمپلیت رشته‌ی دقیق می‌خواهند
+        from .permissions import PERMS
+        perms = set(PERMS)
     return {
         'current_org': organization,
         'current_membership': membership,
-        'org_perms': (membership.perms if membership else set()),
+        'org_perms': perms,
         'my_orgs': my_orgs,
+        'pending_invites': pending_invites,
     }

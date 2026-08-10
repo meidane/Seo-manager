@@ -70,7 +70,14 @@
 `STATUS_CHOICES` = `todo/doing/done` (وضعیت «لغو شده/cancelled» حذف شد — migration 0006
 مقادیر قبلی را به `todo` برمی‌گرداند).
 
-## بازبینی (review)
+## بازبینی تسک (review) — «بازبینی محتوا»ی قبلی، تغییرِ نام + مسیرِ مدیر
+`TaskReviewView` (`/tasks/review/`) دو مسیرِ مستقلِ OR‌شده دارد: (۱) `type_def.requires_review`
+→ صفِ عمومی، فقط اگر ویوکننده دسترسیِ سازمانیِ `review` را داشته باشد؛ (۲)
+`assignee.needs_review=True` → فقط برای `assignee.manager.user` دیده می‌شود، **مستقل از
+دسترسیِ `review`** (تعیینِ مدیر خودش اجازه‌ی بازبینیِ کارِ همان همکار است).
+`task_review` API همین دو شرط را چک می‌کند (403 اگر نه دسترسیِ سازمانی نه مدیرِ مستقیم).
+`Colleague.manager`/`needs_review` در فرمِ همکار تنظیم می‌شوند (`colleagues/CLAUDE.md`).
+
 `task_review`: `needs_fix` → تسک از `done` به `doing` برمی‌گردد و `done_date` پاک می‌شود؛
 `review_note` (HTML، پاکسازی با clean_html) با مودال TinyMCE نوشته می‌شود. در لیست، تگ
 «⚠ نیاز به اصلاح» کنار عنوان (`data-fix-note`) → کلیک، **مودالِ خودِ تسک** را باز می‌کند

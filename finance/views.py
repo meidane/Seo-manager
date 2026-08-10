@@ -12,6 +12,7 @@ from django.views.generic import TemplateView
 from core.daterange import DateRangeMixin
 from projects.models import Project
 
+from .access import FinancePermMixin, require_finance
 from .models import BankAccount, Category, Payroll, PayrollItem, Transaction
 from .utils import parse_amount, parse_excel_date
 
@@ -25,7 +26,7 @@ def _body(request):
 
 # ── صفحات ────────────────────────────────────────────────────────────────
 
-class FinanceDashboardView(LoginRequiredMixin, DateRangeMixin, TemplateView):
+class FinanceDashboardView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateView):
     template_name = 'finance/dashboard.html'
 
     def get_context_data(self, **kwargs):
@@ -63,7 +64,7 @@ class FinanceDashboardView(LoginRequiredMixin, DateRangeMixin, TemplateView):
         return ctx
 
 
-class TransactionListView(LoginRequiredMixin, TemplateView):
+class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
     template_name = 'finance/transactions.html'
 
     def get_context_data(self, **kwargs):
@@ -87,7 +88,7 @@ class TransactionListView(LoginRequiredMixin, TemplateView):
         return ctx
 
 
-class BankListView(LoginRequiredMixin, TemplateView):
+class BankListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
     template_name = 'finance/banks.html'
 
     def get_context_data(self, **kwargs):
@@ -98,7 +99,7 @@ class BankListView(LoginRequiredMixin, TemplateView):
         return ctx
 
 
-class ImportView(LoginRequiredMixin, TemplateView):
+class ImportView(LoginRequiredMixin, FinancePermMixin, TemplateView):
     template_name = 'finance/import.html'
 
     def get_context_data(self, **kwargs):
@@ -108,7 +109,7 @@ class ImportView(LoginRequiredMixin, TemplateView):
         return ctx
 
 
-class PayrollListView(LoginRequiredMixin, TemplateView):
+class PayrollListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
     template_name = 'finance/payroll.html'
 
     def get_context_data(self, **kwargs):
@@ -123,6 +124,7 @@ class PayrollListView(LoginRequiredMixin, TemplateView):
 # ── API: بانک ─────────────────────────────────────────────────────────────
 
 @login_required
+@require_finance
 @require_http_methods(['POST'])
 def bank_create(request):
     d = _body(request)
@@ -136,6 +138,7 @@ def bank_create(request):
 
 
 @login_required
+@require_finance
 @require_http_methods(['PATCH', 'DELETE'])
 def bank_edit(request, pk):
     b = get_object_or_404(BankAccount, pk=pk)
@@ -157,6 +160,7 @@ def bank_edit(request, pk):
 # ── API: بابت ─────────────────────────────────────────────────────────────
 
 @login_required
+@require_finance
 @require_http_methods(['POST'])
 def category_create(request):
     d = _body(request)
@@ -171,6 +175,7 @@ def category_create(request):
 
 
 @login_required
+@require_finance
 @require_http_methods(['DELETE'])
 def category_delete(request, pk):
     get_object_or_404(Category, pk=pk).delete()
@@ -180,6 +185,7 @@ def category_delete(request, pk):
 # ── API: تراکنش (ویرایش inline سه ستون + گروهی) ───────────────────────────
 
 @login_required
+@require_finance
 @require_http_methods(['PATCH'])
 def tx_edit(request, pk):
     t = get_object_or_404(Transaction, pk=pk)
@@ -195,6 +201,7 @@ def tx_edit(request, pk):
 
 
 @login_required
+@require_finance
 @require_http_methods(['POST'])
 def tx_bulk(request):
     d = _body(request)
@@ -244,6 +251,7 @@ def _parse_workbook(f):
 
 
 @login_required
+@require_finance
 @require_http_methods(['POST'])
 def import_preview(request):
     import datetime as _dt
@@ -278,6 +286,7 @@ def _fa_date(iso):
 
 
 @login_required
+@require_finance
 @require_http_methods(['POST'])
 def import_confirm(request):
     import datetime as _dt
@@ -308,6 +317,7 @@ def import_confirm(request):
 # ── API: حقوق ─────────────────────────────────────────────────────────────
 
 @login_required
+@require_finance
 @require_http_methods(['POST'])
 def payroll_create(request):
     d = _body(request)
@@ -323,6 +333,7 @@ def payroll_create(request):
 
 
 @login_required
+@require_finance
 @require_http_methods(['PATCH', 'DELETE'])
 def payroll_edit(request, pk):
     p = get_object_or_404(Payroll, pk=pk)

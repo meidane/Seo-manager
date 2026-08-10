@@ -39,6 +39,7 @@
     {% if project.track_keyword_rank %}<button class="tab" data-tab="keywords">کلمات کلیدی</button>{% endif %}
     <button class="tab" data-tab="calendar">تقویم</button>
     <button class="tab" data-tab="files">فایل‌ها</button>
+    <button class="tab" data-tab="members">دسترسی به همکاران</button>
     <button class="tab" data-tab="creds">دسترسی‌ها</button>
     <button class="tab" data-tab="reports">گزارش‌ها</button>
     <button class="tab" data-tab="finance">حسابداری</button>
@@ -65,6 +66,26 @@
     {% if project.description %}<div style="padding:16px 17px;color:var(--text-dim);line-height:2;border-top:1px solid var(--stroke-soft)">{{ project.description|linebreaksbr }}</div>{% endif %}
   </section>
   </div>
+
+  {# دسترسی به همکاران — چه کسی این پروژه/تسک‌هایش را ببیند (غیر از مالکِ سازمان که همیشه می‌بیند) #}
+  <section class="card glass tab-panel" data-panel="members">
+    <div class="card-h"><h3>دسترسی به همکاران</h3>
+      {% if can_manage_members %}<div class="side-c"><button class="btn btn-sm btn-p" id="members-save">ذخیره</button></div>{% endif %}
+    </div>
+    <div class="note glass" style="margin:12px 14px">
+      فقط همکارانی که این‌جا تیک بخورند (+ مالکِ سازمان) این پروژه و تسک‌هایش را می‌بینند.
+    </div>
+    <div style="padding:0 14px 14px;display:flex;flex-wrap:wrap;gap:12px">
+      {% for c in all_colleagues %}
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer">
+          <input type="checkbox" class="mem-box" value="{{ c.id }}" {% if c.id in member_ids %}checked{% endif %} {% if not can_manage_members %}disabled{% endif %} style="width:auto">
+          {{ c.full_name }}
+        </label>
+      {% empty %}
+        <span class="zero">همکاری ثبت نشده</span>
+      {% endfor %}
+    </div>
+  </section>
 
   {# دسترسی‌ها #}
   <section class="card glass tab-panel" data-panel="creds">
@@ -208,6 +229,17 @@
   grid.addEventListener('click',async e=>{ const d=e.target.closest('.del'); if(!d)return;
     const card=d.closest('.file-card'); if(await App.confirm('این فایل حذف شود؟')){ await App.fetchJSON(`/projects/api/files/${card.dataset.id}/`,{method:'DELETE'}); card.remove(); App.toast('حذف شد','ok'); } });
   loadFiles();
+})();
+(function(){
+  // ── دسترسی به همکاران ──
+  const saveBtn = document.getElementById('members-save');
+  if(saveBtn) saveBtn.onclick = async ()=>{
+    const members = [...document.querySelectorAll('.mem-box:checked')].map(c=>+c.value);
+    try{
+      await App.fetchJSON("{% url 'projects:members' project.pk %}", {method:'PATCH', body:{members}});
+      App.toast('ذخیره شد','ok');
+    }catch(_){}
+  };
 })();
 (function(){
   // ── تب‌ها ──

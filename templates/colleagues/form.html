@@ -52,10 +52,12 @@
         <div class="field"><label>آواتار</label>{{ form.avatar }}</div>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-        <div class="field"><label>دستمزد هر کلمه (اختیاری)</label>{{ form.rate_per_word }}</div>
-        <div class="field"><label>دستمزد هر تسک (اختیاری)</label>{{ form.rate_per_task }}</div>
+      <div class="field">
+        <label>مدیر (اختیاری)</label>{{ form.manager }}
       </div>
+      <label id="needs-review-wrap" style="display:{% if form.manager.value %}flex{% else %}none{% endif %};align-items:center;gap:8px;cursor:pointer;margin:0 0 14px">
+        {{ form.needs_review }} تسک‌هایش نیاز به بازبینیِ مدیرش دارد
+      </label>
 
       <div class="field"><label>توضیحات</label>{{ form.description }}</div>
 
@@ -65,4 +67,18 @@
       </div>
     </form>
   </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  const mgr = document.getElementById('id_manager');
+  const wrap = document.getElementById('needs-review-wrap');
+  if(!mgr || !wrap) return;
+  mgr.addEventListener('change', ()=>{
+    wrap.style.display = mgr.value ? 'flex' : 'none';
+    if(!mgr.value) document.getElementById('id_needs_review').checked = false;
+  });
+})();
+</script>
 {% endblock %}

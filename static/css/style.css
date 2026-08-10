@@ -304,6 +304,21 @@ tbody tr:last-child td{border-bottom:0}
 .auth-card p.sub{font-size:12.5px;color:var(--text-faint);text-align:center;margin-bottom:22px}
 .auth-err{background:rgba(251,87,115,.10);border:1px solid rgba(251,87,115,.28);
   color:#FFC2CC;font-size:12.5px;padding:9px 13px;border-radius:var(--r-sm);margin-bottom:14px}
+.auth-card.wide{max-width:460px}
+
+/* ── دعوت‌نامه‌ها ── */
+.invite-list{display:flex;flex-direction:column;gap:10px;margin-bottom:6px}
+.invite-item{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--stroke);
+  border-radius:var(--r-sm);background:var(--glass-hover)}
+.invite-info{min-width:0;flex:1;display:flex;flex-direction:column;gap:2px}
+.invite-info b{font-size:13.5px;font-weight:600}
+.invite-actions{display:flex;gap:6px;flex:none}
+
+/* ── بنرِ دعوت‌نامه‌ی در انتظار (کاربرِ عضوِ سازمان که دعوتِ دیگری هم دارد) ── */
+.invite-banner{display:flex;align-items:center;gap:12px;padding:11px 16px;margin-bottom:14px;
+  border:1px solid var(--warning);border-radius:var(--r-sm);
+  background:color-mix(in srgb,var(--warning) 12%,transparent);font-size:13px}
+.invite-banner .side-c{margin-inline-start:auto;display:flex;gap:8px}
 
 .page-h{display:flex;align-items:center;gap:12px;margin-bottom:16px}
 .page-h h1{font-size:20px;font-weight:700}
@@ -350,12 +365,12 @@ tbody tr:last-child td{border-bottom:0}
 .tab-panel{display:none}
 .tab-panel.on{display:block}
 
-/* ═══ حسابداری ═══ */
-.fin-nav{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:16px;background:rgba(255,255,255,.03);
+/* ═══ حسابداری + تنظیمات (نوارِ تبِ سنجاقی) ═══ */
+.fin-nav,.settings-nav{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:16px;background:rgba(255,255,255,.03);
   border:1px solid var(--stroke-soft);border-radius:var(--r-full);padding:4px;width:fit-content}
-.fin-nav a{padding:7px 16px;border-radius:var(--r-full);font-size:13px;color:var(--text-dim);transition:var(--ease)}
-.fin-nav a:hover{background:var(--glass);color:var(--text)}
-.fin-nav a.on{background:linear-gradient(135deg,var(--primary),var(--primary-600));color:#fff;font-weight:500}
+.fin-nav a,.settings-nav a{padding:7px 16px;border-radius:var(--r-full);font-size:13px;color:var(--text-dim);transition:var(--ease)}
+.fin-nav a:hover,.settings-nav a:hover{background:var(--glass);color:var(--text)}
+.fin-nav a.on,.settings-nav a.on{background:linear-gradient(135deg,var(--primary),var(--primary-600));color:#fff;font-weight:500}
 .sect{display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--stroke-soft)}
 .sect:last-child{border-bottom:0}
 .sect .name{font-size:13px;font-weight:500}

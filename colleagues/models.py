@@ -55,11 +55,13 @@ class Colleague(TimeStampedModel):
         blank=True,
         related_name='colleague',
     )
-    rate_per_word = models.DecimalField(
-        'دستمزد هر کلمه', max_digits=12, decimal_places=2, null=True, blank=True
+    manager = models.ForeignKey(
+        'self', verbose_name='مدیر', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='reports',
     )
-    rate_per_task = models.DecimalField(
-        'دستمزد هر تسک', max_digits=12, decimal_places=2, null=True, blank=True
+    needs_review = models.BooleanField(
+        'تسک‌هایش نیاز به بازبینی دارد', default=False,
+        help_text='فقط با تعیینِ مدیر معنا دارد؛ تسک‌های انجام‌شده برای تاییدِ مدیرش به «بازبینی تسک» می‌رود.',
     )
     files = GenericRelation(Attachment)
 
@@ -75,6 +77,10 @@ class Colleague(TimeStampedModel):
 
     def save(self, *args, **kwargs):
         stamp_org(self)
+        if self.manager_id == self.pk:  # همکار نمی‌تواند مدیرِ خودش باشد
+            self.manager_id = None
+        if not self.manager_id:
+            self.needs_review = False
         super().save(*args, **kwargs)
 
     def __str__(self):

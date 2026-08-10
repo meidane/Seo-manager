@@ -47,13 +47,47 @@
           <tr><td style="color:var(--text-dim);width:130px">تلفن</td><td dir="ltr" style="text-align:right">{{ colleague.phone|default:"—" }}</td></tr>
           <tr><td style="color:var(--text-dim)">ایمیل</td><td dir="ltr" style="text-align:right">{{ colleague.email|default:"—" }}</td></tr>
           <tr><td style="color:var(--text-dim)">تاریخ عضویت</td><td>{{ colleague.join_date|jalali|default:"—" }}</td></tr>
-          {% if colleague.rate_per_word %}<tr><td style="color:var(--text-dim)">دستمزد هر کلمه</td><td>{{ colleague.rate_per_word|money }} تومان</td></tr>{% endif %}
+          <tr><td style="color:var(--text-dim)">مدیر</td><td>{% if colleague.manager %}<a href="{{ colleague.manager.get_absolute_url }}" style="color:var(--primary-400)">{{ colleague.manager.full_name }}</a>{% if colleague.needs_review %} <span class="tag t-info" style="font-size:10px">نیاز به بازبینی</span>{% endif %}{% else %}<span class="zero">—</span>{% endif %}</td></tr>
         </tbody></table>
       </section>
       <section class="card glass"><div class="card-h"><h3>توضیحات</h3></div>
         <div style="padding:16px 17px;color:var(--text-dim);line-height:2">{{ colleague.description|linebreaksbr|default:"توضیحی ثبت نشده است." }}</div>
       </section>
     </div>
+
+    <section class="card glass" style="margin-top:14px" id="access-card">
+      <div class="card-h"><h3>دسترسی به سیستم</h3></div>
+      <div style="padding:16px 17px">
+        {% if colleague.user %}
+          <p class="sub">این همکار با کاربرِ <b>{{ colleague.user.username }}</b> به سیستم دسترسی دارد.</p>
+        {% elif pending_invite %}
+          <p class="sub">دعوت‌نامه‌ای برای کاربرِ <b>{{ pending_invite.user.username }}</b> در انتظارِ قبول اوست.
+            {% if can_manage_colleagues %}
+              <button type="button" class="btn btn-sm" id="revoke-invite-btn">لغوِ دعوت‌نامه</button>
+            {% endif %}
+          </p>
+        {% elif can_manage_colleagues %}
+          <p class="sub" style="margin-bottom:12px">این همکار هنوز حساب کاربری ندارد. می‌توانی با شماره‌ی کاربرِ ازقبل‌ثبت‌نام‌کرده دعوتش کنی، یا برایش حساب تازه بسازی (چون ایمیل نداریم، نام‌کاربری/رمز را خودت باید به او برسانی).</p>
+          <div style="display:flex;gap:14px;margin-bottom:12px">
+            <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="radio" name="grant-mode" value="existing"> کاربرِ ازقبل‌ثبت‌نام‌کرده (با شماره)</label>
+            <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="radio" name="grant-mode" value="new" checked> ساختِ حسابِ تازه</label>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="field" data-grant="existing" style="display:none"><label>شماره تماس</label><input type="text" id="grant-phone" dir="ltr" value="{{ colleague.phone }}"></div>
+            <div class="field" data-grant="new"><label>نام‌کاربری</label><input type="text" id="grant-username" dir="ltr"></div>
+            <div class="field" data-grant="new"><label>رمز عبور</label><input type="text" id="grant-password" dir="ltr"></div>
+            <div class="field"><label>نقش سازمانی</label>
+              <select id="grant-role">
+                {% for r in org_roles %}<option value="{{ r.key }}" {% if r.key == 'member' %}selected{% endif %}>{{ r.name }}</option>{% endfor %}
+              </select>
+            </div>
+          </div>
+          <button type="button" class="btn btn-p" id="grant-access-btn" style="margin-top:10px">ارسال دعوت‌نامه</button>
+        {% else %}
+          <p class="sub">این همکار هنوز حساب کاربری ندارد.</p>
+        {% endif %}
+      </div>
+    </section>
   </div>
 
   <div class="tab-panel" data-panel="charts">
@@ -110,5 +144,45 @@
 document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(!b)return;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));b.classList.add('on');
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('on',p.dataset.panel===b.dataset.tab));});
+
+(function(){
+  const card = document.getElementById('access-card');
+  if(!card) return;
+
+  const modeRadios = card.querySelectorAll('input[name="grant-mode"]');
+  function syncMode(){
+    const mode = card.querySelector('input[name="grant-mode"]:checked').value;
+    card.querySelectorAll('[data-grant]').forEach(el => {
+      el.style.display = el.dataset.grant === mode ? '' : 'none';
+    });
+  }
+  modeRadios.forEach(r => r.addEventListener('change', syncMode));
+  if(modeRadios.length) syncMode();
+
+  const grantBtn = document.getElementById('grant-access-btn');
+  if(grantBtn){
+    grantBtn.addEventListener('click', () => {
+      const mode = card.querySelector('input[name="grant-mode"]:checked').value;
+      const body = {mode, role: document.getElementById('grant-role').value};
+      if(mode === 'existing'){
+        body.phone = document.getElementById('grant-phone').value;
+      } else {
+        body.username = document.getElementById('grant-username').value;
+        body.password = document.getElementById('grant-password').value;
+      }
+      App.fetchJSON('{% url "colleagues:grant_access" colleague.pk %}', {method: 'POST', body})
+        .then(() => { App.toast('دعوت‌نامه ارسال شد', 'ok'); window.location.reload(); })
+        .catch(() => {});
+    });
+  }
+
+  const revokeBtn = document.getElementById('revoke-invite-btn');
+  if(revokeBtn){
+    revokeBtn.addEventListener('click', () => {
+      App.fetchJSON('{% url "colleagues:revoke_invite" colleague.pk %}', {method: 'POST'})
+        .then(() => window.location.reload());
+    });
+  }
+})();
 </script>
 {% endblock %}

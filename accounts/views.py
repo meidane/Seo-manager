@@ -9,7 +9,6 @@ from django.contrib.auth import login
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -17,7 +16,8 @@ from django.urls import reverse_lazy
 from django.views.decorators.http import require_http_methods
 from django.views.generic import TemplateView
 
-from .models import APIToken, Membership, Organization, Role, Team, TeamMembership, User, seed_roles
+from .access import require_perm as _require
+from .models import APIToken, Invite, Membership, Organization, Role, Team, TeamMembership, User, seed_roles
 from .permissions import PERM_LABELS, PERMS
 
 
@@ -31,14 +31,6 @@ class LogoutView(auth_views.LogoutView):
 
 
 # ── کمکی ────────────────────────────────────────────────────────────────
-
-def _require(request, perm):
-    """سازمانِ جاری (از میدل‌ور) را برمی‌گرداند یا اگر دسترسی نبود، 403."""
-    m = getattr(request, 'membership', None)
-    if not m or not m.can(perm):
-        raise PermissionDenied('دسترسی کافی نداری')
-    return m.organization
-
 
 def _body(request):
     try:
@@ -189,7 +181,9 @@ def person_edit(request, pk):
 @login_required
 @require_http_methods(['POST'])
 def person_invite(request):
-    """دعوتِ فردی که «قبلاً ثبت‌نام کرده» با شماره‌ی تماس، به سازمانِ جاری."""
+    """دعوتِ فردی که «قبلاً ثبت‌نام کرده» با شماره‌ی تماس، به سازمانِ جاری —
+    **دعوت‌نامه‌ی در انتظار** می‌سازد (نه عضویتِ فوری)؛ فرد بعد از لاگین بالای
+    صفحه قبول/رد می‌کند (`invite_accept`/`invite_reject`)."""
     org = _require(request, 'manage_people')
     d = _body(request)
     phone = (d.get('phone') or '').strip()
@@ -201,8 +195,27 @@ def person_invite(request):
         return JsonResponse({'detail': 'کاربری با این شماره ثبت‌نام نکرده است'}, status=400)
     if Membership.objects.filter(user=u, organization=org).exists():
         return JsonResponse({'detail': 'این فرد قبلاً عضو سازمان است'}, status=400)
-    Membership.objects.create(user=u, organization=org, role=role)
+    if Invite.objects.filter(user=u, organization=org, status=Invite.PENDING).exists():
+        return JsonResponse({'detail': 'قبلاً برای این فرد دعوت‌نامه‌ی در انتظار ثبت شده'}, status=400)
+    Invite.objects.create(organization=org, user=u, role=role, invited_by=request.user)
     return JsonResponse({'ok': True}, status=201)
+
+
+@login_required
+@require_http_methods(['POST'])
+def invite_accept(request, pk):
+    inv = get_object_or_404(Invite, pk=pk, user=request.user, status=Invite.PENDING)
+    inv.accept()
+    request.session['active_org_id'] = inv.organization_id
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_http_methods(['POST'])
+def invite_reject(request, pk):
+    inv = get_object_or_404(Invite, pk=pk, user=request.user, status=Invite.PENDING)
+    inv.reject()
+    return JsonResponse({'ok': True})
 
 
 # ── API: نقش‌های سفارشی ───────────────────────────────────────────────────
@@ -257,6 +270,20 @@ def switch_org(request):
         request.session['active_org_id'] = int(oid)
         return JsonResponse({'ok': True})
     return JsonResponse({'detail': 'به این سازمان دسترسی نداری'}, status=403)
+
+
+class InvitesLandingView(LoginRequiredMixin, TemplateView):
+    """صفحه‌ی مستقل (بدون سایدبار) برای کاربرِ لاگین‌شده‌ای که هنوز عضوِ هیچ
+    سازمانی نیست — فقط دعوت‌نامه‌های در انتظارش را می‌بیند (`OrgRequiredMiddleware`
+    هرکسی در این وضعیت را به اینجا می‌فرستد)."""
+
+    template_name = 'accounts/invites.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['invites'] = Invite.objects.filter(
+            user=self.request.user, status=Invite.PENDING).select_related('organization')
+        return ctx
 
 
 class APITokenListView(LoginRequiredMixin, TemplateView):

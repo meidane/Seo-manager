@@ -15,6 +15,23 @@
 
   <main class="main">
     {% include "components/header.html" %}
+    {% if pending_invites %}
+      <div class="invite-banner">
+        <span>
+          {% if pending_invites|length == 1 %}
+            یک دعوت‌نامه‌ی جدید داری: عضویت در «{{ pending_invites.0.organization.name }}»
+          {% else %}
+            {{ pending_invites|length }} دعوت‌نامه‌ی جدید داری.
+          {% endif %}
+        </span>
+        <span class="side-c">
+          {% for inv in pending_invites %}
+            <button type="button" class="btn btn-p btn-sm invite-accept" data-url="{% url 'accounts:invite_accept' inv.pk %}">قبول «{{ inv.organization.name }}»</button>
+            <button type="button" class="btn btn-sm invite-reject" data-url="{% url 'accounts:invite_reject' inv.pk %}">رد</button>
+          {% endfor %}
+        </span>
+      </div>
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 

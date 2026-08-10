@@ -25,4 +25,9 @@ urlpatterns = [
     path('settings/api-tokens/', views.APITokenListView.as_view(), name='api_tokens'),
     path('settings/api-tokens/api/create/', views.token_create, name='token_create'),
     path('settings/api-tokens/api/<int:pk>/', views.token_revoke, name='token_revoke'),
+
+    # دعوت‌نامه‌ها
+    path('invites/', views.InvitesLandingView.as_view(), name='invites_landing'),
+    path('invites/<int:pk>/accept/', views.invite_accept, name='invite_accept'),
+    path('invites/<int:pk>/reject/', views.invite_reject, name='invite_reject'),
 ]

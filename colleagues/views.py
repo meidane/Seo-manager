@@ -1,18 +1,31 @@
 """ویوهای همکاران — CRUD کامل + غیرفعال/فعال‌سازی + آمار سینگل (گام ۶)."""
+import json
 from datetime import timedelta
 
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, Q, Sum
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
+from django.views.decorators.http import require_http_methods
 from django.views.generic import CreateView, DetailView, ListView, UpdateView, View
 
+from accounts.access import require_perm
 from core.columns import get_columns
 from core.daterange import DateRangeMixin
 from core.models import ColumnConfig
+from projects.access import accessible_project_ids
 from tasks.models import Task
 
 from .forms import ColleagueForm
 from .models import Colleague
+
+
+def _body(request):
+    try:
+        return json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return {}
 
 # رنگ hex هر نوع تسک — برای نمودار دونات
 TYPE_HEX = {
@@ -56,12 +69,14 @@ class ColleagueListView(LoginRequiredMixin, DateRangeMixin, ListView):
         query = self.request.GET.get('q', '').strip()
         if query:
             qs = qs.filter(Q(full_name__icontains=query) | Q(email__icontains=query))
+        ids = accessible_project_ids(self.request)
+        tq = Q(tasks__project_id__in=ids) if ids is not None else Q()
         return qs.annotate(
-            planned=Count('tasks', filter=Q(tasks__planned_date__range=(start, end))),
-            done=Count('tasks', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
-            words=Sum('tasks__word_count', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
-            minutes=Sum('tasks__spent_minutes', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
-            overdue=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING], tasks__planned_date__lt=date.today())),
+            planned=Count('tasks', filter=Q(tasks__planned_date__range=(start, end)) & tq),
+            done=Count('tasks', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end)) & tq),
+            words=Sum('tasks__word_count', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end)) & tq),
+            minutes=Sum('tasks__spent_minutes', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end)) & tq),
+            overdue=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING], tasks__planned_date__lt=date.today()) & tq),
         ).order_by('status', 'full_name')  # ترتیب صریح برای صفحه‌بندیِ پایدار
 
     def get_context_data(self, **kwargs):
@@ -110,15 +125,19 @@ class ColleagueDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
         from datetime import date
 
         from core.jalali import format_jalali
+        from projects.access import accessible_project_ids
+        ids = accessible_project_ids(self.request)
+        tasks_qs = c.tasks.filter(project_id__in=ids) if ids is not None else c.tasks.all()
+
         done_q = Q(status=Task.DONE, done_date__range=(start, end))
-        done_qs = c.tasks.filter(done_q)
+        done_qs = tasks_qs.filter(done_q)
 
         done = done_qs.count()
         words = done_qs.aggregate(s=Sum('word_count'))['s'] or 0
-        planned = c.tasks.filter(planned_date__range=(start, end)).count()
+        planned = tasks_qs.filter(planned_date__range=(start, end)).count()
         minutes = done_qs.aggregate(s=Sum('spent_minutes'))['s'] or 0
-        open_count = c.tasks.filter(status__in=[Task.TODO, Task.DOING]).count()
-        overdue = c.tasks.filter(status__in=[Task.TODO, Task.DOING], planned_date__lt=date.today()).count()
+        open_count = tasks_qs.filter(status__in=[Task.TODO, Task.DOING]).count()
+        overdue = tasks_qs.filter(status__in=[Task.TODO, Task.DOING], planned_date__lt=date.today()).count()
 
         # نرخ تحویل به‌موقع: انجام‌شده‌هایی که done_date <= planned_date
         on_time = sum(1 for t in done_qs.only('done_date', 'planned_date') if t.done_date and t.done_date <= t.planned_date)
@@ -140,9 +159,16 @@ class ColleagueDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
         ctx['daily_from'] = format_jalali(start, '%m/%d')
         ctx['daily_to'] = format_jalali(end, '%m/%d')
         # لیست تسک‌های او در بازه
-        ctx['task_rows'] = c.tasks.select_related('project','type_def').filter(
+        ctx['task_rows'] = tasks_qs.select_related('project','type_def').filter(
             Q(planned_date__range=(start, end)) | done_q).order_by('-planned_date')[:40]
         ctx['page_title'] = c.full_name
+
+        from accounts.models import Invite
+        org = getattr(self.request, 'organization', None)
+        ctx['can_manage_colleagues'] = bool(getattr(self.request, 'membership', None)
+                                             and self.request.membership.can('manage_colleagues'))
+        ctx['pending_invite'] = Invite.objects.filter(colleague=c, status=Invite.PENDING).first()
+        ctx['org_roles'] = list(org.roles.all()) if org else []
         return ctx
 
     @staticmethod
@@ -186,6 +212,10 @@ class ColleagueCreateView(LoginRequiredMixin, CreateView):
     form_class = ColleagueForm
     template_name = 'colleagues/form.html'
 
+    def dispatch(self, request, *args, **kwargs):
+        require_perm(request, 'manage_colleagues')
+        return super().dispatch(request, *args, **kwargs)
+
     def form_valid(self, form):
         form.instance.created_by = self.request.user
         return super().form_valid(form)
@@ -202,6 +232,10 @@ class ColleagueUpdateView(LoginRequiredMixin, UpdateView):
     form_class = ColleagueForm
     template_name = 'colleagues/form.html'
 
+    def dispatch(self, request, *args, **kwargs):
+        require_perm(request, 'manage_colleagues')
+        return super().dispatch(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['page_title'] = f'ویرایش {self.object.full_name}'
@@ -211,6 +245,7 @@ class ColleagueUpdateView(LoginRequiredMixin, UpdateView):
 
 class ColleagueArchiveView(LoginRequiredMixin, View):
     def post(self, request, pk):
+        require_perm(request, 'manage_colleagues')
         colleague = get_object_or_404(Colleague, pk=pk)
         colleague.archive()
         return redirect(colleague.get_absolute_url())
@@ -218,6 +253,66 @@ class ColleagueArchiveView(LoginRequiredMixin, View):
 
 class ColleagueRestoreView(LoginRequiredMixin, View):
     def post(self, request, pk):
+        require_perm(request, 'manage_colleagues')
         colleague = get_object_or_404(Colleague, pk=pk)
         colleague.restore()
         return redirect(colleague.get_absolute_url())
+
+
+# ── API: دسترسیِ همکار به سیستم (دعوت‌نامه) ─────────────────────────────────
+
+@login_required
+@require_http_methods(['POST'])
+def colleague_grant_access(request, pk):
+    """برای همکاری که هنوز حساب کاربری ندارد، دعوت‌نامه‌ی در انتظار می‌سازد —
+    یا با شماره‌ی فردِ ازقبل‌ثبت‌نام‌کرده (mode=existing) یا با ساختِ حساب تازه
+    (mode=new، چون سرور ایمیل نداریم و نمی‌توانیم لینکِ دعوت بفرستیم؛ نام‌کاربری/رمز
+    را خودِ مدیر باید به همکار برساند). قبول/ردِ دعوت با `accounts.Invite.accept/reject`."""
+    from accounts.models import Invite, Membership, User
+
+    org = require_perm(request, 'manage_colleagues')
+    colleague = get_object_or_404(Colleague, pk=pk)
+    if colleague.user_id:
+        return JsonResponse({'detail': 'این همکار قبلاً به سیستم دسترسی دارد'}, status=400)
+    if Invite.objects.filter(colleague=colleague, status=Invite.PENDING).exists():
+        return JsonResponse({'detail': 'قبلاً دعوت‌نامه‌ی در انتظار برای این همکار ثبت شده'}, status=400)
+
+    d = _body(request)
+    role = d.get('role') if org.roles.filter(key=d.get('role')).exists() else 'member'
+    mode = d.get('mode') or 'new'
+
+    if mode == 'existing':
+        phone = (d.get('phone') or '').strip()
+        u = User.objects.filter(phone=phone).first() if phone else None
+        if not u:
+            return JsonResponse({'detail': 'کاربری با این شماره ثبت‌نام نکرده است'}, status=400)
+        if Membership.objects.filter(user=u, organization=org).exists():
+            return JsonResponse({'detail': 'این کاربر قبلاً عضو سازمان است'}, status=400)
+    else:
+        username = (d.get('username') or '').strip()
+        password = d.get('password') or ''
+        if not username or not password:
+            return JsonResponse({'detail': 'نام‌کاربری و رمز لازم است'}, status=400)
+        if User.objects.filter(username=username).exists():
+            return JsonResponse({'detail': 'این نام‌کاربری قبلاً ثبت شده'}, status=400)
+        name_parts = colleague.full_name.split(maxsplit=1)
+        u = User.objects.create_user(
+            username=username, password=password,
+            first_name=name_parts[0] if name_parts else '',
+            last_name=name_parts[1] if len(name_parts) > 1 else '',
+            email=colleague.email, phone=colleague.phone)
+
+    Invite.objects.create(organization=org, user=u, role=role, colleague=colleague, invited_by=request.user)
+    return JsonResponse({'ok': True}, status=201)
+
+
+@login_required
+@require_http_methods(['POST'])
+def colleague_revoke_invite(request, pk):
+    """دعوت‌نامه‌ی در انتظارِ این همکار را لغو می‌کند (حذف، نه رد — تا بشود دوباره دعوت کرد)."""
+    from accounts.models import Invite
+
+    require_perm(request, 'manage_colleagues')
+    colleague = get_object_or_404(Colleague, pk=pk)
+    Invite.objects.filter(colleague=colleague, status=Invite.PENDING).delete()
+    return JsonResponse({'ok': True})

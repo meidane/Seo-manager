@@ -45,19 +45,26 @@ Organization (شرکت/کسب‌وکار)         ← بالاترین سطح ج
 > به سازمان **اسکوپ نشده‌اند**. در نصبِ تک‌شرکتی مشکلی نیست؛ برای واقعاً چندشرکتی‌شدن
 > فاز ۱ پایین حیاتی است.
 
-## ۴) نقش‌ها و دسترسی‌ها (نسخه‌ی ساده‌ی فعلی)
+## ۴) نقش‌ها و دسترسی‌ها
 
-| نقش | دسترسی‌ها |
-|---|---|
-| **مالک (owner)** | همه (+حذف/انتقال سازمان در آینده) |
-| **مدیر (admin)** | همه به‌جز مالکیت |
-| **سرپرست (manager)** | پروژه‌ها، تسک‌ها، بازبینی، گزارش‌ها |
-| **عضو (member)** | تسک‌ها، گزارش‌ها |
-| **ناظر (viewer)** | فقط مشاهده‌ی گزارش‌ها |
+نقش‌های پیش‌فرض (`owner/admin/manager/member/viewer`) + هر سازمان می‌تواند از
+`/settings/people/` نقشِ سفارشیِ نامحدود بسازد (تیکِ چندتاییِ دسترسی‌ها).
 
-کلیدهای دسترسی: `manage_org, manage_people, manage_projects, manage_tasks,
-manage_finance, review, view_reports` (در `accounts/permissions.py`، قابل‌گسترش).
-**آینده:** دسترسیِ granular per-resource و per-team (مثلاً «فقط تسک‌های تیم خودم»).
+کلیدهای دسترسیِ فعلی (`accounts/permissions.py: PERMS`): `manage_org, manage_people,
+manage_projects, manage_colleagues, manage_finance, manage_task_types, manage_columns,
+manage_holidays, edit_task, delete_task, own_tasks_only, review, view_reports`.
+`own_tasks_only` یعنی «فقط تسک‌های خودش» — چک می‌شود که کاربر یک `Colleague` وصل داشته
+باشد و `assignee` همان باشد (`tasks/api.py: _task_perm_ok`). مالک همیشه `'*'` (همه) دارد.
+
+**دسترسیِ granular per-resource پیاده شده:**
+- **پروژه:** `Project.members` (M2M به Colleague) — گیتِ واقعیِ دیدنِ پروژه/تسک‌هایش،
+  نه فقط UI. `projects/access.py: accessible_project_ids` منبعِ واحد؛ همه‌جا استفاده
+  می‌شود (پروژه‌ها، تسک‌ها، تقویم، داشبورد، همکاران) تا رفتار همه‌جا یکسان باشد.
+  فقط `Membership.role == 'owner'` بدونِ محدودیت است — حتی مدیرِ پروژه هم باید صریحاً
+  به `members` اضافه شود.
+- **همکار → مدیر:** `Colleague.manager`(اختیاری) + `needs_review` — مستقلِ کامل از
+  دسترسیِ سازمانیِ `review`؛ تسک‌های انجام‌شده‌ی همکارِ `needs_review=True` فقط برای
+  `manager.user` در «بازبینی تسک» می‌آید (`tasks/CLAUDE.md`).
 
 ## ۵) نقشه‌ی راه فازبندی‌شده
 
@@ -71,7 +78,10 @@ manage_finance, review, view_reports` (در `accounts/permissions.py`، قابل
 
 **فاز ۲ — ثبت‌نام و دعوت (✅ انجام شد):**
 - `/signup/` ثبت‌نامِ آزاد (مالک + سازمان + نقش‌های پیش‌فرض).
-- **دعوت با شماره‌ی تماس**: مدیر شماره‌ی فردِ ثبت‌نام‌کرده را می‌زند → عضو سازمان می‌شود.
+- **دعوت‌نامه‌ی در انتظار** (`accounts.Invite`، نه عضویتِ فوری): از `/settings/people/`
+  (شماره‌ی فردِ ازقبل‌ثبت‌نام‌کرده) یا از پروفایلِ همکار (`colleague_grant_access` —
+  کاربرِ موجود یا تازه). فرد بعدِ لاگین بالای هر صفحه (بدونِ سازمان → صفحه‌ی مستقلِ
+  `/invites/`؛ با سازمان → بنر) قبول/رد می‌کند. بدونِ ایمیل (سرور ایمیل نداریم).
 - نقش‌های سفارشیِ per سازمان (Role) با انتخابِ دسترسی‌ها.
 
 **فاز ۳ — workflow و وضعیت‌های قابل‌تنظیم:**

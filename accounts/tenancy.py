@@ -82,3 +82,27 @@ class CurrentOrgMiddleware:
             return self.get_response(request)
         finally:
             clear_current_org()
+
+
+# مسیرهایی که کاربرِ بدونِ سازمان (هنوز دعوتی را قبول نکرده) هم باید برسد
+_ORG_LESS_ALLOWED = ('/invites', '/logout', '/login', '/signup', '/admin', '/static', '/media')
+
+
+class OrgRequiredMiddleware:
+    """کاربرِ لاگین‌شده‌ی بدونِ سازمان را به `/invites/` می‌فرستد.
+
+    چرا: `TenantManager` وقتی سازمانِ جاری `None` باشد اصلاً فیلتر نمی‌کند (یعنی
+    کوئری‌های اسکوپ‌شده بدونِ فیلتر همه‌چیز را برمی‌گردانند) — این حالت فقط باید برای
+    مسیرهای عمومی/بدونِ‌سشن رخ دهد، نه برای کاربرِ لاگین‌شده‌ای که هنوز به هیچ سازمانی
+    نپیوسته (مثلاً تازه دعوت شده و هنوز قبول نکرده)."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        user = getattr(request, 'user', None)
+        if (user and user.is_authenticated and request.organization is None
+                and not request.path.startswith(_ORG_LESS_ALLOWED)):
+            from django.shortcuts import redirect
+            return redirect('accounts:invites_landing')
+        return self.get_response(request)

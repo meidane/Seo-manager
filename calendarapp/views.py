@@ -9,6 +9,7 @@ from django.views.generic import TemplateView
 
 from colleagues.models import Colleague
 from core.models import Holiday
+from projects.access import accessible_project_ids
 from projects.models import Project
 from tasks.models import Task, TaskTypeDef
 
@@ -18,6 +19,13 @@ from .calendar_logic import build_month, month_bounds_gregorian, month_title
 def _filtered_tasks(request, start, end):
     # تقویم پیش‌نماهای تکرار را هم نشان می‌دهد (کم‌رنگ)
     qs = Task.objects.with_placeholders().select_related('project', 'assignee', 'type_def').filter(planned_date__range=(start, end))
+    ids = accessible_project_ids(request)
+    if ids is not None:
+        qs = qs.filter(project_id__in=ids)
+    m = getattr(request, 'membership', None)
+    if m and m.can('own_tasks_only'):
+        colleague = getattr(request.user, 'colleague', None)
+        qs = qs.filter(assignee_id=colleague.id if colleague else -1)
     if request.GET.get('project'):
         qs = qs.filter(project_id=request.GET['project'])
     if request.GET.get('assignee'):
@@ -101,7 +109,9 @@ class CalendarView(LoginRequiredMixin, TemplateView):
         ctx['jyear'] = jyear
         ctx['jmonth'] = jmonth
         ctx['month_title'] = month_title(jyear, jmonth)
-        ctx['projects'] = Project.objects.filter(status=Project.ACTIVE)
+        ids = accessible_project_ids(self.request)
+        visible = Project.objects.filter(id__in=ids) if ids is not None else Project.objects.all()
+        ctx['projects'] = visible.filter(status=Project.ACTIVE)
         ctx['colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)
         ctx['task_types'] = TaskTypeDef.objects.filter(is_active=True)
         ctx['page_title'] = 'تقویم'

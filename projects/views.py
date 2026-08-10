@@ -1,17 +1,21 @@
 """ویوهای پروژه‌ها — CRUD + سینگل با تب‌ها + API دسترسی‌های رمزنگاری‌شده."""
 import json
 
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.http import require_http_methods
 from django.views.generic import CreateView, DetailView, ListView, UpdateView, View
 
+from accounts.access import has_perm, require_perm
 from core.columns import get_columns
 from core.daterange import DateRangeMixin
 from core.models import ActivityLog, ColumnConfig
 
+from .access import accessible_project_ids
 from .forms import ProjectForm
 from .models import Credential, Project
 
@@ -34,6 +38,9 @@ class ProjectListView(LoginRequiredMixin, DateRangeMixin, ListView):
         start, end = self.get_range(self.request)
         self._start, self._end = start, end
         qs = super().get_queryset()
+        ids = accessible_project_ids(self.request)
+        if ids is not None:
+            qs = qs.filter(id__in=ids)
         query = self.request.GET.get('q', '').strip()
         if query:
             qs = qs.filter(Q(name__icontains=query) | Q(domain__icontains=query))
@@ -76,6 +83,13 @@ class ProjectDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
     template_name = 'projects/detail.html'
     context_object_name = 'project'
 
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset)
+        ids = accessible_project_ids(self.request)
+        if ids is not None and obj.id not in ids:
+            raise PermissionDenied('به این پروژه دسترسی نداری')
+        return obj
+
     def get_context_data(self, **kwargs):
         from datetime import date
 
@@ -109,6 +123,10 @@ class ProjectDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
         ).order_by('-planned_date')[:40]
         ctx['page_title'] = p.name
         ctx['credentials'] = p.credentials.all()
+        from colleagues.models import Colleague
+        ctx['all_colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)
+        ctx['member_ids'] = set(p.members.values_list('id', flat=True))
+        ctx['can_manage_members'] = has_perm(self.request, 'manage_projects')
         return ctx
 
 
@@ -116,6 +134,10 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
     model = Project
     form_class = ProjectForm
     template_name = 'projects/form.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        require_perm(request, 'manage_projects')
+        return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
         form.instance.created_by = self.request.user
@@ -132,6 +154,10 @@ class ProjectUpdateView(LoginRequiredMixin, UpdateView):
     model = Project
     form_class = ProjectForm
     template_name = 'projects/form.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        require_perm(request, 'manage_projects')
+        return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -152,6 +178,24 @@ class ProjectRestoreView(LoginRequiredMixin, View):
         project = get_object_or_404(Project, pk=pk)
         project.restore()
         return redirect(project.get_absolute_url())
+
+
+@login_required
+@require_http_methods(['PATCH'])
+def project_members(request, pk):
+    """تبِ «دسترسی به همکاران»: فهرستِ کاملِ اعضای مجاز را یک‌جا ست می‌کند.
+    فقط مالکِ سازمان همیشه دسترسی دارد؛ بقیه (حتی مدیرِ خودِ پروژه) باید همین‌جا
+    اضافه شوند تا پروژه/تسک‌هایش را ببینند (`projects/access.py`)."""
+    require_perm(request, 'manage_projects')
+    project = get_object_or_404(Project, pk=pk)
+    data = json.loads(request.body or '{}')
+    ids = data.get('members')
+    if not isinstance(ids, list):
+        return JsonResponse({'detail': 'فهرستِ اعضا لازم است'}, status=400)
+    from colleagues.models import Colleague
+    valid = Colleague.objects.filter(id__in=ids)
+    project.members.set(valid)
+    return JsonResponse({'ok': True, 'members': list(valid.values_list('id', flat=True))})
 
 
 # ── API دسترسی‌ها (JSON) ────────────────────────────────────────────────

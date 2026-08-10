@@ -24,6 +24,11 @@
 `/finance/` داشبورد · `transactions/` · `import/` · `banks/` · `payroll/` + `api/...`
 (bank_create/edit, category_create/delete, tx_edit/bulk, import_preview/confirm, payroll_create/edit)
 
+## دسترسی
+کلِ اپ پشتِ پرمیشنِ سازمانیِ `manage_finance` است — `finance/access.py`
+(`FinancePermMixin` روی CBVها، `require_finance` روی FBVهای API)، به‌علاوه لینکِ
+«حسابداری» در سایدبار هم با همین پرمیشن مخفی/نمایان می‌شود.
+
 ## دستور
 `python manage.py seed_categories` — بابت‌های پیش‌فرض.
 

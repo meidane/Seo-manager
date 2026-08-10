@@ -21,4 +21,7 @@ urlpatterns = [
     # فایل‌ها
     path('api/<int:pk>/files/', views.project_files, name='files'),
     path('api/files/<int:pk>/', views.project_file_delete, name='file_delete'),
+
+    # دسترسی به همکاران
+    path('api/<int:pk>/members/', views.project_members, name='members'),
 ]

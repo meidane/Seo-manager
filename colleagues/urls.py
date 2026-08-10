@@ -12,4 +12,6 @@ urlpatterns = [
     path('<int:pk>/edit/', views.ColleagueUpdateView.as_view(), name='edit'),
     path('<int:pk>/archive/', views.ColleagueArchiveView.as_view(), name='archive'),
     path('<int:pk>/restore/', views.ColleagueRestoreView.as_view(), name='restore'),
+    path('<int:pk>/api/grant-access/', views.colleague_grant_access, name='grant_access'),
+    path('<int:pk>/api/revoke-invite/', views.colleague_revoke_invite, name='revoke_invite'),
 ]

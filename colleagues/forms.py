@@ -23,18 +23,22 @@ class ColleagueForm(forms.ModelForm):
         model = Colleague
         fields = [
             'full_name', 'avatar', 'color', 'phone', 'email',
-            'status', 'description', 'rate_per_word', 'rate_per_task',
+            'status', 'description', 'manager', 'needs_review',
         ]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        managers = Colleague.objects.filter(status=Colleague.ACTIVE)
         if self.instance and self.instance.pk:
+            managers = managers.exclude(pk=self.instance.pk)
             self.fields['roles'].initial = self.instance.roles_list
             if self.instance.join_date:
                 self.fields['join_date'].initial = format_jalali(
                     self.instance.join_date, fa_digits=False
                 )
-
+        self.fields['manager'].queryset = managers
+        self.fields['manager'].required = False
+        self.fields['needs_review'].required = False
         self.fields['description'].widget.attrs.update({'class': 'rich-editor'})
 
     def clean_description(self):

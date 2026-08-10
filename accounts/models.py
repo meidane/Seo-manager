@@ -177,6 +177,63 @@ class Role(models.Model):
         return f'{self.name} @ {self.organization}'
 
 
+class Invite(models.Model):
+    """دعوت‌نامه‌ی در انتظار — عضویتِ فوری نیست. کاربرِ دعوت‌شده بعد از لاگین، بالای
+    هر صفحه (`base.html`) می‌بیندش و قبول/رد می‌کند (`accept()`/`reject()`).
+    مسیرهای ساخت: `person_invite` (دعوت با شماره‌ی کاربرِ ثبت‌نام‌کرده، از
+    `/settings/people/`) و `colleagues.views.colleague_grant_access` (از پروفایلِ
+    همکار — کاربرِ جدید هم بسازد یا موجود را پیدا کند، فرقی ندارد، باز هم Invite
+    می‌سازد نه عضویتِ فوری)."""
+
+    PENDING = 'pending'
+    ACCEPTED = 'accepted'
+    REJECTED = 'rejected'
+    STATUS_CHOICES = [(PENDING, 'در انتظار'), (ACCEPTED, 'پذیرفته‌شده'), (REJECTED, 'ردشده')]
+
+    organization = models.ForeignKey(Organization, verbose_name='سازمان', on_delete=models.CASCADE, related_name='invites')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name='کاربر', on_delete=models.CASCADE, related_name='invites')
+    role = models.CharField('نقش', max_length=32)
+    colleague = models.ForeignKey(
+        'colleagues.Colleague', verbose_name='همکار', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='invites',
+    )
+    status = models.CharField('وضعیت', max_length=10, choices=STATUS_CHOICES, default=PENDING)
+    invited_by = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name='دعوت‌کننده', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    created_at = models.DateTimeField('تاریخ دعوت', auto_now_add=True)
+    decided_at = models.DateTimeField('زمانِ تصمیم', null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'دعوت‌نامه'
+        verbose_name_plural = 'دعوت‌نامه‌ها'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user} → {self.organization} ({self.get_status_display()})'
+
+    @property
+    def role_label(self):
+        r = Role.objects.filter(organization_id=self.organization_id, key=self.role).first()
+        return r.name if r else dict(ROLE_CHOICES).get(self.role, self.role)
+
+    def accept(self):
+        Membership.objects.update_or_create(
+            user=self.user, organization=self.organization,
+            defaults={'role': self.role, 'is_active': True})
+        if self.colleague_id and not self.colleague.user_id:
+            self.colleague.user = self.user
+            self.colleague.save(update_fields=['user'])
+        from django.utils import timezone
+        self.status = self.ACCEPTED
+        self.decided_at = timezone.now()
+        self.save(update_fields=['status', 'decided_at'])
+
+    def reject(self):
+        from django.utils import timezone
+        self.status = self.REJECTED
+        self.decided_at = timezone.now()
+        self.save(update_fields=['status', 'decided_at'])
+
+
 class APIToken(models.Model):
     """توکنِ ورودِ برنامه‌های بیرونی (افزونهٔ مرورگر، اتوماسیون‌ها، AI). برخلافِ مدل‌های
     tenant، **خودش** راهِ رسیدن به سازمان است؛ پس عمداً بدونِ `TenantManager` است —

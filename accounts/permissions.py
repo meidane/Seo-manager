@@ -18,33 +18,46 @@ ROLE_CHOICES = [
     (VIEWER, 'ناظر'),
 ]
 
-# کلیدهای دسترسی (قابل‌گسترش)
+# کلیدهای دسترسی (قابل‌گسترش) — نقش سفارشی می‌تواند هر ترکیبی از این‌ها را داشته باشد
 PERMS = [
-    'manage_org',       # ویرایش سازمان و تیم‌ها
-    'manage_people',    # افزودن/ویرایش اعضا و نقش‌ها
-    'manage_projects',  # پروژه‌ها
-    'manage_tasks',     # تسک‌ها
-    'manage_finance',   # حسابداری
-    'review',           # بازبینی/تایید محتوا
-    'view_reports',     # مشاهده‌ی گزارش‌ها
+    'manage_org',        # ویرایش سازمان و تیم‌ها
+    'manage_people',     # افزودن/ویرایش اعضا و نقش‌ها (کاربرانِ لاگین‌کننده)
+    'manage_projects',   # افزودن/ویرایش پروژه
+    'manage_colleagues',  # افزودن/ویرایش همکار (پروفایلِ CRM، جدا از کاربرِ لاگین)
+    'edit_task',          # ویرایش تسک
+    'delete_task',        # حذف تسک
+    'own_tasks_only',     # فقط تسک‌های خودش را ببیند (محدودکننده، نه افزاینده)
+    'manage_finance',     # دسترسی به حسابداری
+    'manage_task_types',  # مدیریتِ انواع تسک
+    'manage_columns',     # سفارشی‌سازیِ ستون‌ها
+    'manage_holidays',    # مدیریتِ تعطیلات
+    'review',             # بازبینی/تایید تسک
+    'view_reports',       # مشاهده‌ی گزارش‌ها
 ]
 
 PERM_LABELS = {
     'manage_org': 'مدیریت سازمان و تیم‌ها',
     'manage_people': 'مدیریت افراد و دسترسی‌ها',
-    'manage_projects': 'مدیریت پروژه‌ها',
-    'manage_tasks': 'مدیریت تسک‌ها',
-    'manage_finance': 'مدیریت حسابداری',
-    'review': 'بازبینی و تایید',
+    'manage_projects': 'افزودن/ویرایش پروژه',
+    'manage_colleagues': 'افزودن/ویرایش همکار',
+    'edit_task': 'ویرایش تسک',
+    'delete_task': 'حذف تسک',
+    'own_tasks_only': 'فقط تسک‌های خودش را ببیند',
+    'manage_finance': 'دسترسی به حسابداری',
+    'manage_task_types': 'مدیریتِ انواع تسک',
+    'manage_columns': 'سفارشی‌سازیِ ستون‌ها',
+    'manage_holidays': 'مدیریتِ تعطیلات',
+    'review': 'بازبینی و تایید تسک',
     'view_reports': 'مشاهده‌ی گزارش‌ها',
 }
 
-# نگاشتِ نقش → مجموعه‌ی دسترسی‌ها
+# نگاشتِ نقش → مجموعه‌ی دسترسی‌ها (پیش‌فرضِ اولیه؛ هر سازمان می‌تواند از تنظیمات عوضش کند)
+_ALL_BUT_SCOPE = set(PERMS) - {'own_tasks_only'}
 ROLE_PERMS = {
     OWNER: set(PERMS),
-    ADMIN: set(PERMS),
-    MANAGER: {'manage_projects', 'manage_tasks', 'review', 'view_reports'},
-    MEMBER: {'manage_tasks', 'view_reports'},
+    ADMIN: set(_ALL_BUT_SCOPE),
+    MANAGER: {'manage_projects', 'manage_colleagues', 'edit_task', 'delete_task', 'review', 'view_reports'},
+    MEMBER: {'edit_task', 'own_tasks_only', 'view_reports'},
     VIEWER: {'view_reports'},
 }
 

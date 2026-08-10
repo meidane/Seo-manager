@@ -13,33 +13,41 @@
     </a>
     <a href="{% url 'tasks:list' %}" class="{% if request.resolver_match.namespace == 'tasks' and request.resolver_match.url_name == 'list' %}on{% endif %}"><span class="ico">☰</span> تسک‌ها</a>
     <a href="{% url 'calendarapp:index' %}" class="{% if request.resolver_match.namespace == 'calendarapp' %}on{% endif %}"><span class="ico">▦</span> تقویم</a>
-    <a href="{% url 'tasks:review' %}" class="{% if request.resolver_match.url_name == 'review' %}on{% endif %}"><span class="ico">◎</span> بازبینی محتوا</a>
+    <a href="{% url 'tasks:review' %}" class="{% if request.resolver_match.url_name == 'review' %}on{% endif %}"><span class="ico">◎</span> بازبینی تسک</a>
     <div class="nav-label">تیم و مالی</div>
     <a href="{% url 'colleagues:list' %}" class="{% if request.resolver_match.namespace == 'colleagues' %}on{% endif %}">
       <span class="ico">◉</span> همکاران
     </a>
     <a href="{% url 'reports:list' %}" class="{% if request.resolver_match.namespace == 'reports' %}on{% endif %}"><span class="ico">▪</span> گزارش‌ها</a>
+    {% if 'manage_finance' in org_perms %}
     <a href="{% url 'finance:dashboard' %}" class="{% if request.resolver_match.namespace == 'finance' %}on{% endif %}"><span class="ico">₮</span> حسابداری</a>
+    {% endif %}
     <div class="nav-label">تنظیمات</div>
     {% if 'manage_people' in org_perms %}
     <a href="{% url 'accounts:people' %}" class="{% if request.resolver_match.url_name == 'people' %}on{% endif %}">
       <span class="ico">◍</span> افراد و دسترسی‌ها
     </a>
     {% endif %}
+    {% if 'manage_task_types' in org_perms %}
     <a href="{% url 'task_types:list' %}" class="{% if request.resolver_match.namespace == 'task_types' %}on{% endif %}">
       <span class="ico">◫</span> انواع تسک
     </a>
+    {% endif %}
+    {% if 'manage_columns' in org_perms %}
     <a href="{% url 'core:columns' %}" class="{% if request.resolver_match.url_name == 'columns' %}on{% endif %}">
       <span class="ico">▥</span> ستون‌ها
     </a>
+    {% endif %}
     {% if 'manage_org' in org_perms %}
     <a href="{% url 'accounts:api_tokens' %}" class="{% if request.resolver_match.url_name == 'api_tokens' %}on{% endif %}">
       <span class="ico">⚿</span> توکن‌های API
     </a>
     {% endif %}
+    {% if 'manage_holidays' in org_perms %}
     <a href="{% url 'core:holidays' %}" class="{% if request.resolver_match.namespace == 'core' %}on{% endif %}">
       <span class="ico">✦</span> تعطیلات
     </a>
+    {% endif %}
     <a href="{% url 'accounts:logout' %}"><span class="ico">⏻</span> خروج</a>
   </nav>
 </aside>
