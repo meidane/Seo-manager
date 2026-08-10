@@ -17,6 +17,7 @@
 - `dashboard/` — ویو تجمیعی
 - `reports/` — Report/ReportItem (بدون snapshot، override، لینک عمومی مشتری)
 - `finance/` — حسابداری (پایه): BankAccount, Category(بابت), Transaction(+ایمپورت اکسل), Payroll
+- `seo/` — بستهٔ عمودیِ سئو (بدون مدل): فقط `seed_seo` (انواع تسکِ سئو + فیلد سفارشی + KPI). الگوی «بسته برای هر شرکت».
 
 ## قوانین طلایی (نقض نکن)
 1. **تاریخ‌ها در DB میلادی‌اند.** شمسی فقط در نمایش (`|jalali`) و ورودی (`parse_jalali`).
