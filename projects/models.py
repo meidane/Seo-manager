@@ -32,6 +32,9 @@ class Project(TimeStampedModel):
 
     name = models.CharField('نام پروژه', max_length=150)
     domain = models.CharField('دامنه', max_length=200, blank=True, help_text='بدون http')
+    track_keyword_rank = models.BooleanField(
+        'بررسی رتبه کلمات کلیدی', default=False,
+        help_text='با فعال‌بودن، افزونهٔ مرورگر جایگاهِ این دامنه را در نتایجِ گوگل ثبت می‌کند.')
     color = models.CharField('رنگ', max_length=7, default='#4183F2')
     project_types = models.CharField('نوع پروژه', max_length=100, blank=True)
     status = models.CharField('وضعیت', max_length=10, choices=STATUS_CHOICES, default=ACTIVE)

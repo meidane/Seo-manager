@@ -36,6 +36,7 @@
   <div class="tabs" id="ptabs">
     <button class="tab on" data-tab="overview">نمای کلی</button>
     <button class="tab" data-tab="tasks">تسک‌ها</button>
+    {% if project.track_keyword_rank %}<button class="tab" data-tab="keywords">کلمات کلیدی</button>{% endif %}
     <button class="tab" data-tab="calendar">تقویم</button>
     <button class="tab" data-tab="files">فایل‌ها</button>
     <button class="tab" data-tab="creds">دسترسی‌ها</button>
@@ -104,6 +105,67 @@
       </tr>{% empty %}<tr><td colspan="5" class="zero" style="padding:24px;text-align:center">تسکی در این بازه نیست</td></tr>{% endfor %}</tbody>
     </table>
   </section>
+  {# کلمات کلیدی — ردیابیِ رتبه (فقط اگر پروژه فعالش کرده) #}
+  {% if project.track_keyword_rank %}
+  <section class="card glass tab-panel" data-panel="keywords">
+    <div class="card-h">
+      <h3>کلمات کلیدی</h3>
+      <div class="side-c">
+        <select id="kw-period" class="input" style="max-width:110px">
+          {% for v,l in kw_period_choices %}<option value="{{ v }}" {% if kw_period == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-sm btn-p" id="kw-add-page">＋ افزودن صفحات مهم</button>
+      </div>
+    </div>
+
+    <div class="subtabs" id="kw-subtabs">
+      <button class="subtab on" data-subtab="bykeyword">بر اساس کلمه کلیدی</button>
+      <button class="subtab" data-subtab="bylink">بر اساس لینک</button>
+    </div>
+
+    <div class="subtab-panel on" data-subpanel="bykeyword">
+      <table>
+        <thead><tr><th style="width:24px"></th><th>کلمه کلیدی</th><th>آخرین جایگاه</th><th>روند ۳ ماه اخیر</th><th>تغییر ({{ kw_period|fa_digits }} روز)</th><th></th></tr></thead>
+        <tbody>
+          {% for r in keyword_rows %}
+            <tr data-id="{{ r.id }}">
+              <td><i class="star {% if r.is_starred %}on{% endif %}" data-star-kw="{{ r.id }}">★</i></td>
+              <td>{{ r.keyword }}<br><span class="rk-url" dir="ltr">{{ r.page_url }}</span></td>
+              <td class="num-c">{% if r.last_position %}{{ r.last_position|fa_digits }}{% else %}<span class="zero">—</span>{% endif %}</td>
+              <td>{% if r.spark %}{{ r.spark }}{% else %}<span class="zero">—</span>{% endif %}</td>
+              <td>{% if r.change is not None %}<span class="chg {% if r.change > 0 %}up{% elif r.change < 0 %}down{% endif %}">{% if r.change > 0 %}▲{% elif r.change < 0 %}▼{% else %}—{% endif %} {{ r.change|fa_digits }}</span>{% else %}<span class="zero">—</span>{% endif %}</td>
+              <td><i class="mini-edit" data-edit-kw="{{ r.id }}" title="ویرایش">✏️</i></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" class="zero" style="padding:24px;text-align:center">هنوز کلمه‌ای ردیابی نمی‌شود</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="subtab-panel" data-subpanel="bylink">
+      <table>
+        <thead><tr><th style="width:24px"></th><th>لینک صفحه</th><th>میانگین جایگاه</th><th>تعداد کلمات</th><th>روند ۳ ماه اخیر</th><th>تغییر ({{ kw_period|fa_digits }} روز)</th><th></th></tr></thead>
+        <tbody>
+          {% for r in page_rows %}
+            <tr data-url="{{ r.page_url }}">
+              <td><i class="star {% if r.is_starred %}on{% endif %}" data-star-page="{{ r.page_url }}">★</i></td>
+              <td dir="ltr" style="text-align:right"><a href="{{ r.page_url }}" target="_blank" rel="noopener" style="color:var(--primary-400)">{{ r.page_url }}</a></td>
+              <td class="num-c">{% if r.avg_position %}{{ r.avg_position|fa_digits }}{% else %}<span class="zero">—</span>{% endif %}</td>
+              <td class="num-c">{{ r.keyword_count|fa_digits }}</td>
+              <td>{% if r.spark %}{{ r.spark }}{% else %}<span class="zero">—</span>{% endif %}</td>
+              <td>{% if r.change is not None %}<span class="chg {% if r.change > 0 %}up{% elif r.change < 0 %}down{% endif %}">{% if r.change > 0 %}▲{% elif r.change < 0 %}▼{% else %}—{% endif %} {{ r.change|fa_digits }}</span>{% else %}<span class="zero">—</span>{% endif %}</td>
+              <td><i class="mini-edit" data-edit-page="{{ r.page_url }}" title="ویرایشِ لینکِ صفحه">✏️</i></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="7" class="zero" style="padding:24px;text-align:center">هنوز صفحه‌ای ردیابی نمی‌شود</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+
   <section class="card glass tab-panel cal" data-panel="calendar"><div data-cal-embed data-project="{{ project.pk }}"></div></section>
   <section class="card glass tab-panel" data-panel="files">
     <div class="card-h"><h3>فایل‌های پروژه</h3></div>
@@ -150,13 +212,16 @@
 (function(){
   // ── تب‌ها ──
   const tabs = document.getElementById('ptabs');
+  function activate(key){
+    tabs.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.dataset.tab===key));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('on', p.dataset.panel===key));
+  }
   tabs.addEventListener('click', e=>{
     const b = e.target.closest('.tab'); if(!b) return;
-    tabs.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
-    b.classList.add('on');
-    const key = b.dataset.tab;
-    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('on', p.dataset.panel===key));
+    activate(b.dataset.tab);
   });
+  // بعد از تغییرِ بازهٔ کلمات کلیدی و رفرشِ صفحه، همان تب باز بماند
+  if (new URLSearchParams(location.search).has('kw_period')) activate('keywords');
 
   // ── دسترسی‌ها ──
   const CREATE_URL = "{% url 'projects:credential_create' project.pk %}";
@@ -221,5 +286,135 @@
     }
   });
 })();
+
+{% if project.track_keyword_rank %}
+(function(){
+  // ── تبِ کلمات کلیدی: زیرتب‌ها، بازه، ستاره، افزودن، ویرایش ──
+  const PID = {{ project.pk }};
+  const sub = document.getElementById('kw-subtabs');
+  sub.addEventListener('click', e=>{
+    const b = e.target.closest('.subtab'); if(!b) return;
+    sub.querySelectorAll('.subtab').forEach(t=>t.classList.remove('on'));
+    b.classList.add('on');
+    const key = b.dataset.subtab;
+    document.querySelectorAll('.subtab-panel').forEach(p=>p.classList.toggle('on', p.dataset.subpanel===key));
+  });
+
+  document.getElementById('kw-period').addEventListener('change', e=>{
+    const u = new URL(location.href); u.searchParams.set('kw_period', e.target.value); u.hash='';
+    location.href = u.toString();
+  });
+
+  // ── ستاره (کلمه/صفحه) ──
+  document.addEventListener('click', async e=>{
+    const kwStar = e.target.closest('[data-star-kw]');
+    const pageStar = e.target.closest('[data-star-page]');
+    if(kwStar){
+      const on = !kwStar.classList.contains('on');
+      try{
+        await App.fetchJSON(`/seo/api/keywords/${kwStar.dataset.starKw}/`, {method:'PATCH', body:{is_starred:on}});
+        kwStar.classList.toggle('on', on);
+      }catch(_){}
+    }
+    if(pageStar){
+      const on = !pageStar.classList.contains('on');
+      try{
+        await App.fetchJSON('/seo/api/pages/star/', {method:'PATCH', body:{project:PID, page_url:pageStar.dataset.starPage, is_starred:on}});
+        pageStar.classList.toggle('on', on);
+      }catch(_){}
+    }
+  });
+
+  // ── افزودنِ صفحات مهم ──
+  document.getElementById('kw-add-page').addEventListener('click', ()=>{
+    App.openModal(`<div class="modal-h"><h3>افزودن صفحات مهم</h3><button class="x" onclick="App.closeModal()">×</button></div>
+      <div class="modal-b">
+        <div class="field"><label>لینک صفحه</label><input class="input" id="ap-url" dir="ltr" placeholder="https://example.com/page"></div>
+        <label style="font-size:12px;color:var(--text-dim);display:block;margin-bottom:6px">کلمات کلیدی</label>
+        <div id="ap-kw-list" class="kw-add-row"><input class="input" data-kw></div>
+        <button type="button" class="mini" id="ap-kw-more" style="margin-bottom:14px">＋ کلمهٔ دیگر</button>
+      </div>
+      <div class="modal-f"><button class="btn btn-p" id="ap-save">ذخیره</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+    document.getElementById('ap-kw-more').onclick = ()=>{
+      const row = document.createElement('div'); row.className='kw-add-row';
+      row.innerHTML = '<input class="input" data-kw>';
+      const rows = document.querySelectorAll('.modal-b .kw-add-row');
+      rows[rows.length - 1].after(row);
+    };
+    document.getElementById('ap-save').onclick = async ()=>{
+      const url = document.getElementById('ap-url').value.trim();
+      const keywords = [...document.querySelectorAll('[data-kw]')].map(i=>i.value.trim()).filter(Boolean);
+      if(!url || !keywords.length){ App.toast('لینک و حداقل یک کلمه کلیدی لازم است','warn'); return; }
+      try{
+        await App.fetchJSON('/seo/api/keywords/', {method:'POST', body:{project:PID, page_url:url, keywords}});
+        App.toast('افزوده شد','ok'); App.closeModal(); location.reload();
+      }catch(_){}
+    };
+  });
+
+  // ── ویرایشِ لینکِ صفحه (تغییرِ نام روی همهٔ کلماتِ زیرش) ──
+  document.addEventListener('click', e=>{
+    const b = e.target.closest('[data-edit-page]'); if(!b) return;
+    const oldUrl = b.dataset.editPage;
+    App.openModal(`<div class="modal-h"><h3>ویرایشِ لینکِ صفحه</h3><button class="x" onclick="App.closeModal()">×</button></div>
+      <div class="modal-b"><div class="field"><label>لینکِ جدید</label><input class="input" id="ep-url" dir="ltr" value="${oldUrl}"></div></div>
+      <div class="modal-f"><button class="btn btn-p" id="ep-save">ذخیره</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+    document.getElementById('ep-save').onclick = async ()=>{
+      const newUrl = document.getElementById('ep-url').value.trim();
+      if(!newUrl){ App.toast('لینک لازم است','warn'); return; }
+      try{
+        await App.fetchJSON('/seo/api/pages/rename/', {method:'PATCH', body:{project:PID, old_url:oldUrl, new_url:newUrl}});
+        App.toast('ذخیره شد','ok'); App.closeModal(); location.reload();
+      }catch(_){}
+    };
+  });
+
+  // ── ویرایشِ کلمهٔ کلیدی + تاریخچهٔ روزانه (اصلاحِ دستیِ یک روزِ خاص) ──
+  document.addEventListener('click', async e=>{
+    const b = e.target.closest('[data-edit-kw]'); if(!b) return;
+    const id = b.dataset.editKw;
+    const tr = b.closest('tr');
+    const curKeyword = tr.children[1].childNodes[0].textContent.trim();
+    const curUrl = tr.querySelector('.rk-url').textContent.trim();
+    let hist = [];
+    try{ hist = (await App.fetchJSON(`/seo/api/keywords/${id}/history/`)).snapshots; }catch(_){}
+    const histHtml = hist.map(s=>`<div class="kw-hist-row" data-d="${s.date}"><span style="min-width:80px">${s.date}</span><input type="number" class="input" value="${s.position}" data-hist-pos></div>`).join('')
+      || '<div class="zero" style="padding:6px 0">هنوز تاریخچه‌ای ثبت نشده</div>';
+    App.openModal(`<div class="modal-h"><h3>ویرایشِ کلمهٔ کلیدی</h3><button class="x" onclick="App.closeModal()">×</button></div>
+      <div class="modal-b">
+        <div class="field"><label>کلمه کلیدی</label><input class="input" id="ek-kw" value="${curKeyword}"></div>
+        <div class="field"><label>لینک صفحه</label><input class="input" id="ek-url" dir="ltr" value="${curUrl}"></div>
+        <label style="font-size:12px;color:var(--text-dim);display:block;margin-bottom:6px">تاریخچهٔ جایگاه (برای اصلاحِ یک روزِ خاص، عدد را عوض و ذخیره کن)</label>
+        <div class="kw-hist" id="ek-hist">${histHtml}</div>
+        <div class="kw-add-row"><input type="date" class="input" id="ek-new-date" style="max-width:150px"><input type="number" class="input" id="ek-new-pos" placeholder="جایگاه" style="max-width:100px"><button type="button" class="mini" id="ek-add-day">افزودن روز</button></div>
+      </div>
+      <div class="modal-f"><button class="btn btn-p" id="ek-save">ذخیره</button><button class="btn" style="color:var(--danger)" id="ek-del">حذف کلمه</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+
+    document.getElementById('ek-save').onclick = async ()=>{
+      try{
+        await App.fetchJSON(`/seo/api/keywords/${id}/`, {method:'PATCH', body:{
+          keyword: document.getElementById('ek-kw').value.trim(),
+          page_url: document.getElementById('ek-url').value.trim(),
+        }});
+        App.toast('ذخیره شد','ok'); App.closeModal(); location.reload();
+      }catch(_){}
+    };
+    document.getElementById('ek-del').onclick = async ()=>{
+      if(!await App.confirm('این کلمهٔ کلیدی حذف شود؟')) return;
+      try{ await App.fetchJSON(`/seo/api/keywords/${id}/`, {method:'DELETE'}); App.toast('حذف شد','ok'); App.closeModal(); location.reload(); }catch(_){}
+    };
+    document.getElementById('ek-hist').addEventListener('change', async e2=>{
+      const inp = e2.target.closest('[data-hist-pos]'); if(!inp) return;
+      const d = inp.closest('.kw-hist-row').dataset.d;
+      try{ await App.fetchJSON(`/seo/api/keywords/${id}/history/`, {method:'POST', body:{date:d, position:+inp.value}}); App.toast('ذخیره شد','ok'); }catch(_){}
+    });
+    document.getElementById('ek-add-day').onclick = async ()=>{
+      const d = document.getElementById('ek-new-date').value, pos = +document.getElementById('ek-new-pos').value;
+      if(!d || !pos){ App.toast('تاریخ و جایگاه لازم است','warn'); return; }
+      try{ await App.fetchJSON(`/seo/api/keywords/${id}/history/`, {method:'POST', body:{date:d, position:pos}}); App.toast('ذخیره شد','ok'); App.closeModal(); location.reload(); }catch(_){}
+    };
+  });
+})();
+{% endif %}
 </script>
 {% endblock %}

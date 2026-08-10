@@ -1,8 +1,9 @@
 # projects/
 
 ## مدل‌ها
-- **Project** — `name, domain, color, project_types(CSV), status, archived_at, amount,
-  contract_start/end, description, client_*, manager(FK Colleague), members(M2M), wp_*(فاز۳)`.
+- **Project** — `name, domain, track_keyword_rank(چک‌باکس، برای بستهٔ seo), color,
+  project_types(CSV), status, archived_at, amount, contract_start/end, description,
+  client_*, manager(FK Colleague), members(M2M), wp_*(فاز۳)`.
   `archive()/restore()` (غیرفعال، نه حذف). `types_list/types_display, is_active`.
 - **Credential** — پسورد با **Fernet** (`core/crypto.py`): `set_password/reveal_password`.
   هر «نمایش» در `ActivityLog` ثبت می‌شود.
@@ -15,7 +16,9 @@
   `core.columns.get_columns('projects','page')` می‌آیند (annotate: planned/done/remaining/
   overdue/minutes/words + پایتونی: progress/state) — تنظیم در `/settings/columns/`.
 - `forms.py` — نوع/تیم چک‌باکسی، تاریخ‌های `jdate`، توضیحات `rich-editor` + `clean_html`.
-- تب‌های سینگل: نمای‌کلی(آمار بازه) · تسک‌ها · تقویم(embed) · فایل‌ها · دسترسی‌ها · گزارش‌ها · حسابداری(placeholder).
+- تب‌های سینگل: نمای‌کلی(آمار بازه) · تسک‌ها · **کلمات کلیدی**(فقط اگر `track_keyword_rank`؛
+  منطق/مدل در `seo/rank.py` + `seo/models.py`) · تقویم(embed) · فایل‌ها · دسترسی‌ها ·
+  گزارش‌ها · حسابداری(placeholder).
 
 ## نکات
 - «آخرین پرداخت» در لیست فعلاً `—` است؛ بعد از ساخت `finance` وصل شود.

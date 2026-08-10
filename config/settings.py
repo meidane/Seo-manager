@@ -39,7 +39,7 @@ LOCAL_APPS = [
     'calendarapp',
     'reports',
     'finance',
-    'seo',  # بستهٔ عمودیِ سئو (فقط seed/پیش‌فرض؛ بدون مدل)
+    'seo',  # بستهٔ عمودیِ سئو (seed پیش‌فرض + ردیابیِ رتبهٔ کلمات کلیدی)
 ]
 
 THIRD_PARTY_APPS = [

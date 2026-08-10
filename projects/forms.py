@@ -20,7 +20,7 @@ class ProjectForm(forms.ModelForm):
     class Meta:
         model = Project
         fields = [
-            'name', 'domain', 'color', 'status', 'amount',
+            'name', 'domain', 'track_keyword_rank', 'color', 'status', 'amount',
             'client_name', 'client_phone', 'manager', 'members', 'description',
         ]
         widgets = {'members': forms.CheckboxSelectMultiple}
