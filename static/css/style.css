@@ -609,6 +609,27 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .kpi-score-row{display:flex;align-items:center;gap:8px;margin:6px 0}
 .kpi-score-row input[type=number]{max-width:80px}
 
+/* تبِ «کلمات کلیدی» پروژه — ردیابیِ رتبه */
+.subtabs{display:flex;gap:4px;margin-bottom:12px;border-bottom:1px solid var(--stroke-soft)}
+.subtab{border:0;background:none;color:var(--text-dim);font-family:inherit;font-size:12.5px;
+  padding:7px 12px;cursor:pointer;border-bottom:2px solid transparent;transition:var(--ease)}
+.subtab:hover{color:var(--text)}
+.subtab.on{color:#fff;border-bottom-color:var(--primary)}
+.subtab-panel{display:none}
+.subtab-panel.on{display:block}
+.rk-spark{display:block;width:90px;height:24px}
+.star{cursor:pointer;font-style:normal;font-size:14px;color:var(--text-faint);opacity:.6}
+.star:hover{opacity:1}
+.star.on{color:#FBBF24;opacity:1}
+.chg{font-size:12px;font-weight:600}
+.chg.up{color:#6FE3C4}
+.chg.down{color:#FF9AAB}
+.rk-url{color:var(--text-faint);font-size:11px}
+.kw-hist{display:flex;flex-direction:column;gap:5px;max-height:220px;overflow-y:auto;margin:10px 0}
+.kw-hist-row{display:flex;align-items:center;gap:8px;font-size:12.5px}
+.kw-hist-row input[type=number]{max-width:80px}
+.kw-add-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+
 /* سفارشی‌سازیِ ستون‌ها — /settings/columns/ */
 .col-list{display:flex;flex-direction:column;gap:2px;padding:10px 14px}
 .col-row{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:var(--r-sm);border:1px solid transparent}

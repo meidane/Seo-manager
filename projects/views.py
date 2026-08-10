@@ -96,6 +96,14 @@ class ProjectDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
             'overdue': p.tasks.filter(status__in=[Task.TODO, Task.DOING], planned_date__lt=date.today()).count(),
             'words': done_qs.aggregate(s=Sum('word_count'))['s'] or 0,
         }
+        if p.track_keyword_rank:
+            from seo import rank as seo_rank
+            period = seo_rank.resolve_period(self.request)
+            ctx['kw_period'] = period
+            ctx['kw_period_choices'] = seo_rank.PERIOD_CHOICES
+            ctx['keyword_rows'] = seo_rank.keyword_rows(p, period)
+            ctx['page_rows'] = seo_rank.page_rows(p, period)
+
         ctx['task_rows'] = p.tasks.select_related('assignee','type_def').filter(
             Q(planned_date__range=(start, end)) | Q(status=Task.DONE, done_date__range=(start, end))
         ).order_by('-planned_date')[:40]

@@ -17,7 +17,8 @@
 - `dashboard/` — ویو تجمیعی
 - `reports/` — Report/ReportItem (بدون snapshot، override، لینک عمومی مشتری)
 - `finance/` — حسابداری (پایه): BankAccount, Category(بابت), Transaction(+ایمپورت اکسل), Payroll
-- `seo/` — بستهٔ عمودیِ سئو (بدون مدل): فقط `seed_seo` (۴ نوع تسکِ سئوِ کاملاً سفارشی + فیلد + KPI). الگوی «بسته برای هر شرکت» — برای مشتریِ بعدی یک اپِ مشابه بساز.
+- `seo/` — بستهٔ عمودیِ سئو: `seed_seo` (۴ نوع تسکِ سئوِ کاملاً سفارشی) + ردیابیِ رتبهٔ کلمات
+  کلیدی (مدل + API برای افزونهٔ مرورگر). الگوی «بسته برای هر شرکت» — برای مشتریِ بعدی یک اپِ مشابه بساز.
 
 ## قوانین طلایی (نقض نکن)
 1. **تاریخ‌ها در DB میلادی‌اند.** شمسی فقط در نمایش (`|jalali`) و ورودی (`parse_jalali`).
@@ -38,6 +39,7 @@
 | داده‌ی مودال تسک (پروژه/همکار/انواع) | `tasks/api.py: form_data` → `/tasks/api/formdata/` |
 | بازه‌ی سراسری | `core/daterange.py: DateRangeMixin` |
 | کاتالوگِ ستون‌های قابل‌سفارشی‌سازی (تسک/پروژه/همکار) | `core/columns.py: get_catalog/get_columns/cell_value` + `core/models.py: ColumnConfig` + تگ `{% column_cell %}` |
+| اتصالِ اپ/افزونهٔ بیرونی که داخلِ مرورگرِ کاربرِ لاگین‌شده اجرا می‌شود | سشن+کوکیِ سایت، الگوی `static/js/app.js: fetchJSON` (نه توکنِ جدا) — نمونه: `seo/api.py: rank_ingest` |
 | گروه‌بندی نوع در گزارش | `reports/models.py: BUCKETS` |
 | فیلدهای قابل‌نمایش به مشتری | `reports/models.py: CLIENT_FIELDS` + `Report.visible_fields` |
 | پاکسازی HTML ادیتور | `core/htmlsan.py: clean_html` |
