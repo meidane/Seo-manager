@@ -548,6 +548,42 @@ table.sheet tr:hover td{background:rgba(255,255,255,.02)}
 .range-custom .field label{font-size:10px;color:var(--text-faint)}
 .range-custom .input{max-width:120px;padding:6px 8px;font-size:12px}
 
+/* جدول تسک‌ها: اسکرول افقی تمیز + ویرایشِ زندهٔ سلول‌ها + آیکن باز کردن مودال */
+.tsheet-wrap{overflow-x:auto;overflow-y:visible}
+.tsheet-wrap::-webkit-scrollbar{height:9px}
+.tsheet-wrap::-webkit-scrollbar-track{background:transparent}
+.tsheet-wrap::-webkit-scrollbar-thumb{background:var(--stroke-soft);border-radius:6px}
+.tsheet-wrap::-webkit-scrollbar-thumb:hover{background:var(--stroke)}
+.tsheet{min-width:940px}
+.tcell{display:flex;align-items:center;gap:6px}
+.tx-inline{max-width:100%;background:transparent;border:1px solid transparent;border-radius:6px;color:inherit;font:inherit;font-size:12.5px;padding:4px 6px}
+.tcell .tx-inline{flex:1;min-width:120px}
+.tx-inline:hover{border-color:var(--stroke-soft)}
+.tx-inline:focus{border-color:var(--primary-ring);background:rgba(255,255,255,.04);outline:none}
+select.tx-inline{cursor:pointer;max-width:150px}
+.row-open{cursor:pointer;opacity:.5;font-style:normal;font-size:14px}
+.row-open:hover{opacity:1;color:var(--primary-400)}
+
+/* دکمهٔ در حال بارگذاری (جلوگیری از دوبار کلیک) */
+.btn:disabled,.btn.loading{opacity:.55;cursor:not-allowed;pointer-events:none}
+.btn.loading{position:relative;color:transparent!important}
+.btn.loading::after{content:"";position:absolute;inset:0;margin:auto;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:btnspin .6s linear infinite}
+@keyframes btnspin{to{transform:rotate(360deg)}}
+
+/* ویجت سراسریِ «در حال انجام» (گوشهٔ پایین-چپ) */
+.timer-widget{position:fixed;bottom:16px;inset-inline-start:16px;z-index:60;display:none;flex-direction:column;gap:5px;
+  min-width:220px;max-width:290px;padding:10px 12px;border-radius:var(--r-sm);
+  background:var(--surface,rgba(20,26,38,.92));border:1px solid var(--stroke-soft);backdrop-filter:blur(8px);box-shadow:0 8px 28px rgba(0,0,0,.35)}
+.timer-widget.on{display:flex}
+.timer-widget .tw-h{font-size:11px;color:var(--text-faint);margin-bottom:2px}
+.tw-row{display:flex;align-items:center;gap:7px;font-size:12.5px}
+.tw-dot{width:8px;height:8px;border-radius:50%;background:#2DD4A7;flex:none;box-shadow:0 0 0 0 rgba(45,212,167,.6);animation:twpulse 1.6s infinite}
+@keyframes twpulse{0%{box-shadow:0 0 0 0 rgba(45,212,167,.5)}70%{box-shadow:0 0 0 6px rgba(45,212,167,0)}100%{box-shadow:0 0 0 0 rgba(45,212,167,0)}}
+.tw-tt{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tw-time{font-variant-numeric:tabular-nums;color:#6FE3C4}
+.tw-stop{border:0;background:rgba(255,255,255,.08);color:var(--text);width:20px;height:20px;border-radius:5px;cursor:pointer;font-size:9px;line-height:1}
+.tw-stop:hover{background:var(--danger);color:#fff}
+
 /* تایمر تسک (ستون زمان) */
 .timer-cell{white-space:nowrap;display:flex;align-items:center;gap:6px}
 .timer-cell .tbtn{border:0;background:rgba(255,255,255,.06);color:var(--text);width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;display:grid;place-items:center}

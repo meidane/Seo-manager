@@ -15,6 +15,7 @@ urlpatterns = [
     path('api/<int:pk>/', api.task_detail, name='api_detail'),
     path('api/<int:pk>/status/', api.task_status, name='api_status'),
     path('api/<int:pk>/timer/', api.task_timer, name='api_timer'),
+    path('api/running/', api.running_timers, name='api_running'),
     path('api/<int:pk>/review/', api.task_review, name='api_review'),
     path('api/<int:pk>/comments/', api.task_comments, name='api_comments'),
     path('api/comment/<int:pk>/', api.task_comment_edit, name='api_comment_edit'),

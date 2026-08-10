@@ -73,6 +73,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'core.context_processors.date_range',
                 'accounts.context_processors.org',
+                'tasks.context_processors.running_timers',
             ],
         },
     },

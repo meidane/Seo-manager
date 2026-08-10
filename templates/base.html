@@ -23,8 +23,14 @@
 {# ── مودال و توست عمومی توسط app.js تزریق می‌شوند ── #}
 <div class="toast-wrap"></div>
 
+{% if user.is_authenticated %}
+  {{ running_timers|json_script:"running-timers-data" }}
+  <div id="timer-widget" class="timer-widget"></div>
+{% endif %}
+
 <script src="{% static 'js/app.js' %}"></script>
 {% if user.is_authenticated %}
+<script src="{% static 'js/timer-widget.js' %}"></script>
 <script src="{% static 'js/datepicker.js' %}"></script>
 <script src="{% static 'js/richtext.js' %}"></script>
 <script src="{% static 'js/task-schema.js' %}"></script>

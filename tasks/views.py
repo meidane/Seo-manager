@@ -52,6 +52,9 @@ class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
                 status=Task.DONE).order_by('planned_date', 'planned_time')[:100]
         ctx['projects'] = Project.objects.filter(status=Project.ACTIVE)
         ctx['colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)
+        # همهٔ پروژه‌ها/همکاران برای دراپ‌داون‌های ویرایشِ زندهٔ جدول (نه فقط فعال)
+        ctx['all_projects'] = Project.objects.order_by('status', 'name')
+        ctx['all_colleagues'] = Colleague.objects.order_by('status', 'full_name')
         ctx['type_choices'] = Task.TYPE_CHOICES
         ctx['status_choices'] = Task.STATUS_CHOICES
         ctx['page_title'] = 'تسک‌ها'

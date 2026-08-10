@@ -332,16 +332,24 @@
       }
     };
 
+    let saving = false;  // جلوگیری از دوبار/سه‌بار کلیک که چند تسک می‌ساخت (#۲)
     const save = async (again) => {
+      if (saving) return;
       const payload = collect();
       if (!payload.title || !payload.project) { App.toast('عنوان و پروژه لازم است', 'warn'); return; }
+      saving = true;
+      const btns = ['t-save', 't-save-next'].map((i) => document.getElementById(i)).filter(Boolean);
+      btns.forEach((b) => { b.disabled = true; b.classList.add('loading'); });
       try {
         if (id) await App.fetchJSON(`/tasks/api/${id}/`, { method: 'PATCH', body: payload });
         else await App.fetchJSON('/tasks/api/', { method: 'POST', body: payload });
         App.toast('ذخیره شد', 'ok');
         if (again) { openTask(null); }
         else { App.closeModal(); setTimeout(() => location.reload(), 250); }
-      } catch (_) {}
+      } catch (_) {
+        saving = false;
+        btns.forEach((b) => { b.disabled = false; b.classList.remove('loading'); });
+      }
     };
     document.getElementById('t-save').onclick = () => save(false);
     const n = document.getElementById('t-save-next'); if (n) n.onclick = () => save(true);
@@ -374,6 +382,14 @@
   document.addEventListener('click', (e) => {
     const t = e.target.closest('[data-fix-note]');
     if (t) { e.stopImmediatePropagation(); e.preventDefault(); openTask(t.dataset.fixNote); }
+  });
+
+  // ── ویرایشِ زندهٔ جدول تسک‌ها (بدون دکمهٔ ذخیره) ──
+  document.addEventListener('change', async (e) => {
+    const el = e.target.closest('.tx-inline'); if (!el) return;
+    const tr = el.closest('tr'); if (!tr) return;
+    try { await App.fetchJSON(`/tasks/api/${tr.dataset.id}/`, { method: 'PATCH', body: { [el.dataset.f]: el.value } }); App.toast('ذخیره شد', 'ok'); }
+    catch (_) {}
   });
 
   // ── تغییر سریع وضعیت از دراپ‌داون ردیف ──
@@ -439,6 +455,7 @@
         base = d.spent_minutes; running = d.timer_running; started = d.timer_started ? new Date(d.timer_started) : null;
         running ? startTick() : stopTick();
         render();
+        window.dispatchEvent(new CustomEvent('timer-changed'));  // به‌روزرسانی ویجت سراسری
       } catch (_) {}
     };
     if (edit) edit.onclick = async (e) => {

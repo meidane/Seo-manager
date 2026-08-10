@@ -26,16 +26,18 @@
   {# ── لیست ── #}
   <section class="card glass">
     {% if tasks %}
-      <table>
-        <thead><tr><th style="width:28px"><input type="checkbox" id="check-all"></th><th>عنوان</th><th>پروژه</th><th>مسئول</th><th>تاریخ برنامه</th><th>تاریخ انجام</th><th>وضعیت</th><th>زمان</th><th>🔗</th></tr></thead>
+      <div class="tsheet-wrap">
+      <table class="tsheet">
+        <thead><tr><th style="width:26px"><input type="checkbox" id="check-all"></th><th style="width:26px"></th><th style="min-width:200px">عنوان</th><th>پروژه</th><th>مسئول</th><th>تاریخ برنامه</th><th>تاریخ انجام</th><th>وضعیت</th><th>زمان</th><th>🔗</th></tr></thead>
         <tbody>
           {% for t in tasks %}
-            <tr data-open-task="{{ t.id }}" {% if t.is_overdue %}class="overdue-l"{% endif %}>
+            <tr data-id="{{ t.id }}" {% if t.is_overdue %}class="overdue-l"{% endif %}>
               <td><input type="checkbox" class="row-check" data-id="{{ t.id }}"></td>
-              <td><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span> {{ t.title }}{% if t.review_status == 'needs_fix' %} <span class="tag t-warn" data-fix-note="{{ t.id }}" style="cursor:pointer">⚠ نیاز به اصلاح</span>{% endif %}</td>
-              <td>{{ t.project.name }}</td>
-              <td>{{ t.assignee.full_name|default:"—" }}</td>
-              <td>{{ t.planned_date|jalali }}</td>
+              <td><i class="row-open" data-open-task="{{ t.id }}" title="باز کردن مودال">⤢</i></td>
+              <td class="tcell"><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span><input class="tx-inline" data-f="title" value="{{ t.title }}">{% if t.review_status == 'needs_fix' %} <span class="tag t-warn" data-fix-note="{{ t.id }}" style="cursor:pointer">⚠</span>{% endif %}</td>
+              <td><select class="tx-inline" data-f="project">{% for p in all_projects %}<option value="{{ p.id }}" {% if t.project_id == p.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></td>
+              <td><select class="tx-inline" data-f="assignee"><option value="">—</option>{% for c in all_colleagues %}<option value="{{ c.id }}" {% if t.assignee_id == c.id %}selected{% endif %}>{{ c.full_name }}</option>{% endfor %}</select></td>
+              <td><input class="tx-inline jdate" data-f="planned_date" dir="ltr" readonly value="{{ t.planned_date|jalali }}"></td>
               <td>{% if t.done_date %}{{ t.done_date|jalali }}{% else %}<span class="zero">—</span>{% endif %}</td>
               <td>
                 <select class="row-status st-{{ t.status }}" data-id="{{ t.id }}" style="padding:3px 8px;font-size:12px">
@@ -52,6 +54,7 @@
           {% endfor %}
         </tbody>
       </table>
+      </div>
     {% else %}
       <div class="empty"><div class="ico">☰</div><h4>تسکی در این بازه/فیلتر نیست</h4><button class="btn btn-p" id="new-task" style="margin-top:12px">＋ تسک جدید</button></div>
     {% endif %}

@@ -239,6 +239,16 @@ def task_status(request, pk):
 
 
 @login_required
+@require_http_methods(['GET'])
+def running_timers(request):
+    """تسک‌های در حال اجرای تایمر (برای ویجت سراسری)."""
+    items = [{'id': t.id, 'title': t.title, 'project': t.project.name if t.project_id else '',
+              'spent': t.spent_minutes, 'started': t.timer_started_at.isoformat()}
+             for t in Task.objects.filter(timer_started_at__isnull=False).select_related('project')[:8]]
+    return JsonResponse({'running': items})
+
+
+@login_required
 @require_http_methods(['POST', 'PATCH'])
 def task_timer(request, pk):
     """تایمرِ کارِ تسک. POST {action:start|stop} برای همه؛ PATCH {minutes} فقط مدیران."""
