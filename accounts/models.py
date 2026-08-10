@@ -8,6 +8,10 @@
 نکته: در این فاز فقط «مقدمات» است — داده‌ی اپ‌های دیگر (Project/Task/…) هنوز به
 سازمان اسکوپ نشده‌اند؛ آن مرحله در نقشه‌ی راه (docs/PLATFORM.md) فاز بعدی است.
 """
+import hashlib
+import secrets
+
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils.text import slugify
@@ -171,6 +175,55 @@ class Role(models.Model):
 
     def __str__(self):
         return f'{self.name} @ {self.organization}'
+
+
+class APIToken(models.Model):
+    """توکنِ ورودِ برنامه‌های بیرونی (افزونهٔ مرورگر، اتوماسیون‌ها، AI). برخلافِ مدل‌های
+    tenant، **خودش** راهِ رسیدن به سازمان است؛ پس عمداً بدونِ `TenantManager` است —
+    یک درخواستِ بدونِ سشن (بدونِ کوکی) با این هدر خودش را معرفی می‌کند:
+    `Authorization: Token <key>`. ببین `seo/api.py: token_or_login_required`.
+    سشن+کوکیِ سایت برای افزونه‌ای که همیشه در همان مرورگرِ لاگین‌شده اجرا می‌شود کافی
+    بود، اما SameSite=Lax (پیش‌فرضِ جنگو) کوکیِ سشن را در fetchِ کراس‌سایتِ افزونه
+    نمی‌فرستد؛ توکن این مشکل را کلاً کنار می‌زند.
+
+    مثلِ پسوردها، مقدارِ خامِ کلید هرگز ذخیره نمی‌شود — فقط هشِ SHA-256اش
+    (`key_hash`، قابلِ جستجو، دترمینیستیک). کلیدِ خام فقط **یک‌بار**، بلافاصله بعدِ
+    ساخت، به کاربر نشان داده می‌شود (`APIToken.generate`)."""
+
+    organization = models.ForeignKey(Organization, verbose_name='سازمان', on_delete=models.CASCADE, related_name='api_tokens')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name='کاربر', on_delete=models.CASCADE, related_name='api_tokens')
+    name = models.CharField('نام (برای خودت)', max_length=100, blank=True)
+    key_hash = models.CharField('هشِ کلید', max_length=64, unique=True, editable=False)
+    key_prefix = models.CharField('پیشوندِ نمایشی', max_length=10, editable=False, blank=True)
+    is_active = models.BooleanField('فعال', default=True)
+    created_at = models.DateTimeField('تاریخ ایجاد', auto_now_add=True)
+    last_used_at = models.DateTimeField('آخرین استفاده', null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'توکنِ API'
+        verbose_name_plural = 'توکن‌های API'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.name or f'توکن {self.key_prefix}…'
+
+    @classmethod
+    def generate(cls, organization, user, name=''):
+        """می‌سازد و کلیدِ خام را برمی‌گرداند (فقط همین یک‌بار در دسترس است)."""
+        raw = secrets.token_hex(24)
+        obj = cls.objects.create(
+            organization=organization, user=user, name=name,
+            key_hash=hashlib.sha256(raw.encode()).hexdigest(), key_prefix=raw[:8])
+        return obj, raw
+
+    @staticmethod
+    def authenticate(raw_key):
+        h = hashlib.sha256((raw_key or '').encode()).hexdigest()
+        return APIToken.objects.filter(key_hash=h, is_active=True).select_related('organization', 'user').first()
+
+    def touch(self):
+        from django.utils import timezone
+        APIToken.objects.filter(pk=self.pk).update(last_used_at=timezone.now())
 
 
 def seed_roles(organization):

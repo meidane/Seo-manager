@@ -17,7 +17,7 @@ from django.urls import reverse_lazy
 from django.views.decorators.http import require_http_methods
 from django.views.generic import TemplateView
 
-from .models import Membership, Organization, Role, Team, TeamMembership, User, seed_roles
+from .models import APIToken, Membership, Organization, Role, Team, TeamMembership, User, seed_roles
 from .permissions import PERM_LABELS, PERMS
 
 
@@ -257,6 +257,36 @@ def switch_org(request):
         request.session['active_org_id'] = int(oid)
         return JsonResponse({'ok': True})
     return JsonResponse({'detail': 'به این سازمان دسترسی نداری'}, status=403)
+
+
+class APITokenListView(LoginRequiredMixin, TemplateView):
+    """توکن‌های API سازمان — برای اتصال افزونهٔ مرورگر/اتوماسیون/AI (`/settings/api-tokens/`)."""
+
+    template_name = 'accounts/api_tokens.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        org = _require(self.request, 'manage_org')
+        ctx['tokens'] = org.api_tokens.select_related('user').all()
+        ctx['page_title'] = 'توکن‌های API'
+        return ctx
+
+
+@login_required
+@require_http_methods(['POST'])
+def token_create(request):
+    org = _require(request, 'manage_org')
+    data = json.loads(request.body or '{}')
+    token, raw_key = APIToken.generate(organization=org, user=request.user, name=(data.get('name') or '').strip())
+    return JsonResponse({'id': token.id, 'name': token.name, 'key': raw_key, 'prefix': token.key_prefix}, status=201)
+
+
+@login_required
+@require_http_methods(['DELETE'])
+def token_revoke(request, pk):
+    org = _require(request, 'manage_org')
+    get_object_or_404(APIToken, pk=pk, organization=org).delete()
+    return JsonResponse({'ok': True})
 
 
 @require_http_methods(['GET', 'POST'])

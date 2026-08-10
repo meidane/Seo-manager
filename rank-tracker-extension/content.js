@@ -1,20 +1,8 @@
 // ============================================================
 // Rank Tracker - Content Script
 // اجرا فقط روی صفحات نتایج جستجوی گوگل (google.com/search)
-// ============================================================
-
-// --- ۱) لیست سایت‌های هدف (فعلا هاردکد، بعدا میشه از storage خواند) ---
-const TARGET_DOMAINS = [
-  "iransunlight.com",
-  "arshianclinic.com",
-  "meidane.com"
-];
-
-// نتایج معمولی گوگل در هر صفحه چند تا هستند (برای محاسبه‌ی جایگاه واقعی)
-const RESULTS_PER_PAGE = 10;
-
-// ============================================================
-// توابع کمکی
+// دامنه‌های هدف را از بک‌اند می‌گیرد (نه هاردکد)؛ جایگاه را روی خودِ نتیجه
+// به‌صورتِ یک نشانِ سبزِ کوچک می‌نویسد — نه یک باکسِ ثابتِ گوشه‌ی صفحه.
 // ============================================================
 
 function getQueryParam(name) {
@@ -36,8 +24,9 @@ function extractHostname(href) {
   }
 }
 
-function matchTargetDomain(hostname) {
-  return TARGET_DOMAINS.find(d => hostname === d || hostname.endsWith("." + d));
+function matchTrackedDomain(hostname, domains) {
+  const h = (hostname || "").toLowerCase();
+  return domains.find((d) => h === d.domain || h.endsWith("." + d.domain));
 }
 
 // لیست "کارت‌های نتیجه" واقعی صفحه (چیزی که کاربر با چشم می‌شمارد: ۱، ۲، ۳...)
@@ -86,140 +75,59 @@ function getOrganicResultLinks() {
 }
 
 // ============================================================
-// اسکن صفحه فعلی و پیدا کردن جایگاه سایت‌های هدف
+// نشانِ سبزِ جایگاه — کنارِ خودِ نتیجه، نه باکسِ ثابتِ گوشه‌ی صفحه
 // ============================================================
 
-function scanCurrentPage() {
-  const offset = getCurrentPageOffset();
-  const links = getOrganicResultLinks();
-
-  const found = {}; // { domain: { position, url } }
-
-  links.forEach((a, idx) => {
-    const hostname = extractHostname(a.href);
-    const matched = matchTargetDomain(hostname);
-    if (matched && !found[matched]) {
-      found[matched] = {
-        position: offset + idx + 1, // جایگاه واقعی با احتساب صفحه
-        url: a.href
-      };
-    }
-  });
-
-  return found;
+function injectBadge(anchor, position) {
+  const h3 = anchor.querySelector("h3");
+  const host = h3 || anchor;
+  if (host.querySelector(".rt-badge")) return; // از رندرِ دوباره (MutationObserver) جلوگیری کن
+  const badge = document.createElement("span");
+  badge.className = "rt-badge";
+  badge.textContent = `جایگاه ${position}`;
+  host.appendChild(badge);
 }
 
 // ============================================================
-// ذخیره‌سازی نتایج (فعلا در chrome.storage.local، بعدا API خارجی)
+// اسکن صفحه + ارسال به بک‌اند
 // ============================================================
 
-const STORAGE_KEY = "rankTrackerData";
-
-async function loadStoredData() {
-  const data = await chrome.storage.local.get(STORAGE_KEY);
-  return data[STORAGE_KEY] || {};
-}
-
-async function saveStoredData(data) {
-  await chrome.storage.local.set({ [STORAGE_KEY]: data });
-}
-
-// این تابع فعلا فقط داخل storage محلی ذخیره می‌کند.
-// بعدا اینجا یک fetch/POST به بک‌اند دیتابیس اضافه می‌شود.
-async function sendToRemoteDatabase(keyword, resultsForKeyword) {
-  // TODO: وقتی بک‌اند و آدرس API آماده شد، اینجا پیاده‌سازی شود:
-  //
-  // await fetch("https://YOUR-BACKEND-DOMAIN/api/rank", {
-  //   method: "POST",
-  //   headers: { "Content-Type": "application/json" },
-  //   body: JSON.stringify({ keyword, results: resultsForKeyword, timestamp: Date.now() })
-  // });
-  //
-  // فعلا فقط لاگ می‌گیریم:
-  console.log("[RankTracker] (stub) sendToRemoteDatabase:", keyword, resultsForKeyword);
-}
-
-// ============================================================
-// منطق اصلی: هر سرچ جدید = ریست به -۱، هر بار که پیدا شد آپدیت می‌شود
-// ============================================================
+let lastQuery = null;
 
 async function processSearchPage() {
   const query = (getQueryParam("q") || "").trim();
   if (!query) return;
 
-  const allData = await loadStoredData();
+  const resp = await chrome.runtime.sendMessage({ type: "GET_TRACKED_DOMAINS" });
+  if (!resp || !resp.ok) return; // تنظیم‌نشده یا خطای شبکه — بی‌سروصدا هیچ‌کاری نکن
+  const domains = (resp.data && resp.data.domains) || [];
+  if (!domains.length) return;
 
-  // اگر این کوئری برای اولین‌بار است، مقدار همه‌ی دامنه‌ها را -۱ بگذار
-  if (!allData[query]) {
-    allData[query] = {
-      firstSeen: Date.now(),
-      lastUpdated: Date.now(),
-      results: {}
-    };
-    TARGET_DOMAINS.forEach(d => {
-      allData[query].results[d] = { position: -1, url: null };
-    });
-  }
+  const links = getOrganicResultLinks();
+  const offset = getCurrentPageOffset();
+  const newQuerySearch = query !== lastQuery;
+  lastQuery = query;
+  const seenThisPage = new Set();
 
-  const foundOnThisPage = scanCurrentPage();
+  links.forEach((a, idx) => {
+    const hostname = extractHostname(a.href);
+    const matched = matchTrackedDomain(hostname, domains);
+    if (!matched || seenThisPage.has(matched.domain)) return;
+    seenThisPage.add(matched.domain);
 
-  // فقط دامنه‌هایی که در این صفحه واقعا دیده شدند آپدیت می‌شوند
-  Object.keys(foundOnThisPage).forEach(domain => {
-    allData[query].results[domain] = foundOnThisPage[domain];
+    const position = offset + idx + 1;
+    injectBadge(a, position);
+
+    // فقط یک‌بار برای هر سرچِ جدید ارسال کن، نه با هر بار اجرای MutationObserver
+    if (newQuerySearch || !a.dataset.rtReported) {
+      a.dataset.rtReported = "1";
+      chrome.runtime.sendMessage({
+        type: "REPORT_RANK",
+        payload: { url: a.href, keyword: query, position },
+      });
+    }
   });
-
-  allData[query].lastUpdated = Date.now();
-
-  await saveStoredData(allData);
-  await sendToRemoteDatabase(query, allData[query].results);
-
-  renderOverlay(query, allData[query].results);
 }
-
-// ============================================================
-// نمایش یک باکس کوچک روی صفحه گوگل با وضعیت فعلی
-// ============================================================
-
-function renderOverlay(query, results) {
-  let box = document.getElementById("rank-tracker-overlay");
-  if (!box) {
-    box = document.createElement("div");
-    box.id = "rank-tracker-overlay";
-    document.body.appendChild(box);
-  }
-
-  // فقط دامنه‌هایی که پیدا شده‌اند نمایش داده می‌شوند؛ "یافت نشد" اصلا رندر نمی‌شود
-  const foundDomains = TARGET_DOMAINS.filter(
-    domain => results[domain] && results[domain].position !== -1
-  );
-
-  const rows = foundDomains
-    .map(domain => {
-      const r = results[domain];
-      return `<div class="rt-row"><span class="rt-domain">${domain}</span><span class="rt-found">جایگاه ${r.position}</span></div>`;
-    })
-    .join("");
-
-  const body =
-    rows || `<div class="rt-empty">هنوز در این صفحه چیزی پیدا نشده</div>`;
-
-  box.innerHTML = `
-    <div class="rt-header">
-      Rank Tracker
-      <span class="rt-close" id="rt-close-btn">&times;</span>
-    </div>
-    <div class="rt-query">کوئری: ${query}</div>
-    ${body}
-    <div class="rt-hint">برای بررسی صفحه‌های بعدی، خودتان به صفحه ۲/۳/... بروید.</div>
-  `;
-
-  const closeBtn = document.getElementById("rt-close-btn");
-  if (closeBtn) closeBtn.addEventListener("click", () => box.remove());
-}
-
-// ============================================================
-// اجرا
-// ============================================================
 
 // کمی تاخیر تا مطمئن شویم نتایج گوگل کامل رندر شده‌اند
 setTimeout(processSearchPage, 600);

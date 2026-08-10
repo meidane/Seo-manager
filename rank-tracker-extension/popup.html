@@ -8,19 +8,24 @@
 <body>
   <h1>Rank Tracker</h1>
 
+  <div class="settings-box">
+    <label>آدرس پلتفرم</label>
+    <input type="text" id="apiUrl" placeholder="https://seo.example.com" dir="ltr" />
+    <label>توکن API</label>
+    <input type="text" id="apiToken" placeholder="از /settings/api-tokens/" dir="ltr" />
+    <div class="actions">
+      <button id="saveBtn">ذخیره</button>
+      <button id="testBtn">تست اتصال</button>
+    </div>
+    <div id="status" class="status"></div>
+  </div>
+
+  <h2>فعالیت اخیر</h2>
   <div id="list"></div>
 
   <div class="actions">
-    <button id="clearBtn">پاک کردن همه سوابق</button>
+    <button id="clearBtn">پاک‌کردنِ فعالیتِ اخیر</button>
   </div>
-
-  <details class="settings">
-    <summary>تنظیمات (اتصال به دیتابیس - بعدا)</summary>
-    <label>آدرس API بک‌اند:</label>
-    <input type="text" id="apiUrl" placeholder="https://example.com/api/rank" />
-    <button id="saveApiBtn">ذخیره</button>
-    <p class="hint">این آدرس فعلا فقط ذخیره می‌شود؛ ارسال خودکار به آن بعدا در content.js فعال می‌شود.</p>
-  </details>
 
   <script src="popup.js"></script>
 </body>

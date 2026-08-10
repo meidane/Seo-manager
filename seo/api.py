@@ -1,18 +1,24 @@
 """API‌های JSON بستهٔ سئو — بدون DRF. دو دسته:
-۱) مدیریتِ کلمات/صفحاتِ ردیابی‌شده (از تبِ «کلمات کلیدی» پروژه، در مرورگرِ خودِ کاربر).
-۲) دریافتِ داده از **افزونهٔ مرورگر** (`rank_ingest`, `tracked_domains`) — همان
-   الگوی سشن+CSRF کوکیِ خودِ اپ (`static/js/app.js: fetchJSON`)، چون افزونه هم داخلِ
-   مرورگرِ کاربرِ لاگین‌شده اجرا می‌شود؛ نیازی به توکنِ جدا نیست.
+۱) مدیریتِ کلمات/صفحاتِ ردیابی‌شده (از تبِ «کلمات کلیدی» پروژه، سشنِ کاربرِ لاگین‌شده).
+۲) دریافتِ داده از **افزونهٔ مرورگر** (`rank_ingest`, `tracked_domains`) — با
+   **توکنِ API** (`Authorization: Token xxx`، از `/settings/api-tokens/`)، نه سشن؛
+   چون افزونه از یک fetchِ کراس‌سایت (google.com ← این پلتفرم) صدا می‌زند و
+   SameSite=Lax کوکیِ سشن را در چنین درخواستی نمی‌فرستد. `token_or_login_required`
+   هردو راه را قبول می‌کند تا تست از خودِ مرورگرِ اپ هم کار کند.
 """
 import json
 from datetime import date
+from functools import wraps
 from urllib.parse import urlparse
 
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
+from accounts.models import APIToken
+from accounts.tenancy import set_current_org
 from projects.models import Project
 
 from .models import KeywordRankSnapshot, TrackedKeyword
@@ -23,6 +29,44 @@ def _body(request):
         return json.loads(request.body or '{}')
     except json.JSONDecodeError:
         return {}
+
+
+def _authenticate_token(request):
+    auth = request.META.get('HTTP_AUTHORIZATION', '')
+    if not auth.startswith('Token '):
+        return None
+    token = APIToken.authenticate(auth[len('Token '):].strip())
+    if token:
+        set_current_org(token.organization)
+        request.user = token.user
+        token.touch()
+    return token
+
+
+def token_or_login_required(view):
+    """برای ویوهای فقط‌خواندنی: `Authorization: Token xxx` (افزونه) یا سشنِ عادی
+    (کاربرِ لاگین‌شده در خودِ اپ، برای تست/دیباگ). GET بودن یعنی مسیرِ سشن نیازی به
+    بررسیِ CSRF ندارد."""
+    @wraps(view)
+    def wrapper(request, *args, **kwargs):
+        if _authenticate_token(request):
+            return view(request, *args, **kwargs)
+        if not request.user.is_authenticated:
+            return JsonResponse({'detail': 'ورود یا توکنِ API لازم است'}, status=401)
+        return view(request, *args, **kwargs)
+    return wrapper
+
+
+def token_required(view):
+    """برای ویوهایی که داده می‌نویسند و افزونه صداشان می‌زند: **فقط توکن**، بدونِ
+    مسیرِ جایگزینِ سشن. این‌طور نیازی به معاف‌کردنِ CSRF نیست — توکن اصلاً کوکیِ سشن
+    نیست که CSRF رویش معنا داشته باشد (مثلِ همه‌ی auth‌های Bearer-token)."""
+    @wraps(view)
+    def wrapper(request, *args, **kwargs):
+        if not _authenticate_token(request):
+            return JsonResponse({'detail': 'توکنِ API نامعتبر یا غایب است'}, status=401)
+        return view(request, *args, **kwargs)
+    return wrapper
 
 
 def _normalize_host(value):
@@ -125,7 +169,7 @@ def keyword_history(request, pk):
 
 # ── ورودیِ داده از افزونهٔ مرورگر ──────────────────────────────────────────
 
-@login_required
+@token_or_login_required
 @require_http_methods(['GET'])
 def tracked_domains(request):
     """دامنه‌هایی که افزونه باید در نتایجِ گوگل زیر نظر بگیرد (پروژه‌های همین سازمان
@@ -136,7 +180,8 @@ def tracked_domains(request):
     })
 
 
-@login_required
+@csrf_exempt
+@token_required
 @require_http_methods(['POST'])
 def rank_ingest(request):
     """ثبتِ یک مشاهدهٔ افزونه از نتایجِ گوگل. بدنه: {url, keyword, position, date?}.

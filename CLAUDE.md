@@ -19,6 +19,8 @@
 - `finance/` — حسابداری (پایه): BankAccount, Category(بابت), Transaction(+ایمپورت اکسل), Payroll
 - `seo/` — بستهٔ عمودیِ سئو: `seed_seo` (۴ نوع تسکِ سئوِ کاملاً سفارشی) + ردیابیِ رتبهٔ کلمات
   کلیدی (مدل + API برای افزونهٔ مرورگر). الگوی «بسته برای هر شرکت» — برای مشتریِ بعدی یک اپِ مشابه بساز.
+- `rank-tracker-extension/` — **افزونهٔ کروم** (MV3، خارج از جنگو)، سازگار با `seo/api.py`.
+  جزئیات در `seo/CLAUDE.md`، بخشِ «افزونهٔ مرورگر».
 
 ## قوانین طلایی (نقض نکن)
 1. **تاریخ‌ها در DB میلادی‌اند.** شمسی فقط در نمایش (`|jalali`) و ورودی (`parse_jalali`).
@@ -39,7 +41,7 @@
 | داده‌ی مودال تسک (پروژه/همکار/انواع) | `tasks/api.py: form_data` → `/tasks/api/formdata/` |
 | بازه‌ی سراسری | `core/daterange.py: DateRangeMixin` |
 | کاتالوگِ ستون‌های قابل‌سفارشی‌سازی (تسک/پروژه/همکار) | `core/columns.py: get_catalog/get_columns/cell_value` + `core/models.py: ColumnConfig` + تگ `{% column_cell %}` |
-| اتصالِ اپ/افزونهٔ بیرونی که داخلِ مرورگرِ کاربرِ لاگین‌شده اجرا می‌شود | سشن+کوکیِ سایت، الگوی `static/js/app.js: fetchJSON` (نه توکنِ جدا) — نمونه: `seo/api.py: rank_ingest` |
+| اتصالِ اپ/افزونهٔ بیرونی/AI به API | **توکنِ API** (`accounts.APIToken`، هدرِ `Authorization: Token xxx`، از `/settings/api-tokens/`) — نه سشن+کوکی؛ SameSite=Lax کوکیِ سشن را در fetchِ کراس‌سایتِ افزونه نمی‌فرستد. الگو: `seo/api.py: token_required` / `token_or_login_required`. |
 | گروه‌بندی نوع در گزارش | `reports/models.py: BUCKETS` |
 | فیلدهای قابل‌نمایش به مشتری | `reports/models.py: CLIENT_FIELDS` + `Report.visible_fields` |
 | پاکسازی HTML ادیتور | `core/htmlsan.py: clean_html` |
@@ -79,6 +81,10 @@ python manage.py collectstatic --noinput  # فقط برای تست مرورگر/
 10. انواعِ تسکِ built-inِ سئویی (انتشار/آپدیت/رپورتاژ/لینک‌سازی) بازنشسته شدند؛ فقط `tech`/`other`
     عمومی مانده‌اند و بستهٔ `seo/` جایگزینِ کاملاً سفارشی‌شان است. فیلترِ نوع در لیست/تقویم
     دیگر با `task_type` نیست، با `type_def` (id) — `?type=` قدیمی فقط fallback است.
+11. برای اتصالِ بیرونی (افزونه/AI) هرگز به کوکیِ سشن تکیه نکن — `SameSite=Lax` آن را در
+    fetchِ کراس‌سایت نمی‌فرستد، حتی اگر همان مرورگرِ لاگین‌شده باشد. توکنِ API استفاده کن.
+12. `ColumnConfig`: نبودِ رکورد = پیش‌فرض؛ رکوردِ خالی = **واقعاً هیچ‌کدام**، نه پیش‌فرض
+    (باگِ قبلی: `if cfg and cfg.keys` این دو را قاطی می‌کرد و ذخیره‌ی خالی بی‌اثر می‌شد).
 
 ## انضباط نگه‌داری (مهم)
 **به‌روزرسانی هینت بخشی از همان تغییر است.** وقتی فیلد/الگو/تله/منبع‌واحدِ جدید اضافه شد،

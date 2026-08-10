@@ -20,4 +20,9 @@ urlpatterns = [
     path('settings/people/api/invite/', views.person_invite, name='person_invite'),
     path('settings/people/api/role/', views.role_create, name='role_create'),
     path('settings/people/api/role/<int:pk>/', views.role_edit, name='role_edit'),
+
+    # توکن‌های API (افزونه/اتوماسیون/AI)
+    path('settings/api-tokens/', views.APITokenListView.as_view(), name='api_tokens'),
+    path('settings/api-tokens/api/create/', views.token_create, name='token_create'),
+    path('settings/api-tokens/api/<int:pk>/', views.token_revoke, name='token_revoke'),
 ]
