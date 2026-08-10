@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+  <meta charset="UTF-8" />
+  <title>Rank Tracker</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <h1>Rank Tracker</h1>
+
+  <div id="list"></div>
+
+  <div class="actions">
+    <button id="clearBtn">پاک کردن همه سوابق</button>
+  </div>
+
+  <details class="settings">
+    <summary>تنظیمات (اتصال به دیتابیس - بعدا)</summary>
+    <label>آدرس API بک‌اند:</label>
+    <input type="text" id="apiUrl" placeholder="https://example.com/api/rank" />
+    <button id="saveApiBtn">ذخیره</button>
+    <p class="hint">این آدرس فعلا فقط ذخیره می‌شود؛ ارسال خودکار به آن بعدا در content.js فعال می‌شود.</p>
+  </details>
+
+  <script src="popup.js"></script>
+</body>
+</html>
