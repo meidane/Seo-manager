@@ -93,8 +93,12 @@ API: `team_create/edit`, `person_edit`(ویرایشِ نقش/فعال‌بودن
 
 ## context_processor
 `accounts.context_processors.org` → `current_org, current_membership, org_perms, my_orgs,
-pending_invites, has_settings_access`. **تله:** `Membership.perms` برای مالک `{'*'}` است ولی
+pending_invites, has_settings_access, can_create_task`. **تله:** `Membership.perms` برای مالک `{'*'}` است ولی
 چک‌های تمپلیت (`{% if 'x' in org_perms %}`) رشته‌ی دقیق می‌خواهند — این‌جا `'*'` به
 `set(PERMS)` باز می‌شود تا لینک‌های گیت‌شده برای مالک هم دیده شوند.
+**`can_create_task`** (`bool(colleague) or 'edit_task' in perms`) جدا از `org_perms` است:
+دکمه‌ی «＋ تسک جدید» را گیت می‌کند، چون هرکسی با پروفایلِ همکار می‌تواند برای **خودش**
+تسک بسازد حتی بدونِ پرمیشنِ سازمانیِ `edit_task` (که یعنی «ویرایش/دلیگیت به همه» —
+`tasks/CLAUDE.md`، بخشِ «تعریفِ تسک برای خود»).
 
 > اگر فیلد به User اضافه کردی، مراقب migration و `createsuperuser` باش.

@@ -2,7 +2,7 @@
    طوسی ته سلول، دکمه‌ی + با hover، درگ‌ودراپ تسک بین روزها. */
 (function () {
   'use strict';
-  let { year, month, canEditTask } = window.CAL_INIT;
+  let { year, month, canCreateTask } = window.CAL_INIT;
 
   const grid = document.getElementById('cal-grid');
   const title = document.getElementById('cal-title');
@@ -31,7 +31,7 @@
       `<div class="cell-h"><span class="dnum">${c.jday_fa}</span>` +
       `${c.holiday_title && !c.dim ? `<span class="hol">${c.holiday_title}</span>` : ''}` +
       `${c.tasks.length ? `<span class="cnt">${c.tasks.length.toLocaleString('fa-IR')}</span>` : ''}</div>`;
-    if (!c.dim && canEditTask) h += `<button class="cell-add" data-jdate="${c.jdate}" title="تسک جدید در این روز">＋</button>`;
+    if (!c.dim && canCreateTask) h += `<button class="cell-add" data-jdate="${c.jdate}" title="تسک جدید در این روز">＋</button>`;
     c.tasks.slice(0, 5).forEach((t) => (h += chip(t)));
     if (c.tasks.length > 5) h += `<span class="more">+${(c.tasks.length - 5).toLocaleString('fa-IR')} مورد دیگر</span>`;
     return h + '</div>';

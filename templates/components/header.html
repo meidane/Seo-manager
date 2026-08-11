@@ -14,7 +14,7 @@
     <span class="range-note">{{ range_start_fa }} تا {{ range_end_fa }} — {{ range_days|fa_digits }} روز</span>
   {% endif %}
 
-  {% if 'edit_task' in org_perms %}<button class="btn btn-p" id="new-task" style="margin-inline-start:auto">＋ تسک جدید</button>{% endif %}
+  {% if can_create_task %}<button class="btn btn-p" id="new-task" style="margin-inline-start:auto">＋ تسک جدید</button>{% endif %}
 
   {% if my_orgs|length > 1 %}
     <select id="org-switch" class="org-switch" title="تعویض سازمان">

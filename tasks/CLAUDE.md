@@ -43,18 +43,29 @@
 
 ## فایل‌ها
 - `api.py` — همه‌ی API JSON. **`apply_fields` منبع واحد ذخیره‌ی فیلد است.**
-  توابع: `form_data` (داده‌ی مودال)، `task_create/detail/status/review/bulk/comments`.
+  توابع: `form_data` (داده‌ی مودال)، `task_create/detail/status/review/bulk/comments`،
+  `task_rows_page` (لودِ تنبل، پایین)، `task_timer`/`running_timers`.
   قانون: تسک انتشارِ `done` بدون `published_url` مجاز نیست (`_publish_url_error`).
   درگ تقویم `planned_date_iso` (میلادی) می‌فرستد؛ مودال `planned_date` (شمسی).
-- `views.py` — `TaskListView` (لیست+کانبان+فیلترها، بازه سراسری)، `TaskReviewView`.
+- `queries.py` — **منبعِ واحدِ کوئری‌های مشترک**، از چند جا صدا زده می‌شود تا فیلترها
+  جداگانه/متفاوت پیاده نشوند: `reviewable_q` (بازبینی)، `build_task_queryset` (فیلتر+
+  دسترسیِ لیست تسک‌ها؛ `TaskListView` و `api.task_rows_page` هر دو از همین می‌خوانند)،
+  `group_done_by_day` (گروه‌بندیِ روزانه؛ `?group=day` و جدولِ روزانه‌ی داشبورد)،
+  `running_timers_payload` (ویجتِ تایمر؛ context processor و `api.running_timers`).
+- `views.py` — `TaskListView` (لیست+کانبان+فیلترها، بازه سراسری، لودِ تنبل)، `TaskReviewView`.
 - `type_views.py` + `type_urls.py` — بخش `/settings/task-types/`.
 - `static/js/tasks.js` — **مودال سراسری** (در base.html لود؛ دکمه `#new-task` هرجا).
-  انواع سفارشی را داینامیک رندر می‌کند؛ `openTask(id, prefill)`.
+  انواع سفارشی را داینامیک رندر می‌کند؛ `openTask(id, prefill)`. تایمرِ ردیف (`.timer-cell`)
+  با delegation سیم‌کشی شده (نه querySelectorAll+forEach) تا ردیف‌های بعداً اضافه‌شده
+  (لودِ تنبل، جدولِ تسک‌های آینده) بدونِ سیم‌کشیِ دوباره کار کنند.
 - `static/js/task-schema.js` — **کدام فیلد برای کدام نوع** (منبع واحد نمایش مودال).
+- `templates/tasks/_rows.html` — **منبعِ واحدِ رندرِ ردیفِ جدولِ تسک‌ها**: جدولِ اصلی،
+  جدولِ «تسک‌های آینده» (دقیقاً همین partial، هر دو کاملاً یکسان با ویرایشِ inline) و
+  پاسخِ `api.task_rows_page` (لودِ تنبل) هر سه از همین `{% include %}` می‌آیند.
 
 ## URLها
 `/tasks/` لیست · `/tasks/review/` بازبینی · `/tasks/api/...` (formdata, create, `<id>/`,
-`<id>/status`, `<id>/review`, `<id>/comments`, `bulk`) · `/settings/task-types/...`
+`<id>/status`, `<id>/review`, `<id>/comments`, `bulk`, `rows`) · `/settings/task-types/...`
 
 ## نکات نوع تسک
 - **`TaskTypeDef.requires_review`**: اگر true، تسک‌های done این نوع در صفحهٔ بازبینی می‌آیند
@@ -114,11 +125,70 @@
 برای سئو: `python manage.py seed_seo` (اپِ `seo/`).
 
 ## تفکیکِ روزانه (`/tasks/?group=day`)
-«مشاهده‌ی همه»ی نمودارِ روزانه‌ی داشبورد به همین صفحه با `?group=day` می‌آید — **صفحه‌ی
+«مشاهده‌ی همه»ی جدولِ روزانه‌ی داشبورد به همین صفحه با `?group=day` می‌آید — **صفحه‌ی
 جدا نساز**، همان `TaskListView` است. وقتی فعال است: تسک‌های `status=done` در بازه‌ی
-سراسری روی `done_date` (نه `planned_date`) گروه‌بندی می‌شوند (`ctx['day_groups']`، بقیه‌ی
-فیلترهای معمولی مثل پروژه/مسئول/نوع هم اعمال می‌مانند). تمپلیت با `{% if grouped_by_day %}`
-بینِ نمایشِ گروه‌بندی‌شده و جدولِ معمولی سوییچ می‌کند.
+سراسری روی `done_date` (نه `planned_date`) گروه‌بندی می‌شوند (`ctx['day_groups']` از
+`tasks.queries.group_done_by_day`، بقیه‌ی فیلترهای معمولی مثل پروژه/مسئول/نوع هم اعمال
+می‌مانند). تمپلیت با `{% if grouped_by_day %}` بینِ نمایشِ گروه‌بندی‌شده و جدولِ معمولی
+سوییچ می‌کند. همین تابع را `dashboard/views.py` هم برای جدولِ «۷ روز اخیر» صدا می‌زند —
+دوباره ننویس (`dashboard/CLAUDE.md`).
+
+## پیش‌فرض «فقط تسک‌های خودم» (قابلِ‌تغییر)
+`build_task_queryset` اگر GET هیچ `assignee` صریحی نداشت (بارِ اولِ صفحه، نه کلیکِ
+«همه‌ی همکاران» که `assignee=` خالی می‌فرستد) و کاربر `own_tasks_only` هم نداشت، فیلترِ
+`assignee` را روی خودِ کاربر می‌گذارد — دراپ‌داونِ «مسئول» هم همزمان روی «خودم» انتخاب‌شده
+نشان داده می‌شود (چون `filters['assignee']` همان چیزی است که تمپلیت برای `selected` چک
+می‌کند). این یک **پیش‌فرضِ UI** است، نه محدودیتِ امنیتی — `own_tasks_only` (سختگیرانه،
+همیشه فعال) جداست. برای دیدنِ همه: دراپ‌داون → «همه‌ی همکاران».
+
+## دسترسیِ تسکِ دلیگیت‌شده (بیرون از پروژه)
+کسی که پروژه‌ای عضوش نیست ولی تسکی برایش دلیگیت شده (assignee)، باید بتواند **همان
+تسک** را ببیند/انجامش دهد، بدونِ اینکه بقیه‌ی پروژه/تسک‌های دیگرش را ببیند یا چیزی در
+آن پروژه تغییر دهد:
+- `build_task_queryset` (لیست): `project_id__in=ids` **یا** `assignee_id=my_colleague.id`
+  — تسکِ دلیگیت‌شده در لیستِ خودش دیده می‌شود حتی اگر پروژه در `ids` نباشد.
+- `api._task_visible_ok(request, task)` / `_is_own_task(request, task)`: در `task_detail`
+  (GET/PATCH/DELETE)، `task_comments`، `task_kpis` استفاده می‌شوند — پروژه در دسترس است
+  **یا** خودش مسئولِ همین تسک است.
+- `task_status`: مسئولِ خودِ تسک می‌تواند وضعیت را عوض کند (تمامش کند) حتی بدونِ
+  `edit_task` — اما `task_detail` PATCH (تغییرِ فیلدهای دیگر مثلِ پروژه/مسئول/تاریخ) همچنان
+  `edit_task` واقعی می‌خواهد؛ مودال هم برای همین حالت فقط دکمه‌ی «ذخیره» را نشان نمی‌دهد
+  (پایین‌تر) — کارمندِ بدونِ `edit_task` فقط از دراپ‌داونِ وضعیتِ ردیف یا تایمر استفاده می‌کند.
+
+## تعریفِ تسک برای خود — بدونِ `edit_task`
+هرکسی که پروفایلِ همکار دارد (`request.user.colleague`) می‌تواند برای **خودش** تسکِ
+جدید بسازد، حتی بدونِ دسترسیِ سازمانیِ `edit_task` (که «ویرایش/دلیگیت‌کردن به همه» است):
+`task_create` اگر `edit_task` نداشت، `assignee` را با `my_colleague.id` بازنویسی می‌کند
+(کلاینت قابلِ دورزدن است، این‌جا هم اجرا می‌شود). `form_data.createTask` = `bool(my_colleague)`؛
+`tasks.js: modalHtml` برای تسکِ **جدید** با `cfg.editTask || cfg.createTask` دکمه‌ی
+ذخیره را نشان می‌دهد و اگر `edit_task` نداشت دراپ‌داونِ مسئول را قفل می‌کند (فقط خودش) —
+برای تسکِ **موجود** هنوز فقط `edit_task` واقعی (+ `ownMatch`) کافی است. دکمه‌ی «＋ تسک
+جدید» هرجا (هدر/صفحه‌ی تسک‌ها/سلولِ تقویم) با context var سراسریِ `can_create_task`
+(`accounts.context_processors.org`: `bool(colleague) or 'edit_task' in perms`) گیت
+می‌شود، نه `'edit_task' in org_perms` — چون این دکمه دیگر مخصوصِ `edit_task` نیست.
+
+## تایمرِ کار — یک نفر هم‌زمان فقط یک تایمرِ فعال
+`api.task_timer` (POST `{action:start|stop}`): فقط **مسئولِ خودِ تسک** (یا کسی که پرمیشنِ
+`edit_time` دارد) می‌تواند استارت/استاپ بزند. استارت‌کردنِ یک تسک، هر تایمرِ دیگرِ در
+حالِ اجرای **همان مسئول** (`assignee_id` یکسان) را خودکار استاپ می‌کند (پاسخ شاملِ
+`stopped_id`/`stopped_spent` تا اگر آن تسکِ دیگر هم در همان صفحه دیده می‌شود، سلولش را
+JS به‌روز کند). PATCH `{minutes}` (ویرایشِ دستیِ زمانِ دیگران) فقط `edit_time` —
+پرمیشنِ جداگانه‌ای در نقش‌ها (پیش‌فرض: مالک/مدیر/سرپرست)، **نه** دیگر مشتق از `review`.
+`ctx['can_edit_time']`/ستونِ «زمان» جدول هم از همین می‌آید.
+**ویجتِ گوشه‌ی پایین‌راست** (`templates/base.html: #timer-widget`،
+`static/js/timer-widget.js`) با `tasks.queries.running_timers_payload(request)` (context
+processor + `api.running_timers`، منبعِ واحد) پر می‌شود: تسکِ در حالِ اجرای **خودِ کاربر**
+(`mine:true`، با دکمه‌ی توقف) + تسکِ در حالِ اجرای **زیرمجموعه‌های مستقیمش**
+(`Colleague.manager == خودش`، `mine:false`، فقط‌خواندنی با نامِ فرد، بدونِ دکمه).
+
+## لودِ تنبل (اسکرول، بیش از ۵۰ تسک)
+`TaskListView` فقط ۵۰ ردیفِ اول را رندر می‌کند (`tasks.queries.PAGE_SIZE`) + `has_more`
+در context. تمپلیت `window.TASKS_LAZY = {hasMore, page:1}` را ست می‌کند؛ `tasks.js`
+با اسکرولِ نزدیکِ ته صفحه `GET /tasks/api/rows/?...همان‌فیلترها...&page=N` را می‌زند
+(`api.task_rows_page`، از همان `build_task_queryset` می‌خواند تا فیلترها با صفحه‌ی اول
+هماهنگ بماند) و HTMLِ برگشتی (رندرشده با `templates/tasks/_rows.html`) را به `tbody`
+اضافه می‌کند. **برای حالتِ `?group=day` صفحه‌بندی نیست** (۷۰۰ خطا اگر درخواست شود —
+گروه‌بندیِ روزانه معمولاً کوچک است، اگر لازم شد بعداً اضافه کن).
 
 ## دسترسی در UI — نه فقط سرور
 هر جا امکانِ ویرایش/ساخت/حذفِ تسک سرورساید گیت شده، **باید در تمپلیت/JS هم پنهان شود**،
@@ -126,16 +196,18 @@
 - `TaskListView.ctx['can_edit_task']` (= `m.can('edit_task')`؛ own_tasks_only از قبل
   لیست را به تسک‌های خودش محدود کرده، پس این یک چکِ تخت کافی است) — جدولِ لیست دو حالت
   دارد: ستون‌های قابل‌ویرایشِ زنده (select/input) وقتی `can_edit_task`، وگرنه متنِ ساده
-  + بدونِ چک‌باکسِ گروهی/نوارِ عملیاتِ گروهی.
-- دکمه‌های «＋ تسک جدید» (هدر، صفحه‌ی تسک‌ها، سلولِ تقویم) با `'edit_task' in org_perms`
-  گیت می‌شوند؛ تقویم چون سلول‌ها با AJAX دوباره رندر می‌شوند (`calendar-page.js`)،
-  پرچم از `window.CAL_INIT.canEditTask` می‌آید، نه فقط تمپلیتِ SSR اول.
-- مودالِ تسک: `form_data` پرچم‌های `editTask`/`deleteTask` (سطحِ سازمانی) می‌فرستد؛
-  `tasks.js: modalHtml` با `ownTasksOnly`+`myColleagueId` ترکیبشان می‌کند تا تصمیم بگیرد
-  دکمه‌های «ذخیره»/«ذخیره و ایجاد بعدی»/«حذف» را نشان بدهد یا نه (مودال فقط‌خواندنی
-  می‌شود، نه اینکه کلیکِ ذخیره ۴۰۳ بخورد).
-- `task_create` هم حالا `edit_task` را چک می‌کند (قبلاً هیچ چکی نداشت — هرکسی، حتی
-  نقشِ Viewer، می‌توانست تسک بسازد).
+  + بدونِ چک‌باکسِ گروهی/نوارِ عملیاتِ گروهی. **استثنا:** ستونِ وضعیت حتی در حالتِ
+  فقط‌خواندنی هم دراپ‌داونِ قابل‌تغییر می‌ماند اگر `t.assignee_id == my_colleague_id`
+  (تسکِ دلیگیت‌شده‌ی خودش — بالا) و ستونِ تایمر همیشه دکمه‌ی پلی دارد اگر خودش مسئول
+  باشد یا `can_edit_time`، وگرنه فقط عددِ زمانِ صرف‌شده (بدونِ دکمه).
+- دکمه‌های «＋ تسک جدید» (هدر، صفحه‌ی تسک‌ها، سلولِ تقویم) با context var سراسریِ
+  `can_create_task` گیت می‌شوند (بالا)؛ تقویم چون سلول‌ها با AJAX دوباره رندر می‌شوند
+  (`calendar-page.js`)، پرچم از `window.CAL_INIT.canCreateTask` می‌آید، نه فقط
+  تمپلیتِ SSR اول (`calendarapp/CLAUDE.md`).
+- مودالِ تسک: `form_data` پرچم‌های `editTask`/`deleteTask`/`createTask` می‌فرستد؛
+  `tasks.js: modalHtml` با `ownTasksOnly`+`myColleagueId`+`isNew` ترکیبشان می‌کند تا
+  تصمیم بگیرد دکمه‌های «ذخیره»/«ذخیره و ایجاد بعدی»/«حذف» را نشان بدهد یا نه (مودال
+  فقط‌خواندنی می‌شود، نه اینکه کلیکِ ذخیره ۴۰۳ بخورد).
 
 ## TODO
 - نمایش مقادیر `custom` در جدول لیست/سینگل (فعلاً فقط در مودال).

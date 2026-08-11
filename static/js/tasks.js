@@ -26,17 +26,21 @@
 
   function modalHtml(t) {
     t = t || {};
+    const isNew = !t.id;
     // اگر own_tasks_only داشت، فقط روی تسکِ خودش ویرایش/حذف مجاز است (بقیه‌ی تسک‌ها را
     // اصلاً نمی‌بیند تا اینجا برسد، ولی این چک برای بازکردنِ مستقیم/لینکِ قدیمی هم درست کار کند).
     const ownMatch = !cfg.ownTasksOnly || t.assignee_id === cfg.myColleagueId;
-    const canEditThis = cfg.editTask && ownMatch;
+    // تسکِ جدید: هرکسی با createTask (پروفایلِ همکار) می‌تواند برای خودش بسازد، حتی
+    // بدونِ edit_task؛ تسکِ موجود: فقط edit_task واقعی (+ own_tasks_only اگر داشت).
+    const canEditThis = isNew ? (cfg.editTask || cfg.createTask) : (cfg.editTask && ownMatch);
     const canDeleteThis = t.id && cfg.deleteTask && ownMatch;
     const _bt = typeList().find((x) => x.builtin_key === (t.type || 'other'));
     const typeSel = t.type_def || (_bt ? _bt.id : (typeList()[0] || {}).id);
-    // مسئول: پیش‌فرض خودِ کاربر (فقط برای تسکِ جدید)؛ اگر own_tasks_only داشت
-    // (فقط تسک‌های خودش)، اصلاً اجازه‌ی دلیگیت‌کردن به بقیه ندارد — دراپ‌داون قفل می‌شود.
+    // مسئول: پیش‌فرض خودِ کاربر (فقط برای تسکِ جدید)؛ اگر own_tasks_only داشت، یا
+    // تسکِ جدیدی که بدونِ edit_task فقط برای خودش مجاز است، دراپ‌داون قفل می‌شود.
+    const lockAssignee = cfg.ownTasksOnly || (isNew && !cfg.editTask);
     const assigneeSel = t.id ? t.assignee_id : (t.assignee_id || cfg.myColleagueId || '');
-    const assigneeSelect = cfg.ownTasksOnly
+    const assigneeSelect = lockAssignee
       ? `<select id="f-assignee" disabled>${opt(cfg.myColleagueId || '', 'خودم', assigneeSel)}</select>`
       : `<select id="f-assignee"><option value="">—</option>${cfg.colleagues.map(([v, l]) => opt(v, l, assigneeSel)).join('')}</select>`;
     return `
@@ -387,8 +391,8 @@
   // ── عملیات گروهی ──
   const selected = () => Array.from(document.querySelectorAll('.row-check:checked')).map((c) => c.dataset.id);
   document.addEventListener('change', (e) => {
-    if (e.target.matches('.row-check, #check-all')) {
-      if (e.target.id === 'check-all') document.querySelectorAll('.row-check').forEach((c) => (c.checked = e.target.checked));
+    if (e.target.matches('.row-check, .check-all')) {
+      if (e.target.matches('.check-all')) document.querySelectorAll('.row-check').forEach((c) => (c.checked = e.target.checked));
       const bar = document.getElementById('bulkbar');
       if (bar) { const n = selected().length; bar.style.display = n ? 'flex' : 'none'; const c = document.getElementById('bulk-count'); if (c) c.textContent = n; }
     }
@@ -400,43 +404,77 @@
   }
   window.TaskBulk = { shift: (d) => bulk('shift_date', { days: d, skip_holidays: true }), done: () => bulk('mark_done', {}) };
 
-  // ── تایمر تسک (ستون «زمان» لیست) ──
+  // ── تایمر تسک (ستون «زمان» لیست) — با delegation تا ردیف‌های بعداً اضافه‌شده
+  //    (جدولِ تسک‌های آینده، لودِ تنبل) هم بدونِ سیم‌کشیِ دوباره کار کنند. ──
   function fmtMin(m) { m = Math.max(0, Math.round(m)); const h = Math.floor(m / 60), mm = m % 60; return h ? `${h}:${String(mm).padStart(2, '0')}` : `${mm}د`; }
-  document.querySelectorAll('.timer-cell').forEach((cell) => {
-    const id = cell.dataset.id;
+  function renderTimerCell(cell) {
     const val = cell.querySelector('.tval');
     const btn = cell.querySelector('.tbtn');
-    const edit = cell.querySelector('.tedit');
-    let running = cell.dataset.running === '1';
-    let started = cell.dataset.started ? new Date(cell.dataset.started) : null;
-    let base = +cell.dataset.spent || 0;
-    let ticker = null;
-    function render() {
-      if (running && started) {
-        val.textContent = fmtMin(base + (Date.now() - started.getTime()) / 60000);
-        btn.textContent = '⏸'; cell.classList.add('running');
-      } else { val.textContent = fmtMin(base); btn.textContent = '▶'; cell.classList.remove('running'); }
-    }
-    function startTick() { if (!ticker) ticker = setInterval(render, 15000); }
-    function stopTick() { if (ticker) { clearInterval(ticker); ticker = null; } }
-    if (running) startTick();
-    render();
-    btn.onclick = async (e) => {
-      e.stopPropagation();
-      try {
-        const d = await App.fetchJSON(`/tasks/api/${id}/timer/`, { method: 'POST', body: { action: running ? 'stop' : 'start' } });
-        base = d.spent_minutes; running = d.timer_running; started = d.timer_started ? new Date(d.timer_started) : null;
-        running ? startTick() : stopTick();
-        render();
-        window.dispatchEvent(new CustomEvent('timer-changed'));  // به‌روزرسانی ویجت سراسری
-      } catch (_) {}
-    };
-    if (edit) edit.onclick = async (e) => {
-      e.stopPropagation();
-      const cur = prompt('زمان کارکرد (دقیقه):', base);
-      if (cur === null) return;
-      try { const d = await App.fetchJSON(`/tasks/api/${id}/timer/`, { method: 'PATCH', body: { minutes: cur } }); base = d.spent_minutes; render(); } catch (_) {}
-    };
+    if (!val) return;
+    const running = cell.dataset.running === '1';
+    const started = cell.dataset.started ? new Date(cell.dataset.started) : null;
+    const base = +cell.dataset.spent || 0;
+    if (running && started) {
+      val.textContent = fmtMin(base + (Date.now() - started.getTime()) / 60000);
+      if (btn) btn.textContent = '⏸'; cell.classList.add('running');
+    } else { val.textContent = fmtMin(base); if (btn) btn.textContent = '▶'; cell.classList.remove('running'); }
+  }
+  function renderAllTimerCells() { document.querySelectorAll('.timer-cell').forEach(renderTimerCell); }
+  renderAllTimerCells();
+  setInterval(renderAllTimerCells, 15000);
+
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.timer-cell .tbtn'); if (!btn) return;
+    e.stopPropagation();
+    const cell = btn.closest('.timer-cell');
+    const id = cell.dataset.id;
+    const running = cell.dataset.running === '1';
+    try {
+      const d = await App.fetchJSON(`/tasks/api/${id}/timer/`, { method: 'POST', body: { action: running ? 'stop' : 'start' } });
+      cell.dataset.spent = d.spent_minutes; cell.dataset.running = d.timer_running ? '1' : '0';
+      cell.dataset.started = d.timer_started || '';
+      renderTimerCell(cell);
+      // اگر با استارتِ این یکی تایمرِ دیگری از همین مسئول خودکار استاپ شد، آن سلول را هم به‌روز کن
+      if (d.stopped_id) {
+        const other = document.querySelector(`.timer-cell[data-id="${d.stopped_id}"]`);
+        if (other) { other.dataset.spent = d.stopped_spent; other.dataset.running = '0'; other.dataset.started = ''; renderTimerCell(other); }
+      }
+      window.dispatchEvent(new CustomEvent('timer-changed'));  // به‌روزرسانی ویجت سراسری
+    } catch (_) {}
   });
+  document.addEventListener('click', async (e) => {
+    const edit = e.target.closest('.timer-cell .tedit'); if (!edit) return;
+    e.stopPropagation();
+    const cell = edit.closest('.timer-cell');
+    const id = cell.dataset.id;
+    const cur = prompt('زمان کارکرد (دقیقه):', cell.dataset.spent);
+    if (cur === null) return;
+    try { const d = await App.fetchJSON(`/tasks/api/${id}/timer/`, { method: 'PATCH', body: { minutes: cur } }); cell.dataset.spent = d.spent_minutes; renderTimerCell(cell); } catch (_) {}
+  });
+
+  // ── لودِ تنبل: اسکرول برای صفحه‌بندیِ لیستِ تسک‌ها (بیش از ۵۰ ردیف) ──
+  (function () {
+    const lz = window.TASKS_LAZY;
+    if (!lz) return;
+    const tbody = document.querySelector('.tsheet tbody');
+    if (!tbody) return;
+    let loading = false;
+    async function loadMore() {
+      if (loading || !lz.hasMore) return;
+      loading = true;
+      const params = new URLSearchParams(location.search);
+      params.set('page', lz.page + 1);
+      try {
+        const d = await App.fetchJSON(`/tasks/api/rows/?${params.toString()}`);
+        tbody.insertAdjacentHTML('beforeend', d.html);
+        lz.page = d.page; lz.hasMore = d.has_more;
+        renderAllTimerCells();
+      } catch (_) { lz.hasMore = false; } finally { loading = false; }
+    }
+    window.addEventListener('scroll', () => {
+      if (!lz.hasMore || loading) return;
+      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 400) loadMore();
+    });
+  })();
 
 })();

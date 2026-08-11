@@ -23,13 +23,15 @@
 هستند. (یک‌بار نبودند و تقویم خراب دیده شد — هرگز فقط در mockups نگذار.)
 
 ## دسترسی در UI (دکمه‌ی ＋)
-دکمه‌ی «＋» هر سلول فقط با `edit_task` نشان داده می‌شود، اما دو مسیرِ رندرِ جدا دارد که
-هر دو باید گیت شوند:
-- **SSR اول** (`templates/calendarapp/_cells.html`): `{% if not c.dim and 'edit_task' in org_perms %}`.
+دکمه‌ی «＋» هر سلول فقط با `can_create_task` نشان داده می‌شود (context var سراسری —
+هرکسی با پروفایلِ همکار می‌تواند تسکِ جدید برای خودش بسازد، نه فقط دارنده‌ی `edit_task`؛
+`tasks/CLAUDE.md`، بخشِ «تعریفِ تسک برای خود»)، اما دو مسیرِ رندرِ جدا دارد که هر دو باید
+گیت شوند:
+- **SSR اول** (`templates/calendarapp/_cells.html`): `{% if not c.dim and can_create_task %}`.
 - **ناوبریِ AJAX** (تعویضِ ماه، `calendar_api` + `calendar-page.js: cellHtml`): سلول‌ها با JS
-  دوباره ساخته می‌شوند، نه رندرِ تمپلیت — پس پرچم از `window.CAL_INIT.canEditTask`
-  (ست‌شده در `templates/calendarapp/index.html`، از `'edit_task' in org_perms`) می‌آید،
-  نه از `{% if %}`. اگر گیتِ مشابهی به سلول‌ها اضافه کردی، آن را هم به `CAL_INIT` اضافه کن،
+  دوباره ساخته می‌شوند، نه رندرِ تمپلیت — پس پرچم از `window.CAL_INIT.canCreateTask`
+  (ست‌شده در `templates/calendarapp/index.html`، از `can_create_task`) می‌آید، نه از
+  `{% if %}`. اگر گیتِ مشابهی به سلول‌ها اضافه کردی، آن را هم به `CAL_INIT` اضافه کن،
   وگرنه فقط بارِ اولِ صفحه درست است و بعد از تعویضِ ماه دوباره نمایان می‌شود.
 
 ## URLها

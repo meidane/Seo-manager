@@ -31,6 +31,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script>window.CAL_INIT = { year: {{ jyear }}, month: {{ jmonth }}, canEditTask: {% if 'edit_task' in org_perms %}true{% else %}false{% endif %} };</script>
+<script>window.CAL_INIT = { year: {{ jyear }}, month: {{ jmonth }}, canCreateTask: {% if can_create_task %}true{% else %}false{% endif %} };</script>
 <script src="{% static 'js/calendar-page.js' %}"></script>
 {% endblock %}

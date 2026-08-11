@@ -91,16 +91,31 @@
     </section>
   </div>
 
-  {# ── ردیف ۵: نمودار میله‌ای روزانه (SVG ساده) ── #}
+  {# ── ردیف ۵: تسک‌های انجام‌شده به تفکیک روز — جدول، ۷ روز اخیر ── #}
   <section class="card glass" style="margin-top:14px">
-    <div class="card-h"><h3>تسک‌های انجام‌شده به تفکیک روز</h3><div class="side-c"><a href="{% url 'tasks:list' %}?group=day" class="chip">همه</a></div></div>
-    <div class="chart-wrap">
-      {% if daily_bars %}
-        <div class="spark" style="height:90px;gap:3px;align-items:flex-end">
-          {% for b in daily_bars %}<i style="height:{{ b.h }}%;flex:1;min-width:5px" title="{{ b.n }}"></i>{% endfor %}
+    <div class="card-h"><h3>تسک‌های انجام‌شده به تفکیک روز</h3><div class="side-c"><span class="chip on">۷ روز اخیر</span><a href="{% url 'tasks:list' %}?group=day" class="chip">همه</a></div></div>
+    {% if daily_groups %}
+      {% for grp in daily_groups %}
+        <div style="margin-top:{% if not forloop.first %}16px{% else %}4px{% endif %}">
+          <div style="font-size:12.5px;color:var(--text-dim);margin-bottom:6px;display:flex;align-items:center;gap:8px"><b style="color:var(--text)">{{ grp.date_fa }}</b><span class="chip">{{ grp.count|fa_digits }} تسک</span></div>
+          <table>
+            <thead><tr><th>عنوان</th><th>پروژه</th><th>مسئول</th><th>نوع</th></tr></thead>
+            <tbody>
+              {% for t in grp.tasks %}
+                <tr data-open-task="{{ t.id }}" style="cursor:pointer">
+                  <td><span title="{{ t.title }}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px;display:inline-block;vertical-align:middle">{{ t.title }}</span></td>
+                  <td>{{ t.project.name }}</td>
+                  <td>{{ t.assignee.full_name|default:"—" }}</td>
+                  <td><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
-      {% else %}<div class="empty" style="padding:20px">داده‌ای برای نمودار نیست</div>{% endif %}
-    </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty" style="padding:20px"><div class="ico">📅</div><h4>در ۷ روز اخیر تسکِ انجام‌شده‌ای نیست</h4></div>
+    {% endif %}
   </section>
 
 {% endblock %}

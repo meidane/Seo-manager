@@ -7,8 +7,8 @@
 - تب‌های امروز/دیروز/۷روز جدول همکاران فعلاً بازه‌ی جاری را نشان می‌دهند؛
   برای AJAX سبک یک endpoint در dashboard/urls اضافه کن که period بگیرد.
 - کشوی جزئیات همکار (کلیک روی ردیف) هنوز نیست — یک API «تسک‌های همکار در روز X».
-- نمودار دونات، هیت‌مپ ۱۲ هفته و اسپارک‌لاین همکاران: داده‌شان اینجا آماده
-  نشده؛ متد _daily_series نمونه‌ی الگوست. کارت مالی به FinanceEntry (گام ۸) وصل شود.
+- نمودار دونات و هیت‌مپ ۱۲ هفته: داده‌شان اینجا آماده نشده؛ `tasks.queries.group_done_by_day`
+  نمونه‌ی الگوی گروه‌بندیِ روزانه است. کارت مالی به FinanceEntry (گام ۸) وصل شود.
 """
 from datetime import date, timedelta
 
@@ -23,7 +23,7 @@ from core.models import ColumnConfig
 from projects.access import accessible_project_ids
 from projects.models import Project
 from tasks.models import Task
-from tasks.queries import reviewable_q
+from tasks.queries import group_done_by_day, reviewable_q
 
 
 def _pct(cur, prev):
@@ -129,26 +129,8 @@ class DashboardView(LoginRequiredMixin, DateRangeMixin, TemplateView):
             status=Task.DONE, review_status=Task.UNREVIEWED
         ).filter(reviewable_q(self.request)).order_by('-done_date')[:8]
 
-        # ── ردیف ۵: نمودار میله‌ای تسک‌های انجام‌شده به تفکیک روز ──
-        ctx['daily_bars'] = self._daily_series(task_qs, start, end)
+        # ── ردیف ۵: تسک‌های انجام‌شده به تفکیک روز — جدول (نه نمودار)، ۷ روز اخیر
+        ctx['daily_groups'] = group_done_by_day(task_qs, today - timedelta(days=6), today)
 
         ctx['page_title'] = 'داشبورد'
         return ctx
-
-    @staticmethod
-    def _daily_series(task_qs, start, end):
-        """تعداد تسک انجام‌شده در هر روز بازه — برای نمودار میله‌ای SVG.
-        الگو برای هیت‌مپ/اسپارک‌لاین هم همین است (گروه‌بندی در پایتون)."""
-        rows = (task_qs.filter(status=Task.DONE, done_date__range=(start, end))
-                .values_list('done_date', flat=True))
-        counts = {}
-        for d in rows:
-            counts[d] = counts.get(d, 0) + 1
-        span = min((end - start).days + 1, 31)
-        series = []
-        mx = max(counts.values()) if counts else 1
-        for i in range(span):
-            d = start + timedelta(days=i)
-            n = counts.get(d, 0)
-            series.append({'h': round(n / mx * 100) if mx else 0, 'n': n})
-        return series

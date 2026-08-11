@@ -30,6 +30,23 @@ def _task_perm_ok(request, task, perm):
         return bool(colleague and task.assignee_id == colleague.id)
     return True
 
+
+def _is_own_task(request, task):
+    """این تسک مسئولش خودِ کاربرِ جاری است؟ («تسکِ دلیگیت‌شده» — مستقل از edit_task/
+    عضویتِ پروژه: کسی که کاری برایش تعریف شده باید بتواند خودش را ببیند/انجامش دهد،
+    حتی اگر عضوِ آن پروژه یا دارای دسترسیِ ویرایشِ عمومیِ تسک نباشد)."""
+    colleague = getattr(request.user, 'colleague', None)
+    return bool(colleague and task.assignee_id == colleague.id)
+
+
+def _task_visible_ok(request, task):
+    """این تسک برای کاربرِ جاری قابل‌مشاهده است؟ پروژه‌اش در فهرستِ دسترسی است، یا
+    خودش مسئولِ همین تسک است (تسکِ دلیگیت‌شده بیرون از پروژه)."""
+    ids = accessible_project_ids(request)
+    if ids is None or task.project_id in ids:
+        return True
+    return _is_own_task(request, task)
+
 # فیلدهایی که مستقیم از بدنه‌ی JSON پذیرفته می‌شوند (بقیه محاسباتی/سیستمی‌اند)
 TEXT_FIELDS = [
     'title', 'description', 'seo_title', 'keywords', 'lsi_keywords',
@@ -148,7 +165,62 @@ def form_data(request):
         'ownTasksOnly': own_tasks_only,
         'editTask': bool(m and m.can('edit_task')),
         'deleteTask': bool(m and m.can('delete_task')),
+        # هرکسی که پروفایلِ همکار دارد می‌تواند برای خودش تسکِ جدید بسازد، حتی بدونِ
+        # edit_task — مودال با این پرچم دکمه‌ی ذخیره را برای «تسکِ جدید» نشان می‌دهد و
+        # دراپ‌داونِ مسئول را روی خودش قفل می‌کند (اگر edit_task هم نداشته باشد).
+        'createTask': bool(my_colleague),
     })
+
+
+@login_required
+@require_http_methods(['GET'])
+def task_rows_page(request):
+    """صفحه‌بندیِ ردیف‌های لیستِ تسک‌ها برای لودِ تنبل (اسکرول، بیش از PAGE_SIZE تا).
+    همان فیلترها/دسترسیِ TaskListView را از `build_task_queryset` می‌گیرد تا با
+    صفحه‌ی اول (رندرِ سرور) دقیقاً هماهنگ بماند — منبعِ واحدِ فیلتر."""
+    from django.template.loader import render_to_string
+
+    from colleagues.models import Colleague
+    from core.columns import get_columns
+    from core.models import ColumnConfig
+    from projects.models import Project
+
+    from .queries import PAGE_SIZE, build_task_queryset
+
+    base, filters = build_task_queryset(request)
+    if filters.get('group') == 'day':
+        return JsonResponse({'detail': 'صفحه‌بندی برای حالتِ تفکیکِ روزانه نیست'}, status=400)
+    try:
+        page = max(1, int(request.GET.get('page') or 1))
+    except (TypeError, ValueError):
+        page = 1
+    if filters.get('all') != '1':
+        start, end = _range_from_session(request)
+        base = base.filter(planned_date__range=(start, end))
+    qs = base.order_by('planned_date', 'planned_time', 'id')
+    start_i, end_i = (page - 1) * PAGE_SIZE, page * PAGE_SIZE
+    rows = list(qs[start_i:end_i])
+    has_more = qs[end_i:end_i + 1].exists()
+    m = getattr(request, 'membership', None)
+    my_colleague = getattr(request.user, 'colleague', None)
+    ids = accessible_project_ids(request)
+    visible_projects = Project.objects.filter(id__in=ids) if ids is not None else Project.objects.all()
+    html = render_to_string('tasks/_rows.html', {
+        'tasks': rows,
+        'can_edit_task': bool(m and m.can('edit_task')),
+        'can_edit_time': bool(m and m.can('edit_time')),
+        'my_colleague_id': my_colleague.id if my_colleague else None,
+        'extra_columns': get_columns(ColumnConfig.TASKS, ColumnConfig.PAGE),
+        'status_choices': Task.STATUS_CHOICES,
+        'all_projects': visible_projects.order_by('status', 'name'),
+        'all_colleagues': Colleague.objects.order_by('status', 'full_name'),
+    }, request=request)
+    return JsonResponse({'html': html, 'has_more': has_more, 'page': page})
+
+
+def _range_from_session(request):
+    from core.daterange import DateRangeMixin
+    return DateRangeMixin().get_range(request)
 
 
 def _publish_url_error(task):
@@ -162,7 +234,11 @@ def _publish_url_error(task):
 @require_http_methods(['POST'])
 def task_create(request):
     m = getattr(request, 'membership', None)
-    if not m or not m.can('edit_task'):
+    my_colleague = getattr(request.user, 'colleague', None)
+    can_edit = bool(m and m.can('edit_task'))
+    # بدونِ edit_task هم هرکسی با پروفایلِ همکار می‌تواند برای خودش تسک بسازد
+    # (own_tasks_only نسخه‌ی محدودکننده‌ی همین چیز است، نه یک قابلیتِ جدا)
+    if not can_edit and not my_colleague:
         return JsonResponse({'detail': 'دسترسیِ ساختِ تسک را نداری'}, status=403)
     data = _body(request)
     if not data.get('title') or not data.get('project'):
@@ -170,9 +246,8 @@ def task_create(request):
     ids = accessible_project_ids(request)
     if ids is not None and int(data['project']) not in ids:
         return JsonResponse({'detail': 'به این پروژه دسترسی نداری'}, status=403)
-    if m and m.can('own_tasks_only'):
-        colleague = getattr(request.user, 'colleague', None)
-        data['assignee'] = colleague.id if colleague else None
+    if not can_edit or (m and m.can('own_tasks_only')):
+        data['assignee'] = my_colleague.id if my_colleague else None
     task = Task(created_by=request.user, planned_date=date.today())
     apply_fields(task, data)
     err = _publish_url_error(task)
@@ -211,6 +286,8 @@ def _attach_recurrence(task, rec):
 @require_http_methods(['GET', 'PATCH', 'DELETE'])
 def task_detail(request, pk):
     task = get_object_or_404(Task, pk=pk)
+    if not _task_visible_ok(request, task):
+        return JsonResponse({'detail': 'به این تسک دسترسی نداری'}, status=403)
     if request.method == 'GET':
         # نمای کامل برای پرکردن مودال ویرایش
         d = task.to_dict()
@@ -260,9 +337,10 @@ def task_detail(request, pk):
 @login_required
 @require_http_methods(['PATCH'])
 def task_status(request, pk):
-    """تغییر سریع وضعیت (دراپ‌داون ردیف و drag کانبان)."""
+    """تغییر سریع وضعیت (دراپ‌داون ردیف و drag کانبان). مسئولِ خودِ تسک هم می‌تواند
+    وضعیتِ تسکِ خودش را عوض کند (تمامش کند)، حتی بدونِ edit_task — دلیگیت‌شده."""
     task = get_object_or_404(Task, pk=pk)
-    if not _task_perm_ok(request, task, 'edit_task'):
+    if not _task_perm_ok(request, task, 'edit_task') and not _is_own_task(request, task):
         return JsonResponse({'detail': 'دسترسیِ ویرایشِ این تسک را نداری'}, status=403)
     data = _body(request)
     new_status = data.get('status')
@@ -292,32 +370,46 @@ def task_status(request, pk):
 @login_required
 @require_http_methods(['GET'])
 def running_timers(request):
-    """تسک‌های در حال اجرای تایمر (برای ویجت سراسری)."""
-    items = [{'id': t.id, 'title': t.title, 'project': t.project.name if t.project_id else '',
-              'spent': t.spent_minutes, 'started': t.timer_started_at.isoformat()}
-             for t in Task.objects.filter(timer_started_at__isnull=False).select_related('project')[:8]]
-    return JsonResponse({'running': items})
+    """تسک‌های در حال اجرای تایمر برای کاربرِ جاری (+ زیرمجموعه‌هایش) — ویجتِ سراسری."""
+    from .queries import running_timers_payload
+    return JsonResponse({'running': running_timers_payload(request)})
 
 
 @login_required
 @require_http_methods(['POST', 'PATCH'])
 def task_timer(request, pk):
-    """تایمرِ کارِ تسک. POST {action:start|stop} برای همه؛ PATCH {minutes} فقط مدیران."""
+    """تایمرِ کارِ تسک. POST {action:start|stop}: فقط مسئولِ خودِ تسک (یا کسی که
+    edit_time دارد)؛ استارتِ یک تسک هر تایمرِ دیگرِ در حالِ اجرای همان مسئول را خودکار
+    استاپ می‌کند (هر کاربر هم‌زمان فقط یک تایمرِ فعال). PATCH {minutes}: فقط edit_time."""
     task = get_object_or_404(Task, pk=pk)
+    m = getattr(request, 'membership', None)
+    can_edit_time = bool(m and m.can('edit_time'))
     if request.method == 'PATCH':
-        m = getattr(request, 'membership', None)
-        if not m or not m.can('review'):
-            return JsonResponse({'detail': 'فقط مدیران می‌توانند زمان را ویرایش کنند'}, status=403)
+        if not can_edit_time:
+            return JsonResponse({'detail': 'دسترسیِ ویرایشِ زمان را نداری'}, status=403)
         try:
             task.spent_minutes = max(0, int(_body(request).get('minutes') or 0))
         except (ValueError, TypeError):
             return JsonResponse({'detail': 'عدد نامعتبر'}, status=400)
         task.save(update_fields=['spent_minutes', 'updated_at'])
         return JsonResponse({'spent_minutes': task.spent_minutes, 'timer_running': bool(task.timer_started_at)})
-    # POST start/stop
+    # POST start/stop — فقط مسئولِ خودِ تسک یا دارنده‌ی edit_time
+    if not _is_own_task(request, task) and not can_edit_time:
+        return JsonResponse({'detail': 'فقط مسئولِ تسک می‌تواند تایمرِ آن را شروع/توقف کند'}, status=403)
     action = _body(request).get('action')
     now = timezone.now()
+    stopped = None
     if action == 'start' and not task.timer_started_at:
+        # هر کاربر هم‌زمان فقط یک تایمرِ فعال — تایمرِ دیگرِ همین مسئول را خودکار استاپ کن
+        if task.assignee_id:
+            other = Task.objects.filter(
+                assignee_id=task.assignee_id, timer_started_at__isnull=False).exclude(pk=task.pk).first()
+            if other:
+                elapsed_o = int((now - other.timer_started_at).total_seconds() // 60)
+                other.spent_minutes = (other.spent_minutes or 0) + max(0, elapsed_o)
+                other.timer_started_at = None
+                other.save(update_fields=['spent_minutes', 'timer_started_at', 'updated_at'])
+                stopped = {'id': other.id, 'spent_minutes': other.spent_minutes}
         task.timer_started_at = now
         task.save(update_fields=['timer_started_at', 'updated_at'])
     elif action == 'stop' and task.timer_started_at:
@@ -327,8 +419,12 @@ def task_timer(request, pk):
         task.save(update_fields=['spent_minutes', 'timer_started_at', 'updated_at'])
     elif action not in ('start', 'stop'):
         return JsonResponse({'detail': 'action نامعتبر'}, status=400)
-    return JsonResponse({'spent_minutes': task.spent_minutes, 'timer_running': bool(task.timer_started_at),
-                         'timer_started': task.timer_started_at.isoformat() if task.timer_started_at else None})
+    resp = {'spent_minutes': task.spent_minutes, 'timer_running': bool(task.timer_started_at),
+            'timer_started': task.timer_started_at.isoformat() if task.timer_started_at else None}
+    if stopped:
+        resp['stopped_id'] = stopped['id']
+        resp['stopped_spent'] = stopped['spent_minutes']
+    return JsonResponse(resp)
 
 
 @login_required
@@ -391,6 +487,8 @@ def _review_notes(task):
 @require_http_methods(['GET'])
 def task_kpis(request, pk):
     task = get_object_or_404(Task, pk=pk)
+    if not _task_visible_ok(request, task):
+        return JsonResponse({'detail': 'به این تسک دسترسی نداری'}, status=403)
     kpis = list(task.type_def.kpis.prefetch_related('items')) if task.type_def_id else []
     scores = {s.kpi_id: s for s in task.kpi_scores.all()}
     out, total, cap = [], 0, 0
@@ -528,6 +626,8 @@ def _comment_dict(c, user):
 def task_comments(request, pk):
     """گزارش‌های کار روی یک تسک (لیست/افزودن). بدنه HTML (TinyMCE) پاکسازی می‌شود."""
     task = get_object_or_404(Task, pk=pk)
+    if not _task_visible_ok(request, task):
+        return JsonResponse({'detail': 'به این تسک دسترسی نداری'}, status=403)
     if request.method == 'GET':
         items = [_comment_dict(c, request.user) for c in task.comments.select_related('author')]
         return JsonResponse({'comments': items})

@@ -54,6 +54,9 @@
 | فهرستِ id پروژه‌های قابل‌دیدنِ کاربرِ جاری | `projects/access.py: accessible_project_ids` |
 | دعوت‌نامه‌ی در انتظار (نه عضویتِ فوری، فقط با شماره تماس) | `accounts/models.py: Invite` + `colleagues.views.colleague_grant_access` (+ `docs/PLATFORM.md`) |
 | «این تسک قابلِ‌بازبینیِ این کاربر است؟» | `tasks/queries.py: reviewable_q` (صفحه‌ی بازبینی + فیدِ داشبورد) |
+| فیلتر+دسترسیِ لیستِ تسک‌ها (پروژه/مسئول/نوع/…) | `tasks/queries.py: build_task_queryset` (لیست + لودِ تنبل) |
+| گروه‌بندیِ تسک‌های done بر اساسِ روز | `tasks/queries.py: group_done_by_day` (`?group=day` + جدولِ ۷روزه‌ی داشبورد) |
+| تسک‌های در حالِ اجرای تایمر برای کاربر/زیرمجموعه‌هایش | `tasks/queries.py: running_timers_payload` (ویجت + API) |
 | نوارِ تبِ صفحاتِ تنظیمات + هابِ سایدبار | `templates/settings/_nav.html` + `accounts:settings_home` — لینکِ سایدبار «تنظیمات» یکی است، گیت‌شده با `has_settings_access` (context processor، از `accounts/permissions.py: SETTINGS_PERMS`) |
 | دادنِ دسترسیِ سیستم به یک فرد | `colleagues.views._grant_access` (`mode=invite` فقط شماره / `mode=password` مدیر خودش رمز می‌سازد) |
 
@@ -132,6 +135,19 @@ python manage.py collectstatic --noinput  # فقط برای تست مرورگر/
     ضمناً موقعِ همین ممیزی یک تلهٔ امنیتیِ جدی هم پیدا شد: `projects.credential_create/
     reveal/delete` اصلاً `manage_projects` چک نمی‌کردند (فقط `is_authenticated`) — هر عضوِ
     سازمان می‌توانست پسوردِ هر پروژه‌ای را با pk حدس بزند/ببیند/حذف کند.
+21. **باگِ جدی (رفع‌شده): «هرچی دسترسی دادم عملاً کار نمی‌کند».** کاربرِ گزارش داد نقشِ
+    «مدیر» ساخته و همه‌ی دسترسی‌ها را داده ولی آن کاربر حتی نمی‌توانست تسک بسازد. علت:
+    `projects/access.py: accessible_project_ids` فقط `Membership.role == 'owner'` را
+    نامحدود می‌دانست؛ دارنده‌ی پرمیشنِ `manage_projects` (مثلِ نقشِ «مدیر») هم تا وقتی
+    به‌صراحت به `Project.members` **هر پروژه** اضافه نمی‌شد، هیچ پروژه/تسکی نمی‌دید —
+    مستقل از این‌که چه پرمیشن‌هایی داشت. رفع شد: `manage_projects` هم مثلِ مالک نامحدود
+    است. **قاعده:** پرمیشنِ سازمانی («می‌تواند همه‌ی X را مدیریت کند») هرگز نباید توسطِ
+    یک گیتِ دیگر (اینجا: عضویتِ صریح در هر رکورد) بی‌اثر شود؛ اگر پرمیشنِ جدیدی به معنیِ
+    «روی همه‌چیز» اضافه کردی، در `accessible_project_ids`/معادل‌هایش هم چک کن.
+    **همزمان:** کسی که کاری برایش دلیگیت شده ولی عضوِ آن پروژه نیست، باید بتواند همان
+    تسکِ خودش را ببیند/انجامش دهد بدونِ دیدنِ بقیه‌ی پروژه — این با یک OR جداگانه در
+    سطحِ تسک حل شد (`tasks.queries.build_task_queryset` + `tasks.api._task_visible_ok`)،
+    نه با شل‌کردنِ گیتِ پروژه.
 
 ## انضباط نگه‌داری (مهم)
 **به‌روزرسانی هینت بخشی از همان تغییر است.** وقتی فیلد/الگو/تله/منبع‌واحدِ جدید اضافه شد،

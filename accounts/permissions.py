@@ -32,6 +32,7 @@ PERMS = [
     'manage_columns',     # سفارشی‌سازیِ ستون‌ها
     'manage_holidays',    # مدیریتِ تعطیلات
     'review',             # بازبینی/تایید تسک
+    'edit_time',          # ویرایشِ مستقیمِ زمانِ کارکردِ دیگران (+ استارت/استاپِ تایمرِ هرکس)
     'view_reports',       # مشاهده‌ی گزارش‌ها
 ]
 
@@ -48,6 +49,7 @@ PERM_LABELS = {
     'manage_columns': 'سفارشی‌سازیِ ستون‌ها',
     'manage_holidays': 'مدیریتِ تعطیلات',
     'review': 'بازبینی و تایید تسک',
+    'edit_time': 'ویرایشِ زمانِ کارکردِ دیگران',
     'view_reports': 'مشاهده‌ی گزارش‌ها',
 }
 
@@ -56,7 +58,7 @@ _ALL_BUT_SCOPE = set(PERMS) - {'own_tasks_only'}
 ROLE_PERMS = {
     OWNER: set(PERMS),
     ADMIN: set(_ALL_BUT_SCOPE),
-    MANAGER: {'manage_projects', 'manage_colleagues', 'edit_task', 'delete_task', 'review', 'view_reports'},
+    MANAGER: {'manage_projects', 'manage_colleagues', 'edit_task', 'delete_task', 'review', 'edit_time', 'view_reports'},
     MEMBER: {'edit_task', 'own_tasks_only', 'view_reports'},
     VIEWER: {'view_reports'},
 }

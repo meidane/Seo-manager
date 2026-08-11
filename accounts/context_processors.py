@@ -28,6 +28,7 @@ def org(request):
         from .permissions import PERMS
         perms = set(PERMS)
     from .permissions import SETTINGS_PERMS
+    colleague = getattr(user, 'colleague', None)
     return {
         'current_org': organization,
         'current_membership': membership,
@@ -35,4 +36,7 @@ def org(request):
         'my_orgs': my_orgs,
         'pending_invites': pending_invites,
         'has_settings_access': any(p in perms for p in SETTINGS_PERMS),
+        # هرکسی که پروفایلِ همکار دارد می‌تواند برای خودش تسک بسازد، فارغ از edit_task
+        # (که برای همه/دیگران است) — دکمه‌ی «＋ تسک جدید» با همین گیت می‌شود.
+        'can_create_task': bool(colleague) or 'edit_task' in perms,
     }
