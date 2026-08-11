@@ -80,14 +80,21 @@
       root.className = 'modal-backdrop';
       root.innerHTML = '<div class="modal glass"></div>';
       document.body.appendChild(root);
-      // کلیک بیرونِ مودال آن را نمی‌بندد تا دادهٔ در حال ویرایش/ثبت از دست نرود
-      // (بستن فقط با دکمهٔ × یا انصراف). Esc هم غیرفعال شد تا داده نپرد.
+      // کلیکِ بیرونِ مودال فقط وقتی می‌بندد که چیزی توی مودال تغییر نکرده باشد
+      // (`data-dirty`، با اولین input/change ست می‌شود)؛ اگر داده دستکاری شده، فقط
+      // دکمه‌ی × یا انصراف می‌بندد تا چیزی یک‌دفعه از دست نرود.
+      root.addEventListener('click', (e) => {
+        if (e.target === root && root.dataset.dirty !== '1') closeModal();
+      });
+      root.addEventListener('input', () => { root.dataset.dirty = '1'; });
+      root.addEventListener('change', () => { root.dataset.dirty = '1'; });
     }
     return root;
   }
   function openModal(html) {
     const root = ensureModalRoot();
     root.querySelector('.modal').innerHTML = html;
+    root.dataset.dirty = '';
     root.classList.add('open');
     return root;
   }

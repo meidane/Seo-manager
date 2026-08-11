@@ -14,6 +14,7 @@ from django.views.decorators.http import require_http_methods
 
 from core.jalali import parse_jalali
 from core.models import Holiday
+from projects.access import accessible_project_ids
 
 from .models import Task, TaskComment
 
@@ -118,10 +119,18 @@ def form_data(request):
     from projects.models import Project
 
     from .models import TaskTypeDef
-    # همه‌ی پروژه‌ها (فعال‌ها اول) — نه فقط فعال؛ وگرنه اگر پروژه‌ای غیرفعال شود
-    # یا هیچ پروژه‌ی فعالی نباشد، دراپ‌داونِ مودال خالی می‌شود و ذخیره‌ی تسک
-    # با خطای «عنوان و پروژه لازم است» شکست می‌خورد.
-    projects = Project.objects.order_by('status', 'name')  # active قبل از inactive
+    # همه‌ی پروژه‌های قابل‌دسترسِ کاربر (فعال‌ها اول) — نه فقط فعال؛ وگرنه اگر پروژه‌ای
+    # غیرفعال شود یا هیچ پروژه‌ی فعالی نباشد، دراپ‌داونِ مودال خالی می‌شود و ذخیره‌ی تسک
+    # با خطای «عنوان و پروژه لازم است» شکست می‌خورد. **قابل‌دسترس‌بودن** هم اینجا رعایت
+    # می‌شود، وگرنه تسکی که در پروژه‌ی خارج از دسترس ساخته شود بلافاصله در لیست ناپدید
+    # می‌شود (چون TaskListView با همین فهرست فیلتر می‌کند).
+    ids = accessible_project_ids(request)
+    projects = Project.objects.order_by('status', 'name')
+    if ids is not None:
+        projects = projects.filter(id__in=ids)
+    m = getattr(request, 'membership', None)
+    own_tasks_only = bool(m and m.can('own_tasks_only'))
+    my_colleague = getattr(request.user, 'colleague', None)
     return JsonResponse({
         'projects': [[p.id, p.name] for p in projects],
         'colleagues': [[c.id, c.full_name] for c in Colleague.objects.filter(status=Colleague.ACTIVE)],
@@ -132,6 +141,8 @@ def form_data(request):
              'kpis': [k.to_dict() for k in t.kpis.prefetch_related('items')]}
             for t in TaskTypeDef.objects.filter(is_active=True).prefetch_related('kpis')
         ],
+        'myColleagueId': my_colleague.id if my_colleague else None,
+        'ownTasksOnly': own_tasks_only,
     })
 
 
@@ -148,6 +159,13 @@ def task_create(request):
     data = _body(request)
     if not data.get('title') or not data.get('project'):
         return JsonResponse({'detail': 'عنوان و پروژه لازم است'}, status=400)
+    ids = accessible_project_ids(request)
+    if ids is not None and int(data['project']) not in ids:
+        return JsonResponse({'detail': 'به این پروژه دسترسی نداری'}, status=403)
+    m = getattr(request, 'membership', None)
+    if m and m.can('own_tasks_only'):
+        colleague = getattr(request.user, 'colleague', None)
+        data['assignee'] = colleague.id if colleague else None
     task = Task(created_by=request.user, planned_date=date.today())
     apply_fields(task, data)
     err = _publish_url_error(task)
@@ -212,8 +230,16 @@ def task_detail(request, pk):
     # PATCH
     if not _task_perm_ok(request, task, 'edit_task'):
         return JsonResponse({'detail': 'دسترسیِ ویرایشِ این تسک را نداری'}, status=403)
+    data = _body(request)
+    ids = accessible_project_ids(request)
+    if 'project' in data and data['project'] and ids is not None and int(data['project']) not in ids:
+        return JsonResponse({'detail': 'به این پروژه دسترسی نداری'}, status=403)
+    m = getattr(request, 'membership', None)
+    if m and m.can('own_tasks_only'):
+        colleague = getattr(request.user, 'colleague', None)
+        data['assignee'] = colleague.id if colleague else None
     was_done = task.status == Task.DONE
-    apply_fields(task, _body(request))
+    apply_fields(task, data)
     err = _publish_url_error(task)
     if err:
         return JsonResponse({'detail': err}, status=400)

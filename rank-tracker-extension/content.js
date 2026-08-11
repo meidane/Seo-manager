@@ -97,6 +97,9 @@ let lastQuery = null;
 async function processSearchPage() {
   const query = (getQueryParam("q") || "").trim();
   if (!query) return;
+  // سرچ‌های site:/inurl:/... جستجوی واقعیِ کلمه‌ی کلیدی نیستند (تأییدِ ایندکس‌شدنِ
+  // یک صفحه‌ی مشخص‌اند)؛ نباید به‌عنوانِ «کلمه‌ی کلیدی» ذخیره/ردیابی شوند.
+  if (/^(site|inurl|intitle|intext|filetype|cache|related|link):/i.test(query)) return;
 
   const resp = await chrome.runtime.sendMessage({ type: "GET_TRACKED_DOMAINS" });
   if (!resp || !resp.ok) return; // تنظیم‌نشده یا خطای شبکه — بی‌سروصدا هیچ‌کاری نکن
@@ -123,7 +126,9 @@ async function processSearchPage() {
       a.dataset.rtReported = "1";
       chrome.runtime.sendMessage({
         type: "REPORT_RANK",
-        payload: { url: a.href, keyword: query, position },
+        // decodeURI نه decodeURIComponent: کاراکترهای رزرو‌شده‌ی URL (?،&،=،#) دست‌نخورده
+        // می‌مانند، فقط حروفِ فارسیِ درصدرمزگذاری‌شده (٪D9%86...) خوانا می‌شوند.
+        payload: { url: decodeURI(a.href), keyword: query, position },
       });
     }
   });

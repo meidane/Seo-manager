@@ -28,13 +28,19 @@
     t = t || {};
     const _bt = typeList().find((x) => x.builtin_key === (t.type || 'other'));
     const typeSel = t.type_def || (_bt ? _bt.id : (typeList()[0] || {}).id);
+    // مسئول: پیش‌فرض خودِ کاربر (فقط برای تسکِ جدید)؛ اگر own_tasks_only داشت
+    // (فقط تسک‌های خودش)، اصلاً اجازه‌ی دلیگیت‌کردن به بقیه ندارد — دراپ‌داون قفل می‌شود.
+    const assigneeSel = t.id ? t.assignee_id : (t.assignee_id || cfg.myColleagueId || '');
+    const assigneeSelect = cfg.ownTasksOnly
+      ? `<select id="f-assignee" disabled>${opt(cfg.myColleagueId || '', 'خودم', assigneeSel)}</select>`
+      : `<select id="f-assignee"><option value="">—</option>${cfg.colleagues.map(([v, l]) => opt(v, l, assigneeSel)).join('')}</select>`;
     return `
     <div class="modal-h"><h3>${t.id ? 'ویرایش تسک' : 'تسک جدید'}</h3><button class="x" onclick="App.closeModal()">×</button></div>
     <div class="modal-b" id="tform">
       ${reviewNotesHtml(t)}
       <div class="grid3">
-        ${field('project', 'پروژه', `<select id="f-project">${cfg.projects.map(([v, l]) => opt(v, l, t.project_id)).join('')}</select>`)}
-        ${field('assignee', 'مسئول', `<select id="f-assignee"><option value="">—</option>${cfg.colleagues.map(([v, l]) => opt(v, l, t.assignee_id)).join('')}</select>`)}
+        ${field('project', 'پروژه', `<select id="f-project"><option value="">— انتخاب پروژه —</option>${cfg.projects.map(([v, l]) => opt(v, l, t.project_id)).join('')}</select>`)}
+        ${field('assignee', 'مسئول', assigneeSelect)}
         ${field('task_type', 'نوع تسک', `<select id="f-task_type">${typeOptions(typeSel)}</select>`)}
       </div>
       ${field('priority', 'اولویت', `<select id="f-priority"><option value="low">کم</option><option value="med">متوسط</option><option value="high">زیاد</option></select>`)}

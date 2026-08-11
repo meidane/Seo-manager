@@ -129,6 +129,11 @@ class Membership(models.Model):
 
     def can(self, perm: str) -> bool:
         p = self.perms
+        if perm == 'own_tasks_only':
+            # این یک محدودیت است نه یک قابلیت — با ویلدکارد «همه‌چیز» مشتق نمی‌شود،
+            # وگرنه مالک (که perms اش لفظاً {'*'} است) به‌اشتباه محدود به تسک‌های
+            # خودش می‌شود و چون Colleagueِ وصل ندارد، هیچ تسکی نمی‌بیند.
+            return perm in p
         return '*' in p or perm in p
 
     @property
