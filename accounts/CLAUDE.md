@@ -47,6 +47,13 @@ API: `team_create/edit`, `person_create/edit`, `person_invite`, `role_create/edi
 ## دعوت‌نامه‌ها (`/invites/`)
 - کاربرِ بدونِ سازمان با `OrgRequiredMiddleware` به اینجا می‌افتد (`InvitesLandingView`،
   تمپلیتِ مستقل `accounts/invites.html`، بدونِ سایدبار).
+- **تله‌ای که رفع شد:** کاربرِ لاگین‌شده‌ی بدونِ عضویت (مثلاً سوپریوزرِ ساخته‌شده با
+  `createsuperuser`، نه از `/signup/`) قبلاً در همین صفحه گیر می‌کرد — چون `/signup/`
+  کاربرِ لاگین‌شده را مستقیم به داشبورد ریدایرکت می‌کند (نه صفحه‌ی ثبت‌نام)، و داشبورد هم
+  چون سازمان ندارد دوباره به `/invites/` برمی‌گشت (بن‌بست). برای همین همین صفحه یک فرمِ
+  «ساختِ سازمان» هم دارد: `create_own_org` (POST، لاگین‌شده) دقیقاً همان کاری را می‌کند
+  که `/signup/` برای کاربرِ لاگین‌نشده می‌کند (Organization + `seed_roles` + Membership
+  owner + `active_org_id`).
 - کاربرِ **با** سازمان که دعوتِ اضافه هم دارد (مثلاً به سازمانِ دوم دعوت شده) آن را در
   **بنرِ بالای هر صفحه** می‌بیند (`templates/base.html`، از `pending_invites` که
   context processor روی هر ریکوئستِ لاگین‌شده می‌گذارد).

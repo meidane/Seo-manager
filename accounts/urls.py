@@ -30,4 +30,5 @@ urlpatterns = [
     path('invites/', views.InvitesLandingView.as_view(), name='invites_landing'),
     path('invites/<int:pk>/accept/', views.invite_accept, name='invite_accept'),
     path('invites/<int:pk>/reject/', views.invite_reject, name='invite_reject'),
+    path('invites/create-org/', views.create_own_org, name='create_own_org'),
 ]

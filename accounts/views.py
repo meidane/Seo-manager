@@ -218,6 +218,22 @@ def invite_reject(request, pk):
     return JsonResponse({'ok': True})
 
 
+@login_required
+@require_http_methods(['POST'])
+def create_own_org(request):
+    """کاربرِ لاگین‌شده‌ی بدونِ سازمان (مثلاً سوپریوزری که با `createsuperuser` ساخته شده،
+    نه از `/signup/`) از صفحه‌ی `/invites/` می‌تواند به‌جای ماندن در بن‌بستِ «فقط دعوت‌نامه»،
+    برای خودش سازمانِ تازه بسازد — همان مسیرِ `/signup/` ولی برای کاربرِ ازقبل‌لاگین‌شده."""
+    org_name = (_body(request).get('org_name') or '').strip()
+    if not org_name:
+        return JsonResponse({'detail': 'نام سازمان لازم است'}, status=400)
+    org = Organization.objects.create(name=org_name)
+    seed_roles(org)
+    Membership.objects.create(user=request.user, organization=org, role='owner')
+    request.session['active_org_id'] = org.id
+    return JsonResponse({'ok': True})
+
+
 # ── API: نقش‌های سفارشی ───────────────────────────────────────────────────
 
 @login_required

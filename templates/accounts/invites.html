@@ -33,8 +33,16 @@
         {% endfor %}
       </div>
     {% else %}
-      <p class="sub">دعوت‌نامه‌ی در انتظاری نداری. اگر منتظرِ دعوت به یک سازمان هستی، از مدیر آن سازمان بخواه دعوتت کند.</p>
+      <p class="sub">دعوت‌نامه‌ی در انتظاری نداری.</p>
     {% endif %}
+
+    <div style="border-top:1px solid var(--stroke-soft);margin-top:18px;padding-top:16px">
+      <p class="sub" style="margin-bottom:10px">یا برای خودت یک سازمانِ تازه بساز و همین الان شروع کن:</p>
+      <form id="create-org-form" style="display:flex;gap:8px">
+        <input type="text" id="org-name" placeholder="نام شرکت/سازمان" required style="flex:1">
+        <button type="submit" class="btn btn-p">ساختِ سازمان</button>
+      </form>
+    </div>
 
     <p class="sub" style="margin-top:14px;text-align:center">
       <a href="{% url 'accounts:logout' %}">خروج از حساب</a>
@@ -42,5 +50,15 @@
   </div>
 </div>
 <script src="{% static 'js/app.js' %}"></script>
+<script>
+document.getElementById('create-org-form').addEventListener('submit', function (e) {
+  e.preventDefault();
+  var name = document.getElementById('org-name').value.trim();
+  if (!name) return;
+  App.fetchJSON('{% url "accounts:create_own_org" %}', {method: 'POST', body: {org_name: name}})
+    .then(function () { window.location.href = '/'; })
+    .catch(function () {});
+});
+</script>
 </body>
 </html>
