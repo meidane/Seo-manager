@@ -25,6 +25,11 @@
   امتیاز می‌دهد (`TaskKPIScore`، unique(task,kpi)). کارمند در مودال فقط‌خواندنی می‌بیند.
   مدیریت در صفحه‌ی نوع تسک؛ API در `type_views.py` (`kpi_*`). امتیازدهی/نمایش: `api.py`
   (`task_kpis` GET، `task_kpi_score` POST). دکمه‌ی «★ امتیاز کیفیت» در `review.html`.
+  **اگر نوعِ تسک هیچ KPIای نداشت** (`task_kpis` → `has: false`)، به‌جای خالی ماندنِ دکمه،
+  یک امتیازِ سادهٔ ۱ تا ۱۰ جایگزین می‌شود — روی فیلدِ مستقلِ `Task.quality_score` (نه
+  TaskTypeKPI/TaskKPIScore، چون آن‌ها به یک رکوردِ KPI واقعی نیاز دارند)، API جدا:
+  `task_quality_score` (POST `{score}`, ۱ تا ۱۰). در `review.html`: `scoreKpis()` وقتی
+  `!d.has` بود `scoreQuality()` را صدا می‌زند.
 - **RecurrenceRule** (+ `Task.recurrence`, `Task.is_placeholder`) — تکرارِ تنبل: همیشه
   «۱ واقعی + ۱ پیش‌نما». منطق در `recurrence.py` (`start_series`, `advance`, `create_placeholder`).
   با done شدنِ تسکِ واقعی، پیش‌نما واقعی و پیش‌نمای بعدی ساخته می‌شود (در `task_status` و

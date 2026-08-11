@@ -119,6 +119,8 @@ class Task(TimeStampedModel):
     # ── بازبینی (آماده‌سازی فاز ۳) ──
     review_status = models.CharField('وضعیت بازبینی', max_length=12, choices=REVIEW_CHOICES, default=UNREVIEWED)
     review_note = models.TextField('یادداشت بازبینی', blank=True)
+    # وقتی نوعِ تسک هیچ TaskTypeKPIای ندارد، جایگزینِ سادهٔ ۱ تا ۱۰ (نه سیستمِ KPI کامل)
+    quality_score = models.PositiveSmallIntegerField('امتیاز کیفیت (بدون KPI)', null=True, blank=True)
     reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name='بازبین', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     reviewed_at = models.DateTimeField('زمان بازبینی', null=True, blank=True)
     ai_checked_at = models.DateTimeField('بررسی هوش مصنوعی', null=True, blank=True)  # فاز ۳

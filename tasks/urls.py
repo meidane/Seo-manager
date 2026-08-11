@@ -21,6 +21,7 @@ urlpatterns = [
     path('api/comment/<int:pk>/', api.task_comment_edit, name='api_comment_edit'),
     path('api/<int:pk>/kpis/', api.task_kpis, name='api_kpis'),
     path('api/<int:pk>/kpi-score/', api.task_kpi_score, name='api_kpi_score'),
+    path('api/<int:pk>/quality-score/', api.task_quality_score, name='api_quality_score'),
     path('api/recurrence/<int:pk>/', api.recurrence_delete, name='api_recurrence_delete'),
     path('api/bulk/', api.task_bulk, name='api_bulk'),
 ]

@@ -86,6 +86,46 @@ def organization_edit(request):
     return JsonResponse({'ok': True, 'name': org.name})
 
 
+@login_required
+@require_http_methods(['POST'])
+def profile_edit(request):
+    """ویرایشِ پروفایلِ خودِ کاربر (منوی بالا-راستِ هدر) — فقط ظاهریاتِ خودش: نام، ایمیل،
+    آواتار، رنگ. چیزهایی مثل مدیر/توضیحات/نقش دستِ خودِ او نیست (آن‌ها مالِ مدیر است،
+    از تبِ «دسترسی به سیستم» در `colleagues`)."""
+    user = request.user
+    full_name = (request.POST.get('full_name') or '').strip()
+    email = (request.POST.get('email') or '').strip()
+    color = (request.POST.get('color') or '').strip()
+    avatar = request.FILES.get('avatar')
+
+    if full_name:
+        first, _, last = full_name.partition(' ')
+        user.first_name, user.last_name = first, last
+    if email:
+        user.email = email
+    if avatar:
+        user.avatar = avatar
+    user.save(update_fields=['first_name', 'last_name', 'email', 'avatar'])
+
+    colleague = getattr(user, 'colleague', None)
+    if colleague:
+        if full_name:
+            colleague.full_name = full_name
+        if email:
+            colleague.email = email
+        if color:
+            colleague.color = color
+        if avatar:
+            colleague.avatar = avatar
+        colleague.save(update_fields=['full_name', 'email', 'color', 'avatar'])
+
+    return JsonResponse({
+        'ok': True,
+        'avatar_url': user.avatar.url if user.avatar else '',
+        'full_name': user.get_full_name(),
+    })
+
+
 class PeopleView(LoginRequiredMixin, TemplateView):
     """تیم‌ها/زیرمجموعه‌ها + نقش‌های سفارشی — «افراد» (فهرست/دسترسیِ تک‌تکِ افراد) از اینجا
     به `colleagues:list` منتقل شد (یک بخشِ واحد «افراد و دسترسی‌ها»، نه دو جای جدا)."""
@@ -159,12 +199,17 @@ def person_edit(request, pk):
     نه از یک جدولِ جدا؛ `pk` همان `user_id` است (`Membership` با `colleague.user` یکی است)."""
     org = _require(request, 'manage_people')
     m = get_object_or_404(Membership, user_id=pk, organization=org)
+    is_self = m.user_id == request.user.id
     if request.method == 'DELETE':
+        if is_self:
+            return JsonResponse({'detail': 'نمی‌توانی دسترسیِ خودت را حذف کنی'}, status=400)
         # فقط عضویتِ این سازمان حذف می‌شود؛ خودِ کاربر (شاید در سازمان دیگر) می‌ماند
         TeamMembership.objects.filter(user=m.user, team__organization=org).delete()
         m.delete()
         return JsonResponse({'ok': True})
     d = _body(request)
+    if is_self and ('role' in d and d['role'] != m.role or d.get('is_active') is False):
+        return JsonResponse({'detail': 'نمی‌توانی نقش/دسترسیِ خودت را محدود کنی — از یک مدیرِ دیگر بخواه'}, status=400)
     if d.get('role') and org.roles.filter(key=d['role']).exists():
         # نگذار آخرین مالک از مالکی خارج شود
         if m.role == 'owner' and d['role'] != 'owner' and \

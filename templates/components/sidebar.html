@@ -28,6 +28,9 @@
       <span class="ico">⚙</span> تنظیمات
     </a>
     {% endif %}
-    <a href="{% url 'accounts:logout' %}"><span class="ico">⏻</span> خروج</a>
+    <form method="post" action="{% url 'accounts:logout' %}" class="nav-logout-form">
+      {% csrf_token %}
+      <button type="submit"><span class="ico">⏻</span> خروج</button>
+    </form>
   </nav>
 </aside>

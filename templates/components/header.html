@@ -22,13 +22,45 @@
     </select>
   {% endif %}
 
-  {% if user.avatar %}
-    <img class="avatar" src="{{ user.avatar.url }}" alt="">
-  {% else %}
-    <span class="avatar">{{ user.username|first|upper }}</span>
-  {% endif %}
+  <button type="button" id="profile-btn" style="background:0;border:0;padding:0;cursor:pointer;line-height:0" title="ویرایش پروفایل">
+    {% if user.avatar %}
+      <img class="avatar" src="{{ user.avatar.url }}" alt="">
+    {% else %}
+      <span class="avatar">{{ user.username|first|upper }}</span>
+    {% endif %}
+  </button>
 </div>
 <script>
 (function(){var s=document.getElementById('org-switch');if(!s)return;
  s.onchange=function(){App.fetchJSON("{% url 'accounts:switch_org' %}",{method:'POST',body:{organization:s.value}}).then(function(){location.href='/';});};})();
+
+document.getElementById('profile-btn').addEventListener('click', function(){
+  App.openModal(`<div class="modal-h"><h3>ویرایش پروفایل</h3><button class="x" onclick="App.closeModal()">×</button></div>
+    <div class="modal-b">
+      <div class="grid2">
+        <div class="field"><label>نام و نام خانوادگی</label><input class="input" id="pf-name" value="{{ user.get_full_name|escapejs }}"></div>
+        <div class="field"><label>ایمیل</label><input class="input" id="pf-email" dir="ltr" value="{{ user.email|escapejs }}"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>آواتار</label><input class="input" id="pf-avatar" type="file" accept="image/*"></div>
+        <div class="field"><label>رنگ</label>
+          <input type="color" id="pf-color" value="{{ user.colleague.color|default:'#4183F2' }}" style="width:100%;height:40px;padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--stroke-soft);border-radius:var(--r-sm)">
+        </div>
+      </div>
+    </div>
+    <div class="modal-f"><button class="btn btn-p" id="pf-save">ذخیره</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+  document.getElementById('pf-save').onclick = async function(){
+    var fd = new FormData();
+    fd.append('full_name', document.getElementById('pf-name').value.trim());
+    fd.append('email', document.getElementById('pf-email').value.trim());
+    fd.append('color', document.getElementById('pf-color').value);
+    var avatarFile = document.getElementById('pf-avatar').files[0];
+    if (avatarFile) fd.append('avatar', avatarFile);
+    try {
+      await App.fetchJSON("{% url 'accounts:profile_edit' %}", {method: 'POST', body: fd});
+      App.toast('ذخیره شد', 'ok');
+      window.location.reload();
+    } catch (_) {}
+  };
+});
 </script>

@@ -115,10 +115,13 @@ def apply_fields(task: Task, data: dict):
 def form_data(request):
     """داده‌ی لازم برای مودال تسک (پروژه‌ها، همکاران، انواع built-in و سفارشی).
     مودال هنگام باز شدن این را یک‌بار می‌گیرد تا از هر صفحه‌ای کار کند."""
-    from colleagues.models import Colleague
+    from colleagues.models import Colleague, ensure_colleague_for_user
     from projects.models import Project
 
     from .models import TaskTypeDef
+
+    if getattr(request, 'organization', None):
+        ensure_colleague_for_user(request.user, request.organization)
     # همه‌ی پروژه‌های قابل‌دسترسِ کاربر (فعال‌ها اول) — نه فقط فعال؛ وگرنه اگر پروژه‌ای
     # غیرفعال شود یا هیچ پروژه‌ی فعالی نباشد، دراپ‌داونِ مودال خالی می‌شود و ذخیره‌ی تسک
     # با خطای «عنوان و پروژه لازم است» شکست می‌خورد. **قابل‌دسترس‌بودن** هم اینجا رعایت
@@ -395,7 +398,26 @@ def task_kpis(request, pk):
         out.append(kd)
         cap += k.cap
         total += (s.score if s else 0)
-    return JsonResponse({'kpis': out, 'total': total, 'cap': cap, 'has': bool(kpis)})
+    return JsonResponse({
+        'kpis': out, 'total': total, 'cap': cap, 'has': bool(kpis),
+        'quality_score': task.quality_score,
+    })
+
+
+@login_required
+@require_http_methods(['POST'])
+def task_quality_score(request, pk):
+    """امتیازِ سادهٔ ۱ تا ۱۰ برای وقتی نوعِ تسک هیچ KPIای ندارد (جایگزینِ سیستمِ کامل)."""
+    task = get_object_or_404(Task, pk=pk)
+    try:
+        score = int(_body(request).get('score'))
+    except (TypeError, ValueError):
+        return JsonResponse({'detail': 'امتیازِ نامعتبر'}, status=400)
+    if not 1 <= score <= 10:
+        return JsonResponse({'detail': 'امتیاز باید بین ۱ تا ۱۰ باشد'}, status=400)
+    task.quality_score = score
+    task.save(update_fields=['quality_score'])
+    return JsonResponse({'ok': True, 'quality_score': task.quality_score})
 
 
 @login_required

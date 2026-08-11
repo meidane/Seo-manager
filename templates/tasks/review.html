@@ -41,7 +41,7 @@ document.querySelectorAll('.rev-ok').forEach(b=>b.onclick=()=>review(b.dataset.i
 // ── امتیازدهی KPI (مدیر) ──
 async function scoreKpis(id){
   let d; try{ d=await App.fetchJSON(`/tasks/api/${id}/kpis/`); }catch(_){ return; }
-  if(!d.has){ App.toast('برای این نوع تسک KPI تعریف نشده','warn'); return; }
+  if(!d.has){ scoreQuality(id, d.quality_score); return; }
   const body=d.kpis.map(k=>{
     if(k.has_checklist){
       const items=k.items.map(it=>`<label style="display:flex;align-items:center;gap:8px;margin:0;padding:3px 0;cursor:pointer">
@@ -64,6 +64,20 @@ async function scoreKpis(id){
       return {kpi,score:+el.querySelector('.knum').value||0,checked_items:[]};
     });
     try{ await App.fetchJSON(`/tasks/api/${id}/kpi-score/`,{method:'POST',body:{scores}}); App.toast('امتیاز ثبت شد','ok'); App.closeModal(); }catch(_){}
+  };
+}
+
+// ── امتیازِ سادهٔ ۱ تا ۱۰ (وقتی نوعِ تسک KPI ندارد) ──
+function scoreQuality(id, current){
+  const opts=[...Array(10)].map((_,i)=>i+1).map(n=>`<option value="${n}" ${current===n?'selected':''}>${n}</option>`).join('');
+  App.openModal(`<div class="modal-h"><h3>امتیاز کیفیت</h3><button class="x" onclick="App.closeModal()">×</button></div>
+    <div class="modal-b"><p class="sub" style="margin-bottom:10px">برای این نوع تسک KPIای تعریف نشده — امتیازِ ساده‌ی ۱ تا ۱۰:</p>
+      <select id="qs-score" class="input" style="max-width:120px"><option value="">—</option>${opts}</select></div>
+    <div class="modal-f"><button class="btn btn-p" id="qs-save">ذخیره امتیاز</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+  document.getElementById('qs-save').onclick=async()=>{
+    const score=+document.getElementById('qs-score').value;
+    if(!score){ App.toast('یک امتیاز انتخاب کن','warn'); return; }
+    try{ await App.fetchJSON(`/tasks/api/${id}/quality-score/`,{method:'POST',body:{score}}); App.toast('امتیاز ثبت شد','ok'); App.closeModal(); }catch(_){}
   };
 }
 window.scoreKpis=scoreKpis;

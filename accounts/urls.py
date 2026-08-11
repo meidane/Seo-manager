@@ -10,6 +10,7 @@ urlpatterns = [
     path('logout/', views.LogoutView.as_view(), name='logout'),
     path('signup/', views.signup, name='signup'),
     path('settings/switch-org/', views.switch_org, name='switch_org'),
+    path('settings/profile/', views.profile_edit, name='profile_edit'),
 
     # هابِ تنظیمات (تکِ لینکِ سایدبار) + ویرایشِ نامِ سازمان
     path('settings/', views.SettingsHomeView.as_view(), name='settings_home'),

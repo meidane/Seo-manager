@@ -8,7 +8,7 @@ from django.db.models import Count, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.http import require_http_methods
-from django.views.generic import CreateView, DetailView, ListView, UpdateView, View
+from django.views.generic import DetailView, ListView, UpdateView, View
 
 from accounts.access import require_perm
 from core.columns import get_columns
@@ -18,7 +18,7 @@ from projects.access import accessible_project_ids
 from tasks.models import Task
 
 from .forms import ColleagueForm
-from .models import Colleague
+from .models import Colleague, ensure_colleague_for_user
 
 
 def _body(request):
@@ -59,6 +59,13 @@ class ColleagueListView(LoginRequiredMixin, DateRangeMixin, ListView):
     template_name = 'colleagues/list.html'
     context_object_name = 'colleagues'
     paginate_by = 50
+
+    def dispatch(self, request, *args, **kwargs):
+        # هرکسی که به سازمان دسترسی دارد باید در همین فهرست هم دیده شود (own_tasks_only
+        # و پیش‌فرضِ «مسئول = خودم» به Colleagueِ وصل نیاز دارند، نه فقط عضویتِ سازمانی).
+        if request.user.is_authenticated and getattr(request, 'organization', None):
+            ensure_colleague_for_user(request.user, request.organization)
+        return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
         from datetime import date
@@ -227,26 +234,6 @@ class ColleagueDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
         return bars, mx
 
 
-class ColleagueCreateView(LoginRequiredMixin, CreateView):
-    model = Colleague
-    form_class = ColleagueForm
-    template_name = 'colleagues/form.html'
-
-    def dispatch(self, request, *args, **kwargs):
-        require_perm(request, 'manage_colleagues')
-        return super().dispatch(request, *args, **kwargs)
-
-    def form_valid(self, form):
-        form.instance.created_by = self.request.user
-        return super().form_valid(form)
-
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        ctx['page_title'] = 'همکار جدید'
-        ctx['is_edit'] = False
-        return ctx
-
-
 class ColleagueUpdateView(LoginRequiredMixin, UpdateView):
     model = Colleague
     form_class = ColleagueForm
@@ -352,7 +339,8 @@ def colleague_quick_create(request):
     if not full_name:
         return JsonResponse({'detail': 'نام لازم است'}, status=400)
     colleague = Colleague.objects.create(
-        full_name=full_name, phone=(d.get('phone') or '').strip(), organization=org)
+        full_name=full_name, phone=(d.get('phone') or '').strip(),
+        organization=org, created_by=request.user)
     resp = _grant_access(request, org, colleague, d)
     if resp.status_code >= 400:
         colleague.delete()

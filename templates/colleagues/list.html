@@ -8,9 +8,8 @@
     {% if range_start_fa %}<span class="range-note">{{ range_start_fa }} تا {{ range_end_fa }} — {{ range_days|fa_digits }} روز</span>{% endif %}
     <div class="side-c">
       <form method="get" style="display:flex"><input type="text" name="q" value="{{ q }}" placeholder="جستجوی نام…" class="input" style="max-width:200px"></form>
-      <a href="{% url 'colleagues:add' %}" class="btn">＋ افزودن فرد</a>
       {% if can_manage_colleagues %}
-        <button type="button" class="btn btn-p" id="new-user-btn">＋ کاربر جدید (با دسترسی)</button>
+        <button type="button" class="btn btn-p" id="new-user-btn">＋ کاربر جدید</button>
       {% endif %}
     </div>
   </div>
@@ -37,7 +36,9 @@
         </tbody>
       </table>
     {% else %}
-      <div class="empty"><div class="ico">◉</div><h4>فردی یافت نشد</h4><a href="{% url 'colleagues:add' %}" class="btn btn-p" style="margin-top:12px">＋ افزودن فرد</a></div>
+      <div class="empty"><div class="ico">◉</div><h4>فردی یافت نشد</h4>
+        {% if can_manage_colleagues %}<button type="button" class="btn btn-p" id="new-user-btn-empty" style="margin-top:12px">＋ کاربر جدید</button>{% endif %}
+      </div>
     {% endif %}
   </section>
 {% endblock %}
@@ -49,7 +50,7 @@
   const ORG_ROLES = [{% for r in org_roles %}{key:"{{ r.key|escapejs }}",name:"{{ r.name|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}];
   const roleOpts = () => ORG_ROLES.map(r => `<option value="${r.key}" ${r.key==='member'?'selected':''}>${r.name}</option>`).join('');
 
-  document.getElementById('new-user-btn').addEventListener('click', () => {
+  function openNewUserModal(){
     App.openModal(`<div class="modal-h"><h3>کاربر جدید</h3><button class="x" onclick="App.closeModal()">×</button></div>
       <div class="modal-b">
         <div class="grid2"><div class="field"><label>نام و نام خانوادگی</label><input class="input" id="nu-name"></div>
@@ -92,7 +93,12 @@
         window.location.reload();
       } catch (_) {}
     };
-  });
+  }
+
+  const btn1 = document.getElementById('new-user-btn');
+  const btn2 = document.getElementById('new-user-btn-empty');
+  if (btn1) btn1.addEventListener('click', openNewUserModal);
+  if (btn2) btn2.addEventListener('click', openNewUserModal);
 })();
 </script>
 {% endif %}

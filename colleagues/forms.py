@@ -1,6 +1,7 @@
 """فرم افزودن/ویرایش همکار."""
 from django import forms
 
+from accounts.tenancy import get_current_org
 from core.jalali import format_jalali, parse_jalali
 
 from .models import Colleague
@@ -9,7 +10,6 @@ from .models import Colleague
 class ColleagueForm(forms.ModelForm):
     roles = forms.MultipleChoiceField(
         label='نقش‌ها',
-        choices=Colleague.ROLE_CHOICES,
         required=False,
         widget=forms.CheckboxSelectMultiple,
     )
@@ -28,6 +28,11 @@ class ColleagueForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # نقش‌ها از کاتالوگِ نقش‌های سازمان می‌آید (تنظیمات → تیم‌ها و نقش‌ها)، نه فهرستِ
+        # ثابتِ قدیمی — همان نقش‌هایی که برای دسترسی هم استفاده می‌شوند.
+        org = get_current_org()
+        self.fields['roles'].choices = (
+            [(r.key, r.name) for r in org.roles.all()] if org else [])
         managers = Colleague.objects.filter(status=Colleague.ACTIVE)
         if self.instance and self.instance.pk:
             managers = managers.exclude(pk=self.instance.pk)
