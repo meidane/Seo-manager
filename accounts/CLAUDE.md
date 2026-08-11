@@ -6,8 +6,14 @@
 - **Organization** (شرکت) — بالاترین سطحِ tenant؛ `name, slug(auto), is_active`.
 - **Team** — `organization` + `parent`(self) برای زیرمجموعه (چند سطح).
 - **User** — `avatar, phone` + `team`(deprecated). `default_membership()`.
-- **Membership** (user↔org) — `role`(کلید Role)، `is_active`. `.perms` / `.can(perm)` /
-  `.role_label`. مالک همیشه `'*'` (همه).
+- **Membership** (user↔org) — `role`(کلید Role، `CharField(max_length=32)`)، `is_active`.
+  `.perms` / `.can(perm)` / `.role_label`. مالک همیشه `'*'` (همه).
+  **باگِ رفع‌شده:** `role` قبلاً `max_length=12` بود ولی `Role.key` می‌تواند تا ۳۲ کاراکتر
+  باشد (`role_create` تا ۲۴ کاراکتر می‌سازد) — روی SQLite طولش اجرا نمی‌شود (بی‌صدا کارِ
+  «درستی» می‌کرد چون SQLite طولِ varchar را چک نمی‌کند)، ولی روی Postgres/MySQL نقشِ
+  سفارشی با کلیدِ بلند (مثلاً از اسمِ انگلیسیِ طولانی) truncate می‌شد و دیگر با
+  `Role.key` مچ نمی‌کرد → `Membership.perms` خالی می‌شد → همه‌ی پرمیشن‌ها بی‌اثر
+  می‌شدند، بدونِ هیچ خطای قابل‌مشاهده. الان هر دو `max_length=32` هستند.
 - **TeamMembership** (user↔team).
 - **Role** (per org) — `key, name, perms(JSON), is_builtin`. `seed_roles(org)` ۵ نقشِ
   پیش‌فرض می‌سازد؛ سازمان می‌تواند نقشِ سفارشی هم بسازد.

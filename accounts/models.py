@@ -102,7 +102,7 @@ class Membership(models.Model):
 
     user = models.ForeignKey(User, verbose_name='کاربر', on_delete=models.CASCADE, related_name='memberships')
     organization = models.ForeignKey(Organization, verbose_name='سازمان', on_delete=models.CASCADE, related_name='memberships')
-    role = models.CharField('نقش', max_length=12, choices=ROLE_CHOICES, default=MEMBER)
+    role = models.CharField('نقش', max_length=32, choices=ROLE_CHOICES, default=MEMBER)
     is_active = models.BooleanField('فعال', default=True)
     joined_at = models.DateTimeField('زمان عضویت', auto_now_add=True)
 
