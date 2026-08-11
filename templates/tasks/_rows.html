@@ -31,7 +31,7 @@
     {% endif %}
     {% endif %}
     <td class="timer-cell" data-id="{{ t.id }}" data-spent="{{ t.spent_minutes }}" data-running="{% if t.timer_started_at %}1{% else %}0{% endif %}" data-started="{% if t.timer_started_at %}{{ t.timer_started_at|date:'c' }}{% endif %}">
-      {% if t.assignee_id == my_colleague_id or can_edit_time %}<button class="tbtn" title="شروع/توقف تایمر">▶</button>{% endif %}
+      {% if t.assignee_id == my_colleague_id or can_manage_any_timer %}<button class="tbtn" title="شروع/توقف تایمر">▶</button>{% endif %}
       <span class="tval">{{ t.spent_minutes|hours }}</span>
       {% if can_edit_time %}<i class="tedit" title="ویرایش زمان (مدیر)">✏️</i>{% endif %}
     </td>

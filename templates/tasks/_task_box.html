@@ -1,0 +1,16 @@
+{% load seo_extras %}
+<section class="card glass" style="margin-top:14px">
+  <div class="card-h"><h3>{{ title }}</h3><span class="chip">{{ tasks|length|fa_digits }} مورد</span></div>
+  {% if tasks %}
+    <div class="tsheet-wrap">
+    <table class="tsheet"{% if table_id %} id="{{ table_id }}"{% endif %}>
+      <thead><tr><th style="width:26px">{% if can_edit_task %}<input type="checkbox" class="check-all">{% endif %}</th><th style="width:26px"></th><th style="min-width:200px">عنوان</th><th>پروژه</th><th>مسئول</th><th>تاریخ برنامه</th><th>تاریخ انجام</th><th>وضعیت</th><th>زمان</th>{% for c in extra_columns %}<th>{{ c.label }}</th>{% endfor %}</tr></thead>
+      <tbody>
+        {% include "tasks/_rows.html" %}
+      </tbody>
+    </table>
+    </div>
+  {% else %}
+    <div class="empty"><div class="ico">{{ empty_icon }}</div><h4>{{ empty_text }}</h4></div>
+  {% endif %}
+</section>

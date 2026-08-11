@@ -20,7 +20,6 @@
       {% for v,l in status_choices %}<option value="{{ v }}" {% if filters.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
     <span class="sep"></span>
     <a href="?overdue=1" class="chip {% if filters.overdue == '1' %}on{% endif %}" style="border-color:rgba(251,87,115,.4);color:#FFA3B3">🔴 عقب‌افتاده‌ها</a>
-    <a href="?all=1" class="chip {% if filters.all == '1' %}on{% endif %}">بدون فیلتر بازه</a>
     <a href="?group=day" class="chip {% if grouped_by_day %}on{% endif %}">📅 تفکیکِ روزانه (انجام‌شده)</a>
     {% if grouped_by_day %}<a href="{% url 'tasks:list' %}" class="chip">✕ خروج از تفکیک</a>{% endif %}
   </form>
@@ -52,39 +51,15 @@
     {% endif %}
   {% else %}
 
-  {# ── لیست ── #}
-  <section class="card glass">
-    {% if tasks %}
-      <div class="tsheet-wrap">
-      <table class="tsheet">
-        <thead><tr><th style="width:26px">{% if can_edit_task %}<input type="checkbox" class="check-all">{% endif %}</th><th style="width:26px"></th><th style="min-width:200px">عنوان</th><th>پروژه</th><th>مسئول</th><th>تاریخ برنامه</th><th>تاریخ انجام</th><th>وضعیت</th><th>زمان</th>{% for c in extra_columns %}<th>{{ c.label }}</th>{% endfor %}</tr></thead>
-        <tbody>
-          {% include "tasks/_rows.html" %}
-        </tbody>
-      </table>
-      </div>
-    {% else %}
-      <div class="empty"><div class="ico">☰</div><h4>تسکی در این بازه/فیلتر نیست</h4>
-        {% if can_create_task %}<button class="btn btn-p" id="new-task" style="margin-top:12px">＋ تسک جدید</button>{% endif %}
-      </div>
-    {% endif %}
-  </section>
-  <script>window.TASKS_LAZY = {hasMore: {{ has_more|yesno:"true,false" }}, page: 1};</script>
+  {# ── جعبه‌ی ۱: این‌هفته + عقب‌افتاده‌ها (قدیمی‌ترین/عقب‌افتاده‌ترین اول) ── #}
+  {% include "tasks/_task_box.html" with title="این هفته و عقب‌افتاده‌ها" tasks=box_recent empty_icon="✅" empty_text="کاری برای این هفته یا عقب‌افتاده‌ای نیست" %}
 
-  {# ── #۳: تسک‌های آینده (بعد از پایان بازه) — دقیقاً مثلِ جدولِ بالا، با ویرایشِ inline ── #}
-  {% if future_tasks %}
-    <section class="card glass" style="margin-top:14px">
-      <div class="card-h"><h3>تسک‌های آینده</h3><span class="chip">{{ future_tasks|length|fa_digits }} مورد بعد از این بازه</span></div>
-      <div class="tsheet-wrap">
-      <table class="tsheet">
-        <thead><tr><th style="width:26px">{% if can_edit_task %}<input type="checkbox" class="check-all">{% endif %}</th><th style="width:26px"></th><th style="min-width:200px">عنوان</th><th>پروژه</th><th>مسئول</th><th>تاریخ برنامه</th><th>تاریخ انجام</th><th>وضعیت</th><th>زمان</th>{% for c in extra_columns %}<th>{{ c.label }}</th>{% endfor %}</tr></thead>
-        <tbody>
-          {% include "tasks/_rows.html" with tasks=future_tasks %}
-        </tbody>
-      </table>
-      </div>
-    </section>
-  {% endif %}
+  {# ── جعبه‌ی ۲: آینده، بیش از ۱ هفته (نزدیک‌ترین تاریخ اول) ── #}
+  {% include "tasks/_task_box.html" with title="تسک‌های آینده (بیش از ۱ هفته)" tasks=box_future empty_icon="📆" empty_text="تسکِ آینده‌ای بیش از یک هفته نیست" %}
+
+  {# ── جعبه‌ی ۳: انجام‌شده‌ها (جدیدترین اول، لودِ تنبل) ── #}
+  {% include "tasks/_task_box.html" with title="تسک‌های انجام‌شده" tasks=box_done table_id="done-tsheet" empty_icon="☑" empty_text="هنوز تسکِ انجام‌شده‌ای ثبت نشده" %}
+  <script>window.TASKS_LAZY = {hasMore: {{ has_more_done|yesno:"true,false" }}, page: 1};</script>
 
   {# ── نوار عملیات گروهی ── #}
   {% if can_edit_task %}

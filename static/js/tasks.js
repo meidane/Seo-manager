@@ -452,11 +452,11 @@
     try { const d = await App.fetchJSON(`/tasks/api/${id}/timer/`, { method: 'PATCH', body: { minutes: cur } }); cell.dataset.spent = d.spent_minutes; renderTimerCell(cell); } catch (_) {}
   });
 
-  // ── لودِ تنبل: اسکرول برای صفحه‌بندیِ لیستِ تسک‌ها (بیش از ۵۰ ردیف) ──
+  // ── لودِ تنبل: اسکرول برای صفحه‌بندیِ جعبه‌ی «انجام‌شده‌ها» (بیش از ۵۰ ردیف) ──
   (function () {
     const lz = window.TASKS_LAZY;
     if (!lz) return;
-    const tbody = document.querySelector('.tsheet tbody');
+    const tbody = document.querySelector('#done-tsheet tbody');
     if (!tbody) return;
     let loading = false;
     async function loadMore() {

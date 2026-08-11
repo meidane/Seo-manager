@@ -121,7 +121,7 @@
 
   {# تسک‌ها #}
   <section class="card glass tab-panel" data-panel="tasks">
-    <div class="card-h"><h3>تسک‌های پروژه در بازه</h3><div class="side-c"><a href="{% url 'tasks:list' %}?project={{ project.pk }}&all=1" class="btn btn-sm">مدیریت کامل ↗</a></div></div>
+    <div class="card-h"><h3>تسک‌های پروژه در بازه</h3><div class="side-c"><a href="{% url 'tasks:list' %}?project={{ project.pk }}&assignee=" class="btn btn-sm">مدیریت کامل ↗</a></div></div>
     <table>
       <thead><tr><th>عنوان</th><th>مسئول</th><th>تاریخ برنامه</th><th>وضعیت</th><th>🔗</th></tr></thead>
       <tbody>{% for t in task_rows %}<tr>

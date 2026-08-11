@@ -1,4 +1,6 @@
 """ویوهای صفحه‌ای تسک‌ها — لیست/کانبان و بازبینی."""
+from datetime import date, timedelta
+
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView
 
@@ -9,12 +11,18 @@ from core.models import ColumnConfig
 from projects.access import accessible_project_ids
 from projects.models import Project
 
+from .api import can_manage_any_timer
 from .models import Task, TaskTypeDef
 from .queries import PAGE_SIZE, build_task_queryset, group_done_by_day, reviewable_q
 
+# سقفِ دفاعی برای جعبه‌های «این هفته/عقب‌افتاده» و «آینده» — این دو لودِ تنبل ندارند
+# (طبیعتاً محدودند: بارِ کاریِ نزدیک، نه کلِ تاریخچه)؛ فقط جعبه‌ی «انجام‌شده» صفحه‌بندی دارد.
+BOX_CAP = 300
+
 
 class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
-    """لیست + کانبان با فیلترها. بازه‌ی زمانی سراسری روی planned_date اعمال می‌شود."""
+    """لیست + کانبان با فیلترها. دیدِ پیش‌فرض سه جعبه است (این‌هفته+عقب‌افتاده / آینده /
+    انجام‌شده)، مستقل از بازه‌ی سراسری — `?group=day` تفکیکِ روزانه‌ی جداست."""
 
     template_name = 'tasks/list.html'
 
@@ -30,26 +38,26 @@ class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
 
         ctx.update(self.range_context())
         ctx['grouped_by_day'] = g.get('group') == 'day'
-        ctx['has_more'] = False
+        ctx['has_more_done'] = False
         if ctx['grouped_by_day']:
             # «مشاهده‌ی همه» از داشبورد (تسک‌های انجام‌شده به تفکیک روز) — همان بازه‌ی
             # سراسری، ولی روی done_date گروه‌بندی می‌شود، نه planned_date.
             ctx['day_groups'] = group_done_by_day(base, start, end)
-            ctx['tasks'] = []
-            ctx['future_tasks'] = []
+            ctx['box_recent'] = ctx['box_future'] = ctx['box_done'] = []
         else:
-            if g.get('all') == '1':
-                ranged = base.order_by('planned_date', 'planned_time', 'id')
-                ctx['future_tasks'] = []
-            else:
-                ranged = base.filter(planned_date__range=(start, end)).order_by(
-                    'planned_date', 'planned_time', 'id')
-                # #۳: تسک‌های آینده (پس از پایانِ بازه، هنوز انجام‌نشده) در انتهای لیست
-                ctx['future_tasks'] = base.filter(planned_date__gt=end).exclude(
-                    status=Task.DONE).order_by('planned_date', 'planned_time')[:100]
-            # لودِ تنبل: صفحه‌ی اول ۵۰ تا؛ بقیه با اسکرول از api.task_rows_page می‌آید
-            ctx['tasks'] = list(ranged[:PAGE_SIZE])
-            ctx['has_more'] = ranged[PAGE_SIZE:PAGE_SIZE + 1].exists()
+            today = date.today()
+            week_end = today + timedelta(days=6)
+            not_done = base.exclude(status=Task.DONE)
+            # جعبه‌ی ۱: این‌هفته + عقب‌افتاده‌ها (هر چقدر قدیمی)، قدیمی‌ترین/عقب‌افتاده‌ترین اول
+            ctx['box_recent'] = list(not_done.filter(planned_date__lte=week_end).order_by(
+                'planned_date', 'planned_time', 'id')[:BOX_CAP])
+            # جعبه‌ی ۲: آینده، بیش از ۱ هفته — نزدیک‌ترین تاریخ اول
+            ctx['box_future'] = list(not_done.filter(planned_date__gt=week_end).order_by(
+                'planned_date', 'planned_time', 'id')[:BOX_CAP])
+            # جعبه‌ی ۳: انجام‌شده‌ها — جدیدترین اول، لودِ تنبل (تاریخچه می‌تواند خیلی بزرگ شود)
+            done_qs = base.filter(status=Task.DONE).order_by('-done_date', '-id')
+            ctx['box_done'] = list(done_qs[:PAGE_SIZE])
+            ctx['has_more_done'] = done_qs[PAGE_SIZE:PAGE_SIZE + 1].exists()
         visible_projects = Project.objects.filter(id__in=ids) if ids is not None else Project.objects.all()
         ctx['projects'] = visible_projects.filter(status=Project.ACTIVE)
         ctx['colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)
@@ -63,8 +71,11 @@ class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
         ctx['extra_columns'] = get_columns(ColumnConfig.TASKS, ColumnConfig.PAGE)
         ctx['page_title'] = 'تسک‌ها'
         ctx['filters'] = filters
-        # ویرایشِ مستقیمِ زمانِ دیگران: پرمیشنِ جداگانه‌ی edit_time (تنظیم‌شدنی در نقش‌ها)
+        # ویرایشِ دستیِ عددِ زمانِ دیگران: پرمیشنِ edit_time (تنظیم‌شدنی در نقش‌ها)
         ctx['can_edit_time'] = bool(m and m.can('edit_time'))
+        # استارت/استاپِ تایمرِ تسکِ دیگران (نه فقط ویرایشِ دستیِ عدد) — edit_time یا
+        # edit_task-بدونِ-own_tasks_only؛ دکمه‌ی ▶ روی تسکِ دیگران را همین گیت می‌کند.
+        ctx['can_manage_any_timer'] = can_manage_any_timer(m)
         # own_tasks_only از قبل لیست را به تسک‌های خودش محدود کرده؛ پس این‌جا فقط چکِ
         # سطحِ سازمانی کافی است — اگر می‌بیندش، یعنی مالِ خودش است (یا own_tasks_only ندارد)
         ctx['can_edit_task'] = bool(m and m.can('edit_task'))

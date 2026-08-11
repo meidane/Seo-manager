@@ -39,6 +39,15 @@ def _is_own_task(request, task):
     return bool(colleague and task.assignee_id == colleague.id)
 
 
+def can_manage_any_timer(m):
+    """می‌تواند تایمرِ تسکِ **هرکسِ دیگری** را هم استارت/استاپ کند (نه فقط خودش)؟
+    `edit_time` (پرمیشنِ صریح، برای ویرایشِ دستیِ زمان هم لازم است) یا `edit_task`
+    بدونِ `own_tasks_only` (کسی که به‌طورِ کلی مسئولِ مدیریتِ تسک‌هاست، منطقی است که
+    بتواند تایمرشان را هم کنترل کند — نیازی به تیک‌زدنِ جداگانه‌ی `edit_time` نیست
+    فقط برای دکمه‌ی پلی؛ آن پرمیشن مخصوصِ ویرایشِ دستیِ عددِ زمان می‌ماند)."""
+    return bool(m and (m.can('edit_time') or (m.can('edit_task') and not m.can('own_tasks_only'))))
+
+
 def _task_visible_ok(request, task):
     """این تسک برای کاربرِ جاری قابل‌مشاهده است؟ پروژه‌اش در فهرستِ دسترسی است، یا
     خودش مسئولِ همین تسک است (تسکِ دلیگیت‌شده بیرون از پروژه)."""
@@ -175,9 +184,10 @@ def form_data(request):
 @login_required
 @require_http_methods(['GET'])
 def task_rows_page(request):
-    """صفحه‌بندیِ ردیف‌های لیستِ تسک‌ها برای لودِ تنبل (اسکرول، بیش از PAGE_SIZE تا).
-    همان فیلترها/دسترسیِ TaskListView را از `build_task_queryset` می‌گیرد تا با
-    صفحه‌ی اول (رندرِ سرور) دقیقاً هماهنگ بماند — منبعِ واحدِ فیلتر."""
+    """صفحه‌بندیِ جعبه‌ی «انجام‌شده‌ها» برای لودِ تنبل (اسکرول، بیش از PAGE_SIZE تا) —
+    فقط این جعبه صفحه‌بندی دارد؛ «این‌هفته/عقب‌افتاده» و «آینده» طبیعتاً محدودند
+    (`tasks/views.py: BOX_CAP`). همان فیلترها/دسترسیِ TaskListView را از
+    `build_task_queryset` می‌گیرد تا با صفحه‌ی اول (رندرِ سرور) دقیقاً هماهنگ بماند."""
     from django.template.loader import render_to_string
 
     from colleagues.models import Colleague
@@ -194,10 +204,7 @@ def task_rows_page(request):
         page = max(1, int(request.GET.get('page') or 1))
     except (TypeError, ValueError):
         page = 1
-    if filters.get('all') != '1':
-        start, end = _range_from_session(request)
-        base = base.filter(planned_date__range=(start, end))
-    qs = base.order_by('planned_date', 'planned_time', 'id')
+    qs = base.filter(status=Task.DONE).order_by('-done_date', '-id')
     start_i, end_i = (page - 1) * PAGE_SIZE, page * PAGE_SIZE
     rows = list(qs[start_i:end_i])
     has_more = qs[end_i:end_i + 1].exists()
@@ -209,6 +216,7 @@ def task_rows_page(request):
         'tasks': rows,
         'can_edit_task': bool(m and m.can('edit_task')),
         'can_edit_time': bool(m and m.can('edit_time')),
+        'can_manage_any_timer': can_manage_any_timer(m),
         'my_colleague_id': my_colleague.id if my_colleague else None,
         'extra_columns': get_columns(ColumnConfig.TASKS, ColumnConfig.PAGE),
         'status_choices': Task.STATUS_CHOICES,
@@ -216,11 +224,6 @@ def task_rows_page(request):
         'all_colleagues': Colleague.objects.order_by('status', 'full_name'),
     }, request=request)
     return JsonResponse({'html': html, 'has_more': has_more, 'page': page})
-
-
-def _range_from_session(request):
-    from core.daterange import DateRangeMixin
-    return DateRangeMixin().get_range(request)
 
 
 def _publish_url_error(task):
@@ -340,6 +343,8 @@ def task_status(request, pk):
     """تغییر سریع وضعیت (دراپ‌داون ردیف و drag کانبان). مسئولِ خودِ تسک هم می‌تواند
     وضعیتِ تسکِ خودش را عوض کند (تمامش کند)، حتی بدونِ edit_task — دلیگیت‌شده."""
     task = get_object_or_404(Task, pk=pk)
+    if not _task_visible_ok(request, task):
+        return JsonResponse({'detail': 'به این تسک دسترسی نداری'}, status=403)
     if not _task_perm_ok(request, task, 'edit_task') and not _is_own_task(request, task):
         return JsonResponse({'detail': 'دسترسیِ ویرایشِ این تسک را نداری'}, status=403)
     data = _body(request)
@@ -378,10 +383,14 @@ def running_timers(request):
 @login_required
 @require_http_methods(['POST', 'PATCH'])
 def task_timer(request, pk):
-    """تایمرِ کارِ تسک. POST {action:start|stop}: فقط مسئولِ خودِ تسک (یا کسی که
-    edit_time دارد)؛ استارتِ یک تسک هر تایمرِ دیگرِ در حالِ اجرای همان مسئول را خودکار
-    استاپ می‌کند (هر کاربر هم‌زمان فقط یک تایمرِ فعال). PATCH {minutes}: فقط edit_time."""
+    """تایمرِ کارِ تسک. POST {action:start|stop}: مسئولِ خودِ تسک، یا کسی که
+    `can_manage_any_timer` (edit_time یا edit_task-بدونِ-own_tasks_only) دارد — یعنی
+    مدیر/سرپرست هم می‌تواند تایمرِ تسکِ دیگران را استارت/استاپ کند، نه فقط خودشان.
+    استارتِ یک تسک هر تایمرِ دیگرِ در حالِ اجرای همان مسئول را خودکار استاپ می‌کند
+    (هر مسئول هم‌زمان فقط یک تایمرِ فعال). PATCH {minutes} (ویرایشِ دستیِ عدد): فقط edit_time."""
     task = get_object_or_404(Task, pk=pk)
+    if not _task_visible_ok(request, task):
+        return JsonResponse({'detail': 'به این تسک دسترسی نداری'}, status=403)
     m = getattr(request, 'membership', None)
     can_edit_time = bool(m and m.can('edit_time'))
     if request.method == 'PATCH':
@@ -393,9 +402,9 @@ def task_timer(request, pk):
             return JsonResponse({'detail': 'عدد نامعتبر'}, status=400)
         task.save(update_fields=['spent_minutes', 'updated_at'])
         return JsonResponse({'spent_minutes': task.spent_minutes, 'timer_running': bool(task.timer_started_at)})
-    # POST start/stop — فقط مسئولِ خودِ تسک یا دارنده‌ی edit_time
-    if not _is_own_task(request, task) and not can_edit_time:
-        return JsonResponse({'detail': 'فقط مسئولِ تسک می‌تواند تایمرِ آن را شروع/توقف کند'}, status=403)
+    # POST start/stop — مسئولِ خودِ تسک، یا کسی که اجازه‌ی مدیریتِ تایمرِ دیگران را دارد
+    if not _is_own_task(request, task) and not can_manage_any_timer(m):
+        return JsonResponse({'detail': 'دسترسیِ استارت/استاپِ تایمرِ این تسک را نداری'}, status=403)
     action = _body(request).get('action')
     now = timezone.now()
     stopped = None
