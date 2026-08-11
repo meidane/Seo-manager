@@ -27,10 +27,12 @@ def org(request):
     if '*' in perms:  # مالک: '*' یعنی همه، ولی چک‌های تمپلیت رشته‌ی دقیق می‌خواهند
         from .permissions import PERMS
         perms = set(PERMS)
+    from .permissions import SETTINGS_PERMS
     return {
         'current_org': organization,
         'current_membership': membership,
         'org_perms': perms,
         'my_orgs': my_orgs,
         'pending_invites': pending_invites,
+        'has_settings_access': any(p in perms for p in SETTINGS_PERMS),
     }

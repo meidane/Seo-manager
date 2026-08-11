@@ -11,16 +11,19 @@
 - **TeamMembership** (user↔team).
 - **Role** (per org) — `key, name, perms(JSON), is_builtin`. `seed_roles(org)` ۵ نقشِ
   پیش‌فرض می‌سازد؛ سازمان می‌تواند نقشِ سفارشی هم بسازد.
-- **Invite** — دعوت‌نامه‌ی **در انتظار** (نه عضویتِ فوری). `organization, user(اختیاری)،
-  phone، role، colleague(اختیاری، FK به `colleagues.Colleague`)، status(pending/accepted/
-  rejected)، invited_by`. تنها راهِ ساخت: `colleagues.views.colleague_grant_access` (تبِ
-  «دسترسی به سیستم» در سینگلِ فرد) — **فقط با شماره تماس**، هرگز نام‌کاربری/رمز نمی‌سازیم:
+- **Invite** — دعوت‌نامه‌ی **در انتظار** (نه عضویتِ فوری، فقط برای مسیرِ `mode=invite`
+  — پایین). `organization, user(اختیاری)، phone، role، colleague(اختیاری، FK به
+  `colleagues.Colleague`)، status(pending/accepted/rejected)، invited_by`:
   - شماره از قبل حساب دارد → `user` بلافاصله ست می‌شود.
   - شماره حساب ندارد → `user=None`، فقط `phone` ذخیره می‌شود؛ وقتی همان شماره در
     `/signup/` ثبت‌نام کند، `views.signup` به‌جای ساختِ سازمانِ تازه فقط حساب می‌سازد و
     آن را به همین دعوت وصل می‌کند («claim» — بدونِ این مسیر، سازمانِ تازه ساخته می‌شود).
   `accept()` عضویت می‌سازد (+ `colleague.user` را هم وصل می‌کند)؛ `reject()` فقط وضعیت
   را عوض می‌کند (می‌شود دوباره دعوت کرد).
+- **دو راهِ دادنِ دسترسی** (هر دو در `colleagues.views._grant_access`، جزئیات در
+  `colleagues/CLAUDE.md`): `mode=invite` (بالا، فقط شماره، خودش رمز می‌سازد) یا
+  `mode=password` (مدیر خودش نام‌کاربری/رمز می‌سازد → دسترسیِ فوری، بدونِ Invite —
+  نسخه‌ی اولیه‌ای که مدیر خودش دسترسی‌ها را می‌سازد، طبق درخواستِ کاربر).
 
 ## چندشرکتی (`tenancy.py`) — مهم
 - **سازمانِ جاری** در thread-local؛ `CurrentOrgMiddleware` آن را از session
@@ -36,6 +39,14 @@
   Transaction, Payroll. (Holiday **عمومیِ ملی** است، اسکوپ نمی‌شود.)
 - **تله:** management commandها سازمانِ جاری ندارند → `objects` بدون فیلتر برمی‌گرداند؛
   seedهای per-org باید سازمان را صریح بدهند یا `set_current_org` کنند.
+
+## هابِ تنظیمات (`/settings/`)
+تکِ لینکِ سایدبار زیرِ «تنظیمات» (`SettingsHomeView`، تمپلیت `accounts/settings_home.html`)
+— کارت‌های راهنما به هر صفحه‌ی تنظیمات (هرکدام فقط اگر پرمیشنش را داشته باشی) + فرمِ
+ویرایشِ **نامِ سازمان** (`organization_edit`، PATCH، `manage_org`). دسترسیِ خودِ صفحه: هر
+پرمیشنی از `permissions.SETTINGS_PERMS`. سایدبار هم با همین لیست گیت می‌شود
+(`has_settings_access` در context processor) — لینکِ واحد، نه پنج لینکِ جدا. تبِ اولِ
+نوارِ `settings/_nav.html` («سازمان») همیشه به همین صفحه برمی‌گردد.
 
 ## صفحه/API (`/settings/people/`) — **فقط تیم‌ها و نقش‌های سفارشی**
 «افراد» (فهرست/دسترسیِ تک‌تکِ افراد) اینجا نیست — به `colleagues:list` منتقل شد (یک بخشِ

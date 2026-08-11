@@ -1,4 +1,5 @@
 <div class="settings-nav">
+  <a href="{% url 'accounts:settings_home' %}" class="{% if request.resolver_match.url_name == 'settings_home' %}on{% endif %}">سازمان</a>
   {% if 'manage_people' in org_perms %}
     <a href="{% url 'accounts:people' %}" class="{% if request.resolver_match.app_name == 'accounts' and request.resolver_match.url_name == 'people' %}on{% endif %}">تیم‌ها و نقش‌ها</a>
   {% endif %}

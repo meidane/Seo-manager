@@ -11,6 +11,10 @@ urlpatterns = [
     path('signup/', views.signup, name='signup'),
     path('settings/switch-org/', views.switch_org, name='switch_org'),
 
+    # هابِ تنظیمات (تکِ لینکِ سایدبار) + ویرایشِ نامِ سازمان
+    path('settings/', views.SettingsHomeView.as_view(), name='settings_home'),
+    path('settings/api/organization/', views.organization_edit, name='organization_edit'),
+
     # تیم‌ها و نقش‌های سفارشی (خودِ «افراد» به colleagues:list منتقل شد)
     path('settings/people/', views.PeopleView.as_view(), name='people'),
     path('settings/people/api/team/', views.team_create, name='team_create'),

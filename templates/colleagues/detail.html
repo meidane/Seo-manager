@@ -92,16 +92,22 @@
             {% endif %}
           </p>
         {% elif can_manage_colleagues %}
-          <p class="sub" style="margin-bottom:12px">این فرد هنوز حساب کاربری ندارد. فقط شماره‌ی تماسش را بزن — ساختِ حساب دستِ خودِ اوست؛ اگر شماره از قبل ثبت‌نام کرده باشد بلافاصله دعوت می‌شود، وگرنه به‌محضِ ثبت‌نام با همین شماره خودکار وصل می‌شود.</p>
+          <p class="sub" style="margin-bottom:12px">این فرد هنوز حساب کاربری ندارد.</p>
+          <div style="display:flex;gap:14px;margin-bottom:12px">
+            <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="radio" name="grant-mode" value="invite" checked> دعوت با شماره (خودش رمز می‌سازد)</label>
+            <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="radio" name="grant-mode" value="password"> تعیینِ رمزِ مستقیم (خودم دسترسی می‌سازم)</label>
+          </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div class="field"><label>شماره تماس</label><input type="text" id="grant-phone" dir="ltr" value="{{ colleague.phone }}"></div>
+            <div class="field" data-grant="invite"><label>شماره تماس</label><input type="text" id="grant-phone" dir="ltr" value="{{ colleague.phone }}"></div>
+            <div class="field" data-grant="password" style="display:none"><label>نام‌کاربری</label><input type="text" id="grant-username" dir="ltr"></div>
+            <div class="field" data-grant="password" style="display:none"><label>رمز عبور</label><input type="text" id="grant-password" dir="ltr"></div>
             <div class="field"><label>نقش سازمانی</label>
               <select id="grant-role">
                 {% for r in org_roles %}<option value="{{ r.key }}" {% if r.key == 'member' %}selected{% endif %}>{{ r.name }}</option>{% endfor %}
               </select>
             </div>
           </div>
-          <button type="button" class="btn btn-p" id="grant-access-btn" style="margin-top:10px">ارسال دعوت‌نامه</button>
+          <button type="button" class="btn btn-p" id="grant-access-btn" style="margin-top:10px">ذخیره</button>
         {% else %}
           <p class="sub">این فرد هنوز حساب کاربری ندارد.</p>
         {% endif %}
@@ -168,16 +174,29 @@ document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.cl
   const card = document.getElementById('access-card');
   if(!card) return;
 
+  const modeRadios = card.querySelectorAll('input[name="grant-mode"]');
+  function syncMode(){
+    const mode = card.querySelector('input[name="grant-mode"]:checked').value;
+    card.querySelectorAll('[data-grant]').forEach(el => { el.style.display = el.dataset.grant === mode ? '' : 'none'; });
+  }
+  modeRadios.forEach(r => r.addEventListener('change', syncMode));
+  if(modeRadios.length) syncMode();
+
   const grantBtn = document.getElementById('grant-access-btn');
   if(grantBtn){
     grantBtn.addEventListener('click', () => {
-      const body = {
-        phone: document.getElementById('grant-phone').value,
-        role: document.getElementById('grant-role').value,
-      };
-      if(!body.phone.trim()){ App.toast('شماره لازم است', 'warn'); return; }
+      const mode = card.querySelector('input[name="grant-mode"]:checked').value;
+      const body = {mode, role: document.getElementById('grant-role').value};
+      if(mode === 'password'){
+        body.username = document.getElementById('grant-username').value.trim();
+        body.password = document.getElementById('grant-password').value;
+        if(!body.username || !body.password){ App.toast('نام‌کاربری و رمز لازم است', 'warn'); return; }
+      } else {
+        body.phone = document.getElementById('grant-phone').value.trim();
+        if(!body.phone){ App.toast('شماره لازم است', 'warn'); return; }
+      }
       App.fetchJSON('{% url "colleagues:grant_access" colleague.pk %}', {method: 'POST', body})
-        .then(() => { App.toast('دعوت‌نامه ارسال شد', 'ok'); window.location.reload(); })
+        .then(() => { App.toast('ذخیره شد', 'ok'); window.location.reload(); })
         .catch(() => {});
     });
   }

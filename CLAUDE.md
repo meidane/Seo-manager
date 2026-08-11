@@ -53,7 +53,8 @@
 | چکِ دسترسیِ سازمانی در ویو/API | `accounts/access.py: require_perm/has_perm` |
 | فهرستِ id پروژه‌های قابل‌دیدنِ کاربرِ جاری | `projects/access.py: accessible_project_ids` |
 | دعوت‌نامه‌ی در انتظار (نه عضویتِ فوری، فقط با شماره تماس) | `accounts/models.py: Invite` + `colleagues.views.colleague_grant_access` (+ `docs/PLATFORM.md`) |
-| نوارِ تبِ صفحاتِ تنظیمات | `templates/settings/_nav.html` (کلاسِ CSS: `.settings-nav`) |
+| نوارِ تبِ صفحاتِ تنظیمات + هابِ سایدبار | `templates/settings/_nav.html` + `accounts:settings_home` — لینکِ سایدبار «تنظیمات» یکی است، گیت‌شده با `has_settings_access` (context processor، از `accounts/permissions.py: SETTINGS_PERMS`) |
+| دادنِ دسترسیِ سیستم به یک فرد | `colleagues.views._grant_access` (`mode=invite` فقط شماره / `mode=password` مدیر خودش رمز می‌سازد) |
 
 ## دستورهای کلیدی
 ```bash

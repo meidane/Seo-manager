@@ -54,6 +54,38 @@ def _team_tree(org):
 
 # ── صفحه ────────────────────────────────────────────────────────────────
 
+class SettingsHomeView(LoginRequiredMixin, TemplateView):
+    """هابِ تنظیمات (`/settings/`) — تکِ لینکِ سایدبار زیرِ «تنظیمات»؛ کارت‌های راهنما
+    به تک‌تکِ صفحه‌ها (هرکدام فقط اگر دسترسی‌اش را داشته باشی) + ویرایشِ نامِ سازمان."""
+
+    template_name = 'accounts/settings_home.html'
+
+    def get_context_data(self, **kwargs):
+        from .permissions import SETTINGS_PERMS
+        ctx = super().get_context_data(**kwargs)
+        m = getattr(self.request, 'membership', None)
+        if not m or not any(m.can(p) for p in SETTINGS_PERMS):
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied('دسترسی کافی نداری')
+        ctx['org'] = self.request.organization
+        ctx['can_manage_org'] = m.can('manage_org')
+        ctx['page_title'] = 'تنظیمات'
+        return ctx
+
+
+@login_required
+@require_http_methods(['PATCH'])
+def organization_edit(request):
+    org = _require(request, 'manage_org')
+    d = _body(request)
+    name = (d.get('name') or '').strip()
+    if not name:
+        return JsonResponse({'detail': 'نام سازمان لازم است'}, status=400)
+    org.name = name
+    org.save(update_fields=['name'])
+    return JsonResponse({'ok': True, 'name': org.name})
+
+
 class PeopleView(LoginRequiredMixin, TemplateView):
     """تیم‌ها/زیرمجموعه‌ها + نقش‌های سفارشی — «افراد» (فهرست/دسترسیِ تک‌تکِ افراد) از اینجا
     به `colleagues:list` منتقل شد (یک بخشِ واحد «افراد و دسترسی‌ها»، نه دو جای جدا)."""

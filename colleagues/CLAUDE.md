@@ -19,14 +19,23 @@ roles_list/roles_display, initials, is_active`.
   همچنان کار می‌کند، برای موقعی که فقط می‌خواهیم کارش را ردیابی کنیم، نه اینکه لاگین
   داشته باشد).
 
-## دسترسی به سیستم — فقط با شماره تماس، هرگز نام‌کاربری/رمز
-تبِ اطلاعاتِ سینگلِ فرد (بخشِ «دسترسی به سیستم») تنها راهِ دادنِ دسترسی است. مدیر **فقط
-شماره تماس** را وارد می‌کند (`colleague_grant_access`) — ساختِ حساب همیشه دستِ خودِ فرد
-است، نه ما:
-- شماره از قبل حساب دارد → `accounts.Invite` بلافاصله به آن حساب وصل می‌شود.
-- شماره حساب ندارد → `Invite` با `user=None` + `phone` ساخته می‌شود؛ وقتی همان شماره در
-  `/signup/` ثبت‌نام کند، `accounts.views.signup` به‌جای ساختِ سازمانِ تازه فقط حساب
-  می‌سازد و به همین دعوت وصل می‌کند (`accounts/CLAUDE.md`).
+## دسترسی به سیستم — دو حالت، منبع واحد `_grant_access`
+تبِ اطلاعاتِ سینگلِ فرد (بخشِ «دسترسی به سیستم») + دکمه‌ی «＋ کاربر جدید» در فهرست، هر دو
+از `colleagues.views._grant_access(request, org, colleague, d)` استفاده می‌کنند — منطق را
+جای دیگر تکرار نکن:
+- **`mode=invite`** (پیش‌فرض): فقط شماره تماس؛ ساختِ حساب دستِ خودِ فرد است.
+  شماره از قبل حساب دارد → `accounts.Invite` بلافاصله به آن حساب وصل می‌شود. شماره حساب
+  ندارد → `Invite` با `user=None` + `phone` ساخته می‌شود؛ وقتی همان شماره در `/signup/`
+  ثبت‌نام کند، `accounts.views.signup` به‌جای ساختِ سازمانِ تازه فقط حساب می‌سازد و به
+  همین دعوت وصل می‌کند (`accounts/CLAUDE.md`). دسترسی **در انتظارِ قبولِ خودِ اوست**.
+- **`mode=password`**: مدیر خودش نام‌کاربری/رمز را تعیین می‌کند — دسترسیِ **فوری**، بدونِ
+  Invite/در انتظار (نسخه‌ی اولیه‌ای که خودمان دسترسی‌ها را می‌سازیم، طبق درخواستِ صریح).
+
+دو نقطه‌ی ورود:
+- **فردِ موجود، بدونِ دسترسی** → `colleague_grant_access` (پروفایلِ خودِ فرد، `pk` لازم).
+- **فردِ کاملاً تازه** → `colleague_quick_create` (دکمه‌ی «＋ کاربر جدید» در `/colleagues/`)
+  — یک Colleague می‌سازد + بلافاصله `_grant_access` صدا می‌زند؛ اگر دسترسی شکست خورد
+  (مثلاً نام‌کاربری تکراری)، Colleagueِ تازه‌ساز هم rollback می‌شود (حذف)، نه نیمه‌کاره بماند.
 
 در هر دو حالت، `Invite.accept()` هم عضویت می‌سازد هم `colleague.user` را وصل می‌کند —
 بعدش تبِ «دسترسی به سیستم» یک مینی‌فرمِ نقشِ سازمانی + تیم‌ها + فعال/غیرفعال نشان می‌دهد
@@ -38,13 +47,13 @@ roles_list/roles_display, initials, is_active`.
   - `ColleagueListView` — **جدولی** با آمار بازه‌ای (annotate: planned/done/words/minutes/overdue)
     + اسپارک‌لاین ۱۴ روزه (یک کوئری، گروه‌بندی پایتون در `get_context_data`) + ستونِ
     «دسترسی» (`c.access_status`: `has_access`/`pending`/`none`، یک کوئریِ Invite برای
-    کلِ صفحه). ستون‌های آماری از `core.columns.get_columns('colleagues','page')` می‌آیند
-    — تنظیم در `/settings/columns/`.
+    کلِ صفحه) + دکمه‌ی «＋ کاربر جدید» (مودالِ دو-حالته، بالا). ستون‌های آماری از
+    `core.columns.get_columns('colleagues','page')` می‌آیند — تنظیم در `/settings/columns/`.
   - `ColleagueDetailView` — آمار بازه، **دونات** تفکیک نوع (`donut_segments`)، تفکیک پروژه،
     روند روزانه، تب تقویم شخصی (embed)، تب تسک‌ها + بخشِ «دسترسی به سیستم» (بالا).
   - CRUD + archive/restore («افزودنِ فرد» — فقط پروفایل، بدونِ حساب).
-  - `colleague_grant_access` / `colleague_revoke_invite` — API دعوت‌نامه‌ی دسترسی؛
-    گیت‌شده با `manage_colleagues`.
+  - `colleague_grant_access` / `colleague_quick_create` / `colleague_revoke_invite` —
+    API دسترسی؛ گیت‌شده با `manage_colleagues`.
 - `forms.py` — نقش چک‌باکسی، `join_date` با `jdate`، توضیحات `rich-editor` + `clean_html`.
 
 ## نکته

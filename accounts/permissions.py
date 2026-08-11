@@ -68,3 +68,8 @@ def role_can(role: str, perm: str) -> bool:
 
 def role_perms(role: str) -> set:
     return ROLE_PERMS.get(role, set())
+
+
+# کلیدهایی که به یکی از تب‌های «تنظیمات» راه دارند — برای گیتِ لینکِ واحدِ سایدبار/
+# دسترسیِ صفحه‌ی هاب (`accounts:settings_home`)، نه یک صفحه‌ی مشخص.
+SETTINGS_PERMS = ('manage_org', 'manage_people', 'manage_task_types', 'manage_columns', 'manage_holidays')

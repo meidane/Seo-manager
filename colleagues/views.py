@@ -115,6 +115,10 @@ class ColleagueListView(LoginRequiredMixin, DateRangeMixin, ListView):
         ctx['columns'] = get_columns(ColumnConfig.COLLEAGUES, ColumnConfig.PAGE)
         ctx['page_title'] = 'افراد و دسترسی‌ها'
         ctx['q'] = self.request.GET.get('q', '')
+        org = getattr(self.request, 'organization', None)
+        ctx['org_roles'] = list(org.roles.all()) if org else []
+        ctx['can_manage_colleagues'] = bool(getattr(self.request, 'membership', None)
+                                             and self.request.membership.can('manage_colleagues'))
         return ctx
 
 
@@ -275,17 +279,58 @@ class ColleagueRestoreView(LoginRequiredMixin, View):
         return redirect(colleague.get_absolute_url())
 
 
-# ── API: دسترسیِ همکار به سیستم (دعوت‌نامه) ─────────────────────────────────
+# ── API: دسترسیِ همکار به سیستم (دعوت‌نامه یا رمزِ مستقیم) ──────────────────
+
+def _grant_access(request, org, colleague, d):
+    """منطقِ مشترکِ دادنِ دسترسی — هم از `colleague_grant_access` (فردِ موجود) هم از
+    `colleague_quick_create` (فردِ تازه) صدا زده می‌شود.
+    `mode='invite'`: فقط شماره؛ دعوت‌نامه‌ی در انتظار (خودش بعداً رمز می‌سازد).
+    `mode='password'`: مدیر خودش نام‌کاربری/رمز را تعیین می‌کند — دسترسی **فوری**، نه
+    در انتظار (برای نسخه‌ی اولیه که خودمان دسترسی‌ها را می‌سازیم)."""
+    from accounts.models import Invite, Membership, User
+
+    mode = d.get('mode') or 'invite'
+    role = d.get('role') if org.roles.filter(key=d.get('role')).exists() else 'member'
+
+    if mode == 'password':
+        username = (d.get('username') or '').strip()
+        password = d.get('password') or ''
+        if not username or not password:
+            return JsonResponse({'detail': 'نام‌کاربری و رمز لازم است'}, status=400)
+        if len(password) < 6:
+            return JsonResponse({'detail': 'رمز عبور حداقل ۶ کاراکتر باشد'}, status=400)
+        if User.objects.filter(username=username).exists():
+            return JsonResponse({'detail': 'این نام‌کاربری قبلاً ثبت شده'}, status=400)
+        name_parts = colleague.full_name.split(maxsplit=1)
+        u = User.objects.create_user(
+            username=username, password=password,
+            first_name=name_parts[0] if name_parts else '',
+            last_name=name_parts[1] if len(name_parts) > 1 else '',
+            email=colleague.email, phone=colleague.phone)
+        Membership.objects.create(user=u, organization=org, role=role)
+        colleague.user = u
+        colleague.save(update_fields=['user'])
+        return JsonResponse({'ok': True}, status=201)
+
+    phone = (d.get('phone') or '').strip()
+    if not phone:
+        return JsonResponse({'detail': 'شماره‌ی تماس لازم است'}, status=400)
+    u = User.objects.filter(phone=phone).first()
+    if u and Membership.objects.filter(user=u, organization=org).exists():
+        return JsonResponse({'detail': 'این کاربر قبلاً عضو سازمان است'}, status=400)
+    Invite.objects.create(
+        organization=org, user=u, phone=phone, role=role,
+        colleague=colleague, invited_by=request.user)
+    return JsonResponse({'ok': True}, status=201)
+
 
 @login_required
 @require_http_methods(['POST'])
 def colleague_grant_access(request, pk):
-    """با فقط یک شماره تماس، دعوت‌نامه‌ی در انتظار می‌سازد — نه نام‌کاربری، نه رمز؛
-    ساختِ حساب همیشه دستِ خودِ فرد است. اگر شماره از قبل حساب دارد، دعوت‌نامه بلافاصله
-    به آن حساب وصل می‌شود؛ اگر ندارد، دعوت‌نامه بدونِ کاربر ثبت می‌شود و وقتی آن شماره
-    در `/signup/` حساب بسازد، خودکار به همین دعوت وصل می‌شود (`views.signup`).
-    قبول/ردِ دعوت با `accounts.Invite.accept/reject`."""
-    from accounts.models import Invite, Membership, User
+    """به همکارِ موجود دسترسی می‌دهد — یا با دعوت‌نامه‌ی شماره‌محور (`mode=invite`،
+    پیش‌فرض) یا با تعیینِ مستقیمِ نام‌کاربری/رمز توسطِ مدیر (`mode=password`، دسترسیِ
+    فوری، بدونِ در انتظار). `_grant_access` منطقِ مشترک را دارد."""
+    from accounts.models import Invite
 
     org = require_perm(request, 'manage_colleagues')
     colleague = get_object_or_404(Colleague, pk=pk)
@@ -293,21 +338,26 @@ def colleague_grant_access(request, pk):
         return JsonResponse({'detail': 'این همکار قبلاً به سیستم دسترسی دارد'}, status=400)
     if Invite.objects.filter(colleague=colleague, status=Invite.PENDING).exists():
         return JsonResponse({'detail': 'قبلاً دعوت‌نامه‌ی در انتظار برای این همکار ثبت شده'}, status=400)
+    return _grant_access(request, org, colleague, _body(request))
 
+
+@login_required
+@require_http_methods(['POST'])
+def colleague_quick_create(request):
+    """افزودنِ فردِ تازه + دادنِ دسترسی در یک قدم — دکمه‌های «کاربر جدید»/«دعوت با شماره»
+    در صفحه‌ی فهرستِ افراد. بدنه: `{full_name, phone, mode, username?, password?, role}`."""
+    org = require_perm(request, 'manage_colleagues')
     d = _body(request)
-    phone = (d.get('phone') or '').strip()
-    if not phone:
-        return JsonResponse({'detail': 'شماره‌ی تماس لازم است'}, status=400)
-    role = d.get('role') if org.roles.filter(key=d.get('role')).exists() else 'member'
-
-    u = User.objects.filter(phone=phone).first()
-    if u and Membership.objects.filter(user=u, organization=org).exists():
-        return JsonResponse({'detail': 'این کاربر قبلاً عضو سازمان است'}, status=400)
-
-    Invite.objects.create(
-        organization=org, user=u, phone=phone, role=role,
-        colleague=colleague, invited_by=request.user)
-    return JsonResponse({'ok': True}, status=201)
+    full_name = (d.get('full_name') or '').strip()
+    if not full_name:
+        return JsonResponse({'detail': 'نام لازم است'}, status=400)
+    colleague = Colleague.objects.create(
+        full_name=full_name, phone=(d.get('phone') or '').strip(), organization=org)
+    resp = _grant_access(request, org, colleague, d)
+    if resp.status_code >= 400:
+        colleague.delete()
+        return resp
+    return JsonResponse({'ok': True, 'id': colleague.id}, status=201)
 
 
 @login_required

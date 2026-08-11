@@ -22,30 +22,10 @@
     {% if 'manage_finance' in org_perms %}
     <a href="{% url 'finance:dashboard' %}" class="{% if request.resolver_match.namespace == 'finance' %}on{% endif %}"><span class="ico">₮</span> حسابداری</a>
     {% endif %}
+    {% if has_settings_access %}
     <div class="nav-label">تنظیمات</div>
-    {% if 'manage_people' in org_perms %}
-    <a href="{% url 'accounts:people' %}" class="{% if request.resolver_match.url_name == 'people' %}on{% endif %}">
-      <span class="ico">◍</span> تیم‌ها و نقش‌ها
-    </a>
-    {% endif %}
-    {% if 'manage_task_types' in org_perms %}
-    <a href="{% url 'task_types:list' %}" class="{% if request.resolver_match.namespace == 'task_types' %}on{% endif %}">
-      <span class="ico">◫</span> انواع تسک
-    </a>
-    {% endif %}
-    {% if 'manage_columns' in org_perms %}
-    <a href="{% url 'core:columns' %}" class="{% if request.resolver_match.url_name == 'columns' %}on{% endif %}">
-      <span class="ico">▥</span> ستون‌ها
-    </a>
-    {% endif %}
-    {% if 'manage_org' in org_perms %}
-    <a href="{% url 'accounts:api_tokens' %}" class="{% if request.resolver_match.url_name == 'api_tokens' %}on{% endif %}">
-      <span class="ico">⚿</span> توکن‌های API
-    </a>
-    {% endif %}
-    {% if 'manage_holidays' in org_perms %}
-    <a href="{% url 'core:holidays' %}" class="{% if request.resolver_match.namespace == 'core' %}on{% endif %}">
-      <span class="ico">✦</span> تعطیلات
+    <a href="{% url 'accounts:settings_home' %}" class="{% if request.resolver_match.url_name == 'settings_home' or request.resolver_match.url_name == 'people' or request.resolver_match.namespace == 'task_types' or request.resolver_match.url_name == 'columns' or request.resolver_match.url_name == 'holidays' or request.resolver_match.url_name == 'api_tokens' %}on{% endif %}">
+      <span class="ico">⚙</span> تنظیمات
     </a>
     {% endif %}
     <a href="{% url 'accounts:logout' %}"><span class="ico">⏻</span> خروج</a>
