@@ -29,9 +29,9 @@ def build_task_queryset(request):
     چون آن دو به شکلِ فراخوان جدا اعمال می‌شوند.
 
     برمی‌گرداند: `(queryset, filters)` — `filters` کپیِ GET با یک تفاوت: اگر کاربر
-    محدودیتِ `own_tasks_only` نداشت ولی هیچ `assignee`ای هم انتخاب نکرده بود
-    (بارِ اولِ صفحه)، پیش‌فرض روی خودش قفل می‌شود (درخواستِ کاربر: «به‌صورتِ پیش‌فرض
-    فقط تسک‌های خودش») — قابلِ تغییر با انتخابِ «همه‌ی همکاران» در دراپ‌داون."""
+    محدودیتِ `own_tasks_only` نداشت، «سرپرست» هم نبود (پایین) و هیچ `assignee`ای هم
+    انتخاب نکرده بود (بارِ اولِ صفحه)، پیش‌فرض روی خودش قفل می‌شود (درخواستِ کاربر:
+    «به‌صورتِ پیش‌فرض فقط تسک‌های خودش») — قابلِ تغییر با انتخابِ «همه‌ی همکاران» در دراپ‌داون."""
     from .models import Task
 
     g = request.GET
@@ -39,24 +39,34 @@ def build_task_queryset(request):
 
     m = getattr(request, 'membership', None)
     my_colleague = getattr(request.user, 'colleague', None)
+    # «سرپرست»: کسی که زیرمجموعه‌ی مستقیم دارد یا پرمیشنِ سازمانیِ ناظر بر بقیه دارد
+    # (review/manage_colleagues/manage_projects) — باید پیش‌فرض همه‌چیزِ قابل‌دسترس را
+    # ببیند، نه فقط تسکِ خودش (own_tasks_only همیشه اولویتِ محدودکننده دارد، پایین).
+    has_reports = bool(my_colleague and my_colleague.reports.exists())
+    is_manager_tier = has_reports or bool(m and (
+        m.can('review') or m.can('manage_colleagues') or m.can('manage_projects')))
 
     # دسترسیِ پروژه‌محور: فقط مالک/دارنده‌ی manage_projects همه را می‌بیند؛ بقیه فقط
-    # پروژه‌هایی که عضوشان هستند — **به‌علاوه‌ی تسک‌هایی که خودشان مسئولش‌اند**، حتی اگر
-    # پروژه‌اش عضو نباشند (تسکِ دلیگیت‌شده: می‌بیند/انجامش می‌دهد، ولی بقیه‌ی پروژه را نه).
+    # پروژه‌هایی که عضوشان هستند — **به‌علاوه‌ی تسک‌هایی که خودشان مسئولش‌اند** (تسکِ
+    # دلیگیت‌شده، حتی بیرون از پروژه) **و به‌علاوه‌ی تسک‌هایی که مسئولش زیرمجموعه‌ی
+    # مستقیمِ خودشان است** (سرپرست باید کارِ زیرمجموعه‌هایش را ببیند، حتی در پروژه‌ای که
+    # خودش عضو نیست — همان الگویی که ویجتِ تایمر/بازبینی از قبل دارند).
     ids = accessible_project_ids(request)
     if ids is not None:
         q = Q(project_id__in=ids)
         if my_colleague:
             q |= Q(assignee_id=my_colleague.id)
+            if has_reports:
+                q |= Q(assignee__manager_id=my_colleague.id)
         base = base.filter(q)
 
-    # own_tasks_only: محدودیتِ سخت — فقط تسک‌های خودش (نه پیش‌فرضِ قابل‌تغییر)
+    # own_tasks_only: محدودیتِ سخت — فقط تسک‌های خودش (نه پیش‌فرضِ قابل‌تغییر، برنده‌ی هرچیزِ دیگر)
     forced_own = bool(m and m.can('own_tasks_only'))
     if forced_own:
         base = base.filter(assignee_id=my_colleague.id if my_colleague else -1)
 
     filters = g.copy()
-    if not forced_own and my_colleague and 'assignee' not in g and 'group' not in g:
+    if not forced_own and not is_manager_tier and my_colleague and 'assignee' not in g and 'group' not in g:
         filters['assignee'] = str(my_colleague.id)
 
     if filters.get('project'):
