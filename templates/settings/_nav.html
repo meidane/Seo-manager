@@ -1,6 +1,6 @@
 <div class="settings-nav">
   {% if 'manage_people' in org_perms %}
-    <a href="{% url 'accounts:people' %}" class="{% if request.resolver_match.app_name == 'accounts' and request.resolver_match.url_name == 'people' %}on{% endif %}">افراد و نقش‌ها</a>
+    <a href="{% url 'accounts:people' %}" class="{% if request.resolver_match.app_name == 'accounts' and request.resolver_match.url_name == 'people' %}on{% endif %}">تیم‌ها و نقش‌ها</a>
   {% endif %}
   {% if 'manage_task_types' in org_perms %}
     <a href="{% url 'task_types:list' %}" class="{% if request.resolver_match.app_name == 'task_types' %}on{% endif %}">انواع تسک</a>

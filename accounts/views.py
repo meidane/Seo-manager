@@ -55,31 +55,24 @@ def _team_tree(org):
 # ── صفحه ────────────────────────────────────────────────────────────────
 
 class PeopleView(LoginRequiredMixin, TemplateView):
+    """تیم‌ها/زیرمجموعه‌ها + نقش‌های سفارشی — «افراد» (فهرست/دسترسیِ تک‌تکِ افراد) از اینجا
+    به `colleagues:list` منتقل شد (یک بخشِ واحد «افراد و دسترسی‌ها»، نه دو جای جدا)."""
+
     template_name = 'accounts/people.html'
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         org = _require(self.request, 'manage_people')
-        members = (Membership.objects.filter(organization=org)
-                   .select_related('user').order_by('-joined_at'))
-        # عضویت‌های تیمیِ هر کاربر در این سازمان
-        tm = {}
-        for x in TeamMembership.objects.filter(team__organization=org).select_related('team'):
-            tm.setdefault(x.user_id, []).append(x.team)
-        rows = []
-        for m in members:
-            rows.append({'m': m, 'teams': tm.get(m.user_id, [])})
         role_objs = list(org.roles.all())
         ctx.update({
             'org': org,
-            'rows': rows,
             'teams_flat': list(org.teams.select_related('parent').all()),
             'team_tree': _team_tree(org),
             'roles': [(r.key, r.name) for r in role_objs],
             'role_objs': role_objs,
             'all_perms': list(PERM_LABELS.items()),
             'perm_label_map': PERM_LABELS,
-            'page_title': 'افراد و دسترسی‌ها',
+            'page_title': 'تیم‌ها و نقش‌ها',
         })
         return ctx
 
@@ -127,31 +120,11 @@ def _set_teams(user, org, team_ids):
 
 
 @login_required
-@require_http_methods(['POST'])
-def person_create(request):
-    org = _require(request, 'manage_people')
-    d = _body(request)
-    username = (d.get('username') or '').strip()
-    password = d.get('password') or ''
-    if not username or not password:
-        return JsonResponse({'detail': 'نام‌کاربری و رمز لازم است'}, status=400)
-    if User.objects.filter(username=username).exists():
-        return JsonResponse({'detail': 'این نام‌کاربری قبلاً ثبت شده'}, status=400)
-    role = d.get('role') if org.roles.filter(key=d.get('role')).exists() else 'member'
-    u = User.objects.create_user(
-        username=username, password=password,
-        first_name=(d.get('first_name') or '').strip(),
-        last_name=(d.get('last_name') or '').strip(),
-        email=(d.get('email') or '').strip(),
-        phone=(d.get('phone') or '').strip())
-    Membership.objects.create(user=u, organization=org, role=role)
-    _set_teams(u, org, d.get('teams'))
-    return JsonResponse({'id': u.id}, status=201)
-
-
-@login_required
 @require_http_methods(['PATCH', 'DELETE'])
 def person_edit(request, pk):
+    """ویرایشِ نقشِ سازمانی/تیم/فعال‌بودنِ کسی که از قبل عضو است (دعوت را پذیرفته) —
+    از تبِ «دسترسی به سیستم» در سینگلِ همکار صدا زده می‌شود (`colleagues/detail.html`)،
+    نه از یک جدولِ جدا؛ `pk` همان `user_id` است (`Membership` با `colleague.user` یکی است)."""
     org = _require(request, 'manage_people')
     m = get_object_or_404(Membership, user_id=pk, organization=org)
     if request.method == 'DELETE':
@@ -176,29 +149,6 @@ def person_edit(request, pk):
     if 'teams' in d:
         _set_teams(m.user, org, d.get('teams'))
     return JsonResponse({'ok': True})
-
-
-@login_required
-@require_http_methods(['POST'])
-def person_invite(request):
-    """دعوتِ فردی که «قبلاً ثبت‌نام کرده» با شماره‌ی تماس، به سازمانِ جاری —
-    **دعوت‌نامه‌ی در انتظار** می‌سازد (نه عضویتِ فوری)؛ فرد بعد از لاگین بالای
-    صفحه قبول/رد می‌کند (`invite_accept`/`invite_reject`)."""
-    org = _require(request, 'manage_people')
-    d = _body(request)
-    phone = (d.get('phone') or '').strip()
-    if not phone:
-        return JsonResponse({'detail': 'شماره‌ی تماس لازم است'}, status=400)
-    role = d.get('role') if org.roles.filter(key=d.get('role')).exists() else 'member'
-    u = User.objects.filter(phone=phone).first()
-    if not u:
-        return JsonResponse({'detail': 'کاربری با این شماره ثبت‌نام نکرده است'}, status=400)
-    if Membership.objects.filter(user=u, organization=org).exists():
-        return JsonResponse({'detail': 'این فرد قبلاً عضو سازمان است'}, status=400)
-    if Invite.objects.filter(user=u, organization=org, status=Invite.PENDING).exists():
-        return JsonResponse({'detail': 'قبلاً برای این فرد دعوت‌نامه‌ی در انتظار ثبت شده'}, status=400)
-    Invite.objects.create(organization=org, user=u, role=role, invited_by=request.user)
-    return JsonResponse({'ok': True}, status=201)
 
 
 @login_required
@@ -334,7 +284,13 @@ def token_revoke(request, pk):
 
 @require_http_methods(['GET', 'POST'])
 def signup(request):
-    """ثبت‌نامِ آزاد: کاربرِ مالک + سازمانِ جدید + نقش‌های پیش‌فرض."""
+    """ثبت‌نامِ آزاد: کاربرِ مالک + سازمانِ جدید + نقش‌های پیش‌فرض.
+
+    **مسیرِ دومِ همین صفحه:** اگر شماره‌ی واردشده دعوت‌نامه‌ی در انتظارِ بدونِ‌کاربر دارد
+    (`Invite.user is None` — یعنی کسی از `colleagues:` با همین شماره دعوتش کرده، بدونِ
+    اینکه هنوز حساب داشته باشد)، سازمانِ تازه ساخته نمی‌شود؛ فقط حساب ساخته و به همان
+    دعوت‌نامه(ها) وصل می‌شود، تا در `/invites/` قبول/ردش کند. این یعنی «ساختِ حساب» همیشه
+    دستِ خودِ فرد است، نه مدیرِ سازمان (که فقط شماره را وارد می‌کند)."""
     if request.user.is_authenticated:
         return redirect('dashboard:index')
     if request.method == 'GET':
@@ -346,9 +302,15 @@ def signup(request):
     password = p.get('password') or ''
     phone = (p.get('phone') or '').strip()
     full_name = (p.get('full_name') or '').strip()
+
+    pending_invites = list(Invite.objects.filter(
+        phone=phone, user__isnull=True, status=Invite.PENDING)) if phone else []
+
     err = None
-    if not (org_name and username and password):
-        err = 'نام شرکت، نام‌کاربری و رمز الزامی است'
+    if not username or not password:
+        err = 'نام‌کاربری و رمز الزامی است'
+    elif not pending_invites and not org_name:
+        err = 'نام شرکت الزامی است'
     elif User.objects.filter(username=username).exists():
         err = 'این نام‌کاربری قبلاً ثبت شده'
     elif len(password) < 6:
@@ -358,12 +320,17 @@ def signup(request):
 
     first, _, last = full_name.partition(' ')
     with transaction.atomic():
-        org = Organization.objects.create(name=org_name)
-        seed_roles(org)
         user = User.objects.create_user(
             username=username, password=password, phone=phone,
             first_name=first, last_name=last)
-        Membership.objects.create(user=user, organization=org, role='owner')
+        if pending_invites:
+            Invite.objects.filter(pk__in=[i.pk for i in pending_invites]).update(user=user)
+        else:
+            org = Organization.objects.create(name=org_name)
+            seed_roles(org)
+            Membership.objects.create(user=user, organization=org, role='owner')
     login(request, user)
+    if pending_invites:
+        return redirect('accounts:invites_landing')
     request.session['active_org_id'] = org.id
     return redirect('dashboard:index')

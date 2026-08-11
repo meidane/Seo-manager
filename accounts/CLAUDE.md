@@ -11,14 +11,16 @@
 - **TeamMembership** (user↔team).
 - **Role** (per org) — `key, name, perms(JSON), is_builtin`. `seed_roles(org)` ۵ نقشِ
   پیش‌فرض می‌سازد؛ سازمان می‌تواند نقشِ سفارشی هم بسازد.
-- **Invite** — دعوت‌نامه‌ی **در انتظار** (نه عضویتِ فوری). `organization, user, role,
-  colleague(اختیاری، FK به `colleagues.Colleague`)، status(pending/accepted/rejected)،
-  invited_by`. `accept()` عضویت می‌سازد (+ اگر `colleague` ست بود، `colleague.user` را هم
-  وصل می‌کند)؛ `reject()` فقط وضعیت را عوض می‌کند (می‌شود دوباره دعوت کرد).
-  دو مسیرِ ساخت: `views.person_invite` (دعوتِ فردِ ازقبل‌ثبت‌نام‌کرده با شماره، از
-  `/settings/people/`) و `colleagues.views.colleague_grant_access` (از پروفایلِ همکار —
-  یا کاربرِ ازقبل‌ثبت‌نام‌کرده را با شماره پیدا می‌کند، یا چون ایمیل نداریم حسابِ تازه
-  می‌سازد و نام‌کاربری/رمز را مدیر باید دستی به همکار برساند).
+- **Invite** — دعوت‌نامه‌ی **در انتظار** (نه عضویتِ فوری). `organization, user(اختیاری)،
+  phone، role، colleague(اختیاری، FK به `colleagues.Colleague`)، status(pending/accepted/
+  rejected)، invited_by`. تنها راهِ ساخت: `colleagues.views.colleague_grant_access` (تبِ
+  «دسترسی به سیستم» در سینگلِ فرد) — **فقط با شماره تماس**، هرگز نام‌کاربری/رمز نمی‌سازیم:
+  - شماره از قبل حساب دارد → `user` بلافاصله ست می‌شود.
+  - شماره حساب ندارد → `user=None`، فقط `phone` ذخیره می‌شود؛ وقتی همان شماره در
+    `/signup/` ثبت‌نام کند، `views.signup` به‌جای ساختِ سازمانِ تازه فقط حساب می‌سازد و
+    آن را به همین دعوت وصل می‌کند («claim» — بدونِ این مسیر، سازمانِ تازه ساخته می‌شود).
+  `accept()` عضویت می‌سازد (+ `colleague.user` را هم وصل می‌کند)؛ `reject()` فقط وضعیت
+  را عوض می‌کند (می‌شود دوباره دعوت کرد).
 
 ## چندشرکتی (`tenancy.py`) — مهم
 - **سازمانِ جاری** در thread-local؛ `CurrentOrgMiddleware` آن را از session
@@ -35,13 +37,19 @@
 - **تله:** management commandها سازمانِ جاری ندارند → `objects` بدون فیلتر برمی‌گرداند؛
   seedهای per-org باید سازمان را صریح بدهند یا `set_current_org` کنند.
 
-## صفحه/API (`/settings/people/`)
-مدیریتِ تیم‌ها/زیرمجموعه‌ها، افراد+نقش، **دعوت با شماره‌ی تماس** (فردِ ثبت‌نام‌کرده)،
-و **نقش‌های سفارشی**. محافظت با `_require(request, perm)`.
-API: `team_create/edit`, `person_create/edit`, `person_invite`, `role_create/edit`, `switch_org`.
+## صفحه/API (`/settings/people/`) — **فقط تیم‌ها و نقش‌های سفارشی**
+«افراد» (فهرست/دسترسیِ تک‌تکِ افراد) اینجا نیست — به `colleagues:list` منتقل شد (یک بخشِ
+واحدِ «افراد و دسترسی‌ها»، نه دو منوی جدا؛ جزئیات در `colleagues/CLAUDE.md`). این صفحه
+فقط تیم‌ها/زیرمجموعه‌ها و نقش‌های سفارشی را مدیریت می‌کند. محافظت با `_require(request, perm)`.
+API: `team_create/edit`, `person_edit`(ویرایشِ نقش/فعال‌بودن/تیمِ کسی که دعوت را پذیرفته —
+از تبِ «دسترسی به سیستم» در سینگلِ فرد صدا زده می‌شود، نه از جدولی اینجا)، `role_create/edit`,
+`switch_org`.
 
 ## ثبت‌نام و سوییچر
-- **`/signup/`** — ثبت‌نامِ آزاد: کاربرِ مالک + سازمان + `seed_roles`. (`registration/signup.html`)
+- **`/signup/`** — دو مسیر: (۱) عادی → کاربرِ مالک + سازمانِ تازه + `seed_roles`؛
+  (۲) اگر شماره‌ی واردشده دعوت‌نامه‌ی در انتظارِ بدونِ‌کاربر دارد → فقط حساب ساخته و به
+  همان دعوت وصل می‌شود (سازمانِ تازه ساخته نمی‌شود) — نگاه کن `Invite` بالا.
+  (`registration/signup.html`)
 - **سوییچرِ سازمان** در هدر (اگر کاربر در چند سازمان باشد) → `switch_org` (session).
 
 ## دعوت‌نامه‌ها (`/invites/`)

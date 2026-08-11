@@ -183,12 +183,15 @@ class Role(models.Model):
 
 
 class Invite(models.Model):
-    """دعوت‌نامه‌ی در انتظار — عضویتِ فوری نیست. کاربرِ دعوت‌شده بعد از لاگین، بالای
-    هر صفحه (`base.html`) می‌بیندش و قبول/رد می‌کند (`accept()`/`reject()`).
-    مسیرهای ساخت: `person_invite` (دعوت با شماره‌ی کاربرِ ثبت‌نام‌کرده، از
-    `/settings/people/`) و `colleagues.views.colleague_grant_access` (از پروفایلِ
-    همکار — کاربرِ جدید هم بسازد یا موجود را پیدا کند، فرقی ندارد، باز هم Invite
-    می‌سازد نه عضویتِ فوری)."""
+    """دعوت‌نامه‌ی در انتظار — عضویتِ فوری نیست. تنها راهِ افزودنِ فرد، شماره‌ی تماس است
+    (`colleagues.views.colleague_grant_access`، از پروفایلِ همکار)؛ ما هرگز نام‌کاربری/رمز
+    نمی‌سازیم — ساختِ حساب کاملاً دستِ خودِ فرد است.
+
+    دو حالت: (۱) شماره‌ای که از قبل کاربر دارد → `user` بلافاصله ست می‌شود. (۲) شماره‌ای
+    که هنوز حساب ندارد → `user=None` و `phone` نگه داشته می‌شود؛ وقتی آن شماره در
+    `/signup/` ثبت‌نام کند، `views.signup` به‌جای ساختِ سازمانِ تازه همین دعوت را با
+    حساب تازه‌ساز وصل می‌کند (`claim`). در هر دو حالت، فرد بعدِ لاگین بالای هر صفحه
+    (بدونِ سازمان → `/invites/`، با سازمان → بنر) قبول/رد می‌کند."""
 
     PENDING = 'pending'
     ACCEPTED = 'accepted'
@@ -196,7 +199,14 @@ class Invite(models.Model):
     STATUS_CHOICES = [(PENDING, 'در انتظار'), (ACCEPTED, 'پذیرفته‌شده'), (REJECTED, 'ردشده')]
 
     organization = models.ForeignKey(Organization, verbose_name='سازمان', on_delete=models.CASCADE, related_name='invites')
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name='کاربر', on_delete=models.CASCADE, related_name='invites')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name='کاربر', on_delete=models.CASCADE,
+        null=True, blank=True, related_name='invites',
+    )
+    phone = models.CharField(
+        'شماره تماس', max_length=20, blank=True,
+        help_text='برای دعوتِ شماره‌ای که هنوز ثبت‌نام نکرده — تا ثبت‌نامش با همین دعوت وصل شود.',
+    )
     role = models.CharField('نقش', max_length=32)
     colleague = models.ForeignKey(
         'colleagues.Colleague', verbose_name='همکار', on_delete=models.SET_NULL,
@@ -213,7 +223,8 @@ class Invite(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f'{self.user} → {self.organization} ({self.get_status_display()})'
+        who = self.user or self.phone or '—'
+        return f'{who} → {self.organization} ({self.get_status_display()})'
 
     @property
     def role_label(self):

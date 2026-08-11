@@ -103,8 +103,17 @@ class ColleagueListView(LoginRequiredMixin, DateRangeMixin, ListView):
             mx = max(raw) or 1
             c.spark = [max(round(v / mx * 100), 5) if v else 5 for v in raw]
 
+        # وضعیتِ دسترسی: «دسترسی دارد» (colleague.user ست است) / «در انتظار تایید دعوت»
+        # (Invite در انتظار) / «بدون دسترسی» — یک کوئری برای همه‌ی ردیف‌های صفحه.
+        from accounts.models import Invite
+        pending_ids = set(Invite.objects.filter(
+            colleague_id__in=[c.id for c in colleagues], status=Invite.PENDING
+        ).values_list('colleague_id', flat=True))
+        for c in colleagues:
+            c.access_status = 'has_access' if c.user_id else ('pending' if c.id in pending_ids else 'none')
+
         ctx['columns'] = get_columns(ColumnConfig.COLLEAGUES, ColumnConfig.PAGE)
-        ctx['page_title'] = 'همکاران'
+        ctx['page_title'] = 'افراد و دسترسی‌ها'
         ctx['q'] = self.request.GET.get('q', '')
         return ctx
 
@@ -163,12 +172,19 @@ class ColleagueDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
             Q(planned_date__range=(start, end)) | done_q).order_by('-planned_date')[:40]
         ctx['page_title'] = c.full_name
 
-        from accounts.models import Invite
+        from accounts.models import Invite, Membership
         org = getattr(self.request, 'organization', None)
         ctx['can_manage_colleagues'] = bool(getattr(self.request, 'membership', None)
                                              and self.request.membership.can('manage_colleagues'))
         ctx['pending_invite'] = Invite.objects.filter(colleague=c, status=Invite.PENDING).first()
         ctx['org_roles'] = list(org.roles.all()) if org else []
+        # اگر همکار دسترسی دارد، عضویتِ سازمانی/تیم‌هایش را هم برای ویرایش نشان بده
+        # (تبِ «دسترسی به سیستم» — دیگر جدولِ جدا در `/settings/people/` نیست).
+        if c.user_id and org:
+            ctx['access_membership'] = Membership.objects.filter(user_id=c.user_id, organization=org).first()
+            ctx['org_teams'] = list(org.teams.select_related('parent').all())
+            ctx['member_team_ids'] = list(
+                c.user.team_memberships.filter(team__organization=org).values_list('team_id', flat=True))
         return ctx
 
     @staticmethod
@@ -264,10 +280,11 @@ class ColleagueRestoreView(LoginRequiredMixin, View):
 @login_required
 @require_http_methods(['POST'])
 def colleague_grant_access(request, pk):
-    """برای همکاری که هنوز حساب کاربری ندارد، دعوت‌نامه‌ی در انتظار می‌سازد —
-    یا با شماره‌ی فردِ ازقبل‌ثبت‌نام‌کرده (mode=existing) یا با ساختِ حساب تازه
-    (mode=new، چون سرور ایمیل نداریم و نمی‌توانیم لینکِ دعوت بفرستیم؛ نام‌کاربری/رمز
-    را خودِ مدیر باید به همکار برساند). قبول/ردِ دعوت با `accounts.Invite.accept/reject`."""
+    """با فقط یک شماره تماس، دعوت‌نامه‌ی در انتظار می‌سازد — نه نام‌کاربری، نه رمز؛
+    ساختِ حساب همیشه دستِ خودِ فرد است. اگر شماره از قبل حساب دارد، دعوت‌نامه بلافاصله
+    به آن حساب وصل می‌شود؛ اگر ندارد، دعوت‌نامه بدونِ کاربر ثبت می‌شود و وقتی آن شماره
+    در `/signup/` حساب بسازد، خودکار به همین دعوت وصل می‌شود (`views.signup`).
+    قبول/ردِ دعوت با `accounts.Invite.accept/reject`."""
     from accounts.models import Invite, Membership, User
 
     org = require_perm(request, 'manage_colleagues')
@@ -278,31 +295,18 @@ def colleague_grant_access(request, pk):
         return JsonResponse({'detail': 'قبلاً دعوت‌نامه‌ی در انتظار برای این همکار ثبت شده'}, status=400)
 
     d = _body(request)
+    phone = (d.get('phone') or '').strip()
+    if not phone:
+        return JsonResponse({'detail': 'شماره‌ی تماس لازم است'}, status=400)
     role = d.get('role') if org.roles.filter(key=d.get('role')).exists() else 'member'
-    mode = d.get('mode') or 'new'
 
-    if mode == 'existing':
-        phone = (d.get('phone') or '').strip()
-        u = User.objects.filter(phone=phone).first() if phone else None
-        if not u:
-            return JsonResponse({'detail': 'کاربری با این شماره ثبت‌نام نکرده است'}, status=400)
-        if Membership.objects.filter(user=u, organization=org).exists():
-            return JsonResponse({'detail': 'این کاربر قبلاً عضو سازمان است'}, status=400)
-    else:
-        username = (d.get('username') or '').strip()
-        password = d.get('password') or ''
-        if not username or not password:
-            return JsonResponse({'detail': 'نام‌کاربری و رمز لازم است'}, status=400)
-        if User.objects.filter(username=username).exists():
-            return JsonResponse({'detail': 'این نام‌کاربری قبلاً ثبت شده'}, status=400)
-        name_parts = colleague.full_name.split(maxsplit=1)
-        u = User.objects.create_user(
-            username=username, password=password,
-            first_name=name_parts[0] if name_parts else '',
-            last_name=name_parts[1] if len(name_parts) > 1 else '',
-            email=colleague.email, phone=colleague.phone)
+    u = User.objects.filter(phone=phone).first()
+    if u and Membership.objects.filter(user=u, organization=org).exists():
+        return JsonResponse({'detail': 'این کاربر قبلاً عضو سازمان است'}, status=400)
 
-    Invite.objects.create(organization=org, user=u, role=role, colleague=colleague, invited_by=request.user)
+    Invite.objects.create(
+        organization=org, user=u, phone=phone, role=role,
+        colleague=colleague, invited_by=request.user)
     return JsonResponse({'ok': True}, status=201)
 
 

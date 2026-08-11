@@ -16,7 +16,7 @@
     <a href="{% url 'tasks:review' %}" class="{% if request.resolver_match.url_name == 'review' %}on{% endif %}"><span class="ico">◎</span> بازبینی تسک</a>
     <div class="nav-label">تیم و مالی</div>
     <a href="{% url 'colleagues:list' %}" class="{% if request.resolver_match.namespace == 'colleagues' %}on{% endif %}">
-      <span class="ico">◉</span> همکاران
+      <span class="ico">◉</span> افراد و دسترسی‌ها
     </a>
     <a href="{% url 'reports:list' %}" class="{% if request.resolver_match.namespace == 'reports' %}on{% endif %}"><span class="ico">▪</span> گزارش‌ها</a>
     {% if 'manage_finance' in org_perms %}
@@ -25,7 +25,7 @@
     <div class="nav-label">تنظیمات</div>
     {% if 'manage_people' in org_perms %}
     <a href="{% url 'accounts:people' %}" class="{% if request.resolver_match.url_name == 'people' %}on{% endif %}">
-      <span class="ico">◍</span> افراد و دسترسی‌ها
+      <span class="ico">◍</span> تیم‌ها و نقش‌ها
     </a>
     {% endif %}
     {% if 'manage_task_types' in org_perms %}

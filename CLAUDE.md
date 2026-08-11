@@ -9,8 +9,8 @@
 ## نقشه‌ی اپ‌ها (یک خط هر کدام)
 - `config/` — تنظیمات، urls ریشه، wsgi/asgi
 - `core/` — پایه‌ها: TimeStampedModel, Attachment, ActivityLog, Holiday, ColumnConfig(+`columns.py` کاتالوگ) + jalali/daterange/crypto/htmlsan + templatetags + editor_upload
-- `accounts/` — هویتِ چندشرکتی: Organization→Team→زیرمجموعه، Membership/نقشِ سفارشی، دعوت‌نامه(Invite)، صفحه‌ی افراد (`docs/PLATFORM.md`)
-- `colleagues/` — Colleague (CRUD + آمار سینگل + جدول+اسپارک‌لاین + مدیر/needs_review + دسترسی به سیستم)
+- `accounts/` — هویتِ چندشرکتی: Organization→Team→زیرمجموعه، Membership/نقشِ سفارشی، دعوت‌نامه(Invite، فقط با شماره تماس)، `/settings/people/` = فقط تیم‌ها/نقش‌ها (`docs/PLATFORM.md`)
+- `colleagues/` — **«افراد و دسترسی‌ها»**ی سایدبار: Colleague (CRUD + آمار سینگل + جدول+اسپارک‌لاین + مدیر/needs_review + دسترسی به سیستم با شماره تماس)
 - `projects/` — Project + Credential(رمزنگاری) + فایل‌ها + `members`(گیتِ دسترسیِ واقعی)؛ سینگل با تب‌ها
 - `tasks/` — **قلب سیستم**: Task, TaskComment, TaskTypeDef/Field؛ api.py + مودال سراسری
 - `calendarapp/` — تقویم شمسی (بدون مدل؛ منطق در calendar_logic.py) + دیت‌پیکر
@@ -52,7 +52,7 @@
 | دیت‌پیکر شمسی | `static/js/datepicker.js` (کلاس `jdate`) |
 | چکِ دسترسیِ سازمانی در ویو/API | `accounts/access.py: require_perm/has_perm` |
 | فهرستِ id پروژه‌های قابل‌دیدنِ کاربرِ جاری | `projects/access.py: accessible_project_ids` |
-| دعوت‌نامه‌ی در انتظار (نه عضویتِ فوری) | `accounts/models.py: Invite` (+ `docs/PLATFORM.md`) |
+| دعوت‌نامه‌ی در انتظار (نه عضویتِ فوری، فقط با شماره تماس) | `accounts/models.py: Invite` + `colleagues.views.colleague_grant_access` (+ `docs/PLATFORM.md`) |
 | نوارِ تبِ صفحاتِ تنظیمات | `templates/settings/_nav.html` (کلاسِ CSS: `.settings-nav`) |
 
 ## دستورهای کلیدی
@@ -111,6 +111,12 @@ python manage.py collectstatic --noinput  # فقط برای تست مرورگر/
     اگر تغییر داده شده، فقط دکمه‌ی × یا انصراف می‌بندد. فیلدهایی که از طریق ادیتورِ
     TinyMCE (iframe) تغییر می‌کنند این رویداد را به بیرون bubble نمی‌کنند — پس تغییرِ
     فقط‌متنِ ادیتور به‌تنهایی دیرتی نمی‌شود (محدودیتِ شناخته‌شده).
+18. **«همکاران» و «افراد و دسترسی‌ها» ادغام شدند** (یک منو، `colleagues:list`؛
+    `accounts:people` فقط تیم‌ها/نقش‌ها مانده). دادنِ دسترسی همیشه فقط با **شماره تماس**
+    است (`colleague_grant_access`) — هرگز نام‌کاربری/رمز نساز؛ اگر شماره حساب نداشت،
+    `Invite` با `user=None` می‌ماند تا `/signup/` با همان شماره خودکار وصلش کند (به‌جای
+    ساختِ سازمانِ تازه — `accounts/CLAUDE.md`، بخشِ Invite). اگر جایی نیاز به «افزودنِ
+    سریعِ فرد» داشتی، آن یعنی `colleagues:add` (بدونِ دسترسی)، نه یک فرمِ حساب‌ساز جدید.
 
 ## انضباط نگه‌داری (مهم)
 **به‌روزرسانی هینت بخشی از همان تغییر است.** وقتی فیلد/الگو/تله/منبع‌واحدِ جدید اضافه شد،

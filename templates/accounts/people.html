@@ -1,49 +1,25 @@
 {% extends "base.html" %}
 {% load seo_extras %}
-{% block title %}افراد و دسترسی‌ها{% endblock %}
+{% block title %}تیم‌ها و نقش‌ها{% endblock %}
 
 {% block content %}
   {% include "settings/_nav.html" %}
-  <div class="page-h"><h1>افراد و دسترسی‌ها</h1>
-    <div class="side-c"><span class="tag t-mute">سازمان: {{ org.name }}</span></div>
+  <div class="page-h"><h1>تیم‌ها و نقش‌ها</h1>
+    <div class="side-c"><span class="tag t-mute">سازمان: {{ org.name }}</span>
+      <a href="{% url 'colleagues:list' %}" class="btn btn-sm">افراد و دسترسی‌ها ↗</a></div>
   </div>
 
-  <div class="duo" style="display:grid;grid-template-columns:320px 1fr;gap:14px;align-items:start">
-
-    {# ── تیم‌ها و زیرمجموعه‌ها ── #}
-    <section class="card glass">
-      <div class="card-h"><h3>تیم‌ها</h3><div class="side-c"><button class="btn btn-sm btn-p" id="add-team">＋ تیم</button></div></div>
-      <div style="padding:12px 14px" id="team-tree">
-        {% for node in team_tree %}
-          {% include "accounts/_team_node.html" with node=node depth=0 %}
-        {% empty %}
-          <div class="zero">هنوز تیمی ساخته نشده</div>
-        {% endfor %}
-      </div>
-    </section>
-
-    {# ── افراد ── #}
-    <section class="card glass">
-      <div class="card-h"><h3>افراد</h3><div class="side-c">
-        <button class="btn btn-sm" id="invite-person">دعوت با شماره</button>
-        <button class="btn btn-sm btn-p" id="add-person">＋ افزودن فرد</button></div></div>
-      <table>
-        <thead><tr><th>نام</th><th>نام‌کاربری</th><th>نقش</th><th>تیم‌ها</th><th>وضعیت</th><th></th></tr></thead>
-        <tbody>
-          {% for row in rows %}
-            <tr data-uid="{{ row.m.user_id }}">
-              <td><b>{{ row.m.user.get_full_name|default:"—" }}</b></td>
-              <td dir="ltr" style="text-align:right">{{ row.m.user.username }}</td>
-              <td><span class="tag t-mute">{{ row.m.role_label }}</span></td>
-              <td>{% for t in row.teams %}<span class="tag" style="margin:1px">{{ t.name }}</span>{% empty %}<span class="zero">—</span>{% endfor %}</td>
-              <td>{% if row.m.is_active %}<span class="tag t-ok">فعال</span>{% else %}<span class="tag t-bad">غیرفعال</span>{% endif %}</td>
-              <td><button class="mini person-edit" data-uid="{{ row.m.user_id }}">ویرایش</button></td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </section>
-  </div>
+  {# ── تیم‌ها و زیرمجموعه‌ها ── #}
+  <section class="card glass">
+    <div class="card-h"><h3>تیم‌ها</h3><div class="side-c"><button class="btn btn-sm btn-p" id="add-team">＋ تیم</button></div></div>
+    <div style="padding:12px 14px" id="team-tree">
+      {% for node in team_tree %}
+        {% include "accounts/_team_node.html" with node=node depth=0 %}
+      {% empty %}
+        <div class="zero">هنوز تیمی ساخته نشده</div>
+      {% endfor %}
+    </div>
+  </section>
 
   {# ── نقش‌ها و دسترسی‌ها ── #}
   <section class="card glass" style="margin-top:14px">
@@ -66,18 +42,11 @@
 {% block scripts %}
 <script>
 (function(){
-  const ROLES = [{% for k,l in roles %}["{{ k }}","{{ l|escapejs }}"]{% if not forloop.last %},{% endif %}{% endfor %}];
   const TEAMS = [{% for t in teams_flat %}{id:{{ t.id }},name:"{{ t.name|escapejs }}",parent:{{ t.parent_id|default:'null' }}}{% if not forloop.last %},{% endif %}{% endfor %}];
-  const ROW = {}; {% for row in rows %}ROW[{{ row.m.user_id }}]={role:"{{ row.m.role }}",active:{{ row.m.is_active|yesno:"true,false" }},first:"{{ row.m.user.first_name|escapejs }}",last:"{{ row.m.user.last_name|escapejs }}",email:"{{ row.m.user.email|escapejs }}",teams:[{% for t in row.teams %}{{ t.id }}{% if not forloop.last %},{% endif %}{% endfor %}]};{% endfor %}
   const ALL_PERMS = [{% for k,l in all_perms %}["{{ k }}","{{ l|escapejs }}"]{% if not forloop.last %},{% endif %}{% endfor %}];
   const ROLE_DATA = {}; {% for r in role_objs %}ROLE_DATA[{{ r.id }}]={name:"{{ r.name|escapejs }}",key:"{{ r.key }}",builtin:{{ r.is_builtin|yesno:"true,false" }},perms:[{% for p in r.perms %}"{{ p }}"{% if not forloop.last %},{% endif %}{% endfor %}]};{% endfor %}
   const permBoxes=(sel)=>ALL_PERMS.map(([k,l])=>`<label style="display:flex;align-items:center;gap:7px;margin:0;padding:3px 0;cursor:pointer"><input type="checkbox" class="pm-box" value="${k}" ${sel.includes(k)?'checked':''} style="width:auto"> ${l}</label>`).join('');
   const pickedPerms=()=>[...document.querySelectorAll('.pm-box:checked')].map(c=>c.value);
-
-  const roleOpts=(sel)=>ROLES.map(([k,l])=>`<option value="${k}"${k===sel?' selected':''}>${l}</option>`).join('');
-  const teamBoxes=(ids)=>TEAMS.length?TEAMS.map(t=>`<label style="display:flex;align-items:center;gap:7px;margin:0;padding:3px 0;cursor:pointer">
-      <input type="checkbox" class="tm-box" value="${t.id}" ${ids.includes(t.id)?'checked':''} style="width:auto">
-      ${t.parent?'↳ ':''}${t.name}</label>`).join(''):'<div class="zero">تیمی نیست</div>';
 
   // ── تیم‌ها ──
   document.getElementById('add-team').onclick=()=>teamModal(null);
@@ -96,66 +65,6 @@
     if(ren){ const name=prompt('نام جدید تیم:',ren.dataset.name); if(name&&name.trim()){ await App.fetchJSON(`/settings/people/api/team/${ren.dataset.id}/`,{method:'PATCH',body:{name:name.trim()}}); location.reload(); } }
     if(del){ if(await App.confirm('این تیم و زیرمجموعه‌هایش حذف شوند؟')){ await App.fetchJSON(`/settings/people/api/team/${del.dataset.id}/`,{method:'DELETE'}); location.reload(); } }
   });
-
-  // ── افزودن فرد ──
-  document.getElementById('add-person').onclick=()=>{
-    App.openModal(`<div class="modal-h"><h3>افزودن فرد</h3><button class="x" onclick="App.closeModal()">×</button></div>
-      <div class="modal-b">
-        <div class="grid2"><div class="field"><label>نام</label><input class="input" id="p-first"></div>
-          <div class="field"><label>نام خانوادگی</label><input class="input" id="p-last"></div></div>
-        <div class="grid2"><div class="field"><label>نام‌کاربری *</label><input class="input" id="p-user" dir="ltr"></div>
-          <div class="field"><label>رمز عبور *</label><input class="input" id="p-pass" dir="ltr" type="text"></div></div>
-        <div class="grid2"><div class="field"><label>ایمیل</label><input class="input" id="p-email" dir="ltr"></div>
-          <div class="field"><label>نقش</label><select id="p-role">${roleOpts('member')}</select></div></div>
-        <label style="font-weight:700;display:block;margin-top:6px">تیم‌ها</label>
-        <div style="max-height:160px;overflow:auto;border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:8px">${teamBoxes([])}</div>
-      </div>
-      <div class="modal-f"><button class="btn btn-p" id="p-save">ذخیره</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
-    document.getElementById('p-save').onclick=async()=>{
-      const body={ username:val('p-user'), password:val('p-pass'), first_name:val('p-first'), last_name:val('p-last'),
-        email:val('p-email'), role:val('p-role'), teams:pickedTeams() };
-      if(!body.username||!body.password){App.toast('نام‌کاربری و رمز لازم است','warn');return;}
-      try{ await App.fetchJSON("{% url 'accounts:person_create' %}",{method:'POST',body}); location.reload(); }catch(_){}
-    };
-  };
-
-  // ── ویرایش فرد ──
-  document.querySelector('table').addEventListener('click',e=>{
-    const b=e.target.closest('.person-edit'); if(!b)return;
-    const uid=b.dataset.uid, r=ROW[uid];
-    App.openModal(`<div class="modal-h"><h3>ویرایش فرد</h3><button class="x" onclick="App.closeModal()">×</button></div>
-      <div class="modal-b">
-        <div class="grid2"><div class="field"><label>نام</label><input class="input" id="p-first" value="${r.first}"></div>
-          <div class="field"><label>نام خانوادگی</label><input class="input" id="p-last" value="${r.last}"></div></div>
-        <div class="grid2"><div class="field"><label>ایمیل</label><input class="input" id="p-email" dir="ltr" value="${r.email}"></div>
-          <div class="field"><label>نقش</label><select id="p-role">${roleOpts(r.role)}</select></div></div>
-        <label style="display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer"><input type="checkbox" id="p-active" ${r.active?'checked':''} style="width:auto"> فعال</label>
-        <label style="font-weight:700;display:block;margin-top:6px">تیم‌ها</label>
-        <div style="max-height:160px;overflow:auto;border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:8px">${teamBoxes(r.teams)}</div>
-      </div>
-      <div class="modal-f"><button class="btn btn-p" id="p-save">ذخیره</button>
-        <button class="btn" onclick="App.closeModal()">انصراف</button>
-        <button class="btn" id="p-del" style="margin-inline-start:auto;color:var(--danger)">حذف از سازمان</button></div>`);
-    document.getElementById('p-save').onclick=async()=>{
-      const body={ first_name:val('p-first'), last_name:val('p-last'), email:val('p-email'),
-        role:val('p-role'), is_active:document.getElementById('p-active').checked, teams:pickedTeams() };
-      try{ await App.fetchJSON(`/settings/people/api/person/${uid}/`,{method:'PATCH',body}); location.reload(); }catch(_){}
-    };
-    document.getElementById('p-del').onclick=async()=>{ if(await App.confirm('این فرد از سازمان حذف شود؟')){ await App.fetchJSON(`/settings/people/api/person/${uid}/`,{method:'DELETE'}); location.reload(); } };
-  });
-
-  // ── دعوت با شماره ──
-  document.getElementById('invite-person').onclick=()=>{
-    App.openModal(`<div class="modal-h"><h3>دعوت فردِ ثبت‌نام‌کرده</h3><button class="x" onclick="App.closeModal()">×</button></div>
-      <div class="modal-b"><p style="color:var(--text-faint);font-size:12px;margin-bottom:8px">شماره‌ی تماسِ فردی که قبلاً در سیستم ثبت‌نام کرده را وارد کن.</p>
-        <div class="grid2"><div class="field"><label>شماره تماس</label><input class="input" id="iv-phone" dir="ltr"></div>
-          <div class="field"><label>نقش</label><select id="iv-role">${roleOpts('member')}</select></div></div></div>
-      <div class="modal-f"><button class="btn btn-p" id="iv-save">دعوت</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
-    document.getElementById('iv-save').onclick=async()=>{
-      const phone=val('iv-phone'); if(!phone){App.toast('شماره لازم است','warn');return;}
-      try{ await App.fetchJSON("{% url 'accounts:person_invite' %}",{method:'POST',body:{phone,role:val('iv-role')}}); location.reload(); }catch(_){}
-    };
-  };
 
   // ── نقش سفارشی ──
   document.getElementById('add-role').onclick=()=>roleModal(null);
@@ -180,7 +89,6 @@
   document.querySelectorAll('.role-edit').forEach(b=>b.onclick=()=>roleModal(b.dataset.id));
 
   function val(id){const e=document.getElementById(id);return e?e.value.trim():'';}
-  function pickedTeams(){return [...document.querySelectorAll('.tm-box:checked')].map(c=>+c.value);}
 })();
 </script>
 {% endblock %}

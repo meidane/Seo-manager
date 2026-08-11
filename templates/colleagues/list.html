@@ -1,22 +1,22 @@
 {% extends "base.html" %}
 {% load seo_extras %}
-{% block title %}همکاران{% endblock %}
+{% block title %}افراد و دسترسی‌ها{% endblock %}
 
 {% block content %}
   <div class="page-h">
-    <h1>همکاران</h1>
+    <h1>افراد و دسترسی‌ها</h1>
     {% if range_start_fa %}<span class="range-note">{{ range_start_fa }} تا {{ range_end_fa }} — {{ range_days|fa_digits }} روز</span>{% endif %}
     <div class="side-c">
       <form method="get" style="display:flex"><input type="text" name="q" value="{{ q }}" placeholder="جستجوی نام…" class="input" style="max-width:200px"></form>
-      <a href="{% url 'colleagues:add' %}" class="btn btn-p">＋ همکار جدید</a>
+      <a href="{% url 'colleagues:add' %}" class="btn btn-p">＋ افزودن فرد</a>
     </div>
   </div>
 
   <section class="card glass">
-    <div class="card-h"><h3>عملکرد همکاران در بازه</h3><a href="{% url 'core:columns' %}" class="mini" title="سفارشی‌سازی ستون‌ها">⚙ ستون‌ها</a></div>
+    <div class="card-h"><h3>افراد و عملکردشان در بازه</h3><a href="{% url 'core:columns' %}" class="mini" title="سفارشی‌سازی ستون‌ها">⚙ ستون‌ها</a></div>
     {% if colleagues %}
       <table>
-        <thead><tr><th>همکار</th>{% for c in columns %}<th>{{ c.label }}</th>{% endfor %}<th>روند ۱۴ روز</th><th>وضعیت</th></tr></thead>
+        <thead><tr><th>فرد</th>{% for c in columns %}<th>{{ c.label }}</th>{% endfor %}<th>روند ۱۴ روز</th><th>دسترسی</th><th>وضعیت</th></tr></thead>
         <tbody>
           {% for c in colleagues %}
             <tr onclick="location.href='{{ c.get_absolute_url }}'" {% if not c.is_active %}style="opacity:.5"{% endif %}>
@@ -25,13 +25,16 @@
                 <span><b>{{ c.full_name }}</b><span>{{ c.roles_display|default:"—" }}</span></span></div></td>
               {% for col in columns %}<td>{% column_cell c col %}</td>{% endfor %}
               <td><div class="spark">{% for h in c.spark %}<i style="height:{{ h }}%"></i>{% endfor %}</div></td>
+              <td>{% if c.access_status == 'has_access' %}<span class="tag t-ok">دسترسی دارد</span>
+                  {% elif c.access_status == 'pending' %}<span class="tag t-mute">در انتظار تایید دعوت</span>
+                  {% else %}<span class="tag t-mute">بدون دسترسی</span>{% endif %}</td>
               <td>{% if c.is_active %}<span class="tag t-ok">فعال</span>{% else %}<span class="tag t-mute">غیرفعال</span>{% endif %}</td>
             </tr>
           {% endfor %}
         </tbody>
       </table>
     {% else %}
-      <div class="empty"><div class="ico">◉</div><h4>همکاری یافت نشد</h4><a href="{% url 'colleagues:add' %}" class="btn btn-p" style="margin-top:12px">＋ همکار جدید</a></div>
+      <div class="empty"><div class="ico">◉</div><h4>فردی یافت نشد</h4><a href="{% url 'colleagues:add' %}" class="btn btn-p" style="margin-top:12px">＋ افزودن فرد</a></div>
     {% endif %}
   </section>
 {% endblock %}

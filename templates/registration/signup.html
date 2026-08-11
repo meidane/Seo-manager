@@ -21,12 +21,14 @@
 
     <form method="post" action="{% url 'accounts:signup' %}">
       {% csrf_token %}
-      <div class="field"><label>نام شرکت / کسب‌وکار *</label>
-        <input type="text" name="org_name" value="{{ form.org_name|default:'' }}" autofocus required></div>
       <div class="field"><label>نام و نام خانوادگی</label>
-        <input type="text" name="full_name" value="{{ form.full_name|default:'' }}"></div>
+        <input type="text" name="full_name" value="{{ form.full_name|default:'' }}" autofocus></div>
       <div class="field"><label>شماره تماس</label>
         <input type="text" name="phone" dir="ltr" value="{{ form.phone|default:'' }}"></div>
+      <div class="field"><label>نام شرکت / کسب‌وکار</label>
+        <input type="text" name="org_name" value="{{ form.org_name|default:'' }}"></div>
+      <p class="sub" style="margin:-4px 0 12px">اگر با شماره‌ای که وارد کردی دعوت‌نامه‌ای در انتظارت باشد،
+        نیازی به نام شرکت نیست — بعد از ساختِ حساب می‌توانی همان دعوت را قبول کنی.</p>
       <div class="field"><label>نام کاربری *</label>
         <input type="text" name="username" dir="ltr" value="{{ form.username|default:'' }}" required></div>
       <div class="field"><label>رمز عبور *</label>
