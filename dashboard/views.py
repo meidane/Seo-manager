@@ -23,6 +23,7 @@ from core.models import ColumnConfig
 from projects.access import accessible_project_ids
 from projects.models import Project
 from tasks.models import Task
+from tasks.queries import reviewable_q
 
 
 def _pct(cur, prev):
@@ -76,7 +77,8 @@ class DashboardView(LoginRequiredMixin, DateRangeMixin, TemplateView):
         active_ids = set(project_qs.filter(status=Project.ACTIVE).values_list('id', flat=True))
         no_plan = len(active_ids - projects_with_plan)
         done_no_link = task_qs.filter(done_q, published_url='').count()
-        unreviewed = task_qs.filter(status=Task.DONE, review_status=Task.UNREVIEWED).exclude(published_url='').count()
+        unreviewed = task_qs.filter(
+            status=Task.DONE, review_status=Task.UNREVIEWED).filter(reviewable_q(self.request)).count()
 
         ctx['alerts'] = {'overdue': overdue, 'no_plan': no_plan,
                          'done_no_link': done_no_link, 'unreviewed': unreviewed}
@@ -124,7 +126,8 @@ class DashboardView(LoginRequiredMixin, DateRangeMixin, TemplateView):
 
         # ── ردیف ۴ (چپ): فید بازبینی ──
         ctx['review_feed'] = task_qs.select_related('project', 'assignee').filter(
-            status=Task.DONE, review_status=Task.UNREVIEWED).exclude(published_url='').order_by('-done_date')[:8]
+            status=Task.DONE, review_status=Task.UNREVIEWED
+        ).filter(reviewable_q(self.request)).order_by('-done_date')[:8]
 
         # ── ردیف ۵: نمودار میله‌ای تسک‌های انجام‌شده به تفکیک روز ──
         ctx['daily_bars'] = self._daily_series(task_qs, start, end)

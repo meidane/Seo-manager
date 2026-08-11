@@ -26,6 +26,11 @@
 
   function modalHtml(t) {
     t = t || {};
+    // اگر own_tasks_only داشت، فقط روی تسکِ خودش ویرایش/حذف مجاز است (بقیه‌ی تسک‌ها را
+    // اصلاً نمی‌بیند تا اینجا برسد، ولی این چک برای بازکردنِ مستقیم/لینکِ قدیمی هم درست کار کند).
+    const ownMatch = !cfg.ownTasksOnly || t.assignee_id === cfg.myColleagueId;
+    const canEditThis = cfg.editTask && ownMatch;
+    const canDeleteThis = t.id && cfg.deleteTask && ownMatch;
     const _bt = typeList().find((x) => x.builtin_key === (t.type || 'other'));
     const typeSel = t.type_def || (_bt ? _bt.id : (typeList()[0] || {}).id);
     // مسئول: پیش‌فرض خودِ کاربر (فقط برای تسکِ جدید)؛ اگر own_tasks_only داشت
@@ -71,10 +76,10 @@
       </div>` : ''}
     </div>
     <div class="modal-f">
-      <button class="btn btn-p" id="t-save">ذخیره</button>
-      ${t.id ? '' : '<button class="btn" id="t-save-next">ذخیره و ایجاد بعدی</button>'}
+      ${canEditThis ? '<button class="btn btn-p" id="t-save">ذخیره</button>' : ''}
+      ${canEditThis && !t.id ? '<button class="btn" id="t-save-next">ذخیره و ایجاد بعدی</button>' : ''}
       <button class="btn" onclick="App.closeModal()">انصراف</button>
-      ${t.id ? '<button class="btn" id="t-del" style="margin-inline-start:auto;color:var(--danger)">حذف</button>' : ''}
+      ${canDeleteThis ? '<button class="btn" id="t-del" style="margin-inline-start:auto;color:var(--danger)">حذف</button>' : ''}
     </div>`;
   }
 
@@ -319,7 +324,7 @@
         btns.forEach((b) => { b.disabled = false; b.classList.remove('loading'); });
       }
     };
-    document.getElementById('t-save').onclick = () => save(false);
+    const s = document.getElementById('t-save'); if (s) s.onclick = () => save(false);
     const n = document.getElementById('t-save-next'); if (n) n.onclick = () => save(true);
     const d = document.getElementById('t-del');
     if (d) d.onclick = async () => { if (await App.confirm('این تسک حذف شود؟')) { await App.fetchJSON(`/tasks/api/${id}/`, { method: 'DELETE' }); App.closeModal(); location.reload(); } };

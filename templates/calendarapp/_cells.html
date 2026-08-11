@@ -4,7 +4,7 @@
     {% if c.holiday_title and not c.dim %}<span class="hol">{{ c.holiday_title }}</span>{% endif %}
     {% if c.tasks %}<span class="cnt">{{ c.tasks|length|fa_digits }}</span>{% endif %}
   </div>
-  {% if not c.dim %}<button class="cell-add" data-jdate="{{ c.jdate }}" title="تسک جدید در این روز">＋</button>{% endif %}
+  {% if not c.dim and 'edit_task' in org_perms %}<button class="cell-add" data-jdate="{{ c.jdate }}" title="تسک جدید در این روز">＋</button>{% endif %}
   {% for t in c.tasks|slice:":5" %}
     <span class="tk{% if t.done %} done{% endif %}{% if t.is_placeholder %} placeholder{% endif %}{% if t.virtual %} virtual{% endif %}"{% if not t.virtual %} draggable="true" data-id="{{ t.id }}" data-open-task="{{ t.id }}"{% endif %}
       {% if not t.done %}style="background:rgba({{ t.color }},.15);border-right:3px solid rgb({{ t.color }});color:rgb({{ t.color }})"{% endif %}>

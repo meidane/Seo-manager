@@ -1,6 +1,5 @@
 """ویوهای صفحه‌ای تسک‌ها — لیست/کانبان و بازبینی."""
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Q
 from django.views.generic import TemplateView
 
 from colleagues.models import Colleague
@@ -11,6 +10,7 @@ from projects.access import accessible_project_ids
 from projects.models import Project
 
 from .models import Task, TaskTypeDef
+from .queries import reviewable_q
 
 
 class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
@@ -56,7 +56,23 @@ class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
             base = base.filter(title__icontains=g['q'])
 
         ctx.update(self.range_context())
-        if g.get('all') == '1':
+        ctx['grouped_by_day'] = g.get('group') == 'day'
+        if ctx['grouped_by_day']:
+            # «مشاهده‌ی همه» از داشبورد (تسک‌های انجام‌شده به تفکیک روز) — همان بازه‌ی
+            # سراسری، ولی روی done_date گروه‌بندی می‌شود، نه planned_date.
+            from core.jalali import format_jalali
+            day_qs = base.filter(status=Task.DONE, done_date__range=(start, end)).order_by(
+                '-done_date', 'planned_time')
+            groups = {}
+            for t in day_qs:
+                groups.setdefault(t.done_date, []).append(t)
+            ctx['day_groups'] = [
+                {'date': d, 'date_fa': format_jalali(d), 'tasks': ts, 'count': len(ts)}
+                for d, ts in sorted(groups.items(), reverse=True)
+            ]
+            ctx['tasks'] = []
+            ctx['future_tasks'] = []
+        elif g.get('all') == '1':
             ctx['tasks'] = base
             ctx['future_tasks'] = []
         else:
@@ -79,6 +95,9 @@ class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
         ctx['filters'] = g
         # ویرایشِ مستقیمِ زمان فقط برای مدیران (نقش‌های دارای دسترسیِ review)
         ctx['can_edit_time'] = bool(m and m.can('review'))
+        # own_tasks_only از قبل لیست را به تسک‌های خودش محدود کرده؛ پس این‌جا فقط چکِ
+        # سطحِ سازمانی کافی است — اگر می‌بیندش، یعنی مالِ خودش است (یا own_tasks_only ندارد)
+        ctx['can_edit_task'] = bool(m and m.can('edit_task'))
         return ctx
 
 
@@ -94,13 +113,8 @@ class TaskReviewView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        m = getattr(self.request, 'membership', None)
-        managed_q = Q(assignee__needs_review=True, assignee__manager__user=self.request.user)
-        q = managed_q
-        if m and m.can('review'):
-            q |= Q(type_def__requires_review=True)
         qs = Task.objects.select_related('project', 'assignee', 'type_def').filter(
-            status=Task.DONE).filter(q)
+            status=Task.DONE).filter(reviewable_q(self.request))
         review = self.request.GET.get('review', 'unreviewed')
         if review == 'unreviewed':
             qs = qs.filter(review_status=Task.UNREVIEWED)

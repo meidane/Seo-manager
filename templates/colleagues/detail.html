@@ -6,9 +6,11 @@
   {% if not colleague.is_active %}
     <div class="alert a-red" style="width:100%;margin-bottom:14px;cursor:default">
       <b>این همکار غیرفعال است.</b>
-      <form method="post" action="{% url 'colleagues:restore' colleague.pk %}" style="margin-inline-start:auto">
-        {% csrf_token %}<button class="btn btn-sm">فعال‌سازی مجدد</button>
-      </form>
+      {% if can_manage_colleagues %}
+        <form method="post" action="{% url 'colleagues:restore' colleague.pk %}" style="margin-inline-start:auto">
+          {% csrf_token %}<button class="btn btn-sm">فعال‌سازی مجدد</button>
+        </form>
+      {% endif %}
     </div>
   {% endif %}
 
@@ -17,10 +19,12 @@
     {% else %}<span class="ca-avatar ca-fallback" style="width:66px;height:66px;font-size:22px;--c:{{ colleague.color }}">{{ colleague.initials }}</span>{% endif %}
     <div style="flex:1"><h1 style="font-size:20px;font-weight:700">{{ colleague.full_name }}</h1>
       <p style="color:var(--text-dim);font-size:13px;margin-top:4px">{{ colleague.roles_display|default:"بدون نقش" }}</p></div>
-    <div class="side-c">
-      <a href="{% url 'colleagues:edit' colleague.pk %}" class="btn">ویرایش</a>
-      {% if colleague.is_active %}<form method="post" action="{% url 'colleagues:archive' colleague.pk %}" onsubmit="return confirm('این همکار غیرفعال شود؟')">{% csrf_token %}<button class="btn">غیرفعال‌سازی</button></form>{% endif %}
-    </div>
+    {% if can_manage_colleagues %}
+      <div class="side-c">
+        <a href="{% url 'colleagues:edit' colleague.pk %}" class="btn">ویرایش</a>
+        {% if colleague.is_active %}<form method="post" action="{% url 'colleagues:archive' colleague.pk %}" onsubmit="return confirm('این همکار غیرفعال شود؟')">{% csrf_token %}<button class="btn">غیرفعال‌سازی</button></form>{% endif %}
+      </div>
+    {% endif %}
   </section>
 
   {# ── کارت‌های آمار بازه ── #}

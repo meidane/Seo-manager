@@ -5,7 +5,7 @@
 {% block content %}
   <div class="page-h"><h1>تسک‌ها</h1>
     <div class="side-c">
-      <button class="btn btn-p" id="new-task">＋ تسک جدید</button>
+      {% if 'edit_task' in org_perms %}<button class="btn btn-p" id="new-task">＋ تسک جدید</button>{% endif %}
     </div>
   </div>
 
@@ -21,19 +21,49 @@
     <span class="sep"></span>
     <a href="?overdue=1" class="chip {% if filters.overdue == '1' %}on{% endif %}" style="border-color:rgba(251,87,115,.4);color:#FFA3B3">🔴 عقب‌افتاده‌ها</a>
     <a href="?all=1" class="chip {% if filters.all == '1' %}on{% endif %}">بدون فیلتر بازه</a>
+    <a href="?group=day" class="chip {% if grouped_by_day %}on{% endif %}">📅 تفکیکِ روزانه (انجام‌شده)</a>
+    {% if grouped_by_day %}<a href="{% url 'tasks:list' %}" class="chip">✕ خروج از تفکیک</a>{% endif %}
   </form>
+
+  {% if grouped_by_day %}
+    {# ── تفکیکِ روزانه: تسک‌های انجام‌شده در بازه، گروه‌بندی‌شده روی done_date ── #}
+    {% if day_groups %}
+      {% for grp in day_groups %}
+        <section class="card glass" style="margin-bottom:12px">
+          <div class="card-h"><h3>{{ grp.date_fa }}</h3><span class="chip">{{ grp.count|fa_digits }} تسک</span></div>
+          <table>
+            <thead><tr><th>عنوان</th><th>پروژه</th><th>مسئول</th><th>نوع</th><th>🔗</th></tr></thead>
+            <tbody>
+              {% for t in grp.tasks %}
+                <tr data-open-task="{{ t.id }}" style="cursor:pointer">
+                  <td>{{ t.title }}</td>
+                  <td>{{ t.project.name }}</td>
+                  <td>{{ t.assignee.full_name|default:"—" }}</td>
+                  <td><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span></td>
+                  <td>{% if t.published_url %}<a class="lnk" href="{{ t.published_url }}" target="_blank" rel="noopener" onclick="event.stopPropagation()">↗</a>{% endif %}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </section>
+      {% endfor %}
+    {% else %}
+      <section class="card glass"><div class="empty"><div class="ico">📅</div><h4>تسکِ انجام‌شده‌ای در این بازه نیست</h4></div></section>
+    {% endif %}
+  {% else %}
 
   {# ── لیست ── #}
   <section class="card glass">
     {% if tasks %}
       <div class="tsheet-wrap">
       <table class="tsheet">
-        <thead><tr><th style="width:26px"><input type="checkbox" id="check-all"></th><th style="width:26px"></th><th style="min-width:200px">عنوان</th><th>پروژه</th><th>مسئول</th><th>تاریخ برنامه</th><th>تاریخ انجام</th><th>وضعیت</th><th>زمان</th>{% for c in extra_columns %}<th>{{ c.label }}</th>{% endfor %}</tr></thead>
+        <thead><tr><th style="width:26px">{% if can_edit_task %}<input type="checkbox" id="check-all">{% endif %}</th><th style="width:26px"></th><th style="min-width:200px">عنوان</th><th>پروژه</th><th>مسئول</th><th>تاریخ برنامه</th><th>تاریخ انجام</th><th>وضعیت</th><th>زمان</th>{% for c in extra_columns %}<th>{{ c.label }}</th>{% endfor %}</tr></thead>
         <tbody>
           {% for t in tasks %}
             <tr data-id="{{ t.id }}" {% if t.is_overdue %}class="overdue-l"{% endif %}>
-              <td><input type="checkbox" class="row-check" data-id="{{ t.id }}"></td>
+              <td>{% if can_edit_task %}<input type="checkbox" class="row-check" data-id="{{ t.id }}">{% endif %}</td>
               <td><i class="row-open" data-open-task="{{ t.id }}" title="باز کردن مودال">⤢</i></td>
+              {% if can_edit_task %}
               <td class="tcell"><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span><input class="tx-inline" data-f="title" value="{{ t.title }}">{% if t.review_status == 'needs_fix' %} <span class="tag t-warn" data-fix-note="{{ t.id }}" style="cursor:pointer">⚠</span>{% endif %}</td>
               <td><select class="tx-inline" data-f="project">{% for p in all_projects %}<option value="{{ p.id }}" {% if t.project_id == p.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></td>
               <td><select class="tx-inline" data-f="assignee"><option value="">—</option>{% for c in all_colleagues %}<option value="{{ c.id }}" {% if t.assignee_id == c.id %}selected{% endif %}>{{ c.full_name }}</option>{% endfor %}</select></td>
@@ -44,6 +74,14 @@
                   {% for v,l in status_choices %}<option value="{{ v }}" {% if t.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
                 </select>
               </td>
+              {% else %}
+              <td class="tcell"><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span> {{ t.title }}{% if t.review_status == 'needs_fix' %} <span class="tag t-warn" data-fix-note="{{ t.id }}" style="cursor:pointer">⚠</span>{% endif %}</td>
+              <td>{{ t.project.name }}</td>
+              <td>{{ t.assignee.full_name|default:"—" }}</td>
+              <td>{{ t.planned_date|jalali }}</td>
+              <td>{% if t.done_date %}{{ t.done_date|jalali }}{% else %}<span class="zero">—</span>{% endif %}</td>
+              <td><span class="tag t-{% if t.status == 'done' %}ok{% elif t.is_overdue %}bad{% else %}mute{% endif %}">{{ t.get_status_display }}</span></td>
+              {% endif %}
               <td class="timer-cell" data-id="{{ t.id }}" data-spent="{{ t.spent_minutes }}" data-running="{% if t.timer_started_at %}1{% else %}0{% endif %}" data-started="{% if t.timer_started_at %}{{ t.timer_started_at|date:'c' }}{% endif %}">
                 <button class="tbtn" title="شروع/توقف تایمر">▶</button>
                 <span class="tval">{{ t.spent_minutes|hours }}</span>
@@ -56,7 +94,9 @@
       </table>
       </div>
     {% else %}
-      <div class="empty"><div class="ico">☰</div><h4>تسکی در این بازه/فیلتر نیست</h4><button class="btn btn-p" id="new-task" style="margin-top:12px">＋ تسک جدید</button></div>
+      <div class="empty"><div class="ico">☰</div><h4>تسکی در این بازه/فیلتر نیست</h4>
+        {% if 'edit_task' in org_perms %}<button class="btn btn-p" id="new-task" style="margin-top:12px">＋ تسک جدید</button>{% endif %}
+      </div>
     {% endif %}
   </section>
 
@@ -82,10 +122,13 @@
   {% endif %}
 
   {# ── نوار عملیات گروهی ── #}
+  {% if can_edit_task %}
   <div class="glass" id="bulkbar" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);gap:8px;align-items:center;padding:10px 16px;z-index:30">
     <span style="font-size:12.5px;color:var(--text-dim)"><b id="bulk-count">0</b> تسک انتخاب شده</span><span class="sep" style="width:1px;height:20px;background:var(--stroke-soft)"></span>
     <button class="btn btn-sm" onclick="TaskBulk.shift(3)">+۳ روز</button>
     <button class="btn btn-sm" onclick="TaskBulk.shift(-7)">−۱ هفته</button>
     <button class="btn btn-sm" onclick="TaskBulk.done()">علامت انجام‌شده</button>
   </div>
+  {% endif %}
+  {% endif %}
 {% endblock %}

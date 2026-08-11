@@ -8,7 +8,7 @@
     {% if range_start_fa %}<span class="range-note">{{ range_start_fa }} تا {{ range_end_fa }} — {{ range_days|fa_digits }} روز</span>{% endif %}
     <div class="side-c">
       <form method="get" style="display:flex"><input type="text" name="q" value="{{ q }}" placeholder="جستجوی نام یا دامنه…" class="input" style="max-width:200px"></form>
-      <a href="{% url 'projects:add' %}" class="btn btn-p">＋ پروژه‌ی جدید</a>
+      {% if 'manage_projects' in org_perms %}<a href="{% url 'projects:add' %}" class="btn btn-p">＋ پروژه‌ی جدید</a>{% endif %}
     </div>
   </div>
 
@@ -31,7 +31,9 @@
       </table>
       </div>
     {% else %}
-      <div class="empty"><div class="ico">▤</div><h4>پروژه‌ای یافت نشد</h4><a href="{% url 'projects:add' %}" class="btn btn-p" style="margin-top:12px">＋ پروژه‌ی جدید</a></div>
+      <div class="empty"><div class="ico">▤</div><h4>پروژه‌ای یافت نشد</h4>
+        {% if 'manage_projects' in org_perms %}<a href="{% url 'projects:add' %}" class="btn btn-p" style="margin-top:12px">＋ پروژه‌ی جدید</a>{% endif %}
+      </div>
     {% endif %}
   </section>
 {% endblock %}

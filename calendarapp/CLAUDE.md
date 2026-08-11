@@ -22,6 +22,16 @@
 همه‌ی کلاس‌های تقویم (`.grid7 .cell .tk .tk-av .cell-add .dp-*` …) در `static/css/style.css`
 هستند. (یک‌بار نبودند و تقویم خراب دیده شد — هرگز فقط در mockups نگذار.)
 
+## دسترسی در UI (دکمه‌ی ＋)
+دکمه‌ی «＋» هر سلول فقط با `edit_task` نشان داده می‌شود، اما دو مسیرِ رندرِ جدا دارد که
+هر دو باید گیت شوند:
+- **SSR اول** (`templates/calendarapp/_cells.html`): `{% if not c.dim and 'edit_task' in org_perms %}`.
+- **ناوبریِ AJAX** (تعویضِ ماه، `calendar_api` + `calendar-page.js: cellHtml`): سلول‌ها با JS
+  دوباره ساخته می‌شوند، نه رندرِ تمپلیت — پس پرچم از `window.CAL_INIT.canEditTask`
+  (ست‌شده در `templates/calendarapp/index.html`، از `'edit_task' in org_perms`) می‌آید،
+  نه از `{% if %}`. اگر گیتِ مشابهی به سلول‌ها اضافه کردی، آن را هم به `CAL_INIT` اضافه کن،
+  وگرنه فقط بارِ اولِ صفحه درست است و بعد از تعویضِ ماه دوباره نمایان می‌شود.
+
 ## URLها
 `/calendar/` · `/calendar/api/` · `/calendar/api/picker/` · `/calendar/api/workload/`
 

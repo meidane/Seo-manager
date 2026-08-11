@@ -146,6 +146,8 @@ def form_data(request):
         ],
         'myColleagueId': my_colleague.id if my_colleague else None,
         'ownTasksOnly': own_tasks_only,
+        'editTask': bool(m and m.can('edit_task')),
+        'deleteTask': bool(m and m.can('delete_task')),
     })
 
 
@@ -159,13 +161,15 @@ def _publish_url_error(task):
 @login_required
 @require_http_methods(['POST'])
 def task_create(request):
+    m = getattr(request, 'membership', None)
+    if not m or not m.can('edit_task'):
+        return JsonResponse({'detail': 'دسترسیِ ساختِ تسک را نداری'}, status=403)
     data = _body(request)
     if not data.get('title') or not data.get('project'):
         return JsonResponse({'detail': 'عنوان و پروژه لازم است'}, status=400)
     ids = accessible_project_ids(request)
     if ids is not None and int(data['project']) not in ids:
         return JsonResponse({'detail': 'به این پروژه دسترسی نداری'}, status=403)
-    m = getattr(request, 'membership', None)
     if m and m.can('own_tasks_only'):
         colleague = getattr(request.user, 'colleague', None)
         data['assignee'] = colleague.id if colleague else None

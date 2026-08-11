@@ -207,10 +207,16 @@ def _cred_json(cred):
     }
 
 
+def _project_access_ok(request, project_id):
+    ids = accessible_project_ids(request)
+    return ids is None or project_id in ids
+
+
 @require_http_methods(['POST'])
 def credential_create(request, pk):
-    if not request.user.is_authenticated:
-        return JsonResponse({'detail': 'نیاز به ورود'}, status=403)
+    require_perm(request, 'manage_projects')
+    if not _project_access_ok(request, pk):
+        return JsonResponse({'detail': 'به این پروژه دسترسی نداری'}, status=403)
     project = get_object_or_404(Project, pk=pk)
     data = json.loads(request.body or '{}')
     if not data.get('title'):
@@ -227,9 +233,10 @@ def credential_create(request, pk):
 @require_http_methods(['GET'])
 def credential_reveal(request, pk):
     """بازگشایی پسورد + ثبت رویداد در ActivityLog."""
-    if not request.user.is_authenticated:
-        return JsonResponse({'detail': 'نیاز به ورود'}, status=403)
+    require_perm(request, 'manage_projects')
     cred = get_object_or_404(Credential, pk=pk)
+    if not _project_access_ok(request, cred.project_id):
+        return JsonResponse({'detail': 'به این پروژه دسترسی نداری'}, status=403)
     ActivityLog.objects.create(
         actor=request.user, verb='reveal_credential', content_object=cred,
         changes={'credential': cred.title, 'project': cred.project.name},
@@ -239,9 +246,10 @@ def credential_reveal(request, pk):
 
 @require_http_methods(['DELETE'])
 def credential_delete(request, pk):
-    if not request.user.is_authenticated:
-        return JsonResponse({'detail': 'نیاز به ورود'}, status=403)
+    require_perm(request, 'manage_projects')
     cred = get_object_or_404(Credential, pk=pk)
+    if not _project_access_ok(request, cred.project_id):
+        return JsonResponse({'detail': 'به این پروژه دسترسی نداری'}, status=403)
     cred.delete()
     return JsonResponse({'ok': True})
 

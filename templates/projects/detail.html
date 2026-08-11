@@ -6,9 +6,11 @@
   {% if not project.is_active %}
     <div class="alert a-red" style="width:100%;margin-bottom:14px;cursor:default">
       <b>این پروژه غیرفعال است.</b>
-      <form method="post" action="{% url 'projects:restore' project.pk %}" style="margin-inline-start:auto">
-        {% csrf_token %}<button class="btn btn-sm">فعال‌سازی مجدد</button>
-      </form>
+      {% if 'manage_projects' in org_perms %}
+        <form method="post" action="{% url 'projects:restore' project.pk %}" style="margin-inline-start:auto">
+          {% csrf_token %}<button class="btn btn-sm">فعال‌سازی مجدد</button>
+        </form>
+      {% endif %}
     </div>
   {% endif %}
 
@@ -22,14 +24,16 @@
         {% if project.is_active %}<span class="tag t-ok">فعال</span>{% else %}<span class="tag t-bad">غیرفعال</span>{% endif %}
       </div>
     </div>
-    <div class="side-c">
-      <a href="{% url 'projects:edit' project.pk %}" class="btn">ویرایش</a>
-      {% if project.is_active %}
-        <form method="post" action="{% url 'projects:archive' project.pk %}" onsubmit="return confirm('این پروژه غیرفعال شود؟')">
-          {% csrf_token %}<button class="btn">غیرفعال‌سازی</button>
-        </form>
-      {% endif %}
-    </div>
+    {% if 'manage_projects' in org_perms %}
+      <div class="side-c">
+        <a href="{% url 'projects:edit' project.pk %}" class="btn">ویرایش</a>
+        {% if project.is_active %}
+          <form method="post" action="{% url 'projects:archive' project.pk %}" onsubmit="return confirm('این پروژه غیرفعال شود؟')">
+            {% csrf_token %}<button class="btn">غیرفعال‌سازی</button>
+          </form>
+        {% endif %}
+      </div>
+    {% endif %}
   </section>
 
   {# ── تب‌ها ── #}
@@ -40,7 +44,7 @@
     <button class="tab" data-tab="calendar">تقویم</button>
     <button class="tab" data-tab="files">فایل‌ها</button>
     <button class="tab" data-tab="members">دسترسی به همکاران</button>
-    <button class="tab" data-tab="creds">دسترسی‌ها</button>
+    {% if 'manage_projects' in org_perms %}<button class="tab" data-tab="creds">دسترسی‌ها</button>{% endif %}
     <button class="tab" data-tab="reports">گزارش‌ها</button>
     <button class="tab" data-tab="finance">حسابداری</button>
   </div>
@@ -88,6 +92,7 @@
   </section>
 
   {# دسترسی‌ها #}
+  {% if 'manage_projects' in org_perms %}
   <section class="card glass tab-panel" data-panel="creds">
     <div class="card-h"><h3>دسترسی‌ها</h3>
       <div class="side-c"><button class="btn btn-sm btn-p" id="add-cred">＋ افزودن دسترسی</button></div>
@@ -112,6 +117,7 @@
     </table>
     {% if not credentials %}<div class="empty" id="cred-empty"><div class="ico">🔑</div><h4>دسترسی‌ای ثبت نشده</h4></div>{% endif %}
   </section>
+  {% endif %}
 
   {# تسک‌ها #}
   <section class="card glass tab-panel" data-panel="tasks">
