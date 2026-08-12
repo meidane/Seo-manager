@@ -173,9 +173,25 @@ class PayrollListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         from colleagues.models import Colleague
+        from core.jalali import MONTH_NAMES
         ctx = super().get_context_data(**kwargs)
-        ctx['payrolls'] = Payroll.objects.select_related('colleague').prefetch_related('items')
+        payrolls = list(Payroll.objects.select_related('colleague').prefetch_related('items'))
+        cids = {p.colleague_id for p in payrolls}
+
+        # مانده‌ی «کل حساب با همکار» = Σ تعهدِ همه‌ی حقوق‌هایش − Σ پرداختیِ ثبت‌شده در
+        # تراکنش‌های بابتِ حقوقِ او (بابتِ «حقوق <نام>» که خودکار ساخته می‌شود).
+        owed = {r['payroll__colleague_id']: r['s'] or 0 for r in PayrollItem.objects
+                .filter(payroll__colleague_id__in=cids)
+                .values('payroll__colleague_id').annotate(s=Sum('amount'))}
+        paid = {r['category__colleague_id']: r['s'] or 0 for r in Transaction.objects
+                .filter(category__colleague_id__in=cids)
+                .values('category__colleague_id').annotate(s=Sum('withdrawal'))}
+        balances = {cid: owed.get(cid, 0) - paid.get(cid, 0) for cid in cids}
+
+        ctx['payrolls'] = payrolls
+        ctx['balances'] = balances
         ctx['colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)
+        ctx['months'] = list(enumerate(MONTH_NAMES, start=1))  # [(1,'فروردین'),...]
         ctx['page_title'] = 'حقوق'
         return ctx
 
@@ -447,7 +463,28 @@ def payroll_edit(request, pk):
         p.paid_amount = parse_amount(d['paid_amount'])
     if 'note' in d:
         p.note = d['note']
-    p.save()
+    if 'colleague' in d and d['colleague']:
+        p.colleague_id = d['colleague']
+    if 'year' in d:
+        try:
+            p.year = int(d['year'])
+        except (ValueError, TypeError):
+            pass
+    if 'month' in d:
+        try:
+            p.month = int(d['month'])
+        except (ValueError, TypeError):
+            pass
+    from django.db import IntegrityError
+    try:
+        p.save()
+    except IntegrityError:
+        return JsonResponse({'detail': 'برای این همکار در این ماه از قبل حقوق ثبت شده'}, status=400)
+    if 'items' in d:
+        p.items.all().delete()
+        for it in d['items']:
+            if it.get('title'):
+                PayrollItem.objects.create(payroll=p, title=it['title'], amount=parse_amount(it.get('amount', 0)))
     return JsonResponse({'ok': True, 'total': p.total, 'remaining': p.remaining, 'status': p.status})
 
 
