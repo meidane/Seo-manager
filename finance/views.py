@@ -239,6 +239,114 @@ class InvoiceFormView(LoginRequiredMixin, FinancePermMixin, TemplateView):
         return ctx
 
 
+class LedgerView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateView):
+    """گردشِ حساب (مثلِ صورت‌حسابِ بانکی) — فیلترِ **یا** پروژه **یا** بابت (نه هر دو، نه هیچ‌کدام).
+
+    - پروژه: فاکتورهای پروژه = برداشت؛ تراکنش‌های پروژه (واریز/برداشت) = واریز/برداشت.
+    - بابت: تراکنش‌های آن بابت (واریز/برداشت)؛ اگر بابتِ حقوقِ یک همکار بود، حقوق‌های او
+      در بازه (تاریخِ اولِ ماهِ ثبت) هم به‌عنوان واریز اضافه می‌شود.
+    مانده به‌صورت تجمعی (Σواریز − Σبرداشت) در هر ردیف، و جمعِ نهایی در ردیفِ آخر.
+    """
+
+    template_name = 'finance/ledger.html'
+
+    def get_context_data(self, **kwargs):
+        from core.jalali import format_jalali, j2g
+        ctx = super().get_context_data(**kwargs)
+        start, end = self.get_range(self.request)
+        ctx.update(self.range_context())
+        g = self.request.GET
+
+        project_id = g.get('project') or ''
+        category_id = g.get('category') or ''
+        bank_id = g.get('bank') or ''
+
+        ctx['banks'] = BankAccount.objects.filter(is_active=True)
+        ctx['projects'] = Project.objects.filter(status=Project.ACTIVE)
+        ctx['categories'] = Category.objects.all()
+        ctx['filters'] = g
+        ctx['page_title'] = 'گزارش (گردش حساب)'
+
+        # شرطِ طلایی: دقیقاً یکی از پروژه/بابت انتخاب شده باشد
+        if bool(project_id) == bool(category_id):
+            ctx['rows'] = None
+            ctx['invalid_filter'] = True
+            return ctx
+
+        rows = []
+
+        if project_id:
+            ctx['mode'] = 'project'
+            ctx['selected_project'] = Project.objects.filter(id=project_id).first()
+            # فاکتورهای پروژه → برداشت
+            for inv in Invoice.objects.filter(project_id=project_id, issue_date__range=(start, end)):
+                rows.append({
+                    'date': inv.issue_date,
+                    'title': f'فاکتور #{inv.number}' + (f' — {inv.description}' if inv.description else ''),
+                    'kind': 'invoice', 'ref_id': inv.id,
+                    'deposit': 0, 'withdrawal': inv.grand_total, 'bank': '',
+                })
+            # تراکنش‌های پروژه → واریز/برداشت
+            tx = Transaction.objects.select_related('bank_account').filter(
+                project_id=project_id, date__range=(start, end))
+            if bank_id:
+                tx = tx.filter(bank_account_id=bank_id)
+            for t in tx:
+                rows.append({
+                    'date': t.date, 'title': t.description or '—',
+                    'kind': 'tx', 'ref_id': t.id,
+                    'deposit': t.deposit or 0, 'withdrawal': t.withdrawal or 0,
+                    'bank': t.bank_account.name if t.bank_account_id else '',
+                })
+
+        else:  # category_id
+            ctx['mode'] = 'category'
+            cat = Category.objects.filter(id=category_id).select_related('colleague').first()
+            ctx['selected_category'] = cat
+            # تراکنش‌های این بابت → واریز/برداشت
+            tx = Transaction.objects.select_related('bank_account').filter(
+                category_id=category_id, date__range=(start, end))
+            if bank_id:
+                tx = tx.filter(bank_account_id=bank_id)
+            for t in tx:
+                rows.append({
+                    'date': t.date, 'title': t.description or '—',
+                    'kind': 'tx', 'ref_id': t.id,
+                    'deposit': t.deposit or 0, 'withdrawal': t.withdrawal or 0,
+                    'bank': t.bank_account.name if t.bank_account_id else '',
+                })
+            # بابتِ حقوق → حقوق‌های همکار در بازه (تاریخ = اولِ ماهِ ثبت) به‌عنوان واریز
+            if cat and cat.colleague_id:
+                for p in Payroll.objects.filter(colleague_id=cat.colleague_id).prefetch_related('items'):
+                    try:
+                        d = j2g(p.year, p.month, 1)
+                    except (ValueError, TypeError):
+                        continue
+                    if start <= d <= end:
+                        rows.append({
+                            'date': d, 'title': f'حقوق {p.month_name} {p.year}',
+                            'kind': 'payroll', 'ref_id': p.id,
+                            'deposit': p.total, 'withdrawal': 0, 'bank': '',
+                        })
+
+        # مرتب‌سازی بر اساس تاریخ (پایدار) + مانده‌ی تجمعی
+        rows.sort(key=lambda r: r['date'])
+        bal = 0
+        tot_d = tot_w = 0
+        for r in rows:
+            bal += r['deposit'] - r['withdrawal']
+            r['balance'] = bal
+            r['date_fa'] = format_jalali(r['date'])
+            tot_d += r['deposit']
+            tot_w += r['withdrawal']
+
+        ctx['rows'] = rows
+        ctx['total_deposit'] = tot_d
+        ctx['total_withdrawal'] = tot_w
+        ctx['final_balance'] = bal
+        return ctx
+
+
 # ── API: بانک ─────────────────────────────────────────────────────────────
 
 @login_required

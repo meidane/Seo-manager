@@ -11,6 +11,7 @@ urlpatterns = [
     path('banks/', views.BankListView.as_view(), name='banks'),
     path('import/', views.ImportView.as_view(), name='import'),
     path('payroll/', views.PayrollListView.as_view(), name='payroll'),
+    path('ledger/', views.LedgerView.as_view(), name='ledger'),
     path('invoices/', views.InvoiceListView.as_view(), name='invoices'),
     path('invoices/new/', views.InvoiceFormView.as_view(), name='invoice_new'),
     path('invoices/<int:pk>/', views.InvoiceFormView.as_view(), name='invoice_edit_page'),
