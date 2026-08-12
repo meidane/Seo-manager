@@ -24,6 +24,20 @@
     return typeList().map((t) => opt(t.id, (t.icon ? t.icon + ' ' : '') + t.name, sel)).join('');
   }
 
+  // آیا این همکار به‌طورِ پیش‌فرض نیاز به بازبینی دارد؟ (cfg.colleagues: [id, name, needsReview])
+  function colleagueNeedsReview(id) {
+    const c = (cfg.colleagues || []).find((x) => String(x[0]) === String(id));
+    return !!(c && c[2]);
+  }
+
+  // گزینه‌های وضعیت — تسکِ needs_review هرگز «انجام‌شده» ندارد (فقط «تکمیل»)، برعکسش هم همین‌طور
+  const STATUS_LABELS = [['todo', 'در انتظار'], ['doing', 'در حال انجام'], ['pending', 'تکمیل — در انتظار بازبینی'], ['done', 'انجام شده']];
+  function statusOptions(sel, needsReview) {
+    return STATUS_LABELS
+      .filter(([v]) => (needsReview ? v !== 'done' : v !== 'pending'))
+      .map(([v, l]) => opt(v, l, sel)).join('');
+  }
+
   function modalHtml(t) {
     t = t || {};
     const isNew = !t.id;
@@ -43,6 +57,9 @@
     const assigneeSelect = lockAssignee
       ? `<select id="f-assignee" disabled>${opt(cfg.myColleagueId || '', 'خودم', assigneeSel)}</select>`
       : `<select id="f-assignee"><option value="">—</option>${cfg.colleagues.map(([v, l]) => opt(v, l, assigneeSel)).join('')}</select>`;
+    // نیاز به بازبینی: پیش‌فرض از تسکِ موجود (t.needs_review)، وگرنه از تنظیمِ خودِ
+    // مسئولِ فعلاً انتخاب‌شده (Colleague.needs_review) — هربار قابلِ‌تغییرِ دستی است.
+    const needsReviewDefault = t.id ? !!t.needs_review : colleagueNeedsReview(assigneeSel);
     return `
     <div class="modal-h"><h3>${t.id ? 'ویرایش تسک' : 'تسک جدید'}</h3><button class="x" onclick="App.closeModal()">×</button></div>
     <div class="modal-b" id="tform">
@@ -54,9 +71,13 @@
       </div>
       ${field('priority', 'اولویت', `<select id="f-priority"><option value="low">کم</option><option value="med">متوسط</option><option value="high">زیاد</option></select>`)}
       ${field('title', 'عنوان', `<input id="f-title" class="input" value="${esc(t.title)}">`)}
+      <label style="display:flex;align-items:center;gap:8px;margin:0 0 14px;cursor:pointer">
+        <input type="checkbox" id="f-needs-review" ${needsReviewDefault ? 'checked' : ''} style="width:auto">
+        نیاز به بازبینی (بدونِ تاییدِ مدیر، «انجام‌شده» نمی‌شود)
+      </label>
       <div class="grid3">
         ${field('planned_date', 'تاریخ برنامه (شمسی)', `<input id="f-planned_date" class="input jdate" dir="ltr" readonly placeholder="۱۴۰۵/۰۵/۱۵" value="${t.planned_date_fa || ''}">`)}
-        ${field('status', 'وضعیت', `<select id="f-status"><option value="todo">در انتظار</option><option value="doing">در حال انجام</option><option value="done">انجام شده</option></select>`)}
+        ${field('status', 'وضعیت', `<select id="f-status">${statusOptions(t.status, needsReviewDefault)}</select>`)}
         ${field('estimate_minutes', 'تخمین زمان (دقیقه)', `<input id="f-estimate_minutes" class="input" type="number" dir="ltr" placeholder="۶۰" value="${t.estimate_minutes || ''}">`)}
       </div>
 
@@ -196,6 +217,7 @@
       type_def: (ty && typeof ty.id === 'number') ? ty.id : null,
       priority: g('f-priority'), title: g('f-title'),
       planned_date: g('f-planned_date'), status: g('f-status'),
+      needs_review: document.getElementById('f-needs-review').checked,
       estimate_minutes: g('f-estimate_minutes'), description: g('f-description'),
     };
     if (ty && ty.fields && ty.fields.length) {
@@ -291,6 +313,20 @@
     if (data.status) document.getElementById('f-status').value = data.status;
     if (data.priority) document.getElementById('f-priority').value = data.priority;
     else document.getElementById('f-priority').value = 'med';
+    // نیاز به بازبینی: با عوضِ مسئول، پیش‌فرضِ خودش را می‌گیرد؛ با تیک‌زدن/برداشتنِ
+    // دستی، گزینه‌های وضعیت (انجام‌شده ⇄ تکمیل) دوباره ساخته می‌شوند.
+    const needsReviewBox = document.getElementById('f-needs-review');
+    const statusSel = document.getElementById('f-status');
+    const rebuildStatus = () => {
+      const cur = statusSel.value;
+      statusSel.innerHTML = statusOptions(cur, needsReviewBox.checked);
+      if (!statusSel.value) statusSel.selectedIndex = 0;  // مقدارِ ازدست‌رفته → اولین گزینه
+    };
+    document.getElementById('f-assignee').addEventListener('change', (e) => {
+      needsReviewBox.checked = colleagueNeedsReview(e.target.value);
+      rebuildStatus();
+    });
+    needsReviewBox.addEventListener('change', rebuildStatus);
     const loaded = data.custom || {};
     document.getElementById('f-task_type').addEventListener('change', () => applyVisibility(loaded));
     applyVisibility(loaded);

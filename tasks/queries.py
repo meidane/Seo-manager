@@ -12,11 +12,13 @@ PAGE_SIZE = 50  # آستانه‌ی لودِ تنبلِ لیستِ تسک‌ها
 
 def reviewable_q(request):
     """این تسک برای کاربرِ جاری قابل‌بازبینی است؟ دو مسیرِ مستقلِ OR‌شده:
-    (۱) `assignee.needs_review=True` و مدیرِ همان همکار خودِ کاربر است (مستقل از
-    دسترسیِ سازمانیِ `review`)؛ (۲) `type_def.requires_review=True`، فقط اگر کاربر
-    دسترسیِ سازمانیِ `review` را داشته باشد."""
+    (۱) `Task.needs_review=True` (پیش‌فرضش از `assignee.needs_review` می‌آید، ولی
+    هرباره تسک قابلِ‌تغییرِ دستی است) و مدیرِ مستقیمِ مسئولِ همین تسک خودِ کاربر است —
+    مستقل از دسترسیِ سازمانیِ `review` (تعیینِ مدیر یعنی اجازه‌ی بازبینیِ کارِ زیرمجموعه،
+    زنجیره‌ای — مدیرِ یک مدیر هم همین‌طور)؛ (۲) `type_def.requires_review=True`، فقط اگر
+    کاربر دسترسیِ سازمانیِ `review` را داشته باشد."""
     m = getattr(request, 'membership', None)
-    q = Q(assignee__needs_review=True, assignee__manager__user=request.user)
+    q = Q(needs_review=True, assignee__manager__user=request.user)
     if m and m.can('review'):
         q |= Q(type_def__requires_review=True)
     return q
@@ -29,7 +31,7 @@ def build_task_queryset(request):
     چون آن دو به شکلِ فراخوان جدا اعمال می‌شوند.
 
     برمی‌گرداند: `(queryset, filters)` — `filters` کپیِ GET با یک تفاوت: اگر کاربر
-    محدودیتِ `own_tasks_only` نداشت، «سرپرست» هم نبود (پایین) و هیچ `assignee`ای هم
+    `view_other_tasks` نداشت، «سرپرست» هم نبود (پایین) و هیچ `assignee`ای هم
     انتخاب نکرده بود (بارِ اولِ صفحه)، پیش‌فرض روی خودش قفل می‌شود (درخواستِ کاربر:
     «به‌صورتِ پیش‌فرض فقط تسک‌های خودش») — قابلِ تغییر با انتخابِ «همه‌ی همکاران» در دراپ‌داون."""
     from .models import Task
@@ -40,13 +42,13 @@ def build_task_queryset(request):
     m = getattr(request, 'membership', None)
     my_colleague = getattr(request.user, 'colleague', None)
     # «سرپرست»: کسی که زیرمجموعه‌ی مستقیم دارد یا پرمیشنِ سازمانیِ ناظر بر بقیه دارد
-    # (review/manage_colleagues/manage_projects) — باید پیش‌فرض همه‌چیزِ قابل‌دسترس را
-    # ببیند، نه فقط تسکِ خودش (own_tasks_only همیشه اولویتِ محدودکننده دارد، پایین).
+    # (review/manage_people/view_all_projects) — باید پیش‌فرض همه‌چیزِ قابل‌دسترس را
+    # ببیند، نه فقط تسکِ خودش (نبودِ view_other_tasks همیشه اولویتِ محدودکننده دارد، پایین).
     has_reports = bool(my_colleague and my_colleague.reports.exists())
     is_manager_tier = has_reports or bool(m and (
-        m.can('review') or m.can('manage_colleagues') or m.can('manage_projects')))
+        m.can('review') or m.can('manage_people') or m.can('view_all_projects')))
 
-    # دسترسیِ پروژه‌محور: فقط مالک/دارنده‌ی manage_projects همه را می‌بیند؛ بقیه فقط
+    # دسترسیِ پروژه‌محور: فقط مالک/دارنده‌ی view_all_projects همه را می‌بیند؛ بقیه فقط
     # پروژه‌هایی که عضوشان هستند — **به‌علاوه‌ی تسک‌هایی که خودشان مسئولش‌اند** (تسکِ
     # دلیگیت‌شده، حتی بیرون از پروژه) **و به‌علاوه‌ی تسک‌هایی که مسئولش زیرمجموعه‌ی
     # مستقیمِ خودشان است** (سرپرست باید کارِ زیرمجموعه‌هایش را ببیند، حتی در پروژه‌ای که
@@ -60,8 +62,9 @@ def build_task_queryset(request):
                 q |= Q(assignee__manager_id=my_colleague.id)
         base = base.filter(q)
 
-    # own_tasks_only: محدودیتِ سخت — فقط تسک‌های خودش (نه پیش‌فرضِ قابل‌تغییر، برنده‌ی هرچیزِ دیگر)
-    forced_own = bool(m and m.can('own_tasks_only'))
+    # view_other_tasks (مثبت/افزاینده): نبودش یعنی محدودیتِ سخت — فقط تسک‌های خودش
+    # (نه پیش‌فرضِ قابل‌تغییر، برنده‌ی هرچیزِ دیگر). جایگزینِ نقشِ منفیِ own_tasks_only.
+    forced_own = bool(m and not m.can('view_other_tasks'))
     if forced_own:
         base = base.filter(assignee_id=my_colleague.id if my_colleague else -1)
 

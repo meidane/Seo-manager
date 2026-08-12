@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}تیم‌ها{% endblock %}
+
+{% block content %}
+  {% include "settings/_nav.html" %}
+  <div class="page-h"><h1>تیم‌ها</h1>
+    <div class="side-c"><span class="tag t-mute">سازمان: {{ org.name }}</span></div>
+  </div>
+
+  <section class="card glass">
+    <div class="card-h"><h3>تیم‌ها و زیرمجموعه‌ها</h3><div class="side-c"><button class="btn btn-sm btn-p" id="add-team">＋ تیم</button></div></div>
+    <div style="padding:12px 14px" id="team-tree">
+      {% for node in team_tree %}
+        {% include "accounts/_team_node.html" with node=node depth=0 %}
+      {% empty %}
+        <div class="zero">هنوز تیمی ساخته نشده</div>
+      {% endfor %}
+    </div>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  document.getElementById('add-team').onclick=()=>teamModal(null);
+  function teamModal(parentId){
+    App.openModal(`<div class="modal-h"><h3>${parentId?'زیرمجموعه‌ی جدید':'تیم جدید'}</h3><button class="x" onclick="App.closeModal()">×</button></div>
+      <div class="modal-b"><div class="field"><label>نام</label><input class="input" id="tm-name" placeholder="مثلاً تیم تولید محتوا"></div></div>
+      <div class="modal-f"><button class="btn btn-p" id="tm-save">ذخیره</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+    document.getElementById('tm-save').onclick=async()=>{
+      const name=document.getElementById('tm-name').value.trim(); if(!name){App.toast('نام لازم است','warn');return;}
+      try{ await App.fetchJSON("{% url 'accounts:team_create' %}",{method:'POST',body:{name,parent:parentId}}); location.reload(); }catch(_){}
+    };
+  }
+  document.getElementById('team-tree').addEventListener('click',async e=>{
+    const sub=e.target.closest('.t-sub'), ren=e.target.closest('.t-ren'), del=e.target.closest('.t-del');
+    if(sub) teamModal(+sub.dataset.id);
+    if(ren){ const name=prompt('نام جدید تیم:',ren.dataset.name); if(name&&name.trim()){ await App.fetchJSON(`/settings/teams/api/team/${ren.dataset.id}/`,{method:'PATCH',body:{name:name.trim()}}); location.reload(); } }
+    if(del){ if(await App.confirm('این تیم و زیرمجموعه‌هایش حذف شوند؟')){ await App.fetchJSON(`/settings/teams/api/team/${del.dataset.id}/`,{method:'DELETE'}); location.reload(); } }
+  });
+})();
+</script>
+{% endblock %}

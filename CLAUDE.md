@@ -59,6 +59,8 @@
 | تسک‌های در حالِ اجرای تایمر برای کاربر/زیرمجموعه‌هایش | `tasks/queries.py: running_timers_payload` (ویجت + API) |
 | نوارِ تبِ صفحاتِ تنظیمات + هابِ سایدبار | `templates/settings/_nav.html` + `accounts:settings_home` — لینکِ سایدبار «تنظیمات» یکی است، گیت‌شده با `has_settings_access` (context processor، از `accounts/permissions.py: SETTINGS_PERMS`) |
 | دادنِ دسترسیِ سیستم به یک فرد | `colleagues.views._grant_access` (`mode=invite` فقط شماره / `mode=password` مدیر خودش رمز می‌سازد) |
+| «این تسک نیاز به بازبینی دارد و باید `pending` بماند نه `done`؟» | `Task.needs_review` (فیلدِ تسک، پیش‌فرضش از `Colleague.needs_review` موقعِ ساخت) + دراپ‌داونِ وضعیت `templates/tasks/_status_select.html` |
+| توقفِ خودکارِ تایمر با تکمیلِ تسک | `tasks/api.py: _stop_timer` (صدا زده می‌شود از `apply_fields`, `task_status`, `task_review`) |
 
 ## دستورهای کلیدی
 ```bash
@@ -78,8 +80,8 @@ DB پیش‌فرض SQLite (متغیرها در `.env`). **`seed_demo`** (`accoun
 |---|---|---|---|
 | `admin` | `admin1234` | مالک (+ سوپریوزرِ جنگو) | دسترسیِ کامل، پنلِ ادمین |
 | `admin1` | `Admin123!` | مدیر (built-in) | دسترسیِ سازمانیِ گسترده |
-| `teamlead1` | `Teamlead123!` | نقشِ سفارشیِ «سرپرستِ تیم (محدود)» — بدونِ `manage_projects` | سرپرستِ محدود‌به‌پروژه/زیرمجموعه (سناریوی واقعیِ باگ‌های این پروژه) |
-| `member1` | `Member123!` | عضو (`own_tasks_only`)، عضوِ «پروژه‌ی الف»، زیرِنظرِ `teamlead1` | تسکِ خودش، بازبینیِ سرپرست |
+| `teamlead1` | `Teamlead123!` | نقشِ سفارشیِ «سرپرستِ تیم (محدود)» — بدونِ `view_all_projects` | سرپرستِ محدود‌به‌پروژه/زیرمجموعه (سناریوی واقعیِ باگ‌های این پروژه) + بازبینیِ تسکِ `member1` |
+| `member1` | `Member123!` | عضو (بدونِ `view_other_tasks`)، عضوِ «پروژه‌ی الف»، زیرِنظرِ `teamlead1`، `needs_review=True` | تسکِ خودش، جریانِ کاملِ بازبینی (تسکِ جدید→`pending`→تاییدِ `teamlead1`→`done`) |
 | `member2` | `Member123!` | عضو، **عضوِ هیچ پروژه‌ای نیست**، زیرِنظرِ `teamlead1` | تسکِ دلیگیت‌شده‌ی بیرون از عضویتِ پروژه |
 | `viewer1` | `Viewer123!` | ناظر (فقط `view_reports`) | فقط‌خواندنی |
 
@@ -162,13 +164,31 @@ DB پیش‌فرض SQLite (متغیرها در `.env`). **`seed_demo`** (`accoun
     نه با شل‌کردنِ گیتِ پروژه.
 22. **باگِ جدی (رفع‌شده): «سرپرست هم فقط تسکِ خودش را می‌دید».** پیش‌فرضِ «بازِ اول فقط
     تسک‌های خودم» (تلهٔ ۲۱ بالا نبود، فیچرِ جداگانه‌ای بود) بی‌قیدوشرط روی همه اعمال
-    می‌شد — کسی با پرمیشنِ `review`/`manage_colleagues`/`manage_projects` یا زیرمجموعه
+    می‌شد — کسی با پرمیشنِ `review`/`manage_people`/`view_all_projects` یا زیرمجموعه
     (`Colleague.reports`) هم با بازِ اولِ `/tasks/` فقط تسکِ خودش را می‌دید و گمان
     می‌کرد پرمیشن‌هایش اثر ندارند. رفع شد: `build_task_queryset` این پیش‌فرض را برای
     «سرپرست» (`is_manager_tier`) غیرفعال می‌کند + یک OR جداگانه هم اضافه شد تا سرپرست
     تسکِ **هر زیرمجموعه‌ی مستقیمش** را ببیند، حتی در پروژه‌ای که خودش عضو نیست
     (`assignee__manager_id=my_colleague.id` — همان الگویی که ویجتِ تایمر/فیدِ بازبینی
     از قبل داشتند). `tasks/CLAUDE.md`.
+23. **بازطراحیِ دسترسی‌ها + وضعیتِ بازبینیِ تسک (این تغییر).** دو چیزِ جداگانه هم‌زمان
+    عوض شد، مراقبِ قاطی‌کردنشان باش:
+    - **پرمیشن‌ها granular شدند و بعضی تغییرِ نام دادند:** `manage_projects` جای خودش را
+      به هفت پرمیشنِ جدا داد (`view_all_projects, add_project, edit_project,
+      project_files, project_colleagues_access, project_credentials, project_reports`)،
+      `manage_colleagues` شد `manage_people`، `own_tasks_only`(محدودکننده) شد
+      `view_other_tasks`(مثبت‌قطبی، معکوس). نقشِ سفارشیِ ساخته‌شده روی سازمانِ **قدیمی**
+      (قبل از این تغییر) کلیدهای قدیمی را در `Role.perms` نگه می‌دارد — چون
+      `seed_roles`ی `get_or_create` هرگز نقشِ موجود را آپدیت نمی‌کند (تلهٔ شناخته‌شده،
+      پایین‌تر). برای تستِ درست باید دیتابیس را از نو بسازی یا نقش‌ها را دستی در
+      `/settings/roles/` دوباره تیک بزنی.
+    - **تسک حالا `needs_review` (فیلدِ خودِ تسک) دارد، نه فقط `Colleague.needs_review`.**
+      مقدارِ پیش‌فرضش موقعِ ساختِ تسک از `Colleague.needs_review`ِ مسئول می‌آید، ولی
+      از خودِ مودال هم قابلِ تغییر است. اگر `needs_review=True`، تسک هرگز مستقیم به
+      `done` نمی‌رود — فقط تا `pending`(«تکمیل — در انتظارِ بازبینی») و از آنجا فقط با
+      تاییدِ `task_review`(API) به `done` می‌رود؛ اگر `False` بود، گزینه‌ی `pending`
+      اصلاً در دراپ‌داون نیست و رفتار مثلِ قبل (مستقیم `done`) است. `tasks/CLAUDE.md`،
+      بخشِ «بازبینی تسک».
 
 ## انضباط نگه‌داری (مهم)
 **به‌روزرسانی هینت بخشی از همان تغییر است.** وقتی فیلد/الگو/تله/منبع‌واحدِ جدید اضافه شد،

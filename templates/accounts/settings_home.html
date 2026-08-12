@@ -22,10 +22,16 @@
   </section>
 
   <div class="cards-grid">
-    {% if 'manage_people' in org_perms %}
-      <a href="{% url 'accounts:people' %}" class="colleague-card card glass">
+    {% if 'manage_teams' in org_perms %}
+      <a href="{% url 'accounts:teams' %}" class="colleague-card card glass">
         <span class="ca-avatar ca-fallback" style="--c:#4183F2">◍</span>
-        <div class="ca-body"><b>تیم‌ها و نقش‌ها</b><span class="ca-roles">زیرمجموعه‌ها + نقش‌های سفارشی</span></div>
+        <div class="ca-body"><b>تیم‌ها</b><span class="ca-roles">زیرمجموعه‌های سازمان</span></div>
+      </a>
+    {% endif %}
+    {% if 'manage_people' in org_perms %}
+      <a href="{% url 'accounts:roles' %}" class="colleague-card card glass">
+        <span class="ca-avatar ca-fallback" style="--c:#6BA1FF">⚙</span>
+        <div class="ca-body"><b>نقش‌ها</b><span class="ca-roles">دسترسی‌های سفارشی هر نقش</span></div>
       </a>
     {% endif %}
     {% if 'manage_task_types' in org_perms %}
@@ -46,7 +52,7 @@
         <div class="ca-body"><b>تعطیلات</b><span class="ca-roles">مدیریتِ تعطیلاتِ تقویم</span></div>
       </a>
     {% endif %}
-    {% if 'manage_org' in org_perms %}
+    {% if 'manage_api_tokens' in org_perms %}
       <a href="{% url 'accounts:api_tokens' %}" class="colleague-card card glass">
         <span class="ca-avatar ca-fallback" style="--c:#38BDF8">⚿</span>
         <div class="ca-body"><b>توکن‌های API</b><span class="ca-roles">اتصالِ افزونه/اتوماسیون/AI</span></div>

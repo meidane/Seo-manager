@@ -78,7 +78,8 @@ class DashboardView(LoginRequiredMixin, DateRangeMixin, TemplateView):
         no_plan = len(active_ids - projects_with_plan)
         done_no_link = task_qs.filter(done_q, published_url='').count()
         unreviewed = task_qs.filter(
-            status=Task.DONE, review_status=Task.UNREVIEWED).filter(reviewable_q(self.request)).count()
+            status__in=[Task.DONE, Task.PENDING], review_status=Task.UNREVIEWED
+        ).filter(reviewable_q(self.request)).count()
 
         ctx['alerts'] = {'overdue': overdue, 'no_plan': no_plan,
                          'done_no_link': done_no_link, 'unreviewed': unreviewed}
@@ -126,8 +127,8 @@ class DashboardView(LoginRequiredMixin, DateRangeMixin, TemplateView):
 
         # ── ردیف ۴ (چپ): فید بازبینی ──
         ctx['review_feed'] = task_qs.select_related('project', 'assignee').filter(
-            status=Task.DONE, review_status=Task.UNREVIEWED
-        ).filter(reviewable_q(self.request)).order_by('-done_date')[:8]
+            status__in=[Task.DONE, Task.PENDING], review_status=Task.UNREVIEWED
+        ).filter(reviewable_q(self.request)).order_by('-updated_at')[:8]
 
         # ── ردیف ۵: تسک‌های انجام‌شده به تفکیک روز — جدول (نه نمودار)، ۷ روز اخیر
         ctx['daily_groups'] = group_done_by_day(task_qs, today - timedelta(days=6), today)

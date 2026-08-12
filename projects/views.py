@@ -126,7 +126,7 @@ class ProjectDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
         from colleagues.models import Colleague
         ctx['all_colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)
         ctx['member_ids'] = set(p.members.values_list('id', flat=True))
-        ctx['can_manage_members'] = has_perm(self.request, 'manage_projects')
+        ctx['can_manage_members'] = has_perm(self.request, 'project_colleagues_access')
         return ctx
 
 
@@ -136,7 +136,7 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
     template_name = 'projects/form.html'
 
     def dispatch(self, request, *args, **kwargs):
-        require_perm(request, 'manage_projects')
+        require_perm(request, 'add_project')
         return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
@@ -156,8 +156,14 @@ class ProjectUpdateView(LoginRequiredMixin, UpdateView):
     template_name = 'projects/form.html'
 
     def dispatch(self, request, *args, **kwargs):
-        require_perm(request, 'manage_projects')
+        require_perm(request, 'edit_project')
         return super().dispatch(request, *args, **kwargs)
+
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset)
+        if not _project_access_ok(self.request, obj.id):
+            raise PermissionDenied('به این پروژه دسترسی نداری')
+        return obj
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -168,14 +174,20 @@ class ProjectUpdateView(LoginRequiredMixin, UpdateView):
 
 class ProjectArchiveView(LoginRequiredMixin, View):
     def post(self, request, pk):
+        require_perm(request, 'edit_project')
         project = get_object_or_404(Project, pk=pk)
+        if not _project_access_ok(request, project.id):
+            raise PermissionDenied('به این پروژه دسترسی نداری')
         project.archive()
         return redirect(project.get_absolute_url())
 
 
 class ProjectRestoreView(LoginRequiredMixin, View):
     def post(self, request, pk):
+        require_perm(request, 'edit_project')
         project = get_object_or_404(Project, pk=pk)
+        if not _project_access_ok(request, project.id):
+            raise PermissionDenied('به این پروژه دسترسی نداری')
         project.restore()
         return redirect(project.get_absolute_url())
 
@@ -186,7 +198,9 @@ def project_members(request, pk):
     """تبِ «دسترسی به همکاران»: فهرستِ کاملِ اعضای مجاز را یک‌جا ست می‌کند.
     فقط مالکِ سازمان همیشه دسترسی دارد؛ بقیه (حتی مدیرِ خودِ پروژه) باید همین‌جا
     اضافه شوند تا پروژه/تسک‌هایش را ببینند (`projects/access.py`)."""
-    require_perm(request, 'manage_projects')
+    require_perm(request, 'project_colleagues_access')
+    if not _project_access_ok(request, pk):
+        return JsonResponse({'detail': 'به این پروژه دسترسی نداری'}, status=403)
     project = get_object_or_404(Project, pk=pk)
     data = json.loads(request.body or '{}')
     ids = data.get('members')
@@ -214,7 +228,7 @@ def _project_access_ok(request, project_id):
 
 @require_http_methods(['POST'])
 def credential_create(request, pk):
-    require_perm(request, 'manage_projects')
+    require_perm(request, 'project_credentials')
     if not _project_access_ok(request, pk):
         return JsonResponse({'detail': 'به این پروژه دسترسی نداری'}, status=403)
     project = get_object_or_404(Project, pk=pk)
@@ -233,7 +247,7 @@ def credential_create(request, pk):
 @require_http_methods(['GET'])
 def credential_reveal(request, pk):
     """بازگشایی پسورد + ثبت رویداد در ActivityLog."""
-    require_perm(request, 'manage_projects')
+    require_perm(request, 'project_credentials')
     cred = get_object_or_404(Credential, pk=pk)
     if not _project_access_ok(request, cred.project_id):
         return JsonResponse({'detail': 'به این پروژه دسترسی نداری'}, status=403)
@@ -246,7 +260,7 @@ def credential_reveal(request, pk):
 
 @require_http_methods(['DELETE'])
 def credential_delete(request, pk):
-    require_perm(request, 'manage_projects')
+    require_perm(request, 'project_credentials')
     cred = get_object_or_404(Credential, pk=pk)
     if not _project_access_ok(request, cred.project_id):
         return JsonResponse({'detail': 'به این پروژه دسترسی نداری'}, status=403)
@@ -263,8 +277,9 @@ def _file_json(a):
 
 @require_http_methods(['GET', 'POST'])
 def project_files(request, pk):
-    if not request.user.is_authenticated:
-        return JsonResponse({'detail': 'نیاز به ورود'}, status=403)
+    require_perm(request, 'project_files')
+    if not _project_access_ok(request, pk):
+        return JsonResponse({'detail': 'به این پروژه دسترسی نداری'}, status=403)
     from django.contrib.contenttypes.models import ContentType
 
     from core.models import Attachment
@@ -289,8 +304,10 @@ def project_files(request, pk):
 
 @require_http_methods(['DELETE'])
 def project_file_delete(request, pk):
-    if not request.user.is_authenticated:
-        return JsonResponse({'detail': 'نیاز به ورود'}, status=403)
+    require_perm(request, 'project_files')
     from core.models import Attachment
-    get_object_or_404(Attachment, pk=pk).delete()
+    a = get_object_or_404(Attachment, pk=pk)
+    if not _project_access_ok(request, a.object_id):
+        return JsonResponse({'detail': 'به این پروژه دسترسی نداری'}, status=403)
+    a.delete()
     return JsonResponse({'ok': True})

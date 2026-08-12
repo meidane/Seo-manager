@@ -23,7 +23,7 @@ def _filtered_tasks(request, start, end):
     if ids is not None:
         qs = qs.filter(project_id__in=ids)
     m = getattr(request, 'membership', None)
-    if m and m.can('own_tasks_only'):
+    if m and not m.can('view_other_tasks'):
         colleague = getattr(request.user, 'colleague', None)
         qs = qs.filter(assignee_id=colleague.id if colleague else -1)
     if request.GET.get('project'):

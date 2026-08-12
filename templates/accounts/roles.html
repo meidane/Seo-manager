@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}نقش‌ها{% endblock %}
+
+{% block content %}
+  {% include "settings/_nav.html" %}
+  <div class="page-h"><h1>نقش‌ها</h1>
+    <div class="side-c"><span class="tag t-mute">سازمان: {{ org.name }}</span>
+      <a href="{% url 'colleagues:list' %}" class="btn btn-sm">افراد و دسترسی‌ها ↗</a></div>
+  </div>
+
+  <section class="card glass">
+    <div class="card-h"><h3>نقش‌ها و دسترسی‌ها</h3><div class="side-c"><button class="btn btn-sm btn-p" id="add-role">＋ نقش سفارشی</button></div></div>
+    <table>
+      <thead><tr><th>نقش</th><th>دسترسی‌ها</th><th></th></tr></thead>
+      <tbody>
+        {% for r in role_objs %}
+          <tr data-role="{{ r.id }}">
+            <td><b>{{ r.name }}</b>{% if r.is_builtin %} <span class="tag t-mute" style="font-size:10px">پیش‌فرض</span>{% endif %}</td>
+            <td>{% if r.key == 'owner' %}<span class="tag t-ok">همه‌ی دسترسی‌ها</span>{% else %}{% for p in r.perms %}<span class="tag" style="margin:1px">{{ perm_label_map|dictkey:p|default:p }}</span>{% empty %}<span class="zero">—</span>{% endfor %}{% endif %}</td>
+            <td>{% if r.key != 'owner' %}<button class="mini role-edit" data-id="{{ r.id }}">ویرایش</button>{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  const PERM_GROUPS = [
+    {% for gname, gperms in perm_groups %}
+    {name:"{{ gname|escapejs }}", perms:[{% for k,l in gperms.items %}["{{ k }}","{{ l|escapejs }}"]{% if not forloop.last %},{% endif %}{% endfor %}]}{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ];
+  const ROLE_DATA = {}; {% for r in role_objs %}ROLE_DATA[{{ r.id }}]={name:"{{ r.name|escapejs }}",key:"{{ r.key }}",builtin:{{ r.is_builtin|yesno:"true,false" }},perms:[{% for p in r.perms %}"{{ p }}"{% if not forloop.last %},{% endif %}{% endfor %}]};{% endfor %}
+  const permGroupsHtml=(sel)=>PERM_GROUPS.map(g=>`
+    <div style="margin-bottom:10px">
+      <div style="font-size:11.5px;color:var(--text-faint);font-weight:700;margin-bottom:4px">${g.name}</div>
+      <div style="border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:8px">
+        ${g.perms.map(([k,l])=>`<label style="display:flex;align-items:center;gap:7px;margin:0;padding:3px 0;cursor:pointer"><input type="checkbox" class="pm-box" value="${k}" ${sel.includes(k)?'checked':''} style="width:auto"> ${l}</label>`).join('')}
+      </div>
+    </div>`).join('');
+  const pickedPerms=()=>[...document.querySelectorAll('.pm-box:checked')].map(c=>c.value);
+
+  document.getElementById('add-role').onclick=()=>roleModal(null);
+  function roleModal(id){
+    const r=id?ROLE_DATA[id]:{name:'',perms:[]};
+    App.openModal(`<div class="modal-h"><h3>${id?'ویرایش نقش':'نقش سفارشی جدید'}</h3><button class="x" onclick="App.closeModal()">×</button></div>
+      <div class="modal-b"><div class="field"><label>نام نقش</label><input class="input" id="rl-name" value="${r.name}"></div>
+        <label style="font-weight:700;display:block;margin-top:6px">دسترسی‌ها</label>
+        ${permGroupsHtml(r.perms)}</div>
+      <div class="modal-f"><button class="btn btn-p" id="rl-save">ذخیره</button><button class="btn" onclick="App.closeModal()">انصراف</button>
+        ${id&&!r.builtin?'<button class="btn" id="rl-del" style="margin-inline-start:auto;color:var(--danger)">حذف نقش</button>':''}</div>`);
+    document.getElementById('rl-save').onclick=async()=>{
+      const name=val('rl-name'); if(!name){App.toast('نام لازم است','warn');return;}
+      const body={name,perms:pickedPerms()};
+      try{ if(id) await App.fetchJSON(`/settings/roles/api/role/${id}/`,{method:'PATCH',body});
+           else await App.fetchJSON("{% url 'accounts:role_create' %}",{method:'POST',body});
+           location.reload(); }catch(_){}
+    };
+    const del=document.getElementById('rl-del');
+    if(del) del.onclick=async()=>{ if(await App.confirm('این نقش حذف شود؟')){ try{ await App.fetchJSON(`/settings/roles/api/role/${id}/`,{method:'DELETE'}); location.reload(); }catch(_){} } };
+  }
+  document.querySelectorAll('.role-edit').forEach(b=>b.onclick=()=>roleModal(b.dataset.id));
+
+  function val(id){const e=document.getElementById(id);return e?e.value.trim():'';}
+})();
+</script>
+{% endblock %}

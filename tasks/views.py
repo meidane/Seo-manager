@@ -85,22 +85,22 @@ class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
 
 class TaskReviewView(LoginRequiredMixin, TemplateView):
     """صفحه‌ی «بازبینی تسک» — دو مسیرِ مستقل:
-    ۱) نوعِ تسک «نیاز به بازبینی» دارد (`TaskTypeDef.requires_review`) → صف‌ِ عمومی،
-       فقط برای کسی که دسترسیِ سازمانیِ `review` دارد.
-    ۲) همکار «نیاز به بازبینیِ مدیرش» دارد (`Colleague.needs_review`) → فقط برای
-       همان مدیرِ مشخص‌شده دیده می‌شود، مستقل از دسترسیِ `review` (تعیینِ مدیر خودش
-       یعنی اجازه‌ی بازبینیِ کارِ او)."""
+    ۱) نوعِ تسک «نیاز به بازبینی» دارد (`TaskTypeDef.requires_review`) → صفِ عمومی
+       (تسکِ `status=done`)، فقط برای کسی که دسترسیِ سازمانیِ `review` دارد.
+    ۲) خودِ تسک «نیاز به بازبینی» دارد (`Task.needs_review`) → تسک در وضعیتِ
+       `status=pending` («تکمیل — در انتظارِ بازبینی») می‌ماند، نه `done`؛ فقط برای
+       مدیرِ مستقیمِ مسئولِ همان تسک دیده می‌شود، مستقل از دسترسیِ `review`."""
 
     template_name = 'tasks/review.html'
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         qs = Task.objects.select_related('project', 'assignee', 'type_def').filter(
-            status=Task.DONE).filter(reviewable_q(self.request))
+            status__in=[Task.DONE, Task.PENDING]).filter(reviewable_q(self.request))
         review = self.request.GET.get('review', 'unreviewed')
         if review == 'unreviewed':
             qs = qs.filter(review_status=Task.UNREVIEWED)
-        ctx['tasks'] = qs.order_by('-done_date')[:50]
+        ctx['tasks'] = qs.order_by('-updated_at')[:50]
         ctx['review'] = review
         ctx['page_title'] = 'بازبینی تسک'
         return ctx

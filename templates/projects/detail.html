@@ -6,7 +6,7 @@
   {% if not project.is_active %}
     <div class="alert a-red" style="width:100%;margin-bottom:14px;cursor:default">
       <b>این پروژه غیرفعال است.</b>
-      {% if 'manage_projects' in org_perms %}
+      {% if 'edit_project' in org_perms %}
         <form method="post" action="{% url 'projects:restore' project.pk %}" style="margin-inline-start:auto">
           {% csrf_token %}<button class="btn btn-sm">فعال‌سازی مجدد</button>
         </form>
@@ -24,7 +24,7 @@
         {% if project.is_active %}<span class="tag t-ok">فعال</span>{% else %}<span class="tag t-bad">غیرفعال</span>{% endif %}
       </div>
     </div>
-    {% if 'manage_projects' in org_perms %}
+    {% if 'edit_project' in org_perms %}
       <div class="side-c">
         <a href="{% url 'projects:edit' project.pk %}" class="btn">ویرایش</a>
         {% if project.is_active %}
@@ -42,11 +42,11 @@
     <button class="tab" data-tab="tasks">تسک‌ها</button>
     {% if project.track_keyword_rank %}<button class="tab" data-tab="keywords">کلمات کلیدی</button>{% endif %}
     <button class="tab" data-tab="calendar">تقویم</button>
-    <button class="tab" data-tab="files">فایل‌ها</button>
-    <button class="tab" data-tab="members">دسترسی به همکاران</button>
-    {% if 'manage_projects' in org_perms %}<button class="tab" data-tab="creds">دسترسی‌ها</button>{% endif %}
-    <button class="tab" data-tab="reports">گزارش‌ها</button>
-    <button class="tab" data-tab="finance">حسابداری</button>
+    {% if 'project_files' in org_perms %}<button class="tab" data-tab="files">فایل‌ها</button>{% endif %}
+    {% if 'project_colleagues_access' in org_perms %}<button class="tab" data-tab="members">دسترسی به همکاران</button>{% endif %}
+    {% if 'project_credentials' in org_perms %}<button class="tab" data-tab="creds">دسترسی‌ها</button>{% endif %}
+    {% if 'project_reports' in org_perms %}<button class="tab" data-tab="reports">گزارش‌ها</button>{% endif %}
+    {% if 'manage_finance' in org_perms %}<button class="tab" data-tab="finance">حسابداری</button>{% endif %}
   </div>
 
   {# نمای کلی #}
@@ -72,6 +72,7 @@
   </div>
 
   {# دسترسی به همکاران — چه کسی این پروژه/تسک‌هایش را ببیند (غیر از مالکِ سازمان که همیشه می‌بیند) #}
+  {% if 'project_colleagues_access' in org_perms %}
   <section class="card glass tab-panel" data-panel="members">
     <div class="card-h"><h3>دسترسی به همکاران</h3>
       {% if can_manage_members %}<div class="side-c"><button class="btn btn-sm btn-p" id="members-save">ذخیره</button></div>{% endif %}
@@ -90,9 +91,10 @@
       {% endfor %}
     </div>
   </section>
+  {% endif %}
 
   {# دسترسی‌ها #}
-  {% if 'manage_projects' in org_perms %}
+  {% if 'project_credentials' in org_perms %}
   <section class="card glass tab-panel" data-panel="creds">
     <div class="card-h"><h3>دسترسی‌ها</h3>
       <div class="side-c"><button class="btn btn-sm btn-p" id="add-cred">＋ افزودن دسترسی</button></div>
@@ -194,6 +196,7 @@
   {% endif %}
 
   <section class="card glass tab-panel cal" data-panel="calendar"><div data-cal-embed data-project="{{ project.pk }}"></div></section>
+  {% if 'project_files' in org_perms %}
   <section class="card glass tab-panel" data-panel="files">
     <div class="card-h"><h3>فایل‌های پروژه</h3></div>
     <div style="padding:16px">
@@ -204,8 +207,13 @@
       <div class="files-grid" id="file-grid" style="margin-top:14px"></div>
     </div>
   </section>
+  {% endif %}
+  {% if 'project_reports' in org_perms %}
   <section class="card glass tab-panel" data-panel="reports"><div class="empty"><div class="ico">▪</div><h4>گزارش‌ها در گام گزارش‌دهی فعال می‌شود</h4></div></section>
+  {% endif %}
+  {% if 'manage_finance' in org_perms %}
   <section class="card glass tab-panel" data-panel="finance"><div class="empty"><div class="ico">₮</div><h4>حسابداری در گام حسابداری فعال می‌شود</h4></div></section>
+  {% endif %}
 {% endblock %}
 
 {% block scripts %}

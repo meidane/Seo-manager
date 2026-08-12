@@ -66,14 +66,14 @@ is_active`.
     روند روزانه، تب تقویم شخصی (embed)، تب تسک‌ها + بخشِ «دسترسی به سیستم» (بالا).
   - CRUD + archive/restore («افزودنِ فرد» — فقط پروفایل، بدونِ حساب).
   - `colleague_grant_access` / `colleague_quick_create` / `colleague_revoke_invite` —
-    API دسترسی؛ گیت‌شده با `manage_colleagues`.
+    API دسترسی؛ گیت‌شده با `manage_people`.
 - `forms.py` — نقش چک‌باکسی، `join_date` با `jdate`، توضیحات `rich-editor` + `clean_html`.
 
 ## نکته
 `.who/.spark/.donut-legend` باید در `static/css/style.css` باشند (بودند نبودند → رفع شد).
-دکمه‌های «ویرایش»/«غیرفعال‌سازی»/«فعال‌سازی مجدد» در سینگلِ فرد فقط با `can_manage_colleagues`
+دکمه‌های «ویرایش»/«غیرفعال‌سازی»/«فعال‌سازی مجدد» در سینگلِ فرد فقط با `can_manage_people`
 نشان داده می‌شوند (سرور از قبل گیت بود، UI نبود — کلیک روی «ویرایش» برای کاربرِ بدونِ
-`manage_colleagues` ۴۰۳ِ تمام‌صفحه می‌داد).
+`manage_people` ۴۰۳ِ تمام‌صفحه می‌داد).
 
 ## TODO
 `donut_segments`/`TYPE_HEX`/`TYPE_LABEL` (تفکیکِ نوع در سینگل همکار) هنوز بر پایه‌ی

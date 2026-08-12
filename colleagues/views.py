@@ -125,7 +125,7 @@ class ColleagueListView(LoginRequiredMixin, DateRangeMixin, ListView):
         org = getattr(self.request, 'organization', None)
         ctx['org_roles'] = list(org.roles.all()) if org else []
         ctx['can_manage_colleagues'] = bool(getattr(self.request, 'membership', None)
-                                             and self.request.membership.can('manage_colleagues'))
+                                             and self.request.membership.can('manage_people'))
         return ctx
 
 
@@ -186,7 +186,7 @@ class ColleagueDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
         from accounts.models import Invite, Membership
         org = getattr(self.request, 'organization', None)
         ctx['can_manage_colleagues'] = bool(getattr(self.request, 'membership', None)
-                                             and self.request.membership.can('manage_colleagues'))
+                                             and self.request.membership.can('manage_people'))
         ctx['pending_invite'] = Invite.objects.filter(colleague=c, status=Invite.PENDING).first()
         ctx['org_roles'] = list(org.roles.all()) if org else []
         # اگر همکار دسترسی دارد، عضویتِ سازمانی/تیم‌هایش را هم برای ویرایش نشان بده
@@ -240,7 +240,7 @@ class ColleagueUpdateView(LoginRequiredMixin, UpdateView):
     template_name = 'colleagues/form.html'
 
     def dispatch(self, request, *args, **kwargs):
-        require_perm(request, 'manage_colleagues')
+        require_perm(request, 'manage_people')
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
@@ -252,7 +252,7 @@ class ColleagueUpdateView(LoginRequiredMixin, UpdateView):
 
 class ColleagueArchiveView(LoginRequiredMixin, View):
     def post(self, request, pk):
-        require_perm(request, 'manage_colleagues')
+        require_perm(request, 'manage_people')
         colleague = get_object_or_404(Colleague, pk=pk)
         colleague.archive()
         return redirect(colleague.get_absolute_url())
@@ -260,7 +260,7 @@ class ColleagueArchiveView(LoginRequiredMixin, View):
 
 class ColleagueRestoreView(LoginRequiredMixin, View):
     def post(self, request, pk):
-        require_perm(request, 'manage_colleagues')
+        require_perm(request, 'manage_people')
         colleague = get_object_or_404(Colleague, pk=pk)
         colleague.restore()
         return redirect(colleague.get_absolute_url())
@@ -319,7 +319,7 @@ def colleague_grant_access(request, pk):
     فوری، بدونِ در انتظار). `_grant_access` منطقِ مشترک را دارد."""
     from accounts.models import Invite
 
-    org = require_perm(request, 'manage_colleagues')
+    org = require_perm(request, 'manage_people')
     colleague = get_object_or_404(Colleague, pk=pk)
     if colleague.user_id:
         return JsonResponse({'detail': 'این همکار قبلاً به سیستم دسترسی دارد'}, status=400)
@@ -333,7 +333,7 @@ def colleague_grant_access(request, pk):
 def colleague_quick_create(request):
     """افزودنِ فردِ تازه + دادنِ دسترسی در یک قدم — دکمه‌های «کاربر جدید»/«دعوت با شماره»
     در صفحه‌ی فهرستِ افراد. بدنه: `{full_name, phone, mode, username?, password?, role}`."""
-    org = require_perm(request, 'manage_colleagues')
+    org = require_perm(request, 'manage_people')
     d = _body(request)
     full_name = (d.get('full_name') or '').strip()
     if not full_name:
@@ -354,7 +354,7 @@ def colleague_revoke_invite(request, pk):
     """دعوت‌نامه‌ی در انتظارِ این همکار را لغو می‌کند (حذف، نه رد — تا بشود دوباره دعوت کرد)."""
     from accounts.models import Invite
 
-    require_perm(request, 'manage_colleagues')
+    require_perm(request, 'manage_people')
     colleague = get_object_or_404(Colleague, pk=pk)
     Invite.objects.filter(colleague=colleague, status=Invite.PENDING).delete()
     return JsonResponse({'ok': True})

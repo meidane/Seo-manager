@@ -59,7 +59,7 @@ body{
   font-size:14px; line-height:1.75;
   min-height:100vh;
 }
-a{color:inherit}
+a{color:inherit;text-decoration:none}
 ::selection{background:var(--primary-soft)}
 ::-webkit-scrollbar{width:9px;height:9px}
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.10);border-radius:99px}
@@ -220,6 +220,13 @@ label{font-size:12px;color:var(--text-dim);display:block;margin-bottom:6px}
   padding:3px 10px;border-radius:var(--r-full);cursor:pointer;transition:var(--ease)}
 .chip:hover{background:var(--glass-hover);color:var(--text)}
 .chip.on{background:var(--primary-soft);border-color:var(--primary-ring);color:#BBD4FF}
+
+/* ── نوار فیلترها (لیست تسک‌ها و مشابه) ── */
+.filters{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 14px}
+.filters select{width:auto;min-width:130px;flex:none;padding:7px 10px;font-size:12.5px;
+  border-radius:var(--r-sm);background:rgba(255,255,255,.04);border:1px solid var(--stroke-soft);color:var(--text)}
+.filters select:hover{border-color:var(--stroke)}
+.sep{width:1px;align-self:stretch;min-height:20px;background:var(--stroke-soft);flex:none}
 
 /* ── جدول ── */
 table{width:100%;border-collapse:collapse}
@@ -603,7 +610,7 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .tw-stop:hover{background:var(--danger);color:#fff}
 
 /* تایمر تسک (ستون زمان) */
-.timer-cell{white-space:nowrap;display:flex;align-items:center;gap:6px}
+.timer-cell{white-space:nowrap;display:flex;align-items:center;gap:6px;min-height:22px}
 .timer-cell .tbtn{border:0;background:rgba(255,255,255,.06);color:var(--text);width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;display:grid;place-items:center}
 .timer-cell.running .tbtn{background:var(--danger);color:#fff}
 .timer-cell .tval{font-variant-numeric:tabular-nums;font-size:12px;color:var(--text-dim);min-width:34px}
@@ -667,3 +674,18 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .rec-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:12.5px}
 .rec-opt{padding:5px 10px;border-radius:99px;border:1px solid var(--stroke-soft);cursor:pointer;background:rgba(255,255,255,.03)}
 .rec-opt.on{background:var(--primary-soft);border-color:var(--primary-ring);color:var(--primary-400)}
+
+/* ── بازبینیِ تسک (صفحه‌ی کارت‌ها) ── */
+.rev-card{padding:16px 18px;margin-bottom:12px;transition:var(--ease),opacity var(--ease);outline:2px solid transparent;outline-offset:2px}
+.rev-card.rev-focus{outline-color:var(--primary)}
+.rev-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.rev-top h3{font-size:14.5px;font-weight:500;flex:1;min-width:160px}
+.rev-status{margin-inline-start:auto}
+.rev-meta{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--text-dim);margin-bottom:10px}
+.rev-meta b{color:var(--text);font-weight:500}
+.rev-why{margin-inline-start:auto;font-size:11px;color:var(--text-faint)}
+.rev-desc{font-size:12.5px;color:var(--text-dim);line-height:1.8;padding:10px 12px;margin-bottom:10px;
+  background:rgba(255,255,255,.02);border:1px solid var(--stroke-soft);border-radius:var(--r-sm)}
+.rev-desc p{margin:0}
+.rev-kw{margin-bottom:10px}
+.rev-actions{display:flex;flex-wrap:wrap;gap:8px;padding-top:10px;border-top:1px solid var(--stroke-soft)}
