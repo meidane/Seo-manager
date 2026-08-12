@@ -70,11 +70,13 @@ class FinanceDashboardView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin,
         pay_total = sum(p.total for p in Payroll.objects.all())
         pay_paid = Payroll.objects.aggregate(s=Sum('paid_amount'))['s'] or 0
 
+        from .alerts import compute_alerts
         ctx.update({
             'income': income, 'expense': expense, 'net': income - expense,
             'banks': banks, 'bank_total': bank_total, 'cats': cats,
             'pay_total': pay_total, 'pay_paid': pay_paid, 'pay_remaining': pay_total - pay_paid,
             'unassigned': tx.filter(project__isnull=True, category__isnull=True).count(),
+            'fin_alerts': compute_alerts(),
             'page_title': 'حسابداری',
         })
         return ctx
@@ -174,22 +176,20 @@ class PayrollListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
     def get_context_data(self, **kwargs):
         from colleagues.models import Colleague
         from core.jalali import MONTH_NAMES
+
+        from .balances import salary_balances
         ctx = super().get_context_data(**kwargs)
         payrolls = list(Payroll.objects.select_related('colleague').prefetch_related('items'))
         cids = {p.colleague_id for p in payrolls}
 
-        # مانده‌ی «کل حساب با همکار» = Σ تعهدِ همه‌ی حقوق‌هایش − Σ پرداختیِ ثبت‌شده در
-        # تراکنش‌های بابتِ حقوقِ او (بابتِ «حقوق <نام>» که خودکار ساخته می‌شود).
-        owed = {r['payroll__colleague_id']: r['s'] or 0 for r in PayrollItem.objects
-                .filter(payroll__colleague_id__in=cids)
-                .values('payroll__colleague_id').annotate(s=Sum('amount'))}
-        paid = {r['category__colleague_id']: r['s'] or 0 for r in Transaction.objects
-                .filter(category__colleague_id__in=cids)
-                .values('category__colleague_id').annotate(s=Sum('withdrawal'))}
-        balances = {cid: owed.get(cid, 0) - paid.get(cid, 0) for cid in cids}
+        # مانده‌ی «کل حساب با همکار» (منبع واحد: balances.salary_balances)
+        balances = salary_balances(cids)
+        # نگاشتِ همکار → id بابتِ حقوقِ او، برای لینکِ مانده به تبِ گزارش
+        salary_cat = {c.colleague_id: c.id for c in Category.objects.filter(colleague_id__in=cids)}
 
         ctx['payrolls'] = payrolls
         ctx['balances'] = balances
+        ctx['salary_cat'] = salary_cat
         ctx['colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)
         ctx['months'] = list(enumerate(MONTH_NAMES, start=1))  # [(1,'فروردین'),...]
         ctx['page_title'] = 'حقوق'
@@ -208,7 +208,11 @@ class InvoiceListView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, Temp
               .filter(issue_date__range=(start, end)))
         if self.request.GET.get('project'):
             qs = qs.filter(project_id=self.request.GET['project'])
-        ctx['invoices'] = qs
+        invoices = list(qs)
+        # مانده‌ی «گردش حساب» هر پروژه (کلِ تاریخ) برای ستونِ مانده — منبع واحد balances
+        from .balances import project_balances
+        ctx['project_bal'] = project_balances({inv.project_id for inv in invoices})
+        ctx['invoices'] = invoices
         ctx['projects'] = Project.objects.filter(status=Project.ACTIVE)
         ctx['filters'] = self.request.GET
         ctx['page_title'] = 'فاکتورها'
@@ -344,6 +348,18 @@ class LedgerView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateV
         ctx['total_deposit'] = tot_d
         ctx['total_withdrawal'] = tot_w
         ctx['final_balance'] = bal
+
+        # بنرِ هشدارِ متنی برای موردِ در حالِ مشاهده (بر پایه‌ی مانده‌ی کلِ تاریخ، نه فقط بازه)
+        from .balances import project_balance, salary_balance
+        ctx['ledger_alert'] = None
+        if project_id:
+            pb = project_balance(project_id)
+            if pb > 0:
+                ctx['ledger_alert'] = 'مانده‌ی این پروژه مثبت است (واریزی بیش از فاکتورها) — شاید فاکتوری ثبت نشده باشد.'
+        elif ctx.get('selected_category') and ctx['selected_category'].colleague_id:
+            sb = salary_balance(ctx['selected_category'].colleague_id)
+            if sb < 0:
+                ctx['ledger_alert'] = 'پرداختِ حقوق بیش از تعهد است (اضافه‌پرداخت).'
         return ctx
 
 
@@ -423,7 +439,24 @@ def tx_edit(request, pk):
     if 'note' in d:
         t.note = d['note']
     t.save(update_fields=['project', 'category', 'note', 'updated_at'])
-    return JsonResponse({'ok': True})
+
+    # هشدارِ نرم (بدونِ بلاک) اگر این نسبت‌دهی ناسازگاریِ حسابداری ساخت
+    warning = _tx_anomaly_warning(t)
+    return JsonResponse({'ok': True, 'warning': warning})
+
+
+def _tx_anomaly_warning(t):
+    """اگر نسبت‌دهیِ پروژه/بابت به این تراکنش ناسازگاری ساخت، پیامِ هشدار برگردان (وگرنه None)."""
+    from .balances import project_balance, salary_balance
+    if t.project_id:
+        if project_balance(t.project_id) > 0:
+            return 'مانده‌ی این پروژه مثبت شد (واریزی بیش از فاکتورها) — شاید فاکتوری ثبت نشده باشد.'
+    if t.category_id and getattr(t.category, 'colleague_id', None):
+        if salary_balance(t.category.colleague_id) < 0:
+            return 'پرداختِ حقوق این همکار از تعهدش بیشتر شد (اضافه‌پرداخت).'
+    if t.bank_account_id and t.bank_account.balance < 0:
+        return f'مانده‌ی بانکِ «{t.bank_account.name}» منفی شد.'
+    return None
 
 
 @login_required

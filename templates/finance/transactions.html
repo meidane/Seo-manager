@@ -18,23 +18,20 @@
     <select name="bank" onchange="this.form.submit()"><option value="">همه‌ی بانک‌ها</option>{% for b in banks %}<option value="{{ b.id }}" {% if filters.bank == b.id|stringformat:'s' %}selected{% endif %}>{{ b.name }}</option>{% endfor %}</select>
     <select name="project" onchange="this.form.submit()"><option value="">همه‌ی پروژه‌ها</option>{% for p in projects %}<option value="{{ p.id }}" {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
 
-    {# بابت — چندانتخابی #}
-    <div class="ms" style="position:relative">
-      <button type="button" class="btn btn-sm" id="cat-toggle">بابت{% if selected_categories %} (<span id="cat-count">{{ selected_categories|length|fa_digits }}</span>){% else %}: همه{% endif %} ▾</button>
-      <div class="ms-box glass" id="cat-box" style="display:none;position:absolute;top:calc(100% + 4px);inset-inline-start:0;z-index:40;min-width:220px;max-height:320px;overflow:auto;padding:8px">
-        <input type="text" id="cat-search" placeholder="🔍 جستجوی بابت…" autocomplete="off" class="input" style="margin-bottom:6px;padding:6px 8px;font-size:12px">
-        <div id="cat-list">
+    {# بابت — چندانتخابی، قابلِ جستجو، اعمالِ فوری #}
+    <div class="ms">
+      <button type="button" class="btn btn-sm ms-btn" id="cat-toggle">بابت{% if selected_categories %} (<span id="cat-count">{{ selected_categories|length|fa_digits }}</span>){% else %}: همه{% endif %} ▾</button>
+      <div class="ms-drop glass" id="cat-box">
+        <input type="text" id="cat-search" placeholder="🔍 جستجوی بابت…" autocomplete="off" class="input ms-search">
+        <div class="ms-opts" id="cat-list">
         {% for c in categories %}
-          <label class="cat-opt" data-name="{{ c.name }}" style="display:flex;align-items:center;gap:8px;padding:5px 4px;margin:0;cursor:pointer;font-size:12.5px">
-            <input type="checkbox" name="category" value="{{ c.id }}" {% if c.id|stringformat:'s' in selected_categories %}checked{% endif %} style="width:auto">
+          <label class="ms-opt cat-opt" data-name="{{ c.name }}">
+            <input type="checkbox" name="category" value="{{ c.id }}" {% if c.id|stringformat:'s' in selected_categories %}checked{% endif %}>
             <i class="dot" style="background:{{ c.color }}"></i> {{ c.name }}
           </label>
         {% endfor %}
         </div>
-        <div style="display:flex;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--stroke-soft)">
-          <button type="submit" class="btn btn-sm btn-p" style="flex:1">اعمال</button>
-          <button type="button" class="btn btn-sm" id="cat-clear">پاک‌کردن</button>
-        </div>
+        <div class="ms-foot"><button type="button" class="btn btn-sm" id="cat-clear">پاک‌کردنِ همه</button></div>
       </div>
     </div>
 
@@ -95,19 +92,28 @@
 {% block scripts %}
 <script>
 (function(){
-  // ── دراپ‌داونِ بابتِ چندانتخابی (با جستجو) ──
+  // ── دراپ‌داونِ بابتِ چندانتخابی (جستجو + اعمالِ فوری) ──
   const cToggle=document.getElementById('cat-toggle'), cBox=document.getElementById('cat-box');
   if(cToggle&&cBox){
-    cToggle.onclick=e=>{ e.preventDefault(); cBox.style.display=cBox.style.display==='none'?'block':'none'; const s=document.getElementById('cat-search'); if(cBox.style.display!=='none'&&s)s.focus(); };
+    cToggle.onclick=e=>{ e.preventDefault(); const open=cBox.classList.toggle('open'); const s=document.getElementById('cat-search'); if(open&&s)s.focus(); };
     document.getElementById('cat-clear').onclick=()=>{ cBox.querySelectorAll('input[name="category"]').forEach(c=>c.checked=false); document.getElementById('tx-filters').submit(); };
+    // هر تغییرِ چک‌باکس بلافاصله اعمال می‌شود
+    cBox.addEventListener('change',e=>{ if(e.target.name==='category') document.getElementById('tx-filters').submit(); });
     const cSearch=document.getElementById('cat-search');
     if(cSearch) cSearch.addEventListener('input',()=>{ const q=cSearch.value.trim().toLowerCase();
-      cBox.querySelectorAll('.cat-opt').forEach(o=>{ o.style.display=o.dataset.name.toLowerCase().includes(q)?'flex':'none'; }); });
-    document.addEventListener('click',e=>{ if(!e.target.closest('.ms')) cBox.style.display='none'; });
+      cBox.querySelectorAll('.cat-opt').forEach(o=>{ o.style.display=o.dataset.name.toLowerCase().includes(q)?'':'none'; }); });
+    document.addEventListener('click',e=>{ if(!e.target.closest('.ms')) cBox.classList.remove('open'); });
   }
 
   // نگاشتِ نامِ بابت → id (برای جستجوی درون‌جدولی)
   const CAT_MAP = { {% for c in categories %}"{{ c.name|escapejs }}":"{{ c.id }}"{% if not forloop.last %},{% endif %}{% endfor %} };
+
+  // ذخیره + نمایشِ هشدارِ نرمِ حسابداری (بدونِ بلاک)
+  async function txSave(id, body){
+    const r=await App.fetchJSON(`/finance/api/tx/${id}/`,{method:'PATCH',body});
+    if(r&&r.warning) App.toast('⚠ '+r.warning,'warn',6000); else App.toast('ذخیره شد','ok');
+    return r;
+  }
 
   const sheet=document.getElementById('tx-sheet'); if(!sheet) return;
   // ویرایش inline: پروژه (select) و توضیحات (input)
@@ -117,12 +123,12 @@
     if(cat){ const id=e.target.closest('tr').dataset.id; const val=cat.value.trim();
       const cid = val==='' ? '' : (CAT_MAP[val]||null);
       if(cid===null){ App.toast('بابت پیدا نشد','warn'); return; }
-      try{ await App.fetchJSON(`/finance/api/tx/${id}/`,{method:'PATCH',body:{category:cid}}); App.toast('ذخیره شد','ok'); }catch(_){}
+      try{ await txSave(id,{category:cid}); }catch(_){}
       return;
     }
     const el=e.target.closest('.tx-f'); if(!el) return;
     const id=el.closest('tr').dataset.id;
-    try{ await App.fetchJSON(`/finance/api/tx/${id}/`,{method:'PATCH',body:{[el.dataset.f]:el.value}}); App.toast('ذخیره شد','ok'); }catch(_){}
+    try{ await txSave(id,{[el.dataset.f]:el.value}); }catch(_){}
   });
   sheet.addEventListener('blur', async e=>{
     const el=e.target.closest('input.tx-f'); if(!el) return;

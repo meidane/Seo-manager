@@ -36,6 +36,7 @@
       <span style="color:var(--text-dim)">گردشِ حساب:</span>
       {% if mode == 'project' %}<b>پروژه‌ی {{ selected_project.name }}</b>{% else %}<b>بابتِ {{ selected_category.name }}</b>{% if selected_category.colleague_id %}<span class="tag t-mute">حقوقِ همکار</span>{% endif %}{% endif %}
     </div>
+    {% if ledger_alert %}<div class="alert a-yel" style="border-radius:var(--r-sm);margin-bottom:10px;cursor:default"><span style="font-size:15px">⚠</span> <span>{{ ledger_alert }}</span></div>{% endif %}
     <div class="sheet-wrap">
       <table class="sheet ledger">
         <thead><tr>

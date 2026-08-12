@@ -16,7 +16,7 @@
   <section class="card glass">
     {% if invoices %}
       <table>
-        <thead><tr><th>شماره</th><th>تاریخ ثبت</th><th>پروژه</th><th>توضیحات</th><th>تاریخ پرداخت</th><th>جمع کل</th><th></th></tr></thead>
+        <thead><tr><th>شماره</th><th>تاریخ ثبت</th><th>پروژه</th><th>توضیحات</th><th>تاریخ پرداخت</th><th>جمع کل</th><th>مانده‌ی پروژه</th><th></th></tr></thead>
         <tbody>
           {% for inv in invoices %}
             <tr onclick="location.href='{% url 'finance:invoice_edit_page' inv.pk %}'" style="cursor:pointer">
@@ -26,6 +26,9 @@
               <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ inv.description }}">{{ inv.description|default:'—' }}</td>
               <td class="num-c">{% if inv.due_date %}{{ inv.due_date|jalali }}{% else %}—{% endif %}</td>
               <td class="num-c" style="font-weight:700">{{ inv.grand_total|money }}</td>
+              {% if inv.project_id %}{% with bal=project_bal|dictkey:inv.project_id %}
+                <td class="num-c"><a href="{% url 'finance:ledger' %}?project={{ inv.project_id }}" class="lnk" onclick="event.stopPropagation()" title="مشاهده‌ی گردش حساب" style="font-weight:700;{% if bal > 0 %}color:var(--warning){% elif bal < 0 %}color:var(--danger){% endif %}">{{ bal|money }} ↗</a></td>
+              {% endwith %}{% else %}<td class="num-c">—</td>{% endif %}
               <td><button class="mini inv-del" data-id="{{ inv.id }}" onclick="event.stopPropagation()">حذف</button></td>
             </tr>
           {% endfor %}
