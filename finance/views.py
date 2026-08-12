@@ -1,16 +1,20 @@
 """ویوهای حسابداری (پایه) — داشبورد، بانک‌ها، بابت‌ها، تراکنش‌ها، ورود اکسل، حقوق."""
 import json
 
+from datetime import date
+
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Max, Sum
+from django.core.paginator import Paginator
+from django.db.models import Max, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_http_methods
 from django.views.generic import TemplateView
 
-from core.daterange import DateRangeMixin
-from core.jalali import parse_jalali
+from core.daterange import (PRESET_LABELS, PRESETS, DateRangeMixin,
+                            _resolve_preset)
+from core.jalali import format_jalali, parse_jalali
 from projects.models import Project
 
 from .access import FinancePermMixin, require_finance
@@ -76,28 +80,68 @@ class FinanceDashboardView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin,
         return ctx
 
 
-class TransactionListView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateView):
+def _optional_range(g):
+    """بازه‌ی تاریخِ اختیاری برای تراکنش‌ها — پیش‌فرض بدون فیلتر (همه).
+    فقط وقتی کاربر صریح `from/to` یا `range` بدهد اعمال می‌شود.
+    برمی‌گرداند (start, end, label) یا (None, None, '')."""
+    if g.get('from') and g.get('to'):
+        try:
+            s, e = parse_jalali(g['from']), parse_jalali(g['to'])
+            return s, e, f'{format_jalali(s)} تا {format_jalali(e)}'
+        except (ValueError, TypeError):
+            pass
+    key = g.get('range')
+    if key and (key in PRESETS or key in ('this_month', 'last_month')):
+        s, e = _resolve_preset(key, date.today())
+        return s, e, PRESET_LABELS.get(key, '')
+    return None, None, ''
+
+
+class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
     template_name = 'finance/transactions.html'
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        start, end = self.get_range(self.request)
-        ctx.update(self.range_context())
         g = self.request.GET
         qs = Transaction.objects.select_related('bank_account', 'project', 'category')
-        qs = qs.filter(date__range=(start, end))
+
+        # بازه‌ی تاریخ اختیاری (پیش‌فرض: همه‌ی تراکنش‌ها)
+        start, end, range_label = _optional_range(g)
+        if start and end:
+            qs = qs.filter(date__range=(start, end))
+
         if g.get('bank'):
             qs = qs.filter(bank_account_id=g['bank'])
         if g.get('project'):
             qs = qs.filter(project_id=g['project'])
-        if g.get('category'):
-            qs = qs.filter(category_id=g['category'])
+        # بابت: چندانتخابی
+        cat_ids = [c for c in g.getlist('category') if c]
+        if cat_ids:
+            qs = qs.filter(category_id__in=cat_ids)
         if g.get('unassigned') == '1':
             qs = qs.filter(project__isnull=True, category__isnull=True)
-        ctx['transactions'] = qs[:300]
+        # جستجو روی شرح سند + توضیحات
+        q = (g.get('q') or '').strip()
+        if q:
+            qs = qs.filter(Q(description__icontains=q) | Q(note__icontains=q))
+
+        paginator = Paginator(qs, 100)
+        page_obj = paginator.get_page(g.get('page'))
+
+        # پارامترهای فیلتر برای لینک‌های صفحه‌بندی (بدون page)
+        params = g.copy()
+        params.pop('page', None)
+        ctx['qs_params'] = params.urlencode()
+
+        ctx['page_obj'] = page_obj
+        ctx['transactions'] = page_obj.object_list
+        ctx['total_count'] = paginator.count
         ctx['banks'] = BankAccount.objects.filter(is_active=True)
         ctx['projects'] = Project.objects.filter(status=Project.ACTIVE)
         ctx['categories'] = Category.objects.all()
+        ctx['selected_categories'] = cat_ids
+        ctx['range_label'] = range_label
+        ctx['q'] = q
         ctx['filters'] = g
         ctx['page_title'] = 'تراکنش‌ها'
         return ctx
