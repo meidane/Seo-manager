@@ -1,16 +1,20 @@
 """ویوهای حسابداری (پایه) — داشبورد، بانک‌ها، بابت‌ها، تراکنش‌ها، ورود اکسل، حقوق."""
 import json
 
+from datetime import date
+
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Max, Sum
+from django.core.paginator import Paginator
+from django.db.models import Max, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_http_methods
 from django.views.generic import TemplateView
 
-from core.daterange import DateRangeMixin
-from core.jalali import parse_jalali
+from core.daterange import (PRESET_LABELS, PRESETS, DateRangeMixin,
+                            _resolve_preset)
+from core.jalali import format_jalali, parse_jalali
 from projects.models import Project
 
 from .access import FinancePermMixin, require_finance
@@ -76,28 +80,68 @@ class FinanceDashboardView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin,
         return ctx
 
 
-class TransactionListView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateView):
+def _optional_range(g):
+    """بازه‌ی تاریخِ اختیاری برای تراکنش‌ها — پیش‌فرض بدون فیلتر (همه).
+    فقط وقتی کاربر صریح `from/to` یا `range` بدهد اعمال می‌شود.
+    برمی‌گرداند (start, end, label) یا (None, None, '')."""
+    if g.get('from') and g.get('to'):
+        try:
+            s, e = parse_jalali(g['from']), parse_jalali(g['to'])
+            return s, e, f'{format_jalali(s)} تا {format_jalali(e)}'
+        except (ValueError, TypeError):
+            pass
+    key = g.get('range')
+    if key and (key in PRESETS or key in ('this_month', 'last_month')):
+        s, e = _resolve_preset(key, date.today())
+        return s, e, PRESET_LABELS.get(key, '')
+    return None, None, ''
+
+
+class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
     template_name = 'finance/transactions.html'
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        start, end = self.get_range(self.request)
-        ctx.update(self.range_context())
         g = self.request.GET
         qs = Transaction.objects.select_related('bank_account', 'project', 'category')
-        qs = qs.filter(date__range=(start, end))
+
+        # بازه‌ی تاریخ اختیاری (پیش‌فرض: همه‌ی تراکنش‌ها)
+        start, end, range_label = _optional_range(g)
+        if start and end:
+            qs = qs.filter(date__range=(start, end))
+
         if g.get('bank'):
             qs = qs.filter(bank_account_id=g['bank'])
         if g.get('project'):
             qs = qs.filter(project_id=g['project'])
-        if g.get('category'):
-            qs = qs.filter(category_id=g['category'])
+        # بابت: چندانتخابی
+        cat_ids = [c for c in g.getlist('category') if c]
+        if cat_ids:
+            qs = qs.filter(category_id__in=cat_ids)
         if g.get('unassigned') == '1':
             qs = qs.filter(project__isnull=True, category__isnull=True)
-        ctx['transactions'] = qs[:300]
+        # جستجو روی شرح سند + توضیحات
+        q = (g.get('q') or '').strip()
+        if q:
+            qs = qs.filter(Q(description__icontains=q) | Q(note__icontains=q))
+
+        paginator = Paginator(qs, 100)
+        page_obj = paginator.get_page(g.get('page'))
+
+        # پارامترهای فیلتر برای لینک‌های صفحه‌بندی (بدون page)
+        params = g.copy()
+        params.pop('page', None)
+        ctx['qs_params'] = params.urlencode()
+
+        ctx['page_obj'] = page_obj
+        ctx['transactions'] = page_obj.object_list
+        ctx['total_count'] = paginator.count
         ctx['banks'] = BankAccount.objects.filter(is_active=True)
         ctx['projects'] = Project.objects.filter(status=Project.ACTIVE)
         ctx['categories'] = Category.objects.all()
+        ctx['selected_categories'] = cat_ids
+        ctx['range_label'] = range_label
+        ctx['q'] = q
         ctx['filters'] = g
         ctx['page_title'] = 'تراکنش‌ها'
         return ctx
@@ -129,9 +173,25 @@ class PayrollListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         from colleagues.models import Colleague
+        from core.jalali import MONTH_NAMES
         ctx = super().get_context_data(**kwargs)
-        ctx['payrolls'] = Payroll.objects.select_related('colleague').prefetch_related('items')
+        payrolls = list(Payroll.objects.select_related('colleague').prefetch_related('items'))
+        cids = {p.colleague_id for p in payrolls}
+
+        # مانده‌ی «کل حساب با همکار» = Σ تعهدِ همه‌ی حقوق‌هایش − Σ پرداختیِ ثبت‌شده در
+        # تراکنش‌های بابتِ حقوقِ او (بابتِ «حقوق <نام>» که خودکار ساخته می‌شود).
+        owed = {r['payroll__colleague_id']: r['s'] or 0 for r in PayrollItem.objects
+                .filter(payroll__colleague_id__in=cids)
+                .values('payroll__colleague_id').annotate(s=Sum('amount'))}
+        paid = {r['category__colleague_id']: r['s'] or 0 for r in Transaction.objects
+                .filter(category__colleague_id__in=cids)
+                .values('category__colleague_id').annotate(s=Sum('withdrawal'))}
+        balances = {cid: owed.get(cid, 0) - paid.get(cid, 0) for cid in cids}
+
+        ctx['payrolls'] = payrolls
+        ctx['balances'] = balances
         ctx['colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)
+        ctx['months'] = list(enumerate(MONTH_NAMES, start=1))  # [(1,'فروردین'),...]
         ctx['page_title'] = 'حقوق'
         return ctx
 
@@ -403,7 +463,28 @@ def payroll_edit(request, pk):
         p.paid_amount = parse_amount(d['paid_amount'])
     if 'note' in d:
         p.note = d['note']
-    p.save()
+    if 'colleague' in d and d['colleague']:
+        p.colleague_id = d['colleague']
+    if 'year' in d:
+        try:
+            p.year = int(d['year'])
+        except (ValueError, TypeError):
+            pass
+    if 'month' in d:
+        try:
+            p.month = int(d['month'])
+        except (ValueError, TypeError):
+            pass
+    from django.db import IntegrityError
+    try:
+        p.save()
+    except IntegrityError:
+        return JsonResponse({'detail': 'برای این همکار در این ماه از قبل حقوق ثبت شده'}, status=400)
+    if 'items' in d:
+        p.items.all().delete()
+        for it in d['items']:
+            if it.get('title'):
+                PayrollItem.objects.create(payroll=p, title=it['title'], amount=parse_amount(it.get('amount', 0)))
     return JsonResponse({'ok': True, 'total': p.total, 'remaining': p.remaining, 'status': p.status})
 
 

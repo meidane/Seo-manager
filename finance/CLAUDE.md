@@ -6,11 +6,20 @@
 ## مدل‌ها
 - **BankAccount** — `name, bank, color, card_number, initial_balance, is_active`.
   `balance` = اولیه + Σواریز − Σبرداشت (property).
-- **Category** («بابت») — قابل‌گسترش: `name, color, is_salary, order`. `seed_categories`.
+- **Category** («بابت») — قابل‌گسترش: `name, color, is_salary, order, colleague(FK اختیاری)`. `seed_categories`.
+  **بابتِ حقوقِ هر همکار خودکار است:** با ساختِ هر Colleague یک بابتِ «حقوق <نام>»
+  (`is_salary=True`, `colleague=آن همکار`) ساخته می‌شود — `finance/signals.py`
+  (`post_save` روی Colleague؛ نامش با تغییرِ نامِ همکار هم‌گام می‌شود). همکارانِ موجود با
+  data-migration `0005` backfill شدند. منطق را جای دیگر تکرار نکن.
 - **Transaction** — `bank_account, date(میلادی), time, description, deposit, withdrawal,
   balance, user_note` (از اکسل) + سه ستونِ ما: `project, category, note` + `import_hash` (dedup).
   `make_hash(...)` برای تشخیص تکراری.
-- **Payroll / PayrollItem** — صورت‌حساب حقوق ماهانه؛ `total/remaining/status` (property).
+- **Payroll / PayrollItem** — صورت‌حساب حقوق ماهانه؛ `total/remaining/status/month_name` (property).
+  تبِ حقوق ستون‌ها: همکار · ماه(نام، `month_name`) · اجزا · جمع · **مانده‌ی «کل حساب با همکار»**
+  (وضعیت حذف شد). مانده = Σ تعهدِ همه‌ی حقوق‌های همکار − Σ برداشتِ تراکنش‌های بابتِ حقوقِ او
+  (`category__colleague`) — در `PayrollListView` محاسبه و به‌صورت dict `balances` پاس داده می‌شود.
+  ویرایشِ کاملِ حقوق (همکار/ماه/اجزا) از همان مودال، `payroll_edit` با آرایه‌ی `items` بازساخت می‌کند.
+  مودالِ صدور/ویرایش: ماه با **نام** (`فروردین…اسفند`, context `months`)، اجزا تک‌ردیفی با **Enter=ردیف بعد**.
 - **Invoice / InvoiceLine** — فاکتور فروش/خدمات به یک پروژه. `number` خودکار و پشت‌سرهم
   در سطحِ سازمان (در `save()` = `Max(number)+1`، با `UniqueConstraint(organization, number)`).
   فیلدها: `issue_date(تاریخ ثبت, میلادی), project, description, due_date(تاریخ پرداخت)`.
@@ -33,8 +42,15 @@
 payroll_create/edit, invoice_create/edit). فاکتور با فرمِ صفحه‌ای (نه مودال) به‌خاطرِ ردیف‌های پویا.
 
 ## بازه‌ی تاریخ
-`transactions` و `invoices` از `DateRangeMixin` استفاده می‌کنند (فیلترِ `date`/`issue_date`
-با بازه‌ی سراسریِ session؛ پیکرِ بازه در topbar سراسری است). داشبورد هم از قبل داشت.
+- `invoices` از `DateRangeMixin` (session سراسری) استفاده می‌کند.
+- `transactions` **بازه را اجباری اعمال نمی‌کند** — پیش‌فرض همه‌ی تراکنش‌ها؛ بازه فقط وقتی
+  کاربر صریح `?range=`/`?from=&to=` بدهد اعمال می‌شود (`views._optional_range`). داشبورد از قبل داشت.
+
+## تراکنش‌ها (فیلتر/صفحه‌بندی)
+- پیش‌فرض: همه، **۱۰۰تایی صفحه‌بندی** (`Paginator`؛ `?page=`؛ `qs_params` سایرِ فیلترها را در لینکِ صفحه نگه می‌دارد).
+- **بابت چندانتخابی** (`?category=`های متعدد → `category_id__in`؛ دراپ‌داونِ چک‌باکسی در فیلتر).
+- **جستجو** (`?q=`) روی `description`(شرح سند) + `note`(توضیحات).
+- ستونِ **بانک** (`bank_account.name`) کنارِ شرح سند نمایش داده می‌شود.
 
 ## دسترسی
 کلِ اپ پشتِ پرمیشنِ سازمانیِ `manage_finance` است — `finance/access.py`

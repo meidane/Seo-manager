@@ -52,6 +52,8 @@ class Category(models.Model):
     name = models.CharField('عنوان بابت', max_length=80)
     color = models.CharField('رنگ', max_length=7, default='#8FA0B8')
     is_salary = models.BooleanField('مربوط به حقوق', default=False)
+    # بابتِ حقوقِ یک همکارِ مشخص (خودکار ساخته می‌شود؛ برای محاسبه‌ی مانده‌ی حساب با او)
+    colleague = models.ForeignKey('colleagues.Colleague', verbose_name='همکار (حقوق)', on_delete=models.SET_NULL, null=True, blank=True, related_name='salary_categories')
     order = models.PositiveIntegerField('ترتیب', default=0)
 
     organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
@@ -238,6 +240,13 @@ class Payroll(TimeStampedModel):
 
     def __str__(self):
         return f'{self.colleague} — {self.year}/{self.month}'
+
+    @property
+    def month_name(self):
+        from core.jalali import MONTH_NAMES
+        if 1 <= (self.month or 0) <= 12:
+            return MONTH_NAMES[self.month - 1]
+        return str(self.month)
 
     @property
     def total(self):

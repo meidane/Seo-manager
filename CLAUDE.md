@@ -65,6 +65,8 @@
 | جمع‌های فاکتور (جمع/مالیات/تخفیف/کل) | `finance/models.py: Invoice.subtotal/tax_total/discount_total/grand_total` + `InvoiceLine.base/total` (property؛ فرانت هم همین را محاسبه می‌کند) |
 | شماره‌ی خودکارِ فاکتور | `finance/models.py: Invoice.save` (`Max(number)+1` در سطحِ سازمان) |
 | ذخیره‌ی ردیف‌های فاکتور (create/update) | `finance/views.py: _save_lines` (حذف و بازساخت از آرایه) |
+| بابتِ حقوقِ هر همکار (خودکار «حقوق <نام>») | `finance/signals.py: ensure_salary_category` (`post_save` روی Colleague) + `Category.colleague` |
+| مانده‌ی «کل حساب با همکار» در تبِ حقوق | `finance/views.py: PayrollListView` (Σتعهد حقوق − Σبرداشتِ تراکنش‌های `category__colleague`) |
 
 ## دستورهای کلیدی
 ```bash

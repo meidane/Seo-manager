@@ -3,13 +3,38 @@
 {% block title %}تراکنش‌ها{% endblock %}
 
 {% block content %}
-  <div class="page-h"><h1>تراکنش‌ها</h1><div class="side-c"><a href="{% url 'finance:import' %}" class="btn btn-p">＋ ورود اکسل بانک</a></div></div>
+  <div class="page-h"><h1>تراکنش‌ها</h1>
+    <span class="range-note"><b>{{ total_count|fa_digits }}</b> تراکنش{% if range_label %} · {{ range_label }}{% endif %}</span>
+    <div class="side-c"><a href="{% url 'finance:import' %}" class="btn btn-p">＋ ورود اکسل بانک</a></div>
+  </div>
   {% include "finance/_nav.html" %}
 
-  <form method="get" class="glass filters">
+  <form method="get" class="glass filters" id="tx-filters">
+    <div class="search" style="max-width:280px;padding:6px 10px">
+      <span>⌕</span>
+      <input type="text" name="q" value="{{ q }}" placeholder="جستجو در شرح سند و توضیحات…" autocomplete="off"
+             style="border:0;background:transparent;color:var(--text);flex:1;outline:none;font-family:inherit;font-size:13px">
+    </div>
     <select name="bank" onchange="this.form.submit()"><option value="">همه‌ی بانک‌ها</option>{% for b in banks %}<option value="{{ b.id }}" {% if filters.bank == b.id|stringformat:'s' %}selected{% endif %}>{{ b.name }}</option>{% endfor %}</select>
     <select name="project" onchange="this.form.submit()"><option value="">همه‌ی پروژه‌ها</option>{% for p in projects %}<option value="{{ p.id }}" {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
-    <select name="category" onchange="this.form.submit()"><option value="">همه‌ی بابت‌ها</option>{% for c in categories %}<option value="{{ c.id }}" {% if filters.category == c.id|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select>
+
+    {# بابت — چندانتخابی #}
+    <div class="ms" style="position:relative">
+      <button type="button" class="btn btn-sm" id="cat-toggle">بابت{% if selected_categories %} (<span id="cat-count">{{ selected_categories|length|fa_digits }}</span>){% else %}: همه{% endif %} ▾</button>
+      <div class="ms-box glass" id="cat-box" style="display:none;position:absolute;top:calc(100% + 4px);inset-inline-start:0;z-index:40;min-width:200px;max-height:280px;overflow:auto;padding:8px">
+        {% for c in categories %}
+          <label style="display:flex;align-items:center;gap:8px;padding:5px 4px;margin:0;cursor:pointer;font-size:12.5px">
+            <input type="checkbox" name="category" value="{{ c.id }}" {% if c.id|stringformat:'s' in selected_categories %}checked{% endif %} style="width:auto">
+            <i class="dot" style="background:{{ c.color }}"></i> {{ c.name }}
+          </label>
+        {% endfor %}
+        <div style="display:flex;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--stroke-soft)">
+          <button type="submit" class="btn btn-sm btn-p" style="flex:1">اعمال</button>
+          <button type="button" class="btn btn-sm" id="cat-clear">پاک‌کردن</button>
+        </div>
+      </div>
+    </div>
+
     <a href="?unassigned=1" class="chip {% if filters.unassigned == '1' %}on{% endif %}">فقط بدون پروژه/بابت</a>
   </form>
 
@@ -18,7 +43,7 @@
     <table class="sheet" id="tx-sheet">
       <thead><tr>
         <th class="chk-col"><input type="checkbox" id="check-all" style="width:auto"></th>
-        <th>تاریخ</th><th>شرح سند</th><th>واریز</th><th>برداشت</th><th>مانده</th>
+        <th>تاریخ</th><th>بانک</th><th>شرح سند</th><th>واریز</th><th>برداشت</th><th>مانده</th>
         <th style="background:rgba(65,131,242,.08)">پروژه</th><th style="background:rgba(65,131,242,.08)">بابت</th><th style="background:rgba(65,131,242,.08)">توضیحات</th>
       </tr></thead>
       <tbody>
@@ -26,6 +51,7 @@
           <tr data-id="{{ t.id }}">
             <td class="chk-col"><input type="checkbox" class="row-check" data-id="{{ t.id }}" style="width:auto"></td>
             <td>{{ t.date|jalali }}</td>
+            <td><span class="tag t-mute" style="white-space:nowrap">{{ t.bank_account.name }}</span></td>
             <td style="text-align:right;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ t.description }}">{{ t.description }}</td>
             <td class="num {% if t.deposit %}dep{% endif %}">{% if t.deposit %}{{ t.deposit|money }}{% else %}—{% endif %}</td>
             <td class="num {% if t.withdrawal %}wd{% endif %}">{% if t.withdrawal %}{{ t.withdrawal|money }}{% else %}—{% endif %}</td>
@@ -38,8 +64,18 @@
       </tbody>
     </table>
   </div>
+
+  {# ── صفحه‌بندی ── #}
+  {% if page_obj.paginator.num_pages > 1 %}
+  <div class="pager" style="display:flex;gap:6px;align-items:center;justify-content:center;margin:16px 0;flex-wrap:wrap">
+    {% if page_obj.has_previous %}<a class="btn btn-sm" href="?page={{ page_obj.previous_page_number }}{% if qs_params %}&{{ qs_params }}{% endif %}">قبلی</a>{% endif %}
+    <span style="font-size:12.5px;color:var(--text-dim)">صفحه‌ی {{ page_obj.number|fa_digits }} از {{ page_obj.paginator.num_pages|fa_digits }}</span>
+    {% if page_obj.has_next %}<a class="btn btn-sm" href="?page={{ page_obj.next_page_number }}{% if qs_params %}&{{ qs_params }}{% endif %}">بعدی</a>{% endif %}
+  </div>
+  {% endif %}
+
   {% else %}
-    <section class="card glass"><div class="empty"><div class="ico">▦</div><h4>تراکنشی نیست</h4><a href="{% url 'finance:import' %}" class="btn btn-p" style="margin-top:12px">＋ ورود اکسل بانک</a></div></section>
+    <section class="card glass"><div class="empty"><div class="ico">▦</div><h4>تراکنشی مطابق فیلتر نیست</h4><a href="{% url 'finance:transactions' %}" class="btn" style="margin-top:12px">پاک‌کردن فیلترها</a></div></section>
   {% endif %}
 
   <div class="glass" id="bulkbar" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);gap:8px;align-items:center;padding:10px 16px;z-index:30">
@@ -53,6 +89,14 @@
 {% block scripts %}
 <script>
 (function(){
+  // ── دراپ‌داونِ بابتِ چندانتخابی ──
+  const cToggle=document.getElementById('cat-toggle'), cBox=document.getElementById('cat-box');
+  if(cToggle&&cBox){
+    cToggle.onclick=e=>{ e.preventDefault(); cBox.style.display=cBox.style.display==='none'?'block':'none'; };
+    document.getElementById('cat-clear').onclick=()=>{ cBox.querySelectorAll('input[name="category"]').forEach(c=>c.checked=false); document.getElementById('tx-filters').submit(); };
+    document.addEventListener('click',e=>{ if(!e.target.closest('.ms')) cBox.style.display='none'; });
+  }
+
   const sheet=document.getElementById('tx-sheet'); if(!sheet) return;
   // ویرایش inline سه ستون
   sheet.addEventListener('change', async e=>{
