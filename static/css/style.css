@@ -402,7 +402,9 @@ table.sheet th{background:rgba(255,255,255,.04);position:sticky;top:0;z-index:5;
 table.sheet td{padding:8px 10px;border:1px solid var(--stroke-soft);text-align:center;height:36px}
 table.sheet td.num{font-variant-numeric:tabular-nums;text-align:left;direction:ltr}
 table.sheet td.edit{background:rgba(65,131,242,.04)}
-table.sheet td.edit select,table.sheet td.edit input{padding:4px 6px;font-size:12px;background:transparent;border:0}
+table.sheet td.edit select,table.sheet td.edit input{padding:4px 6px;font-size:12px;background:transparent;border:0;
+color: white;
+    font-family: 'Vazirmatn';}
 table.sheet td.edit select:focus,table.sheet td.edit input:focus{background:var(--bg)}
 table.sheet tr:hover td{background:rgba(255,255,255,.02)}
 .chk-col{width:34px}
