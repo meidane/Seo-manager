@@ -12,9 +12,24 @@
 
   {% for t in tasks %}
     <section class="card glass rev-card" id="rev-{{ t.id }}" data-id="{{ t.id }}">
-      <div class="rev-top"><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span><h3>{{ t.seo_title|default:t.title }}</h3></div>
-      <div class="rev-meta"><span>پروژه: <b>{{ t.project.name }}</b></span><span>نویسنده: <b>{{ t.assignee.full_name|default:"—" }}</b></span><span>تاریخ: <b>{{ t.done_date|jalali_long }}</b></span>{% if t.word_count %}<span>تعداد کلمه: <b>{{ t.word_count|fa_digits }}</b></span>{% endif %}</div>
-      {% if t.keywords %}<div class="rev-kw">{% for kw in t.keywords|slice:":120" %}{% endfor %}<span class="tag t-mute">{{ t.keywords }}</span></div>{% endif %}
+      <div class="rev-top">
+        <span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span>
+        <h3>{{ t.seo_title|default:t.title }}</h3>
+        <span class="tag t-{% if t.status == 'pending' %}warn{% else %}ok{% endif %} rev-status">{{ t.get_status_display }}</span>
+        {% if t.review_status == 'needs_fix' %}<span class="tag t-warn">⚠ اصلاحِ قبلی</span>{% endif %}
+      </div>
+      <div class="rev-meta">
+        <span>پروژه: <b>{{ t.project.name }}</b></span>
+        <span>مسئول: <b>{{ t.assignee.full_name|default:"—" }}</b></span>
+        <span>تاریخِ برنامه: <b>{{ t.planned_date|jalali }}</b></span>
+        {% if t.done_date %}<span>تاریخِ تکمیل: <b>{{ t.done_date|jalali }}</b></span>{% endif %}
+        {% if t.word_count %}<span>تعداد کلمه: <b>{{ t.word_count|fa_digits }}</b></span>{% endif %}
+        <span class="rev-why" title="چرا این تسک نیاز به بازبینی دارد">
+          {% if t.needs_review %}نیازِ بازبینیِ فردی{% else %}نوعِ تسک نیاز به بازبینی دارد{% endif %}
+        </span>
+      </div>
+      {% if t.description %}<div class="rev-desc">{{ t.description|safe|truncatewords_html:40 }}</div>{% endif %}
+      {% if t.keywords %}<div class="rev-kw"><span class="tag t-mute">{{ t.keywords }}</span></div>{% endif %}
       <div class="rev-actions">
         {% if t.published_url %}<a href="{{ t.published_url }}" target="_blank" rel="noopener" class="btn btn-p">باز کردن مطلب ↗</a>{% endif %}
         <button class="btn" onclick="window.openTask({{ t.id }})">باز کردن تسک</button>
@@ -87,9 +102,9 @@ const cards=[...document.querySelectorAll('.rev-card')];
 let idx=-1;
 function focusCard(i){
   if(i<0||i>=cards.length)return;
-  if(idx>=0)cards[idx].style.outline='';
+  if(idx>=0)cards[idx].classList.remove('rev-focus');
   idx=i; const c=cards[idx];
-  c.style.outline='2px solid var(--primary)'; c.style.borderRadius='var(--r)';
+  c.classList.add('rev-focus');
   c.scrollIntoView({block:'center',behavior:'smooth'});
 }
 document.addEventListener('keydown',e=>{

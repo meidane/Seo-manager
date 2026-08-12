@@ -19,13 +19,24 @@ from projects.access import accessible_project_ids
 from .models import Task, TaskComment
 
 
+def _stop_timer(task):
+    """اگر تایمرِ تسک در حالِ اجراست، متوقفش کن (زمانِ سپری‌شده را به spent_minutes
+    اضافه کن) — روی نمونه اعمال می‌شود، بدونِ save (فراخوان خودش ذخیره می‌کند).
+    هرجا وضعیت به DONE/PENDING می‌رود («تکمیلِ کار») باید صدا زده شود."""
+    if not task.timer_started_at:
+        return
+    elapsed = int((timezone.now() - task.timer_started_at).total_seconds() // 60)
+    task.spent_minutes = (task.spent_minutes or 0) + max(0, elapsed)
+    task.timer_started_at = None
+
+
 def _task_perm_ok(request, task, perm):
     """دسترسیِ ویرایش/حذفِ یک تسکِ مشخص: نقش باید `perm` را داشته باشد؛ اگر
-    `own_tasks_only` هم داشت، فقط روی تسکِ خودش (assignee = همکارِ متصل به کاربر)."""
+    `view_other_tasks` نداشت، فقط روی تسکِ خودش (assignee = همکارِ متصل به کاربر)."""
     m = getattr(request, 'membership', None)
     if not m or not m.can(perm):
         return False
-    if m.can('own_tasks_only'):
+    if not m.can('view_other_tasks'):
         colleague = getattr(request.user, 'colleague', None)
         return bool(colleague and task.assignee_id == colleague.id)
     return True
@@ -42,10 +53,10 @@ def _is_own_task(request, task):
 def can_manage_any_timer(m):
     """می‌تواند تایمرِ تسکِ **هرکسِ دیگری** را هم استارت/استاپ کند (نه فقط خودش)؟
     `edit_time` (پرمیشنِ صریح، برای ویرایشِ دستیِ زمان هم لازم است) یا `edit_task`
-    بدونِ `own_tasks_only` (کسی که به‌طورِ کلی مسئولِ مدیریتِ تسک‌هاست، منطقی است که
-    بتواند تایمرشان را هم کنترل کند — نیازی به تیک‌زدنِ جداگانه‌ی `edit_time` نیست
+    به‌همراهِ `view_other_tasks` (کسی که به‌طورِ کلی مسئولِ مدیریتِ تسک‌هاست، منطقی است
+    که بتواند تایمرشان را هم کنترل کند — نیازی به تیک‌زدنِ جداگانه‌ی `edit_time` نیست
     فقط برای دکمه‌ی پلی؛ آن پرمیشن مخصوصِ ویرایشِ دستیِ عددِ زمان می‌ماند)."""
-    return bool(m and (m.can('edit_time') or (m.can('edit_task') and not m.can('own_tasks_only'))))
+    return bool(m and (m.can('edit_time') or (m.can('edit_task') and m.can('view_other_tasks'))))
 
 
 def _task_visible_ok(request, task):
@@ -65,6 +76,7 @@ TEXT_FIELDS = [
 CHOICE_FIELDS = ['task_type', 'status', 'priority']
 INT_FIELDS = ['word_count', 'current_rank', 'link_count', 'estimate_minutes']
 DECIMAL_FIELDS = ['media_cost']
+BOOL_FIELDS = ['needs_review']
 FK_FIELDS = {'project': 'project_id', 'assignee': 'assignee_id'}
 
 
@@ -99,6 +111,9 @@ def apply_fields(task: Task, data: dict):
     for f in DECIMAL_FIELDS:
         if f in data:
             setattr(task, f, data[f] or None)
+    for f in BOOL_FIELDS:
+        if f in data:
+            setattr(task, f, bool(data[f]))
     for key, attr in FK_FIELDS.items():
         if key in data:
             setattr(task, attr, data[key] or None)
@@ -128,12 +143,19 @@ def apply_fields(task: Task, data: dict):
         task.planned_time = data['planned_time']
     if 'done_date' in data:
         task.done_date = _pdate(data['done_date'])
+    # تسکِ نیازمندِ بازبینی نمی‌تواند مستقیم «انجام‌شده» شود — فقط «تکمیل/در انتظارِ
+    # بازبینی»؛ فقط تاییدِ مدیر (task_review) آن را DONE می‌کند (پایینِ همین فایل).
+    if task.needs_review and task.status == Task.DONE:
+        task.status = Task.PENDING
     # اگر وضعیت به «انجام شده» رفت و done_date خالی بود، امروز را بگذار
     if task.status == Task.DONE and not task.done_date:
         task.done_date = date.today()
     # تسکِ «نیاز به اصلاح» که دوباره انجام شد → «بررسی‌نشده» (برای بازبینی مجدد مدیر)
-    if task.status == Task.DONE and task.review_status == Task.NEEDS_FIX:
+    if task.status in (Task.DONE, Task.PENDING) and task.review_status == Task.NEEDS_FIX:
         task.review_status = Task.UNREVIEWED
+    # تکمیل/انجام‌شدنِ کار یعنی دیگر کاری روی آن در جریان نیست — تایمرِ فعال را استاپ کن
+    if task.status in (Task.DONE, Task.PENDING):
+        _stop_timer(task)
 
 
 @login_required
@@ -158,11 +180,12 @@ def form_data(request):
     if ids is not None:
         projects = projects.filter(id__in=ids)
     m = getattr(request, 'membership', None)
-    own_tasks_only = bool(m and m.can('own_tasks_only'))
+    own_tasks_only = bool(m and not m.can('view_other_tasks'))
     my_colleague = getattr(request.user, 'colleague', None)
     return JsonResponse({
         'projects': [[p.id, p.name] for p in projects],
-        'colleagues': [[c.id, c.full_name] for c in Colleague.objects.filter(status=Colleague.ACTIVE)],
+        'colleagues': [[c.id, c.full_name, c.needs_review]
+                        for c in Colleague.objects.filter(status=Colleague.ACTIVE)],
         'typeChoices': list(Task.TYPE_CHOICES),
         'customTypes': [
             {'id': t.id, 'name': t.name, 'color': t.color, 'icon': t.icon,
@@ -240,7 +263,7 @@ def task_create(request):
     my_colleague = getattr(request.user, 'colleague', None)
     can_edit = bool(m and m.can('edit_task'))
     # بدونِ edit_task هم هرکسی با پروفایلِ همکار می‌تواند برای خودش تسک بسازد
-    # (own_tasks_only نسخه‌ی محدودکننده‌ی همین چیز است، نه یک قابلیتِ جدا)
+    # (نبودِ view_other_tasks نسخه‌ی محدودکننده‌ی همین چیز است، نه یک قابلیتِ جدا)
     if not can_edit and not my_colleague:
         return JsonResponse({'detail': 'دسترسیِ ساختِ تسک را نداری'}, status=403)
     data = _body(request)
@@ -249,8 +272,16 @@ def task_create(request):
     ids = accessible_project_ids(request)
     if ids is not None and int(data['project']) not in ids:
         return JsonResponse({'detail': 'به این پروژه دسترسی نداری'}, status=403)
-    if not can_edit or (m and m.can('own_tasks_only')):
+    if not can_edit or (m and not m.can('view_other_tasks')):
         data['assignee'] = my_colleague.id if my_colleague else None
+    # پیش‌فرضِ «نیاز به بازبینی»: اگر کلاینت صریحاً نفرستاده بود، از تنظیمِ خودِ
+    # مسئول (Colleague.needs_review) می‌آید — مودال معمولاً این را از قبل پر می‌فرستد،
+    # این‌جا فقط برای مسیرهای دیگر (بولک/افزونه) که مودال را دور می‌زنند.
+    if 'needs_review' not in data and data.get('assignee'):
+        from colleagues.models import Colleague
+        assignee = Colleague.objects.filter(pk=data['assignee']).first()
+        if assignee:
+            data['needs_review'] = assignee.needs_review
     task = Task(created_by=request.user, planned_date=date.today())
     apply_fields(task, data)
     err = _publish_url_error(task)
@@ -322,7 +353,7 @@ def task_detail(request, pk):
     if 'project' in data and data['project'] and ids is not None and int(data['project']) not in ids:
         return JsonResponse({'detail': 'به این پروژه دسترسی نداری'}, status=403)
     m = getattr(request, 'membership', None)
-    if m and m.can('own_tasks_only'):
+    if m and not m.can('view_other_tasks'):
         colleague = getattr(request.user, 'colleague', None)
         data['assignee'] = colleague.id if colleague else None
     was_done = task.status == Task.DONE
@@ -351,6 +382,9 @@ def task_status(request, pk):
     new_status = data.get('status')
     if new_status not in dict(Task.STATUS_CHOICES):
         return JsonResponse({'detail': 'وضعیت نامعتبر'}, status=400)
+    # تسکِ نیازمندِ بازبینی مستقیم «انجام‌شده» نمی‌شود — فقط «تکمیل/در انتظارِ بازبینی»
+    if task.needs_review and new_status == Task.DONE:
+        new_status = Task.PENDING
     was_done = task.status == Task.DONE
     task.status = new_status
     fields = ['status', 'done_date', 'updated_at']
@@ -358,9 +392,13 @@ def task_status(request, pk):
         task.done_date = date.today()
     # تسکی که «نیاز به اصلاح» بوده، با انجام‌شدنِ دوباره به «بررسی‌نشده» برمی‌گردد
     # تا مدیر دوباره بازبینی کند.
-    if new_status == Task.DONE and task.review_status == Task.NEEDS_FIX:
+    if new_status in (Task.DONE, Task.PENDING) and task.review_status == Task.NEEDS_FIX:
         task.review_status = Task.UNREVIEWED
         fields.append('review_status')
+    # تکمیل/انجام‌شدنِ کار یعنی دیگر کاری روی آن در جریان نیست — تایمرِ فعال را استاپ کن
+    if new_status in (Task.DONE, Task.PENDING):
+        _stop_timer(task)
+        fields += ['spent_minutes', 'timer_started_at']
     err = _publish_url_error(task)
     if err:
         return JsonResponse({'detail': err}, status=400)
@@ -384,7 +422,7 @@ def running_timers(request):
 @require_http_methods(['POST', 'PATCH'])
 def task_timer(request, pk):
     """تایمرِ کارِ تسک. POST {action:start|stop}: مسئولِ خودِ تسک، یا کسی که
-    `can_manage_any_timer` (edit_time یا edit_task-بدونِ-own_tasks_only) دارد — یعنی
+    `can_manage_any_timer` (edit_time یا edit_task-به‌همراهِ-view_other_tasks) دارد — یعنی
     مدیر/سرپرست هم می‌تواند تایمرِ تسکِ دیگران را استارت/استاپ کند، نه فقط خودشان.
     استارتِ یک تسک هر تایمرِ دیگرِ در حالِ اجرای همان مسئول را خودکار استاپ می‌کند
     (هر مسئول هم‌زمان فقط یک تایمرِ فعال). PATCH {minutes} (ویرایشِ دستیِ عدد): فقط edit_time."""
@@ -420,7 +458,12 @@ def task_timer(request, pk):
                 other.save(update_fields=['spent_minutes', 'timer_started_at', 'updated_at'])
                 stopped = {'id': other.id, 'spent_minutes': other.spent_minutes}
         task.timer_started_at = now
-        task.save(update_fields=['timer_started_at', 'updated_at'])
+        fields = ['timer_started_at', 'updated_at']
+        # پلی‌زدن یعنی کار شروع شد — وضعیت به «در حال انجام» می‌رود (فقط از «در انتظار»)
+        if task.status == Task.TODO:
+            task.status = Task.DOING
+            fields.append('status')
+        task.save(update_fields=fields)
     elif action == 'stop' and task.timer_started_at:
         elapsed = int((now - task.timer_started_at).total_seconds() // 60)
         task.spent_minutes = (task.spent_minutes or 0) + max(0, elapsed)
@@ -462,11 +505,19 @@ def task_review(request, pk):
     task.reviewed_by = request.user
     task.reviewed_at = timezone.now()
     fields = ['review_status', 'review_note', 'reviewed_by', 'reviewed_at', 'updated_at']
-    # «نیاز به اصلاح» → تسک از حالت انجام‌شده برمی‌گردد تا دوباره انجام شود
-    if status == Task.NEEDS_FIX and task.status == Task.DONE:
+    # «نیاز به اصلاح» → تسک از حالت انجام‌شده/تکمیل‌شده برمی‌گردد تا دوباره انجام شود
+    if status == Task.NEEDS_FIX and task.status in (Task.DONE, Task.PENDING):
         task.status = Task.DOING
         task.done_date = None
         fields += ['status', 'done_date']
+    # «تایید» → تسکِ «تکمیل/در انتظارِ بازبینی» رسماً «انجام‌شده» می‌شود (تنها راهِ رسیدن
+    # به DONE برای تسکِ needs_review همین‌جاست، نه دراپ‌داونِ وضعیت).
+    elif status == Task.APPROVED and task.status == Task.PENDING:
+        task.status = Task.DONE
+        if not task.done_date:
+            task.done_date = date.today()
+        _stop_timer(task)
+        fields += ['status', 'done_date', 'spent_minutes', 'timer_started_at']
     task.save(update_fields=fields)
     # ثبت در تاریخچه‌ی نیاز به اصلاح (فقط وقتی needs_fix با یادداشت است)
     if status == Task.NEEDS_FIX and note_html:
@@ -579,7 +630,7 @@ def task_bulk(request):
     ids = data.get('ids', [])
     action = data.get('action')
     qs = Task.objects.filter(id__in=ids)
-    if m.can('own_tasks_only'):
+    if not m.can('view_other_tasks'):
         colleague = getattr(request.user, 'colleague', None)
         qs = qs.filter(assignee_id=colleague.id if colleague else -1)
     if not ids or not action:

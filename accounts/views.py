@@ -18,7 +18,7 @@ from django.views.generic import TemplateView
 
 from .access import require_perm as _require
 from .models import APIToken, Invite, Membership, Organization, Role, Team, TeamMembership, User, seed_roles
-from .permissions import PERM_LABELS, PERMS
+from .permissions import PERM_GROUPS, PERM_LABELS, PERMS
 
 
 class LoginView(auth_views.LoginView):
@@ -126,11 +126,28 @@ def profile_edit(request):
     })
 
 
-class PeopleView(LoginRequiredMixin, TemplateView):
-    """تیم‌ها/زیرمجموعه‌ها + نقش‌های سفارشی — «افراد» (فهرست/دسترسیِ تک‌تکِ افراد) از اینجا
-    به `colleagues:list` منتقل شد (یک بخشِ واحد «افراد و دسترسی‌ها»، نه دو جای جدا)."""
+class TeamsView(LoginRequiredMixin, TemplateView):
+    """تیم‌ها/زیرمجموعه‌ها (`/settings/teams/`) — از «نقش‌ها» جدا شد (هرکدام تبِ خودِ
+    مستقل در نوارِ تنظیمات دارند، به‌جای یک صفحه‌ی ترکیبی)."""
 
-    template_name = 'accounts/people.html'
+    template_name = 'accounts/teams.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        org = _require(self.request, 'manage_teams')
+        ctx.update({
+            'org': org,
+            'teams_flat': list(org.teams.select_related('parent').all()),
+            'team_tree': _team_tree(org),
+            'page_title': 'تیم‌ها',
+        })
+        return ctx
+
+
+class RolesView(LoginRequiredMixin, TemplateView):
+    """نقش‌های سفارشی و ویرایشگرِ گروه‌بندی‌شده‌ی دسترسی‌ها (`/settings/roles/`)."""
+
+    template_name = 'accounts/roles.html'
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -138,13 +155,12 @@ class PeopleView(LoginRequiredMixin, TemplateView):
         role_objs = list(org.roles.all())
         ctx.update({
             'org': org,
-            'teams_flat': list(org.teams.select_related('parent').all()),
-            'team_tree': _team_tree(org),
             'roles': [(r.key, r.name) for r in role_objs],
             'role_objs': role_objs,
+            'perm_groups': PERM_GROUPS,
             'all_perms': list(PERM_LABELS.items()),
             'perm_label_map': PERM_LABELS,
-            'page_title': 'تیم‌ها و نقش‌ها',
+            'page_title': 'نقش‌ها',
         })
         return ctx
 
@@ -154,7 +170,7 @@ class PeopleView(LoginRequiredMixin, TemplateView):
 @login_required
 @require_http_methods(['POST'])
 def team_create(request):
-    org = _require(request, 'manage_org')
+    org = _require(request, 'manage_teams')
     d = _body(request)
     name = (d.get('name') or '').strip()
     if not name:
@@ -169,7 +185,7 @@ def team_create(request):
 @login_required
 @require_http_methods(['PATCH', 'DELETE'])
 def team_edit(request, pk):
-    org = _require(request, 'manage_org')
+    org = _require(request, 'manage_teams')
     t = get_object_or_404(Team, pk=pk, organization=org)
     if request.method == 'DELETE':
         t.delete()  # زیرمجموعه‌ها و عضویت‌های تیمی هم CASCADE می‌شوند
@@ -266,7 +282,7 @@ def create_own_org(request):
 @login_required
 @require_http_methods(['POST'])
 def role_create(request):
-    org = _require(request, 'manage_org')
+    org = _require(request, 'manage_people')
     d = _body(request)
     name = (d.get('name') or '').strip()
     if not name:
@@ -285,7 +301,7 @@ def role_create(request):
 @login_required
 @require_http_methods(['PATCH', 'DELETE'])
 def role_edit(request, pk):
-    org = _require(request, 'manage_org')
+    org = _require(request, 'manage_people')
     r = get_object_or_404(Role, pk=pk, organization=org)
     if request.method == 'DELETE':
         if r.is_builtin:
@@ -336,7 +352,7 @@ class APITokenListView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        org = _require(self.request, 'manage_org')
+        org = _require(self.request, 'manage_api_tokens')
         ctx['tokens'] = org.api_tokens.select_related('user').all()
         ctx['page_title'] = 'توکن‌های API'
         return ctx
@@ -345,7 +361,7 @@ class APITokenListView(LoginRequiredMixin, TemplateView):
 @login_required
 @require_http_methods(['POST'])
 def token_create(request):
-    org = _require(request, 'manage_org')
+    org = _require(request, 'manage_api_tokens')
     data = json.loads(request.body or '{}')
     token, raw_key = APIToken.generate(organization=org, user=request.user, name=(data.get('name') or '').strip())
     return JsonResponse({'id': token.id, 'name': token.name, 'key': raw_key, 'prefix': token.key_prefix}, status=201)
@@ -354,7 +370,7 @@ def token_create(request):
 @login_required
 @require_http_methods(['DELETE'])
 def token_revoke(request, pk):
-    org = _require(request, 'manage_org')
+    org = _require(request, 'manage_api_tokens')
     get_object_or_404(APIToken, pk=pk, organization=org).delete()
     return JsonResponse({'ok': True})
 

@@ -16,13 +16,14 @@ urlpatterns = [
     path('settings/', views.SettingsHomeView.as_view(), name='settings_home'),
     path('settings/api/organization/', views.organization_edit, name='organization_edit'),
 
-    # تیم‌ها و نقش‌های سفارشی (خودِ «افراد» به colleagues:list منتقل شد)
-    path('settings/people/', views.PeopleView.as_view(), name='people'),
-    path('settings/people/api/team/', views.team_create, name='team_create'),
-    path('settings/people/api/team/<int:pk>/', views.team_edit, name='team_edit'),
+    # تیم‌ها و نقش‌ها — دو تبِ جدا (خودِ «افراد» به colleagues:list منتقل شده)
+    path('settings/teams/', views.TeamsView.as_view(), name='teams'),
+    path('settings/teams/api/team/', views.team_create, name='team_create'),
+    path('settings/teams/api/team/<int:pk>/', views.team_edit, name='team_edit'),
+    path('settings/roles/', views.RolesView.as_view(), name='roles'),
+    path('settings/roles/api/role/', views.role_create, name='role_create'),
+    path('settings/roles/api/role/<int:pk>/', views.role_edit, name='role_edit'),
     path('settings/people/api/person/<int:pk>/', views.person_edit, name='person_edit'),
-    path('settings/people/api/role/', views.role_create, name='role_create'),
-    path('settings/people/api/role/<int:pk>/', views.role_edit, name='role_edit'),
 
     # توکن‌های API (افزونه/اتوماسیون/AI)
     path('settings/api-tokens/', views.APITokenListView.as_view(), name='api_tokens'),

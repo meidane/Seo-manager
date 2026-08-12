@@ -55,9 +55,11 @@ class Task(TimeStampedModel):
 
     TODO = 'todo'
     DOING = 'doing'
+    PENDING = 'pending'
     DONE = 'done'
     STATUS_CHOICES = [
-        (TODO, 'در انتظار'), (DOING, 'در حال انجام'), (DONE, 'انجام شده'),
+        (TODO, 'در انتظار'), (DOING, 'در حال انجام'),
+        (PENDING, 'تکمیل — در انتظار بازبینی'), (DONE, 'انجام شده'),
     ]
 
     LOW = 'low'
@@ -117,6 +119,11 @@ class Task(TimeStampedModel):
     link_count = models.PositiveIntegerField('تعداد لینک', null=True, blank=True)
 
     # ── بازبینی (آماده‌سازی فاز ۳) ──
+    # آیا این تسکِ مشخص نیاز به بازبینیِ مدیر دارد؟ پیش‌فرض از assignee.needs_review
+    # می‌آید (تسکِ جدید)، ولی هربار قابلِ‌تغییرِ دستی است (تیک/عدمِ‌تیک روی خودِ تسک).
+    # اگر True بود: مسئول نمی‌تواند وضعیت را مستقیم «انجام‌شده» کند، فقط «تکمیل — در
+    # انتظار بازبینی» (PENDING)؛ فقط تاییدِ مدیر (`task_review`) آن را DONE می‌کند.
+    needs_review = models.BooleanField('نیاز به بازبینی', default=False)
     review_status = models.CharField('وضعیت بازبینی', max_length=12, choices=REVIEW_CHOICES, default=UNREVIEWED)
     review_note = models.TextField('یادداشت بازبینی', blank=True)
     # وقتی نوعِ تسک هیچ TaskTypeKPIای ندارد، جایگزینِ سادهٔ ۱ تا ۱۰ (نه سیستمِ KPI کامل)
@@ -197,6 +204,7 @@ class Task(TimeStampedModel):
             'color': self.color_rgb,
             'time': self.planned_time.strftime('%H:%M') if hasattr(self.planned_time, 'strftime') else str(self.planned_time or ''),
             'status': self.status,
+            'needs_review': self.needs_review,
             'done': self.is_done,
             'overdue': self.is_overdue,
             'project': self.project.name,
