@@ -119,6 +119,97 @@ class Transaction(TimeStampedModel):
         return hashlib.sha256(raw.encode('utf-8')).hexdigest()
 
 
+class Invoice(TimeStampedModel):
+    """فاکتور فروش/خدمات به یک پروژه.
+
+    شماره‌ی فاکتور خودکار و پشت‌سرهم در سطحِ سازمان تولید می‌شود (`number`).
+    مبالغِ ردیف‌ها در `InvoiceLine`؛ جمع‌ها property هستند (منبع واحد = خودِ ردیف‌ها).
+    تاریخ‌ها میلادی (طبق قانونِ طلایی) و در نمایش شمسی می‌شوند.
+    """
+
+    number = models.PositiveIntegerField('شماره فاکتور', null=True, blank=True, db_index=True)
+    issue_date = models.DateField('تاریخ ثبت فاکتور')
+    project = models.ForeignKey('projects.Project', verbose_name='پروژه', on_delete=models.SET_NULL, null=True, blank=True, related_name='invoices')
+    description = models.TextField('توضیحات فاکتور', blank=True)
+    due_date = models.DateField('تاریخ پرداخت', null=True, blank=True)
+
+    organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
+    objects = TenantManager()
+    all_objects = models.Manager()
+
+    class Meta:
+        verbose_name = 'فاکتور'
+        verbose_name_plural = 'فاکتورها'
+        ordering = ['-issue_date', '-number', '-id']
+        base_manager_name = 'all_objects'
+        constraints = [
+            models.UniqueConstraint(fields=['organization', 'number'], name='uniq_invoice_number_per_org'),
+        ]
+
+    def save(self, *args, **kwargs):
+        if self.organization_id is None and self.project_id:
+            self.organization_id = self.project.organization_id
+        stamp_org(self)
+        if not self.number:
+            last = (Invoice.all_objects
+                    .filter(organization_id=self.organization_id)
+                    .aggregate(m=models.Max('number'))['m'])
+            self.number = (last or 0) + 1
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'فاکتور #{self.number}'
+
+    # ── جمع‌ها (منبع واحد = ردیف‌ها) ──
+    @property
+    def subtotal(self):
+        """جمعِ مبالغِ واحد (Σ تعداد×مبلغِ واحد)، بدون مالیات و تخفیف."""
+        return sum((li.base for li in self.lines.all()), 0)
+
+    @property
+    def tax_total(self):
+        return sum((li.tax for li in self.lines.all()), 0)
+
+    @property
+    def discount_total(self):
+        return sum((li.discount for li in self.lines.all()), 0)
+
+    @property
+    def grand_total(self):
+        """جمعِ کل = جمعِ مبالغِ واحد + مالیات − تخفیف."""
+        return self.subtotal + self.tax_total - self.discount_total
+
+
+class InvoiceLine(models.Model):
+    """یک ردیفِ فاکتور. `total` = تعداد×مبلغِ واحد + مالیات − تخفیف."""
+
+    invoice = models.ForeignKey(Invoice, verbose_name='فاکتور', on_delete=models.CASCADE, related_name='lines')
+    category = models.ForeignKey(Category, verbose_name='بابت', on_delete=models.SET_NULL, null=True, blank=True, related_name='invoice_lines')
+    description = models.CharField('توضیحات', max_length=255, blank=True)
+    qty = models.DecimalField('تعداد', max_digits=12, decimal_places=2, default=1)
+    unit_price = models.DecimalField('مبلغ واحد', max_digits=16, decimal_places=0, default=0)
+    tax = models.DecimalField('مالیات', max_digits=16, decimal_places=0, default=0)
+    discount = models.DecimalField('تخفیف', max_digits=16, decimal_places=0, default=0)
+    order = models.PositiveIntegerField('ترتیب', default=0)
+
+    class Meta:
+        verbose_name = 'ردیف فاکتور'
+        verbose_name_plural = 'ردیف‌های فاکتور'
+        ordering = ['order', 'id']
+
+    def __str__(self):
+        return f'{self.description[:30]} × {self.qty}'
+
+    @property
+    def base(self):
+        """تعداد × مبلغِ واحد (بدون مالیات/تخفیف)."""
+        return int(round(float(self.qty) * float(self.unit_price)))
+
+    @property
+    def total(self):
+        return self.base + int(self.tax or 0) - int(self.discount or 0)
+
+
 class Payroll(TimeStampedModel):
     """صورت‌حساب حقوق یک همکار در یک ماه شمسی."""
 

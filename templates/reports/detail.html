@@ -26,6 +26,16 @@
     </span>
   </section>
 
+  {# ── فاکتور متصل ── #}
+  <section class="glass filters" style="gap:10px;align-items:center">
+    <label style="margin:0">فاکتور متصل:</label>
+    <select id="r-invoice" style="max-width:300px">
+      <option value="">— بدون فاکتور —</option>
+      {% for inv in invoices %}<option value="{{ inv.id }}" {% if report.invoice_id == inv.id %}selected{% endif %}>فاکتور #{{ inv.number|fa_digits }}{% if inv.project %} · {{ inv.project.name }}{% endif %} · {{ inv.grand_total|money }}</option>{% endfor %}
+    </select>
+    {% if report.invoice_id %}<a class="btn btn-sm" href="{% url 'finance:invoice_edit_page' report.invoice_id %}" target="_blank" rel="noopener">مشاهده فاکتور ↗</a>{% endif %}
+  </section>
+
   {# ── توضیحات (ادیتور غنی TinyMCE + کشیدن‌ورهاکردن مستقیم عکس) ── #}
   <section class="card glass">
     <div class="card-h"><h3>توضیحات</h3>
@@ -73,6 +83,9 @@ document.getElementById('r-desc-save').onclick=()=>saveDesc().then(()=>App.toast
 // ── لینک عمومی ──
 document.getElementById('r-public').onchange=e=>App.fetchJSON(`/reports/api/${RID}/update/`,{method:'PATCH',body:{is_public:e.target.checked}}).then(()=>App.toast(e.target.checked?'لینک فعال شد':'لینک غیرفعال شد','ok'));
 document.getElementById('r-copy').onclick=()=>{navigator.clipboard.writeText(document.getElementById('r-link').value);App.toast('کپی شد','ok');};
+
+// ── فاکتور متصل ──
+document.getElementById('r-invoice').onchange=e=>App.fetchJSON(`/reports/api/${RID}/update/`,{method:'PATCH',body:{invoice:e.target.value}}).then(()=>App.toast('فاکتور به‌روزرسانی شد','ok'));
 
 // ── نهایی‌سازی ──
 document.getElementById('r-final').onclick=async()=>{

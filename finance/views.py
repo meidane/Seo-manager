@@ -3,18 +3,30 @@ import json
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Sum
+from django.db.models import Max, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_http_methods
 from django.views.generic import TemplateView
 
 from core.daterange import DateRangeMixin
+from core.jalali import parse_jalali
 from projects.models import Project
 
 from .access import FinancePermMixin, require_finance
-from .models import BankAccount, Category, Payroll, PayrollItem, Transaction
+from .models import (BankAccount, Category, Invoice, InvoiceLine, Payroll,
+                     PayrollItem, Transaction)
 from .utils import parse_amount, parse_excel_date
+
+
+def _pj(value):
+    """تاریخ شمسی → میلادی؛ خالی/نامعتبر → None."""
+    if not value:
+        return None
+    try:
+        return parse_jalali(value)
+    except (ValueError, TypeError):
+        return None
 
 
 def _body(request):
@@ -64,13 +76,16 @@ class FinanceDashboardView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin,
         return ctx
 
 
-class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
+class TransactionListView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateView):
     template_name = 'finance/transactions.html'
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        start, end = self.get_range(self.request)
+        ctx.update(self.range_context())
         g = self.request.GET
         qs = Transaction.objects.select_related('bank_account', 'project', 'category')
+        qs = qs.filter(date__range=(start, end))
         if g.get('bank'):
             qs = qs.filter(bank_account_id=g['bank'])
         if g.get('project'):
@@ -118,6 +133,49 @@ class PayrollListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
         ctx['payrolls'] = Payroll.objects.select_related('colleague').prefetch_related('items')
         ctx['colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)
         ctx['page_title'] = 'حقوق'
+        return ctx
+
+
+class InvoiceListView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateView):
+    template_name = 'finance/invoices.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        start, end = self.get_range(self.request)
+        ctx.update(self.range_context())
+        qs = (Invoice.objects.select_related('project')
+              .prefetch_related('lines')
+              .filter(issue_date__range=(start, end)))
+        if self.request.GET.get('project'):
+            qs = qs.filter(project_id=self.request.GET['project'])
+        ctx['invoices'] = qs
+        ctx['projects'] = Project.objects.filter(status=Project.ACTIVE)
+        ctx['filters'] = self.request.GET
+        ctx['page_title'] = 'فاکتورها'
+        return ctx
+
+
+class InvoiceFormView(LoginRequiredMixin, FinancePermMixin, TemplateView):
+    """صفحه‌ی ساخت/ویرایشِ فاکتور (فرمِ کامل با ردیف‌های پویا)."""
+
+    template_name = 'finance/invoice_form.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        pk = kwargs.get('pk')
+        invoice = None
+        if pk:
+            invoice = get_object_or_404(
+                Invoice.objects.prefetch_related('lines__category'), pk=pk)
+        ctx['invoice'] = invoice
+        ctx['lines'] = invoice.lines.all() if invoice else []
+        # پیش‌نمایشِ شماره‌ی بعدی برای فاکتورِ جدید
+        if not invoice:
+            last = Invoice.objects.aggregate(m=Max('number'))['m']
+            ctx['next_number'] = (last or 0) + 1
+        ctx['projects'] = Project.objects.filter(status=Project.ACTIVE)
+        ctx['categories'] = Category.objects.all()
+        ctx['page_title'] = f'فاکتور #{invoice.number}' if invoice else 'فاکتور جدید'
         return ctx
 
 
@@ -347,3 +405,83 @@ def payroll_edit(request, pk):
         p.note = d['note']
     p.save()
     return JsonResponse({'ok': True, 'total': p.total, 'remaining': p.remaining, 'status': p.status})
+
+
+# ── API: فاکتور ───────────────────────────────────────────────────────────
+
+def _parse_qty(value):
+    """تعداد را با حفظِ اعشار پارس می‌کند (برخلافِ parse_amount که گرد می‌کند)."""
+    from core.jalali import to_en_digits
+    import re as _re
+    if value in (None, ''):
+        return 1
+    s = _re.sub(r'[^\d.]', '', to_en_digits(str(value)))
+    try:
+        return round(float(s), 2) or 1
+    except ValueError:
+        return 1
+
+
+def _save_lines(invoice, lines):
+    """ردیف‌های فاکتور را از نو می‌سازد (منبع واحد = آرایه‌ی ورودی)."""
+    invoice.lines.all().delete()
+    for i, li in enumerate(lines):
+        # ردیفِ کاملاً خالی را رد کن
+        if not (li.get('description') or li.get('category') or
+                parse_amount(li.get('unit_price', 0))):
+            continue
+        InvoiceLine.objects.create(
+            invoice=invoice, order=i,
+            category_id=li.get('category') or None,
+            description=(li.get('description') or '')[:255],
+            qty=_parse_qty(li.get('qty', 1)),
+            unit_price=parse_amount(li.get('unit_price', 0)),
+            tax=parse_amount(li.get('tax', 0)),
+            discount=parse_amount(li.get('discount', 0)),
+        )
+
+
+def _invoice_totals(inv):
+    return {'subtotal': inv.subtotal, 'tax_total': inv.tax_total,
+            'discount_total': inv.discount_total, 'grand_total': inv.grand_total}
+
+
+@login_required
+@require_finance
+@require_http_methods(['POST'])
+def invoice_create(request):
+    d = _body(request)
+    issue = _pj(d.get('issue_date'))
+    if not issue:
+        return JsonResponse({'detail': 'تاریخ ثبت لازم است'}, status=400)
+    inv = Invoice.objects.create(
+        issue_date=issue, project_id=d.get('project') or None,
+        description=(d.get('description') or '').strip(),
+        due_date=_pj(d.get('due_date')), created_by=request.user)
+    _save_lines(inv, d.get('lines', []))
+    return JsonResponse({'id': inv.id, 'number': inv.number}, status=201)
+
+
+@login_required
+@require_finance
+@require_http_methods(['PATCH', 'DELETE'])
+def invoice_edit(request, pk):
+    inv = get_object_or_404(Invoice, pk=pk)
+    if request.method == 'DELETE':
+        inv.delete()
+        return JsonResponse({'ok': True})
+    d = _body(request)
+    if 'issue_date' in d:
+        issue = _pj(d['issue_date'])
+        if issue:
+            inv.issue_date = issue
+    if 'project' in d:
+        inv.project_id = d['project'] or None
+    if 'description' in d:
+        inv.description = (d['description'] or '').strip()
+    if 'due_date' in d:
+        inv.due_date = _pj(d['due_date'])
+    inv.save()
+    if 'lines' in d:
+        _save_lines(inv, d['lines'])
+    return JsonResponse({'ok': True, **_invoice_totals(inv)})

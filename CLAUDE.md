@@ -15,8 +15,9 @@
 - `tasks/` — **قلب سیستم**: Task, TaskComment, TaskTypeDef/Field؛ api.py + مودال سراسری
 - `calendarapp/` — تقویم شمسی (بدون مدل؛ منطق در calendar_logic.py) + دیت‌پیکر
 - `dashboard/` — ویو تجمیعی
-- `reports/` — Report/ReportItem (بدون snapshot، override، لینک عمومی مشتری)
-- `finance/` — حسابداری (پایه): BankAccount, Category(بابت), Transaction(+ایمپورت اکسل), Payroll
+- `reports/` — Report/ReportItem (بدون snapshot، override، لینک عمومی مشتری) + اتصالِ اختیاریِ فاکتور
+- `finance/` — حسابداری (پایه): BankAccount, Category(بابت), Transaction(+ایمپورت اکسل), Payroll,
+  Invoice/InvoiceLine(فاکتور با شماره‌ی خودکار + ردیف‌ها + جمع‌ها)
 - `seo/` — بستهٔ عمودیِ سئو: `seed_seo` (۴ نوع تسکِ سئوِ کاملاً سفارشی) + ردیابیِ رتبهٔ کلمات
   کلیدی (مدل + API برای افزونهٔ مرورگر). الگوی «بسته برای هر شرکت» — برای مشتریِ بعدی یک اپِ مشابه بساز.
 - `rank-tracker-extension/` — **افزونهٔ کروم** (MV3، خارج از جنگو)، سازگار با `seo/api.py`.
@@ -61,6 +62,9 @@
 | دادنِ دسترسیِ سیستم به یک فرد | `colleagues.views._grant_access` (`mode=invite` فقط شماره / `mode=password` مدیر خودش رمز می‌سازد) |
 | «این تسک نیاز به بازبینی دارد و باید `pending` بماند نه `done`؟» | `Task.needs_review` (فیلدِ تسک، پیش‌فرضش از `Colleague.needs_review` موقعِ ساخت) + دراپ‌داونِ وضعیت `templates/tasks/_status_select.html` |
 | توقفِ خودکارِ تایمر با تکمیلِ تسک | `tasks/api.py: _stop_timer` (صدا زده می‌شود از `apply_fields`, `task_status`, `task_review`) |
+| جمع‌های فاکتور (جمع/مالیات/تخفیف/کل) | `finance/models.py: Invoice.subtotal/tax_total/discount_total/grand_total` + `InvoiceLine.base/total` (property؛ فرانت هم همین را محاسبه می‌کند) |
+| شماره‌ی خودکارِ فاکتور | `finance/models.py: Invoice.save` (`Max(number)+1` در سطحِ سازمان) |
+| ذخیره‌ی ردیف‌های فاکتور (create/update) | `finance/views.py: _save_lines` (حذف و بازساخت از آرایه) |
 
 ## دستورهای کلیدی
 ```bash

@@ -11,6 +11,12 @@
   balance, user_note` (از اکسل) + سه ستونِ ما: `project, category, note` + `import_hash` (dedup).
   `make_hash(...)` برای تشخیص تکراری.
 - **Payroll / PayrollItem** — صورت‌حساب حقوق ماهانه؛ `total/remaining/status` (property).
+- **Invoice / InvoiceLine** — فاکتور فروش/خدمات به یک پروژه. `number` خودکار و پشت‌سرهم
+  در سطحِ سازمان (در `save()` = `Max(number)+1`، با `UniqueConstraint(organization, number)`).
+  فیلدها: `issue_date(تاریخ ثبت, میلادی), project, description, due_date(تاریخ پرداخت)`.
+  ردیف‌ها: `category(بابت), description, qty(پیش‌فرض ۱, Decimal), unit_price, tax, discount, order`.
+  جمع‌ها **property** روی Invoice (منبع واحد = ردیف‌ها): `subtotal`(Σ تعداد×واحد)،
+  `tax_total`، `discount_total`، `grand_total`(=subtotal+tax−discount). ردیف: `base`(تعداد×واحد)، `total`.
 
 ## ابزار
 `utils.py`: `parse_amount` (اعداد فارسی/ویرگول → int)، `parse_excel_date` (شمسی/میلادی + ساعت).
@@ -21,8 +27,14 @@
 ستون «توضیحات کاربر» (آخر) هم در `user_note` و هم مستقیم در فیلد قابل‌ویرایشِ `note` می‌نشیند.
 
 ## URLها
-`/finance/` داشبورد · `transactions/` · `import/` · `banks/` · `payroll/` + `api/...`
-(bank_create/edit, category_create/delete, tx_edit/bulk, import_preview/confirm, payroll_create/edit)
+`/finance/` داشبورد · `transactions/` · `import/` · `banks/` · `payroll/` · `invoices/`
+(+`invoices/new/`, `invoices/<pk>/` صفحه‌ی فرمِ کاملِ فاکتور) + `api/...`
+(bank_create/edit, category_create/delete, tx_edit/bulk, import_preview/confirm,
+payroll_create/edit, invoice_create/edit). فاکتور با فرمِ صفحه‌ای (نه مودال) به‌خاطرِ ردیف‌های پویا.
+
+## بازه‌ی تاریخ
+`transactions` و `invoices` از `DateRangeMixin` استفاده می‌کنند (فیلترِ `date`/`issue_date`
+با بازه‌ی سراسریِ session؛ پیکرِ بازه در topbar سراسری است). داشبورد هم از قبل داشت.
 
 ## دسترسی
 کلِ اپ پشتِ پرمیشنِ سازمانیِ `manage_finance` است — `finance/access.py`

@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+  <div class="page-h">
+    <h1>{% if invoice %}فاکتور #{{ invoice.number|fa_digits }}{% else %}فاکتور جدید{% endif %}</h1>
+    <div class="side-c">
+      <a href="{% url 'finance:invoices' %}" class="btn">بازگشت</a>
+      <button class="btn btn-p" id="inv-save">ذخیره فاکتور</button>
+    </div>
+  </div>
+  {% include "finance/_nav.html" %}
+
+  {# ── مشخصات کلیِ فاکتور ── #}
+  <section class="card glass" data-invoice="{{ invoice.pk|default:'' }}">
+    <div class="card-h"><h3>مشخصات فاکتور</h3>
+      <span class="tag t-mute">شماره: <b id="inv-number">#{% if invoice %}{{ invoice.number|fa_digits }}{% else %}{{ next_number|fa_digits }}{% endif %}</b></span>
+    </div>
+    <div style="padding:12px 14px">
+      <div class="grid3">
+        <div class="field"><label>تاریخ ثبت فاکتور</label>
+          <input class="input jdate" id="inv-issue" dir="ltr" value="{% if invoice %}{{ invoice.issue_date|jalali }}{% endif %}" placeholder="۱۴۰۵/۰۵/۰۱"></div>
+        <div class="field"><label>پروژه</label>
+          <select id="inv-project"><option value="">—</option>{% for p in projects %}<option value="{{ p.id }}" {% if invoice.project_id == p.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></div>
+        <div class="field"><label>تاریخ پرداخت</label>
+          <input class="input jdate" id="inv-due" dir="ltr" value="{% if invoice.due_date %}{{ invoice.due_date|jalali }}{% endif %}" placeholder="۱۴۰۵/۰۶/۰۱"></div>
+      </div>
+      <div class="field"><label>توضیحات فاکتور</label>
+        <textarea class="input" id="inv-desc" rows="2" placeholder="توضیحات…">{% if invoice %}{{ invoice.description }}{% endif %}</textarea></div>
+    </div>
+  </section>
+
+  {# ── ردیف‌های فاکتور ── #}
+  <section class="card glass">
+    <div class="card-h"><h3>ردیف‌ها</h3>
+      <div class="side-c"><button class="btn btn-sm" id="inv-add-row">＋ افزودن ردیف</button></div>
+    </div>
+    <div class="sheet-wrap">
+      <table class="sheet" id="inv-lines">
+        <thead><tr>
+          <th style="width:38px"></th>
+          <th style="width:150px">بابت</th>
+          <th>توضیحات</th>
+          <th style="width:80px">تعداد</th>
+          <th style="width:130px">مبلغ واحد</th>
+          <th style="width:120px">مالیات</th>
+          <th style="width:120px">تخفیف</th>
+          <th style="width:130px">جمع</th>
+          <th style="width:40px"></th>
+        </tr></thead>
+        <tbody id="inv-body">
+          {% for li in lines %}
+          <tr class="inv-row">
+            <td class="rownum num-c"></td>
+            <td class="edit"><select class="li-cat"><option value="">—</option>{% for c in categories %}<option value="{{ c.id }}" {% if li.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></td>
+            <td class="edit"><input class="li-desc" value="{{ li.description }}" placeholder="شرح"></td>
+            <td class="edit"><input class="li-qty num" dir="ltr" value="{{ li.qty|floatformat:'-2' }}"></td>
+            <td class="edit"><input class="li-unit num" dir="ltr" value="{{ li.unit_price|floatformat:0 }}"></td>
+            <td class="edit"><input class="li-tax num" dir="ltr" value="{{ li.tax|floatformat:0 }}"></td>
+            <td class="edit"><input class="li-disc num" dir="ltr" value="{{ li.discount|floatformat:0 }}"></td>
+            <td class="li-total num-c">۰</td>
+            <td><button class="mini li-del" type="button">×</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {# ── جمع‌بندی ── #}
+    <div style="display:flex;justify-content:flex-end;padding:14px">
+      <div style="min-width:280px">
+        <div class="inv-sumrow"><span>جمع (مبالغ واحد)</span><b id="sum-sub">۰</b></div>
+        <div class="inv-sumrow"><span>جمع مالیات‌ها</span><b id="sum-tax">۰</b></div>
+        <div class="inv-sumrow"><span>جمع تخفیف‌ها</span><b id="sum-disc">۰</b></div>
+        <div class="inv-sumrow inv-grand"><span>جمع کل</span><b id="sum-grand">۰</b></div>
+      </div>
+    </div>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+<style>
+  .inv-sumrow{display:flex;justify-content:space-between;gap:24px;padding:6px 0;font-size:13px;border-bottom:1px solid var(--stroke-soft)}
+  .inv-sumrow span{color:var(--text-dim)}
+  .inv-grand{border-bottom:0;margin-top:4px;padding-top:10px;font-size:15px}
+  .inv-grand b{color:var(--info)}
+  #inv-lines .num{text-align:left}
+</style>
+<script>
+(function(){
+  const INV_ID = "{{ invoice.pk|default:'' }}";
+  const CATS = `{% for c in categories %}<option value="{{ c.id }}">{{ c.name|escapejs }}</option>{% endfor %}`;
+  const body = document.getElementById('inv-body');
+
+  // fa/en اعداد → عدد
+  const toNum = v => { if(v==null) return 0; const s=String(v).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[^\d.\-]/g,''); const n=parseFloat(s); return isNaN(n)?0:n; };
+  const fa = n => Math.round(n).toLocaleString('en-US').replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);
+
+  function rowHTML(){
+    return `<tr class="inv-row">
+      <td class="rownum num-c"></td>
+      <td class="edit"><select class="li-cat"><option value="">—</option>${CATS}</select></td>
+      <td class="edit"><input class="li-desc" placeholder="شرح"></td>
+      <td class="edit"><input class="li-qty num" dir="ltr" value="1"></td>
+      <td class="edit"><input class="li-unit num" dir="ltr" value=""></td>
+      <td class="edit"><input class="li-tax num" dir="ltr" value=""></td>
+      <td class="edit"><input class="li-disc num" dir="ltr" value=""></td>
+      <td class="li-total num-c">۰</td>
+      <td><button class="mini li-del" type="button">×</button></td></tr>`;
+  }
+  function addRow(){ body.insertAdjacentHTML('beforeend', rowHTML()); recalc(); }
+
+  function recalc(){
+    let sub=0, tax=0, disc=0;
+    [...body.querySelectorAll('.inv-row')].forEach((r,i)=>{
+      r.querySelector('.rownum').textContent = (i+1).toString().replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);
+      const qty=toNum(r.querySelector('.li-qty').value)||1;
+      const unit=toNum(r.querySelector('.li-unit').value);
+      const t=toNum(r.querySelector('.li-tax').value);
+      const dc=toNum(r.querySelector('.li-disc').value);
+      const base=qty*unit; const total=base+t-dc;
+      r.querySelector('.li-total').textContent = fa(total);
+      sub+=base; tax+=t; disc+=dc;
+    });
+    document.getElementById('sum-sub').textContent=fa(sub);
+    document.getElementById('sum-tax').textContent=fa(tax);
+    document.getElementById('sum-disc').textContent=fa(disc);
+    document.getElementById('sum-grand').textContent=fa(sub+tax-disc);
+  }
+
+  document.getElementById('inv-add-row').onclick=addRow;
+  body.addEventListener('input', e=>{ if(e.target.matches('.li-qty,.li-unit,.li-tax,.li-disc')) recalc(); });
+  body.addEventListener('click', e=>{ const d=e.target.closest('.li-del'); if(d){ d.closest('tr').remove(); recalc(); } });
+
+  // شروع: اگر خالی است یک ردیف بگذار، سپس محاسبه
+  if(!body.querySelector('.inv-row')) addRow(); else recalc();
+
+  function collect(){
+    return [...body.querySelectorAll('.inv-row')].map(r=>({
+      category: r.querySelector('.li-cat').value,
+      description: r.querySelector('.li-desc').value.trim(),
+      qty: r.querySelector('.li-qty').value,
+      unit_price: r.querySelector('.li-unit').value,
+      tax: r.querySelector('.li-tax').value,
+      discount: r.querySelector('.li-disc').value,
+    }));
+  }
+
+  document.getElementById('inv-save').onclick=async()=>{
+    const payload={
+      issue_date: document.getElementById('inv-issue').value.trim(),
+      project: document.getElementById('inv-project').value,
+      description: document.getElementById('inv-desc').value.trim(),
+      due_date: document.getElementById('inv-due').value.trim(),
+      lines: collect(),
+    };
+    if(!payload.issue_date){ App.toast('تاریخ ثبت را وارد کن','warn'); return; }
+    try{
+      if(INV_ID){
+        await App.fetchJSON(`/finance/api/invoices/${INV_ID}/`,{method:'PATCH',body:payload});
+        App.toast('ذخیره شد','ok');
+      }else{
+        const d=await App.fetchJSON("{% url 'finance:invoice_create' %}",{method:'POST',body:payload});
+        App.toast('فاکتور ثبت شد','ok');
+        location.href=`/finance/invoices/${d.id}/`;
+      }
+    }catch(_){}
+  };
+})();
+</script>
+{% endblock %}

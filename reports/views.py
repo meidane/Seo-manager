@@ -48,8 +48,10 @@ class ReportListView(LoginRequiredMixin, ListView):
         return super().get_queryset().select_related('project')
 
     def get_context_data(self, **kwargs):
+        from finance.models import Invoice
         ctx = super().get_context_data(**kwargs)
         ctx['projects'] = Project.objects.filter(status=Project.ACTIVE)
+        ctx['invoices'] = Invoice.objects.select_related('project')
         ctx['page_title'] = 'گزارش‌ها'
         return ctx
 
@@ -62,6 +64,7 @@ class ReportCreateView(LoginRequiredMixin, View):
         try:
             report = Report.objects.create(
                 project_id=data['project'],
+                invoice_id=data.get('invoice') or None,
                 title=data.get('title') or 'گزارش جدید',
                 date_from=parse_jalali(data['date_from']),
                 date_to=parse_jalali(data['date_to']),
@@ -78,10 +81,12 @@ class ReportDetailView(LoginRequiredMixin, DetailView):
     context_object_name = 'report'
 
     def get_context_data(self, **kwargs):
+        from finance.models import Invoice
         ctx = super().get_context_data(**kwargs)
         ctx['groups'] = self.object.grouped_items()
         ctx['client_fields'] = CLIENT_FIELDS
         ctx['visible_fields'] = self.object.visible_fields
+        ctx['invoices'] = Invoice.objects.select_related('project')
         ctx['page_title'] = self.object.title
         return ctx
 
@@ -235,6 +240,8 @@ def report_update(request, pk):
         report.is_public = bool(d['is_public'])
     if 'status' in d:
         report.status = d['status']
+    if 'invoice' in d:
+        report.invoice_id = d['invoice'] or None
     report.save()
     return JsonResponse({'ok': True, 'public_url': report.public_url(), 'is_public': report.is_public})
 
