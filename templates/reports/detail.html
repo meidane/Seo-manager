@@ -26,14 +26,52 @@
     </span>
   </section>
 
-  {# ── فاکتور متصل ── #}
-  <section class="glass filters" style="gap:10px;align-items:center">
-    <label style="margin:0">فاکتور متصل:</label>
-    <select id="r-invoice" style="max-width:300px">
-      <option value="">— بدون فاکتور —</option>
-      {% for inv in invoices %}<option value="{{ inv.id }}" {% if report.invoice_id == inv.id %}selected{% endif %}>فاکتور #{{ inv.number|fa_digits }}{% if inv.project %} · {{ inv.project.name }}{% endif %} · {{ inv.grand_total|money }}</option>{% endfor %}
-    </select>
-    {% if report.invoice_id %}<a class="btn btn-sm" href="{% url 'finance:invoice_edit_page' report.invoice_id %}" target="_blank" rel="noopener">مشاهده فاکتور ↗</a>{% endif %}
+  {# ── فاکتور متصل + مانده‌ی حساب ── #}
+  <section class="card glass">
+    <div class="card-h"><h3>فاکتور و مانده‌ی حساب</h3>
+      <div class="side-c">
+        <span class="tag {% if client_balance < 0 %}t-bad{% elif client_balance > 0 %}t-ok{% else %}t-mute{% endif %}"
+              title="مانده‌ی کلِ پروژه (همه‌ی فاکتورها/تراکنش‌ها، نه فقط همین گزارش)">
+          مانده‌ی کل مشتری: {{ client_balance|money }}
+        </span>
+      </div>
+    </div>
+    <div style="padding:14px 17px">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <label style="margin:0">فاکتور متصل:</label>
+        <select id="r-invoice" style="max-width:300px">
+          <option value="">— بدون فاکتور —</option>
+          {% for inv in invoices %}<option value="{{ inv.id }}" {% if report.invoice_id == inv.id %}selected{% endif %}>فاکتور #{{ inv.number|fa_digits }}{% if inv.project %} · {{ inv.project.name }}{% endif %} · {{ inv.grand_total|money }}</option>{% endfor %}
+        </select>
+        {% if report.invoice_id %}<a class="btn btn-sm" href="{% url 'finance:invoice_edit_page' report.invoice_id %}" target="_blank" rel="noopener">ویرایشِ فاکتور ↗</a>{% endif %}
+      </div>
+      {% if invoice_ctx %}
+        <div class="tsheet-wrap" style="margin-top:14px">
+          <table class="tsheet">
+            <thead><tr><th>بابت</th><th>توضیح</th><th>تعداد</th><th>مبلغ واحد</th><th>جمع</th></tr></thead>
+            <tbody>
+              {% for li in invoice_ctx.lines %}
+                <tr>
+                  <td>{{ li.category.name|default:"—" }}</td>
+                  <td>{{ li.description|default:"—" }}</td>
+                  <td class="num-c">{{ li.qty|fa_digits }}</td>
+                  <td class="num-c">{{ li.unit_price|money }}</td>
+                  <td class="num-c">{{ li.total|money }}</td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="5" class="zero" style="text-align:center;padding:16px">ردیفی در این فاکتور نیست</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:20px;margin-top:10px;font-size:12.5px;color:var(--text-dim)">
+          <span>جمع: <b style="color:var(--text)">{{ invoice_ctx.invoice.subtotal|money }}</b></span>
+          <span>مالیات: <b style="color:var(--text)">{{ invoice_ctx.invoice.tax_total|money }}</b></span>
+          <span>تخفیف: <b style="color:var(--text)">{{ invoice_ctx.invoice.discount_total|money }}</b></span>
+          <span>جمعِ کل: <b style="color:#6FE3C4">{{ invoice_ctx.invoice.grand_total|money }} تومان</b></span>
+        </div>
+      {% endif %}
+    </div>
   </section>
 
   {# ── توضیحات (ادیتور غنی TinyMCE + کشیدن‌ورهاکردن مستقیم عکس) ── #}
@@ -94,16 +132,18 @@ document.getElementById('r-final').onclick=async()=>{
   location.reload();
 };
 
-// ── واکشی تسک‌ها ──
+// ── واکشی تسک‌ها (شاملِ انجام‌نشده‌ها هم — با برچسبِ ⏳ فقط برای خودمان، هیچ‌وقت در
+// گزارشِ نهایی/عمومی چاپ نمی‌شود) ──
 document.getElementById('p-fetch').onclick=async()=>{
   const d=await App.fetchJSON(`/reports/api/${RID}/pull-tasks/?from=${document.getElementById('p-from').value}&to=${document.getElementById('p-to').value}`);
   const box=document.getElementById('pull-results');
-  if(!d.groups.length){box.innerHTML='<div class="empty" style="padding:20px">تسک انجام‌شده‌ی جدیدی در این بازه نیست</div>';document.getElementById('pull-actions').style.display='none';return;}
+  if(!d.groups.length){box.innerHTML='<div class="empty" style="padding:20px">تسکِ جدیدی در این بازه نیست</div>';document.getElementById('pull-actions').style.display='none';return;}
   box.innerHTML=d.groups.map(g=>`<div style="margin-bottom:10px"><b style="font-size:12px;color:var(--text-dim)">${g.label}</b>`+
-    g.tasks.map(t=>`<label style="display:flex;align-items:center;gap:8px;padding:6px 4px;margin:0;cursor:pointer">
+    g.tasks.map(t=>`<label class="pull-row">
       <input type="checkbox" class="pick" value="${t.id}" style="width:auto">
       <span class="ttype" style="background:rgba(${t.color},.16);color:rgb(${t.color})">${t.type_label}</span>
-      <span>${t.title}</span><span style="color:var(--text-faint);font-size:11px">${t.assignee} · ${t.done_date_fa}</span></label>`).join('')+`</div>`).join('');
+      <span>${t.title}</span><span style="color:var(--text-faint);font-size:11px">${t.assignee} · ${t.done_date_fa}</span>
+      ${t.done?'':`<span class="pull-not-done">⏳ ${t.status_label}</span>`}</label>`).join('')+`</div>`).join('');
   document.getElementById('pull-actions').style.display='block';
 };
 document.getElementById('p-add').onclick=async()=>{
