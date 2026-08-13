@@ -10,34 +10,41 @@
     </div>
   </div>
 
-  {% for t in tasks %}
-    <section class="card glass rev-card" id="rev-{{ t.id }}" data-id="{{ t.id }}">
-      <div class="rev-top">
-        <span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span>
-        <h3>{{ t.seo_title|default:t.title }}</h3>
-        <span class="tag t-{% if t.status == 'pending' %}warn{% else %}ok{% endif %} rev-status">{{ t.get_status_display }}</span>
-        {% if t.review_status == 'needs_fix' %}<span class="tag t-warn">⚠ اصلاحِ قبلی</span>{% endif %}
-      </div>
-      <div class="rev-meta">
-        <span>پروژه: <b>{{ t.project.name }}</b></span>
-        <span>مسئول: <b>{{ t.assignee.full_name|default:"—" }}</b></span>
-        <span>تاریخِ برنامه: <b>{{ t.planned_date|jalali }}</b></span>
-        {% if t.done_date %}<span>تاریخِ تکمیل: <b>{{ t.done_date|jalali }}</b></span>{% endif %}
-        {% if t.word_count %}<span>تعداد کلمه: <b>{{ t.word_count|fa_digits }}</b></span>{% endif %}
-        <span class="rev-why" title="چرا این تسک نیاز به بازبینی دارد">
-          {% if t.needs_review %}نیازِ بازبینیِ فردی{% else %}نوعِ تسک نیاز به بازبینی دارد{% endif %}
-        </span>
-      </div>
-      {% if t.description %}<div class="rev-desc">{{ t.description|safe|truncatewords_html:40 }}</div>{% endif %}
-      {% if t.keywords %}<div class="rev-kw"><span class="tag t-mute">{{ t.keywords }}</span></div>{% endif %}
-      <div class="rev-actions">
-        {% if t.published_url %}<a href="{{ t.published_url }}" target="_blank" rel="noopener" class="btn btn-p">باز کردن مطلب ↗</a>{% endif %}
-        <button class="btn" onclick="window.openTask({{ t.id }})">باز کردن تسک</button>
-        <button class="btn" onclick="window.scoreKpis({{ t.id }})" style="border-color:rgba(65,131,242,.4);color:#8FB8FF">★ امتیاز کیفیت</button>
-        <button class="btn rev-ok" data-id="{{ t.id }}" style="border-color:rgba(45,212,167,.4);color:#6FE3C4">✓ تایید</button>
-        <button class="btn" onclick="window.openFixModal({{ t.id }})" style="border-color:rgba(249,115,22,.4);color:#FDBA8C">⚠ نیاز به اصلاح</button>
-      </div>
-    </section>
+  {% regroup tasks by is_my_scope as scope_groups %}
+  {% for grp in scope_groups %}
+    {% if not grp.grouper %}
+      <div class="rev-sep"><span>نظارتِ سازمانی — مسئولیتِ مدیرِ دیگری</span></div>
+    {% endif %}
+    {% for t in grp.list %}
+      <section class="card glass rev-card" id="rev-{{ t.id }}" data-id="{{ t.id }}">
+        <div class="rev-top">
+          <span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span>
+          <h3>{{ t.seo_title|default:t.title }}</h3>
+          {% if t.is_my_scope %}<span class="tag t-info" title="مسئولِ این تسک زیرمجموعه‌ی شماست">مسئولیتِ شما</span>{% endif %}
+          <span class="tag t-{% if t.status == 'pending' %}warn{% else %}ok{% endif %} rev-status">{{ t.get_status_display }}</span>
+          {% if t.review_status == 'needs_fix' %}<span class="tag t-warn">⚠ اصلاحِ قبلی</span>{% endif %}
+        </div>
+        <div class="rev-meta">
+          <span>پروژه: <b>{{ t.project.name }}</b></span>
+          <span>مسئول: <b>{{ t.assignee.full_name|default:"—" }}</b></span>
+          <span>تاریخِ برنامه: <b>{{ t.planned_date|jalali }}</b></span>
+          {% if t.done_date %}<span>تاریخِ تکمیل: <b>{{ t.done_date|jalali }}</b></span>{% endif %}
+          {% if t.word_count %}<span>تعداد کلمه: <b>{{ t.word_count|fa_digits }}</b></span>{% endif %}
+          <span class="rev-why" title="چرا این تسک نیاز به بازبینی دارد">
+            {% if t.needs_review %}نیازِ بازبینیِ فردی{% else %}نوعِ تسک نیاز به بازبینی دارد{% endif %}
+          </span>
+        </div>
+        {% if t.description %}<div class="rev-desc">{{ t.description|safe|truncatewords_html:40 }}</div>{% endif %}
+        {% if t.keywords %}<div class="rev-kw"><span class="tag t-mute">{{ t.keywords }}</span></div>{% endif %}
+        <div class="rev-actions">
+          {% if t.published_url %}<a href="{{ t.published_url }}" target="_blank" rel="noopener" class="btn btn-p">باز کردن مطلب ↗</a>{% endif %}
+          <button class="btn" onclick="window.openTask({{ t.id }})">باز کردن تسک</button>
+          <button class="btn" onclick="window.scoreKpis({{ t.id }})" style="border-color:rgba(65,131,242,.4);color:#8FB8FF">★ امتیاز کیفیت</button>
+          <button class="btn rev-ok" data-id="{{ t.id }}" style="border-color:rgba(45,212,167,.4);color:#6FE3C4">✓ تایید</button>
+          <button class="btn" onclick="window.openFixModal({{ t.id }})" style="border-color:rgba(249,115,22,.4);color:#FDBA8C">⚠ نیاز به اصلاح</button>
+        </div>
+      </section>
+    {% endfor %}
   {% empty %}
     <section class="card glass"><div class="empty"><div class="ico">◎</div><h4>محتوایی برای بازبینی نیست</h4></div></section>
   {% endfor %}

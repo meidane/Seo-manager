@@ -115,26 +115,44 @@ def group_done_by_day(qs, start, end):
 
 
 def running_timers_payload(request):
-    """تسک‌های در حال اجرای تایمر برای کاربرِ جاری: خودش (`mine=True`، قابلِ استاپ) +
-    زیرمجموعه‌های مستقیمش اگر مدیرشان است (`mine=False`، فقط‌خواندنی، با نامِ فرد).
+    """تسک‌های در حال اجرای تایمر — «چه کسی الان دارد کار می‌کند»: خودِ کاربر
+    (`mine=True`، قابلِ استاپ) + بقیه (`mine=False`، فقط‌خواندنی، با نامِ فرد)، که
+    دامنه‌شان بسته به جایگاهِ کاربر فرق می‌کند:
+    - دسترسیِ سازمانیِ ناظر (`review`/`manage_people`/`view_all_projects`، مثلِ
+      مالک/مدیرِ کل) → **همه‌ی** تایمرهای در حالِ اجرای کلِّ سازمان.
+    - وگرنه، اگر زیرمجموعه دارد → خودش + زیرمجموعه‌ها در هر عمقی (نه فقط مستقیم؛
+      `colleagues.access.all_subordinate_ids`).
+    - وگرنه فقط خودش.
     منبعِ واحد برای ویجتِ سراسری (context processor، بارِ اول) و APIِ
-    `/tasks/api/running/` (پلِ ۳۰ثانیه‌ای)."""
+    `/tasks/api/running/` (پلِ ۳۰ثانیه‌ای). **تله‌ی رفع‌شده:** قبلاً فقط زیرمجموعه‌ی
+    مستقیم را می‌دید و اصلاً راهی برای دیدنِ سازمانی نداشت — مالک/مدیرِ کل که خودش
+    مستقیماً مدیرِ کسی نیست، ویجتش همیشه خالی بود."""
     from .models import Task
+    from colleagues.access import all_subordinate_ids
 
     colleague = getattr(request.user, 'colleague', None)
-    if not colleague:
+    m = getattr(request, 'membership', None)
+    org_wide = bool(m and (m.can('review') or m.can('manage_people') or m.can('view_all_projects')))
+
+    running = Task.objects.filter(timer_started_at__isnull=False).select_related('project', 'assignee')
+    if org_wide:
+        pass  # همه‌چیز
+    elif colleague:
+        sub_ids = all_subordinate_ids(colleague)
+        running = running.filter(Q(assignee_id=colleague.id) | Q(assignee_id__in=sub_ids))
+    else:
         return []
-    mine = Task.objects.filter(
-        timer_started_at__isnull=False, assignee_id=colleague.id).select_related('project')
-    subs = Task.objects.filter(
-        timer_started_at__isnull=False, assignee__manager_id=colleague.id).select_related('project', 'assignee')
-    out = [{
-        'id': t.id, 'title': t.title, 'project': t.project.name if t.project_id else '',
-        'spent': t.spent_minutes, 'started': t.timer_started_at.isoformat(), 'mine': True,
-    } for t in mine]
-    out += [{
-        'id': t.id, 'title': t.title, 'project': t.project.name if t.project_id else '',
-        'spent': t.spent_minutes, 'started': t.timer_started_at.isoformat(), 'mine': False,
-        'assignee': t.assignee.full_name,
-    } for t in subs]
+
+    my_id = colleague.id if colleague else None
+    out = []
+    for t in running:
+        mine = t.assignee_id == my_id
+        row = {
+            'id': t.id, 'title': t.title, 'project': t.project.name if t.project_id else '',
+            'spent': t.spent_minutes, 'started': t.timer_started_at.isoformat(), 'mine': mine,
+        }
+        if not mine:
+            row['assignee'] = t.assignee.full_name if t.assignee_id else '—'
+        out.append(row)
+    out.sort(key=lambda r: not r['mine'])  # مالِ خودِ کاربر همیشه اول
     return out

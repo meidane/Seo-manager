@@ -88,19 +88,33 @@ class TaskReviewView(LoginRequiredMixin, TemplateView):
     ۱) نوعِ تسک «نیاز به بازبینی» دارد (`TaskTypeDef.requires_review`) → صفِ عمومی
        (تسکِ `status=done`)، فقط برای کسی که دسترسیِ سازمانیِ `review` دارد.
     ۲) خودِ تسک «نیاز به بازبینی» دارد (`Task.needs_review`) → تسک در وضعیتِ
-       `status=pending` («تکمیل — در انتظارِ بازبینی») می‌ماند، نه `done`؛ فقط برای
-       مدیرِ مستقیمِ مسئولِ همان تسک دیده می‌شود، مستقل از دسترسیِ `review`."""
+       `status=pending` («تکمیل — در انتظارِ بازبینی») می‌ماند، نه `done`؛ برای کلِّ
+       زنجیره‌ی مدیریتیِ بالادست (نه فقط مدیرِ مستقیم) یا هرکسی با دسترسیِ سازمانیِ
+       `review` دیده می‌شود (`tasks.queries.reviewable_q`)."""
 
     template_name = 'tasks/review.html'
 
     def get_context_data(self, **kwargs):
+        from colleagues.access import all_subordinate_ids
+
         ctx = super().get_context_data(**kwargs)
         qs = Task.objects.select_related('project', 'assignee', 'type_def').filter(
             status__in=[Task.DONE, Task.PENDING]).filter(reviewable_q(self.request))
         review = self.request.GET.get('review', 'unreviewed')
         if review == 'unreviewed':
             qs = qs.filter(review_status=Task.UNREVIEWED)
-        ctx['tasks'] = qs.order_by('-updated_at')[:50]
+        tasks = list(qs.order_by('-updated_at')[:50])
+
+        # «مسئولیتِ خودم» (مسئولِ تسک زیرمجموعه‌ی من است، در هر عمقی) در برابرِ «فقط
+        # نظارتِ سازمانی» (فقط به‌خاطرِ دسترسیِ سازمانیِ review دیده می‌شود، مسئولش
+        # مدیرِ دیگری است) — اولی همیشه بالاتر می‌آید و در تمپلیت متمایز نشان داده می‌شود.
+        my_colleague = getattr(self.request.user, 'colleague', None)
+        sub_ids = all_subordinate_ids(my_colleague)
+        for t in tasks:
+            t.is_my_scope = t.assignee_id in sub_ids
+        tasks.sort(key=lambda t: not t.is_my_scope)
+
+        ctx['tasks'] = tasks
         ctx['review'] = review
         ctx['page_title'] = 'بازبینی تسک'
         return ctx
