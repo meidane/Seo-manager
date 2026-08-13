@@ -47,6 +47,7 @@ class Report(TimeStampedModel):
     STATUS_CHOICES = [(DRAFT, 'پیش‌نویس'), (FINAL, 'نهایی')]
 
     project = models.ForeignKey('projects.Project', verbose_name='پروژه', on_delete=models.CASCADE, related_name='reports')
+    invoice = models.ForeignKey('finance.Invoice', verbose_name='فاکتور', on_delete=models.SET_NULL, null=True, blank=True, related_name='reports')
     title = models.CharField('عنوان', max_length=200)
     date_from = models.DateField('از تاریخ')
     date_to = models.DateField('تا تاریخ')

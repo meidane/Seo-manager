@@ -1,20 +1,36 @@
 """ویوهای حسابداری (پایه) — داشبورد، بانک‌ها، بابت‌ها، تراکنش‌ها، ورود اکسل، حقوق."""
 import json
 
+from datetime import date
+
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Sum
+from django.core.paginator import Paginator
+from django.db.models import Max, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_http_methods
 from django.views.generic import TemplateView
 
-from core.daterange import DateRangeMixin
+from core.daterange import (PRESET_LABELS, PRESETS, DateRangeMixin,
+                            _resolve_preset)
+from core.jalali import format_jalali, parse_jalali
 from projects.models import Project
 
 from .access import FinancePermMixin, require_finance
-from .models import BankAccount, Category, Payroll, PayrollItem, Transaction
+from .models import (BankAccount, Category, Invoice, InvoiceLine, Payroll,
+                     PayrollItem, Transaction)
 from .utils import parse_amount, parse_excel_date
+
+
+def _pj(value):
+    """تاریخ شمسی → میلادی؛ خالی/نامعتبر → None."""
+    if not value:
+        return None
+    try:
+        return parse_jalali(value)
+    except (ValueError, TypeError):
+        return None
 
 
 def _body(request):
@@ -54,14 +70,33 @@ class FinanceDashboardView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin,
         pay_total = sum(p.total for p in Payroll.objects.all())
         pay_paid = Payroll.objects.aggregate(s=Sum('paid_amount'))['s'] or 0
 
+        from .alerts import compute_alerts
         ctx.update({
             'income': income, 'expense': expense, 'net': income - expense,
             'banks': banks, 'bank_total': bank_total, 'cats': cats,
             'pay_total': pay_total, 'pay_paid': pay_paid, 'pay_remaining': pay_total - pay_paid,
             'unassigned': tx.filter(project__isnull=True, category__isnull=True).count(),
+            'fin_alerts': compute_alerts(),
             'page_title': 'حسابداری',
         })
         return ctx
+
+
+def _optional_range(g):
+    """بازه‌ی تاریخِ اختیاری برای تراکنش‌ها — پیش‌فرض بدون فیلتر (همه).
+    فقط وقتی کاربر صریح `from/to` یا `range` بدهد اعمال می‌شود.
+    برمی‌گرداند (start, end, label) یا (None, None, '')."""
+    if g.get('from') and g.get('to'):
+        try:
+            s, e = parse_jalali(g['from']), parse_jalali(g['to'])
+            return s, e, f'{format_jalali(s)} تا {format_jalali(e)}'
+        except (ValueError, TypeError):
+            pass
+    key = g.get('range')
+    if key and (key in PRESETS or key in ('this_month', 'last_month')):
+        s, e = _resolve_preset(key, date.today())
+        return s, e, PRESET_LABELS.get(key, '')
+    return None, None, ''
 
 
 class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
@@ -71,18 +106,44 @@ class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
         ctx = super().get_context_data(**kwargs)
         g = self.request.GET
         qs = Transaction.objects.select_related('bank_account', 'project', 'category')
+
+        # بازه‌ی تاریخ اختیاری (پیش‌فرض: همه‌ی تراکنش‌ها)
+        start, end, range_label = _optional_range(g)
+        if start and end:
+            qs = qs.filter(date__range=(start, end))
+
         if g.get('bank'):
             qs = qs.filter(bank_account_id=g['bank'])
         if g.get('project'):
             qs = qs.filter(project_id=g['project'])
-        if g.get('category'):
-            qs = qs.filter(category_id=g['category'])
+        # بابت: چندانتخابی
+        cat_ids = [c for c in g.getlist('category') if c]
+        if cat_ids:
+            qs = qs.filter(category_id__in=cat_ids)
         if g.get('unassigned') == '1':
             qs = qs.filter(project__isnull=True, category__isnull=True)
-        ctx['transactions'] = qs[:300]
+        # جستجو روی شرح سند + توضیحات
+        q = (g.get('q') or '').strip()
+        if q:
+            qs = qs.filter(Q(description__icontains=q) | Q(note__icontains=q))
+
+        paginator = Paginator(qs, 100)
+        page_obj = paginator.get_page(g.get('page'))
+
+        # پارامترهای فیلتر برای لینک‌های صفحه‌بندی (بدون page)
+        params = g.copy()
+        params.pop('page', None)
+        ctx['qs_params'] = params.urlencode()
+
+        ctx['page_obj'] = page_obj
+        ctx['transactions'] = page_obj.object_list
+        ctx['total_count'] = paginator.count
         ctx['banks'] = BankAccount.objects.filter(is_active=True)
         ctx['projects'] = Project.objects.filter(status=Project.ACTIVE)
         ctx['categories'] = Category.objects.all()
+        ctx['selected_categories'] = cat_ids
+        ctx['range_label'] = range_label
+        ctx['q'] = q
         ctx['filters'] = g
         ctx['page_title'] = 'تراکنش‌ها'
         return ctx
@@ -114,10 +175,191 @@ class PayrollListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         from colleagues.models import Colleague
+        from core.jalali import MONTH_NAMES
+
+        from .balances import salary_balances
         ctx = super().get_context_data(**kwargs)
-        ctx['payrolls'] = Payroll.objects.select_related('colleague').prefetch_related('items')
+        payrolls = list(Payroll.objects.select_related('colleague').prefetch_related('items'))
+        cids = {p.colleague_id for p in payrolls}
+
+        # مانده‌ی «کل حساب با همکار» (منبع واحد: balances.salary_balances)
+        balances = salary_balances(cids)
+        # نگاشتِ همکار → id بابتِ حقوقِ او، برای لینکِ مانده به تبِ گزارش
+        salary_cat = {c.colleague_id: c.id for c in Category.objects.filter(colleague_id__in=cids)}
+
+        ctx['payrolls'] = payrolls
+        ctx['balances'] = balances
+        ctx['salary_cat'] = salary_cat
         ctx['colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)
+        ctx['months'] = list(enumerate(MONTH_NAMES, start=1))  # [(1,'فروردین'),...]
         ctx['page_title'] = 'حقوق'
+        return ctx
+
+
+class InvoiceListView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateView):
+    template_name = 'finance/invoices.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        start, end = self.get_range(self.request)
+        ctx.update(self.range_context())
+        qs = (Invoice.objects.select_related('project')
+              .prefetch_related('lines')
+              .filter(issue_date__range=(start, end)))
+        if self.request.GET.get('project'):
+            qs = qs.filter(project_id=self.request.GET['project'])
+        invoices = list(qs)
+        # مانده‌ی «گردش حساب» هر پروژه (کلِ تاریخ) برای ستونِ مانده — منبع واحد balances
+        from .balances import project_balances
+        ctx['project_bal'] = project_balances({inv.project_id for inv in invoices})
+        ctx['invoices'] = invoices
+        ctx['projects'] = Project.objects.filter(status=Project.ACTIVE)
+        ctx['filters'] = self.request.GET
+        ctx['page_title'] = 'فاکتورها'
+        return ctx
+
+
+class InvoiceFormView(LoginRequiredMixin, FinancePermMixin, TemplateView):
+    """صفحه‌ی ساخت/ویرایشِ فاکتور (فرمِ کامل با ردیف‌های پویا)."""
+
+    template_name = 'finance/invoice_form.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        pk = kwargs.get('pk')
+        invoice = None
+        if pk:
+            invoice = get_object_or_404(
+                Invoice.objects.prefetch_related('lines__category'), pk=pk)
+        ctx['invoice'] = invoice
+        ctx['lines'] = invoice.lines.all() if invoice else []
+        # پیش‌نمایشِ شماره‌ی بعدی برای فاکتورِ جدید
+        if not invoice:
+            last = Invoice.objects.aggregate(m=Max('number'))['m']
+            ctx['next_number'] = (last or 0) + 1
+        ctx['projects'] = Project.objects.filter(status=Project.ACTIVE)
+        ctx['categories'] = Category.objects.all()
+        ctx['page_title'] = f'فاکتور #{invoice.number}' if invoice else 'فاکتور جدید'
+        return ctx
+
+
+class LedgerView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateView):
+    """گردشِ حساب (مثلِ صورت‌حسابِ بانکی) — فیلترِ **یا** پروژه **یا** بابت (نه هر دو، نه هیچ‌کدام).
+
+    - پروژه: فاکتورهای پروژه = برداشت؛ تراکنش‌های پروژه (واریز/برداشت) = واریز/برداشت.
+    - بابت: تراکنش‌های آن بابت (واریز/برداشت)؛ اگر بابتِ حقوقِ یک همکار بود، حقوق‌های او
+      در بازه (تاریخِ اولِ ماهِ ثبت) هم به‌عنوان واریز اضافه می‌شود.
+    مانده به‌صورت تجمعی (Σواریز − Σبرداشت) در هر ردیف، و جمعِ نهایی در ردیفِ آخر.
+    """
+
+    template_name = 'finance/ledger.html'
+
+    def get_context_data(self, **kwargs):
+        from core.jalali import format_jalali, j2g
+        ctx = super().get_context_data(**kwargs)
+        start, end = self.get_range(self.request)
+        ctx.update(self.range_context())
+        g = self.request.GET
+
+        project_id = g.get('project') or ''
+        category_id = g.get('category') or ''
+        bank_id = g.get('bank') or ''
+
+        ctx['banks'] = BankAccount.objects.filter(is_active=True)
+        ctx['projects'] = Project.objects.filter(status=Project.ACTIVE)
+        ctx['categories'] = Category.objects.all()
+        ctx['filters'] = g
+        ctx['page_title'] = 'گزارش (گردش حساب)'
+
+        # شرطِ طلایی: دقیقاً یکی از پروژه/بابت انتخاب شده باشد
+        if bool(project_id) == bool(category_id):
+            ctx['rows'] = None
+            ctx['invalid_filter'] = True
+            return ctx
+
+        rows = []
+
+        if project_id:
+            ctx['mode'] = 'project'
+            ctx['selected_project'] = Project.objects.filter(id=project_id).first()
+            # فاکتورهای پروژه → برداشت
+            for inv in Invoice.objects.filter(project_id=project_id, issue_date__range=(start, end)):
+                rows.append({
+                    'date': inv.issue_date,
+                    'title': f'فاکتور #{inv.number}' + (f' — {inv.description}' if inv.description else ''),
+                    'kind': 'invoice', 'ref_id': inv.id,
+                    'deposit': 0, 'withdrawal': inv.grand_total, 'bank': '',
+                })
+            # تراکنش‌های پروژه → واریز/برداشت
+            tx = Transaction.objects.select_related('bank_account').filter(
+                project_id=project_id, date__range=(start, end))
+            if bank_id:
+                tx = tx.filter(bank_account_id=bank_id)
+            for t in tx:
+                rows.append({
+                    'date': t.date, 'title': t.description or '—',
+                    'kind': 'tx', 'ref_id': t.id,
+                    'deposit': t.deposit or 0, 'withdrawal': t.withdrawal or 0,
+                    'bank': t.bank_account.name if t.bank_account_id else '',
+                })
+
+        else:  # category_id
+            ctx['mode'] = 'category'
+            cat = Category.objects.filter(id=category_id).select_related('colleague').first()
+            ctx['selected_category'] = cat
+            # تراکنش‌های این بابت → واریز/برداشت
+            tx = Transaction.objects.select_related('bank_account').filter(
+                category_id=category_id, date__range=(start, end))
+            if bank_id:
+                tx = tx.filter(bank_account_id=bank_id)
+            for t in tx:
+                rows.append({
+                    'date': t.date, 'title': t.description or '—',
+                    'kind': 'tx', 'ref_id': t.id,
+                    'deposit': t.deposit or 0, 'withdrawal': t.withdrawal or 0,
+                    'bank': t.bank_account.name if t.bank_account_id else '',
+                })
+            # بابتِ حقوق → حقوق‌های همکار در بازه (تاریخ = اولِ ماهِ ثبت) به‌عنوان واریز
+            if cat and cat.colleague_id:
+                for p in Payroll.objects.filter(colleague_id=cat.colleague_id).prefetch_related('items'):
+                    try:
+                        d = j2g(p.year, p.month, 1)
+                    except (ValueError, TypeError):
+                        continue
+                    if start <= d <= end:
+                        rows.append({
+                            'date': d, 'title': f'حقوق {p.month_name} {p.year}',
+                            'kind': 'payroll', 'ref_id': p.id,
+                            'deposit': p.total, 'withdrawal': 0, 'bank': '',
+                        })
+
+        # مرتب‌سازی بر اساس تاریخ (پایدار) + مانده‌ی تجمعی
+        rows.sort(key=lambda r: r['date'])
+        bal = 0
+        tot_d = tot_w = 0
+        for r in rows:
+            bal += r['deposit'] - r['withdrawal']
+            r['balance'] = bal
+            r['date_fa'] = format_jalali(r['date'])
+            tot_d += r['deposit']
+            tot_w += r['withdrawal']
+
+        ctx['rows'] = rows
+        ctx['total_deposit'] = tot_d
+        ctx['total_withdrawal'] = tot_w
+        ctx['final_balance'] = bal
+
+        # بنرِ هشدارِ متنی برای موردِ در حالِ مشاهده (بر پایه‌ی مانده‌ی کلِ تاریخ، نه فقط بازه)
+        from .balances import project_balance, salary_balance
+        ctx['ledger_alert'] = None
+        if project_id:
+            pb = project_balance(project_id)
+            if pb > 0:
+                ctx['ledger_alert'] = 'مانده‌ی این پروژه مثبت است (واریزی بیش از فاکتورها) — شاید فاکتوری ثبت نشده باشد.'
+        elif ctx.get('selected_category') and ctx['selected_category'].colleague_id:
+            sb = salary_balance(ctx['selected_category'].colleague_id)
+            if sb < 0:
+                ctx['ledger_alert'] = 'پرداختِ حقوق بیش از تعهد است (اضافه‌پرداخت).'
         return ctx
 
 
@@ -197,7 +439,24 @@ def tx_edit(request, pk):
     if 'note' in d:
         t.note = d['note']
     t.save(update_fields=['project', 'category', 'note', 'updated_at'])
-    return JsonResponse({'ok': True})
+
+    # هشدارِ نرم (بدونِ بلاک) اگر این نسبت‌دهی ناسازگاریِ حسابداری ساخت
+    warning = _tx_anomaly_warning(t)
+    return JsonResponse({'ok': True, 'warning': warning})
+
+
+def _tx_anomaly_warning(t):
+    """اگر نسبت‌دهیِ پروژه/بابت به این تراکنش ناسازگاری ساخت، پیامِ هشدار برگردان (وگرنه None)."""
+    from .balances import project_balance, salary_balance
+    if t.project_id:
+        if project_balance(t.project_id) > 0:
+            return 'مانده‌ی این پروژه مثبت شد (واریزی بیش از فاکتورها) — شاید فاکتوری ثبت نشده باشد.'
+    if t.category_id and getattr(t.category, 'colleague_id', None):
+        if salary_balance(t.category.colleague_id) < 0:
+            return 'پرداختِ حقوق این همکار از تعهدش بیشتر شد (اضافه‌پرداخت).'
+    if t.bank_account_id and t.bank_account.balance < 0:
+        return f'مانده‌ی بانکِ «{t.bank_account.name}» منفی شد.'
+    return None
 
 
 @login_required
@@ -345,5 +604,106 @@ def payroll_edit(request, pk):
         p.paid_amount = parse_amount(d['paid_amount'])
     if 'note' in d:
         p.note = d['note']
-    p.save()
+    if 'colleague' in d and d['colleague']:
+        p.colleague_id = d['colleague']
+    if 'year' in d:
+        try:
+            p.year = int(d['year'])
+        except (ValueError, TypeError):
+            pass
+    if 'month' in d:
+        try:
+            p.month = int(d['month'])
+        except (ValueError, TypeError):
+            pass
+    from django.db import IntegrityError
+    try:
+        p.save()
+    except IntegrityError:
+        return JsonResponse({'detail': 'برای این همکار در این ماه از قبل حقوق ثبت شده'}, status=400)
+    if 'items' in d:
+        p.items.all().delete()
+        for it in d['items']:
+            if it.get('title'):
+                PayrollItem.objects.create(payroll=p, title=it['title'], amount=parse_amount(it.get('amount', 0)))
     return JsonResponse({'ok': True, 'total': p.total, 'remaining': p.remaining, 'status': p.status})
+
+
+# ── API: فاکتور ───────────────────────────────────────────────────────────
+
+def _parse_qty(value):
+    """تعداد را با حفظِ اعشار پارس می‌کند (برخلافِ parse_amount که گرد می‌کند)."""
+    from core.jalali import to_en_digits
+    import re as _re
+    if value in (None, ''):
+        return 1
+    s = _re.sub(r'[^\d.]', '', to_en_digits(str(value)))
+    try:
+        return round(float(s), 2) or 1
+    except ValueError:
+        return 1
+
+
+def _save_lines(invoice, lines):
+    """ردیف‌های فاکتور را از نو می‌سازد (منبع واحد = آرایه‌ی ورودی)."""
+    invoice.lines.all().delete()
+    for i, li in enumerate(lines):
+        # ردیفِ کاملاً خالی را رد کن
+        if not (li.get('description') or li.get('category') or
+                parse_amount(li.get('unit_price', 0))):
+            continue
+        InvoiceLine.objects.create(
+            invoice=invoice, order=i,
+            category_id=li.get('category') or None,
+            description=(li.get('description') or '')[:255],
+            qty=_parse_qty(li.get('qty', 1)),
+            unit_price=parse_amount(li.get('unit_price', 0)),
+            tax=parse_amount(li.get('tax', 0)),
+            discount=parse_amount(li.get('discount', 0)),
+        )
+
+
+def _invoice_totals(inv):
+    return {'subtotal': inv.subtotal, 'tax_total': inv.tax_total,
+            'discount_total': inv.discount_total, 'grand_total': inv.grand_total}
+
+
+@login_required
+@require_finance
+@require_http_methods(['POST'])
+def invoice_create(request):
+    d = _body(request)
+    issue = _pj(d.get('issue_date'))
+    if not issue:
+        return JsonResponse({'detail': 'تاریخ ثبت لازم است'}, status=400)
+    inv = Invoice.objects.create(
+        issue_date=issue, project_id=d.get('project') or None,
+        description=(d.get('description') or '').strip(),
+        due_date=_pj(d.get('due_date')), created_by=request.user)
+    _save_lines(inv, d.get('lines', []))
+    return JsonResponse({'id': inv.id, 'number': inv.number}, status=201)
+
+
+@login_required
+@require_finance
+@require_http_methods(['PATCH', 'DELETE'])
+def invoice_edit(request, pk):
+    inv = get_object_or_404(Invoice, pk=pk)
+    if request.method == 'DELETE':
+        inv.delete()
+        return JsonResponse({'ok': True})
+    d = _body(request)
+    if 'issue_date' in d:
+        issue = _pj(d['issue_date'])
+        if issue:
+            inv.issue_date = issue
+    if 'project' in d:
+        inv.project_id = d['project'] or None
+    if 'description' in d:
+        inv.description = (d['description'] or '').strip()
+    if 'due_date' in d:
+        inv.due_date = _pj(d['due_date'])
+    inv.save()
+    if 'lines' in d:
+        _save_lines(inv, d['lines'])
+    return JsonResponse({'ok': True, **_invoice_totals(inv)})

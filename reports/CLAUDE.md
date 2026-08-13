@@ -1,8 +1,10 @@
 # reports/ — گزارش‌دهی (بدون snapshot)
 
 ## مدل‌ها (`models.py`)
-- **Report** — `project, title, date_from/to, description(HTML), status, public_token(UUID),
-  is_public, visible_fields(JSON)`. `visible_fields` = کلید فیلدهای مجاز برای نسخه‌ی عمومی.
+- **Report** — `project, invoice(FK به finance.Invoice، اختیاری), title, date_from/to,
+  description(HTML), status, public_token(UUID), is_public, visible_fields(JSON)`.
+  `visible_fields` = کلید فیلدهای مجاز برای نسخه‌ی عمومی. اتصالِ فاکتور در مودالِ ساختِ
+  گزارش (`list.html`) و دراپ‌داونِ صفحه‌ی گزارش (`detail.html` → PATCH `invoice`).
 - **ReportItem** — **مرجع زنده به Task** + فیلدهای override (`override_title/done_date/
   description`) که فقط روی همان گزارش اثر دارند. نمایش = override اگر پر باشد وگرنه مقدار زنده.
   propertyها: `eff_title/eff_done_date/eff_description/eff_type/bucket/eff_url/field_value(key)`.
