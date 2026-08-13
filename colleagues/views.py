@@ -10,13 +10,16 @@ from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.http import require_http_methods
 from django.views.generic import DetailView, ListView, UpdateView, View
 
-from accounts.access import require_perm
+from django.core.exceptions import PermissionDenied
+
+from accounts.access import has_perm, is_elevated_role
 from core.columns import get_columns
 from core.daterange import DateRangeMixin
 from core.models import ColumnConfig
 from projects.access import accessible_project_ids
 from tasks.models import Task
 
+from .access import can_manage_colleague, is_manager_tier
 from .forms import ColleagueForm
 from .models import Colleague, ensure_colleague_for_user
 
@@ -26,6 +29,17 @@ def _body(request):
         return json.loads(request.body or '{}')
     except json.JSONDecodeError:
         return {}
+
+
+def _grantable_roles(org, full_access):
+    """نقش‌هایی که این کاربر اجازه دارد موقعِ دادنِ دسترسی انتخاب کند — `manage_people`
+    همه‌ی نقش‌ها را می‌بیند؛ مدیرِ scoped (فقط زیرمجموعه‌ی خودش) نقش‌های سطح‌بالا
+    (`accounts.access.is_elevated_role`) را نمی‌بیند، تا نتواند برای زیردستش نقشِ
+    مدیرِ کل بسازد."""
+    roles = list(org.roles.all())
+    if full_access:
+        return roles
+    return [r for r in roles if not is_elevated_role(org, r.key)]
 
 # رنگ hex هر نوع تسک — برای نمودار دونات
 TYPE_HEX = {
@@ -123,9 +137,11 @@ class ColleagueListView(LoginRequiredMixin, DateRangeMixin, ListView):
         ctx['page_title'] = 'افراد و دسترسی‌ها'
         ctx['q'] = self.request.GET.get('q', '')
         org = getattr(self.request, 'organization', None)
-        ctx['org_roles'] = list(org.roles.all()) if org else []
-        ctx['can_manage_colleagues'] = bool(getattr(self.request, 'membership', None)
-                                             and self.request.membership.can('manage_people'))
+        full_access = has_perm(self.request, 'manage_people')
+        ctx['org_roles'] = _grantable_roles(org, full_access) if org else []
+        # «＋ کاربر جدید»: دسترسیِ سازمانی (همه) یا سرپرست‌بودن (فقط برای زیرِمجموعه‌ی
+        # خودش — colleague_quick_create با manager خودکار محدودش می‌کند).
+        ctx['can_manage_colleagues'] = full_access or is_manager_tier(self.request)
         return ctx
 
 
@@ -185,10 +201,14 @@ class ColleagueDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
 
         from accounts.models import Invite, Membership
         org = getattr(self.request, 'organization', None)
-        ctx['can_manage_colleagues'] = bool(getattr(self.request, 'membership', None)
-                                             and self.request.membership.can('manage_people'))
+        full_access = has_perm(self.request, 'manage_people')
+        # ویرایشِ پروفایل/آرشیو/دادنِ دسترسیِ اولیه: scoped (سازمانی یا مدیرِ همین فرد).
+        ctx['can_manage_colleagues'] = can_manage_colleague(self.request, c)
+        # تغییرِ نقشِ سازمانی/تیمِ کسی که از قبل حساب دارد: عمداً فقط سازمانی می‌ماند —
+        # نقشِ فعلاً فعالِ یک نفر را عوض‌کردن ریسکش از ویرایشِ پروفایل بالاتر است.
+        ctx['can_manage_org_role'] = full_access
         ctx['pending_invite'] = Invite.objects.filter(colleague=c, status=Invite.PENDING).first()
-        ctx['org_roles'] = list(org.roles.all()) if org else []
+        ctx['org_roles'] = _grantable_roles(org, full_access) if org else []
         # اگر همکار دسترسی دارد، عضویتِ سازمانی/تیم‌هایش را هم برای ویرایش نشان بده
         # (تبِ «دسترسی به سیستم» — دیگر جدولِ جدا در `/settings/people/` نیست).
         if c.user_id and org:
@@ -235,13 +255,18 @@ class ColleagueDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
 
 
 class ColleagueUpdateView(LoginRequiredMixin, UpdateView):
+    """ویرایشِ پروفایل — دسترسیِ سازمانیِ `manage_people` (همه) یا مدیرِ مستقیم/
+    غیرمستقیمِ همین فرد بودن (فقط زیرمجموعه‌ی خودش، `can_manage_colleague`)."""
+
     model = Colleague
     form_class = ColleagueForm
     template_name = 'colleagues/form.html'
 
-    def dispatch(self, request, *args, **kwargs):
-        require_perm(request, 'manage_people')
-        return super().dispatch(request, *args, **kwargs)
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset)
+        if not can_manage_colleague(self.request, obj):
+            raise PermissionDenied('دسترسیِ ویرایشِ این فرد را نداری')
+        return obj
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -252,32 +277,39 @@ class ColleagueUpdateView(LoginRequiredMixin, UpdateView):
 
 class ColleagueArchiveView(LoginRequiredMixin, View):
     def post(self, request, pk):
-        require_perm(request, 'manage_people')
         colleague = get_object_or_404(Colleague, pk=pk)
+        if not can_manage_colleague(request, colleague):
+            raise PermissionDenied('دسترسیِ آرشیوِ این فرد را نداری')
         colleague.archive()
         return redirect(colleague.get_absolute_url())
 
 
 class ColleagueRestoreView(LoginRequiredMixin, View):
     def post(self, request, pk):
-        require_perm(request, 'manage_people')
         colleague = get_object_or_404(Colleague, pk=pk)
+        if not can_manage_colleague(request, colleague):
+            raise PermissionDenied('دسترسیِ بازگردانیِ این فرد را نداری')
         colleague.restore()
         return redirect(colleague.get_absolute_url())
 
 
 # ── API: دسترسیِ همکار به سیستم (دعوت‌نامه یا رمزِ مستقیم) ──────────────────
 
-def _grant_access(request, org, colleague, d):
+def _grant_access(request, org, colleague, d, allow_elevated_roles=True):
     """منطقِ مشترکِ دادنِ دسترسی — هم از `colleague_grant_access` (فردِ موجود) هم از
     `colleague_quick_create` (فردِ تازه) صدا زده می‌شود.
     `mode='invite'`: فقط شماره؛ دعوت‌نامه‌ی در انتظار (خودش بعداً رمز می‌سازد).
     `mode='password'`: مدیر خودش نام‌کاربری/رمز را تعیین می‌کند — دسترسی **فوری**، نه
-    در انتظار (برای نسخه‌ی اولیه که خودمان دسترسی‌ها را می‌سازیم)."""
+    در انتظار (برای نسخه‌ی اولیه که خودمان دسترسی‌ها را می‌سازیم).
+    `allow_elevated_roles=False`: مدیرِ scoped (بدونِ `manage_people`) نمی‌تواند نقشِ
+    سطح‌بالا (`accounts.access.is_elevated_role`) به کسی بدهد — جلوگیری از اینکه
+    برای زیردستش نقشِ مدیرِ کل بسازد."""
     from accounts.models import Invite, Membership, User
 
     mode = d.get('mode') or 'invite'
     role = d.get('role') if org.roles.filter(key=d.get('role')).exists() else 'member'
+    if not allow_elevated_roles and is_elevated_role(org, role):
+        return JsonResponse({'detail': 'اجازه‌ی تعیینِ این نقش را نداری'}, status=403)
 
     if mode == 'password':
         username = (d.get('username') or '').strip()
@@ -316,32 +348,44 @@ def _grant_access(request, org, colleague, d):
 def colleague_grant_access(request, pk):
     """به همکارِ موجود دسترسی می‌دهد — یا با دعوت‌نامه‌ی شماره‌محور (`mode=invite`،
     پیش‌فرض) یا با تعیینِ مستقیمِ نام‌کاربری/رمز توسطِ مدیر (`mode=password`، دسترسیِ
-    فوری، بدونِ در انتظار). `_grant_access` منطقِ مشترک را دارد."""
+    فوری، بدونِ در انتظار). `_grant_access` منطقِ مشترک را دارد. دسترسیِ سازمانی
+    (همه) یا مدیرِ همین فرد بودن (فقط زیرِمجموعه‌ی خودش، با سقفِ نقشِ غیرِسطح‌بالا)."""
     from accounts.models import Invite
 
-    org = require_perm(request, 'manage_people')
+    org = getattr(request, 'organization', None)
     colleague = get_object_or_404(Colleague, pk=pk)
+    if not org or not can_manage_colleague(request, colleague):
+        raise PermissionDenied('دسترسیِ این فرد را نداری')
     if colleague.user_id:
         return JsonResponse({'detail': 'این همکار قبلاً به سیستم دسترسی دارد'}, status=400)
     if Invite.objects.filter(colleague=colleague, status=Invite.PENDING).exists():
         return JsonResponse({'detail': 'قبلاً دعوت‌نامه‌ی در انتظار برای این همکار ثبت شده'}, status=400)
-    return _grant_access(request, org, colleague, _body(request))
+    return _grant_access(request, org, colleague, _body(request),
+                          allow_elevated_roles=has_perm(request, 'manage_people'))
 
 
 @login_required
 @require_http_methods(['POST'])
 def colleague_quick_create(request):
     """افزودنِ فردِ تازه + دادنِ دسترسی در یک قدم — دکمه‌های «کاربر جدید»/«دعوت با شماره»
-    در صفحه‌ی فهرستِ افراد. بدنه: `{full_name, phone, mode, username?, password?, role}`."""
-    org = require_perm(request, 'manage_people')
+    در صفحه‌ی فهرستِ افراد. بدنه: `{full_name, phone, mode, username?, password?, role}`.
+    دسترسیِ سازمانی (`manage_people`) یا «سرپرست‌بودن» (`is_manager_tier` — زیرمجموعه
+    دارد یا پرمیشنِ ناظر) لازم است؛ در حالتِ دوم فردِ تازه خودکار **زیردستِ خودِ ساینده**
+    می‌شود (وگرنه فردی می‌ساخت که خودش دیگر اجازه‌ی مدیریتش را نداشت)."""
+    org = getattr(request, 'organization', None)
+    full_access = has_perm(request, 'manage_people')
+    if not org or not (full_access or is_manager_tier(request)):
+        raise PermissionDenied('دسترسیِ افزودنِ فرد را نداری')
     d = _body(request)
     full_name = (d.get('full_name') or '').strip()
     if not full_name:
         return JsonResponse({'detail': 'نام لازم است'}, status=400)
+    my_colleague = getattr(request.user, 'colleague', None)
     colleague = Colleague.objects.create(
         full_name=full_name, phone=(d.get('phone') or '').strip(),
-        organization=org, created_by=request.user)
-    resp = _grant_access(request, org, colleague, d)
+        organization=org, created_by=request.user,
+        manager=None if full_access else my_colleague)
+    resp = _grant_access(request, org, colleague, d, allow_elevated_roles=full_access)
     if resp.status_code >= 400:
         colleague.delete()
         return resp
@@ -354,7 +398,8 @@ def colleague_revoke_invite(request, pk):
     """دعوت‌نامه‌ی در انتظارِ این همکار را لغو می‌کند (حذف، نه رد — تا بشود دوباره دعوت کرد)."""
     from accounts.models import Invite
 
-    require_perm(request, 'manage_people')
     colleague = get_object_or_404(Colleague, pk=pk)
+    if not can_manage_colleague(request, colleague):
+        raise PermissionDenied('دسترسیِ این فرد را نداری')
     Invite.objects.filter(colleague=colleague, status=Invite.PENDING).delete()
     return JsonResponse({'ok': True})

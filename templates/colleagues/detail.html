@@ -64,7 +64,7 @@
       <div style="padding:16px 17px">
         {% if colleague.user %}
           <p class="sub" style="margin-bottom:12px">این فرد با کاربرِ <b>{{ colleague.user.username }}</b> به سیستم دسترسی دارد.</p>
-          {% if can_manage_colleagues and access_membership %}
+          {% if can_manage_org_role and access_membership %}
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
               <div class="field"><label>نقش سازمانی</label>
                 <select id="acc-role">

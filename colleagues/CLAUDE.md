@@ -32,6 +32,37 @@ is_active`.
 مستقیم). ویرایشِ فیلدهای غنی‌تر (آواتار/رنگ/توضیحات/مدیر) بعداً از صفحه‌ی ویرایشِ همان
 فرد انجام می‌شود.
 
+## دسترسیِ scoped — مدیر می‌تواند زیرمجموعه‌ی خودش را مدیریت کند، نه فقط `manage_people`
+پرمیشنِ سازمانیِ `manage_people` قبلاً تنها راهِ ویرایش/آرشیو/دادنِ‌دسترسیِ یک فرد بود —
+یعنی یا کسی همه‌ی سازمان را می‌دید یا هیچ‌کس. `colleagues/access.py: can_manage_colleague(
+request, target)` این را باز کرد: `manage_people` (همه) **یا** مدیرِ مستقیم/غیرمستقیمِ
+همان فرد بودن (`target.id in all_subordinate_ids(my_colleague)`، هر عمقی). این تابع
+گیتِ `ColleagueUpdateView.get_object`، `ColleagueArchiveView`/`RestoreView`،
+`colleague_grant_access`، `colleague_revoke_invite` است — نه چکِ سراسری، بلکه
+per-object (این فردِ مشخص).
+- **`ColleagueListView.ctx['can_manage_colleagues']`** (نمایشِ دکمه‌ی «＋ کاربر جدید») =
+  `manage_people` **یا** `is_manager_tier(request)` (زیرمجموعه دارد یا پرمیشنِ ناظر).
+- **`ColleagueDetailView.ctx['can_manage_colleagues']`** حالا per-object است
+  (`can_manage_colleague(request, c)`) — دیگر یک بولِ سراسری نیست.
+- **`ColleagueDetailView.ctx['can_manage_org_role']`** عمداً **جدا** ماند و همیشه فقط
+  `manage_people` است — تغییرِ نقشِ سازمانی/تیمِ کسی که از قبل حساب دارد
+  (`accounts:person_edit`، بخشِ «تنظیماتِ عضویت» در تبِ دسترسی) ریسکش از ویرایشِ
+  پروفایل بالاتر است، پس scoped نشد.
+- **سقفِ نقش در اعطای دسترسی:** مدیرِ scoped (بدونِ `manage_people`) وقتی برای زیردستش
+  دسترسی می‌سازد (`colleague_grant_access`/`quick_create`)، نمی‌تواند نقشِ سطح‌بالا
+  بدهد — `accounts.access.is_elevated_role(org, role_key)` (owner/admin یا هر نقشی که
+  خودش `manage_people`/`manage_org` دارد) را `_grant_access(..., allow_elevated_roles=
+  False)` مسدود می‌کند (۴۰۳). دراپ‌داونِ نقش هم همین فهرست را می‌بیند
+  (`_grantable_roles(org, full_access)`، هم در فهرست هم در سینگل) — گزینه‌ای که نمی‌تواند
+  انتخاب کند اصلاً در UI هم نیست.
+- **`colleague_quick_create`**: اگر ساینده `manage_people` نداشت (فقط `is_manager_tier`)،
+  `manager`ِ فردِ تازه خودکار خودِ ساینده می‌شود — وگرنه فردی می‌ساخت که دیگر خودش هم
+  اجازه‌ی مدیریتش را نداشت (بیرون از `all_subordinate_ids` خودش می‌افتاد).
+- **تست:** `teamlead1` (بدونِ `manage_people`) می‌تواند `member1`/`member2` (زیردستش) را
+  ویرایش/آرشیو کند و برایشان دسترسی بسازد (فقط نقشِ غیرِسطح‌بالا)، ولی نمی‌تواند
+  `viewer1` (بیرون از زیرمجموعه‌اش) را لمس کند یا نقشِ `admin` بسازد — `admin1`
+  (`manage_people`) همچنان محدودیتی ندارد.
+
 ## دسترسی به سیستم — دو حالت، منبع واحد `_grant_access`
 تبِ اطلاعاتِ سینگلِ فرد (بخشِ «دسترسی به سیستم») + دکمه‌ی «＋ کاربر جدید» در فهرست، هر دو
 از `colleagues.views._grant_access(request, org, colleague, d)` استفاده می‌کنند — منطق را
@@ -64,23 +95,22 @@ is_active`.
     `core.columns.get_columns('colleagues','page')` می‌آیند — تنظیم در `/settings/columns/`.
   - `ColleagueDetailView` — آمار بازه، **دونات** تفکیک نوع (`donut_segments`)، تفکیک پروژه،
     روند روزانه، تب تقویم شخصی (embed)، تب تسک‌ها + بخشِ «دسترسی به سیستم» (بالا).
-  - CRUD + archive/restore («افزودنِ فرد» — فقط پروفایل، بدونِ حساب).
+  - CRUD + archive/restore («افزودنِ فرد» — فقط پروفایل، بدونِ حساب). گیت‌شده با
+    `can_manage_colleague` (سازمانی یا مدیرِ همان فرد — بالا)، نه فقط `manage_people`.
   - `colleague_grant_access` / `colleague_quick_create` / `colleague_revoke_invite` —
-    API دسترسی؛ گیت‌شده با `manage_people` (org-wide، فعلاً scoped نیست — پایین‌تر).
+    API دسترسی؛ همان `can_manage_colleague`/`is_manager_tier` (بالا)، با سقفِ نقش
+    برای مدیرِ scoped.
 - `forms.py` — نقش چک‌باکسی، `join_date` با `jdate`، توضیحات `rich-editor` + `clean_html`.
 - `access.py` — **منبعِ واحدِ زنجیره‌ی مدیریتی**: `all_subordinate_ids(colleague)` (BFS
-  روی `Colleague.manager`، همه‌ی زیرمجموعه‌ها در هر عمقی، نه فقط مستقیم) و
-  `is_manager_tier(request)` (زیرمجموعه دارد یا پرمیشنِ ناظر). `tasks/queries.py` و
-  `tasks/api.py: task_review` از همین می‌خوانند — اینجا زندگی می‌کند نه در `tasks/`
+  روی `Colleague.manager`، همه‌ی زیرمجموعه‌ها در هر عمقی، نه فقط مستقیم)،
+  `is_manager_tier(request)` (زیرمجموعه دارد یا پرمیشنِ ناظر)، و `can_manage_colleague(
+  request, target)` (بالا). `tasks/queries.py` و `tasks/api.py: task_review` هم از
+  `all_subordinate_ids`/`is_manager_tier` می‌خوانند — اینجا زندگی می‌کند نه در `tasks/`
   چون فقط به `Colleague` وابسته است (جهتِ درستِ وابستگی: `tasks` به `colleagues`
   وابسته است، نه برعکس).
 
 ## نکته
 `.who/.spark/.donut-legend` باید در `static/css/style.css` باشند (بودند نبودند → رفع شد).
-دکمه‌های «ویرایش»/«غیرفعال‌سازی»/«فعال‌سازی مجدد» در سینگلِ فرد فقط با context varِ
-`can_manage_colleagues` نشان داده می‌شوند (نامش عمداً `manage_people` نشد — از قبلِ
-تغییرِ نامِ پرمیشن مانده، خودِ مقدارش از `m.can('manage_people')` می‌آید). سرور از قبل
-گیت بود، UI نبود — کلیک روی «ویرایش» برای کاربرِ بدونِ `manage_people` ۴۰۳ِ تمام‌صفحه می‌داد.
 
 ## TODO
 `donut_segments`/`TYPE_HEX`/`TYPE_LABEL` (تفکیکِ نوع در سینگل همکار) هنوز بر پایه‌ی

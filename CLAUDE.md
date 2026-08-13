@@ -57,6 +57,8 @@
 | «این تسک قابلِ‌بازبینیِ این کاربر است؟» | `tasks/queries.py: reviewable_q` (صفحه‌ی بازبینی + فیدِ داشبورد) — زنجیره‌ای، نه فقط مدیرِ مستقیم (`colleagues/access.py: all_subordinate_ids`) |
 | زیرمجموعه‌ی مدیریتی در هر عمقی (نه فقط مدیرِ مستقیم) | `colleagues/access.py: all_subordinate_ids` (BFS روی `Colleague.manager`) — `tasks/queries.py` و `tasks/api.py: task_review` از همین می‌خوانند |
 | «سرپرست است؟» (زیرمجموعه دارد یا پرمیشنِ ناظر) | `colleagues/access.py: is_manager_tier` |
+| «می‌تواند این فردِ مشخص را مدیریت کند؟» (سازمانی یا مدیرِ زنجیره‌ایِ همان فرد) | `colleagues/access.py: can_manage_colleague` — `colleagues/views.py` (ویرایش/آرشیو/دسترسی) |
+| «این نقش سطح‌بالاست؟» (برای سقفِ نقشِ قابل‌اعطا توسطِ مدیرِ scoped) | `accounts/access.py: is_elevated_role` |
 | فیلتر+دسترسیِ لیستِ تسک‌ها (پروژه/مسئول/نوع/…) | `tasks/queries.py: build_task_queryset` (لیست + لودِ تنبل) |
 | گروه‌بندیِ تسک‌های done بر اساسِ روز | `tasks/queries.py: group_done_by_day` (`?group=day` + جدولِ ۷روزه‌ی داشبورد) |
 | تسک‌های در حالِ اجرای تایمر برای کاربر/زیرمجموعه‌هایش | `tasks/queries.py: running_timers_payload` (ویجت + API) |

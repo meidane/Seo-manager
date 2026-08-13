@@ -36,3 +36,16 @@ def is_manager_tier(request):
     has_reports = bool(my_colleague and my_colleague.reports.exists())
     return has_reports or bool(m and (
         m.can('review') or m.can('manage_people') or m.can('view_all_projects')))
+
+
+def can_manage_colleague(request, target):
+    """می‌تواند پروفایلِ این همکارِ مشخص را ویرایش/آرشیو/دسترسی‌دار کند؟ دسترسیِ
+    سازمانیِ `manage_people` (همه) یا مدیرِ مستقیم/غیرمستقیمِ همین فرد بودن (فقط
+    زیرمجموعه‌ی خودش، در هر عمقی — `colleagues/CLAUDE.md`، بخشِ «دسترسیِ scoped»)."""
+    m = getattr(request, 'membership', None)
+    if m and m.can('manage_people'):
+        return True
+    if not target:
+        return False
+    my_colleague = getattr(request.user, 'colleague', None)
+    return bool(my_colleague and target.id in all_subordinate_ids(my_colleague))
