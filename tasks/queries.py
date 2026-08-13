@@ -5,6 +5,7 @@ from datetime import date
 
 from django.db.models import Q
 
+from colleagues.access import all_subordinate_ids, is_manager_tier
 from projects.access import accessible_project_ids
 
 PAGE_SIZE = 50  # آستانه‌ی لودِ تنبلِ لیستِ تسک‌ها (اسکرول)
@@ -13,14 +14,18 @@ PAGE_SIZE = 50  # آستانه‌ی لودِ تنبلِ لیستِ تسک‌ها
 def reviewable_q(request):
     """این تسک برای کاربرِ جاری قابل‌بازبینی است؟ دو مسیرِ مستقلِ OR‌شده:
     (۱) `Task.needs_review=True` (پیش‌فرضش از `assignee.needs_review` می‌آید، ولی
-    هرباره تسک قابلِ‌تغییرِ دستی است) و مدیرِ مستقیمِ مسئولِ همین تسک خودِ کاربر است —
-    مستقل از دسترسیِ سازمانیِ `review` (تعیینِ مدیر یعنی اجازه‌ی بازبینیِ کارِ زیرمجموعه،
-    زنجیره‌ای — مدیرِ یک مدیر هم همین‌طور)؛ (۲) `type_def.requires_review=True`، فقط اگر
-    کاربر دسترسیِ سازمانیِ `review` را داشته باشد."""
+    هرباره تسک قابلِ‌تغییرِ دستی است) و مسئولِ همین تسک **در هر عمقی** زیرِدستِ کاربرِ
+    جاری است (`all_subordinate_ids` بالا — نه فقط مدیرِ مستقیم؛ مدیرِ یک مدیر هم زنجیره‌ای
+    همین حق را دارد) — مستقل از دسترسیِ سازمانیِ `review` (تعیینِ مدیر یعنی اجازه‌ی
+    بازبینیِ کارِ زیرمجموعه)؛ (۲) دسترسیِ سازمانیِ `review` (نظارتِ فراگیر، مستقل از
+    زنجیره‌ی مدیریتی — مثلاً مالک/مدیرِ کل که شاید اصلاً `Colleague.manager` برایش ست
+    نشده) → همه‌ی تسک‌های `needs_review` **و** همه‌ی `type_def.requires_review` را می‌بیند."""
     m = getattr(request, 'membership', None)
-    q = Q(needs_review=True, assignee__manager__user=request.user)
+    my_colleague = getattr(request.user, 'colleague', None)
+    sub_ids = all_subordinate_ids(my_colleague)
+    q = Q(needs_review=True, assignee_id__in=sub_ids)
     if m and m.can('review'):
-        q |= Q(type_def__requires_review=True)
+        q |= Q(needs_review=True) | Q(type_def__requires_review=True)
     return q
 
 
@@ -45,8 +50,7 @@ def build_task_queryset(request):
     # (review/manage_people/view_all_projects) — باید پیش‌فرض همه‌چیزِ قابل‌دسترس را
     # ببیند، نه فقط تسکِ خودش (نبودِ view_other_tasks همیشه اولویتِ محدودکننده دارد، پایین).
     has_reports = bool(my_colleague and my_colleague.reports.exists())
-    is_manager_tier = has_reports or bool(m and (
-        m.can('review') or m.can('manage_people') or m.can('view_all_projects')))
+    manager_tier = is_manager_tier(request)
 
     # دسترسیِ پروژه‌محور: فقط مالک/دارنده‌ی view_all_projects همه را می‌بیند؛ بقیه فقط
     # پروژه‌هایی که عضوشان هستند — **به‌علاوه‌ی تسک‌هایی که خودشان مسئولش‌اند** (تسکِ
@@ -69,7 +73,7 @@ def build_task_queryset(request):
         base = base.filter(assignee_id=my_colleague.id if my_colleague else -1)
 
     filters = g.copy()
-    if not forced_own and not is_manager_tier and my_colleague and 'assignee' not in g and 'group' not in g:
+    if not forced_own and not manager_tier and my_colleague and 'assignee' not in g and 'group' not in g:
         filters['assignee'] = str(my_colleague.id)
 
     if filters.get('project'):

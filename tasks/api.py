@@ -483,14 +483,16 @@ def task_timer(request, pk):
 @require_http_methods(['PATCH'])
 def task_review(request, pk):
     """تایید / نیاز به اصلاح (از فید بازبینی و صفحه‌ی بازبینی). مجاز برای کسی که
-    دسترسیِ سازمانیِ `review` دارد، یا مدیرِ مستقیمِ همکارِ این تسک باشد."""
+    دسترسیِ سازمانیِ `review` دارد، یا در زنجیره‌ی مدیریتیِ همکارِ این تسک باشد (مدیرِ
+    مستقیم یا مدیرِ مدیرش، در هر عمقی — همان معیارِ `queries.reviewable_q`)."""
+    from colleagues.access import all_subordinate_ids
+
     task = get_object_or_404(Task, pk=pk)
     m = getattr(request, 'membership', None)
+    my_colleague = getattr(request.user, 'colleague', None)
     is_org_reviewer = bool(m and m.can('review'))
-    is_direct_manager = bool(
-        task.assignee_id and task.assignee.manager_id
-        and task.assignee.manager.user_id == request.user.id)
-    if not is_org_reviewer and not is_direct_manager:
+    is_in_manager_chain = bool(task.assignee_id and task.assignee_id in all_subordinate_ids(my_colleague))
+    if not is_org_reviewer and not is_in_manager_chain:
         return JsonResponse({'detail': 'دسترسیِ بازبینیِ این تسک را نداری'}, status=403)
     data = _body(request)
     status = data.get('review_status')

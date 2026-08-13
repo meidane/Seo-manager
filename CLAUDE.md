@@ -54,7 +54,9 @@
 | چکِ دسترسیِ سازمانی در ویو/API | `accounts/access.py: require_perm/has_perm` |
 | فهرستِ id پروژه‌های قابل‌دیدنِ کاربرِ جاری | `projects/access.py: accessible_project_ids` |
 | دعوت‌نامه‌ی در انتظار (نه عضویتِ فوری، فقط با شماره تماس) | `accounts/models.py: Invite` + `colleagues.views.colleague_grant_access` (+ `docs/PLATFORM.md`) |
-| «این تسک قابلِ‌بازبینیِ این کاربر است؟» | `tasks/queries.py: reviewable_q` (صفحه‌ی بازبینی + فیدِ داشبورد) |
+| «این تسک قابلِ‌بازبینیِ این کاربر است؟» | `tasks/queries.py: reviewable_q` (صفحه‌ی بازبینی + فیدِ داشبورد) — زنجیره‌ای، نه فقط مدیرِ مستقیم (`colleagues/access.py: all_subordinate_ids`) |
+| زیرمجموعه‌ی مدیریتی در هر عمقی (نه فقط مدیرِ مستقیم) | `colleagues/access.py: all_subordinate_ids` (BFS روی `Colleague.manager`) — `tasks/queries.py` و `tasks/api.py: task_review` از همین می‌خوانند |
+| «سرپرست است؟» (زیرمجموعه دارد یا پرمیشنِ ناظر) | `colleagues/access.py: is_manager_tier` |
 | فیلتر+دسترسیِ لیستِ تسک‌ها (پروژه/مسئول/نوع/…) | `tasks/queries.py: build_task_queryset` (لیست + لودِ تنبل) |
 | گروه‌بندیِ تسک‌های done بر اساسِ روز | `tasks/queries.py: group_done_by_day` (`?group=day` + جدولِ ۷روزه‌ی داشبورد) |
 | تسک‌های در حالِ اجرای تایمر برای کاربر/زیرمجموعه‌هایش | `tasks/queries.py: running_timers_payload` (ویجت + API) |
@@ -87,8 +89,8 @@ DB پیش‌فرض SQLite (متغیرها در `.env`). **`seed_demo`** (`accoun
 | یوزرنیم | پسورد | نقش | برای تستِ چی |
 |---|---|---|---|
 | `admin` | `admin1234` | مالک (+ سوپریوزرِ جنگو) | دسترسیِ کامل، پنلِ ادمین |
-| `admin1` | `Admin123!` | مدیر (built-in) | دسترسیِ سازمانیِ گسترده |
-| `teamlead1` | `Teamlead123!` | نقشِ سفارشیِ «سرپرستِ تیم (محدود)» — بدونِ `view_all_projects` | سرپرستِ محدود‌به‌پروژه/زیرمجموعه (سناریوی واقعیِ باگ‌های این پروژه) + بازبینیِ تسکِ `member1` |
+| `admin1` | `Admin123!` | مدیر (built-in)، مدیرِ بالادستیِ `teamlead1` | دسترسیِ سازمانیِ گسترده + بازبینیِ زنجیره‌ای (پندینگِ `member1` را هم می‌بیند، نه فقط تسکِ مستقیمِ زیرِدستش) |
+| `teamlead1` | `Teamlead123!` | نقشِ سفارشیِ «سرپرستِ تیم (محدود)» — بدونِ `view_all_projects`، زیرِنظرِ `admin1` | سرپرستِ محدود‌به‌پروژه/زیرمجموعه (سناریوی واقعیِ باگ‌های این پروژه) + بازبینیِ تسکِ `member1` |
 | `member1` | `Member123!` | عضو (بدونِ `view_other_tasks`)، عضوِ «پروژه‌ی الف»، زیرِنظرِ `teamlead1`، `needs_review=True` | تسکِ خودش، جریانِ کاملِ بازبینی (تسکِ جدید→`pending`→تاییدِ `teamlead1`→`done`) |
 | `member2` | `Member123!` | عضو، **عضوِ هیچ پروژه‌ای نیست**، زیرِنظرِ `teamlead1` | تسکِ دلیگیت‌شده‌ی بیرون از عضویتِ پروژه |
 | `viewer1` | `Viewer123!` | ناظر (فقط `view_reports`) | فقط‌خواندنی |

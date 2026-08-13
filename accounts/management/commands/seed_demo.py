@@ -1,7 +1,8 @@
 """یک سازمانِ نمایشیِ کامل می‌سازد: نقش‌ها (built-in + یک نقشِ سفارشی)، چند کاربرِ تست
 با یوزر/پسوردِ ثابت و سطحِ دسترسیِ متفاوت (برای تستِ دقیقاً همان چیزهایی که این پروژه
-رویشان حساس است: عضویتِ پروژه، تسکِ دلیگیت‌شده، دیدِ زیرمجموعه، view_other_tasks)،
-چند پروژه، چند تسکِ نمونه (عقب‌افتاده/این‌هفته/آینده/انجام‌شده) و تعطیلات/بابت‌های مالی.
+رویشان حساس است: عضویتِ پروژه، تسکِ دلیگیت‌شده، دیدِ زیرمجموعه، view_other_tasks،
+زنجیره‌ی مدیریتیِ سه‌سطحی برای تستِ بازبینیِ مدیرِ بالادست)، چند پروژه، چند تسکِ نمونه
+(عقب‌افتاده/این‌هفته/آینده/انجام‌شده/در‌انتظارِ‌بازبینی) و تعطیلات/بابت‌های مالی.
 
 اجرای مکرر ایمن است (get_or_create/update_or_create همه‌جا) — بعدِ پاک‌کردنِ دیتابیس یا
 هر وقت خواستی محیطِ تست را دوباره بسازی همین یک دستور کافی است:
@@ -33,10 +34,13 @@ TEAMLEAD_ROLE = {
 }
 
 # (username, password, نام‌کامل, کلیدِ نقش, یوزرنیمِ مدیرِ مستقیم یا None)
+# زنجیره‌ی مدیریتیِ سه‌سطحی عمداً اینجاست (admin1 → teamlead1 → member1/member2) تا
+# تستِ «مدیرِ بالادستی هم پندینگِ زیرمجموعه‌ی زیرمجموعه‌اش را ببیند» ممکن باشد
+# (`tasks/queries.py: all_subordinate_ids`، بدونِ آن فقط مدیرِ مستقیم می‌دید).
 PEOPLE = [
     ('admin', 'admin1234', 'مدیرِ سیستم (سوپریوزر)', 'owner', None),
     ('admin1', 'Admin123!', 'مدیرِ کل', 'admin', None),
-    ('teamlead1', 'Teamlead123!', 'سرپرستِ تیم', 'teamlead', None),
+    ('teamlead1', 'Teamlead123!', 'سرپرستِ تیم', 'teamlead', 'admin1'),
     ('member1', 'Member123!', 'عضوِ تیمِ یک', 'member', 'teamlead1'),
     ('member2', 'Member123!', 'عضوِ تیمِ دو', 'member', 'teamlead1'),
     ('viewer1', 'Viewer123!', 'ناظر', 'viewer', None),
@@ -148,5 +152,14 @@ class Command(BaseCommand):
             # همین یکی را ببینند (member2: تسکِ خودش، teamlead1: تسکِ زیرمجموعه‌اش)
             mk('اصلاحِ متای صفحه‌ی اصلی (دلیگیت‌شده)', proj_c, colleagues['member2'],
                today + timedelta(days=1), Task.TODO)
+            # تسکِ در انتظارِ بازبینی: همین موقعِ seed یک نمونه‌ی pending می‌سازد تا
+            # صفِ بازبینی (/tasks/review/) از همان لحظه‌ی اول خالی نباشد — هم برای
+            # teamlead1 (مدیرِ مستقیمِ member1) هم برای admin1 (مدیرِ بالادستیِ teamlead1،
+            # `all_subordinate_ids` باید تا اینجا هم برسد) قابل‌مشاهده و قابل‌تاییدست.
+            review_task = mk('محتوای صفحه‌ی فرود (نیازمندِ بازبینی)', proj_a, colleagues['member1'],
+                              today - timedelta(days=1), Task.PENDING)
+            if not review_task.needs_review:
+                review_task.needs_review = True
+                review_task.save(update_fields=['needs_review'])
         finally:
             tenancy.set_current_org(None)

@@ -66,14 +66,21 @@ is_active`.
     روند روزانه، تب تقویم شخصی (embed)، تب تسک‌ها + بخشِ «دسترسی به سیستم» (بالا).
   - CRUD + archive/restore («افزودنِ فرد» — فقط پروفایل، بدونِ حساب).
   - `colleague_grant_access` / `colleague_quick_create` / `colleague_revoke_invite` —
-    API دسترسی؛ گیت‌شده با `manage_people`.
+    API دسترسی؛ گیت‌شده با `manage_people` (org-wide، فعلاً scoped نیست — پایین‌تر).
 - `forms.py` — نقش چک‌باکسی، `join_date` با `jdate`، توضیحات `rich-editor` + `clean_html`.
+- `access.py` — **منبعِ واحدِ زنجیره‌ی مدیریتی**: `all_subordinate_ids(colleague)` (BFS
+  روی `Colleague.manager`، همه‌ی زیرمجموعه‌ها در هر عمقی، نه فقط مستقیم) و
+  `is_manager_tier(request)` (زیرمجموعه دارد یا پرمیشنِ ناظر). `tasks/queries.py` و
+  `tasks/api.py: task_review` از همین می‌خوانند — اینجا زندگی می‌کند نه در `tasks/`
+  چون فقط به `Colleague` وابسته است (جهتِ درستِ وابستگی: `tasks` به `colleagues`
+  وابسته است، نه برعکس).
 
 ## نکته
 `.who/.spark/.donut-legend` باید در `static/css/style.css` باشند (بودند نبودند → رفع شد).
-دکمه‌های «ویرایش»/«غیرفعال‌سازی»/«فعال‌سازی مجدد» در سینگلِ فرد فقط با `can_manage_people`
-نشان داده می‌شوند (سرور از قبل گیت بود، UI نبود — کلیک روی «ویرایش» برای کاربرِ بدونِ
-`manage_people` ۴۰۳ِ تمام‌صفحه می‌داد).
+دکمه‌های «ویرایش»/«غیرفعال‌سازی»/«فعال‌سازی مجدد» در سینگلِ فرد فقط با context varِ
+`can_manage_colleagues` نشان داده می‌شوند (نامش عمداً `manage_people` نشد — از قبلِ
+تغییرِ نامِ پرمیشن مانده، خودِ مقدارش از `m.can('manage_people')` می‌آید). سرور از قبل
+گیت بود، UI نبود — کلیک روی «ویرایش» برای کاربرِ بدونِ `manage_people` ۴۰۳ِ تمام‌صفحه می‌داد.
 
 ## TODO
 `donut_segments`/`TYPE_HEX`/`TYPE_LABEL` (تفکیکِ نوع در سینگل همکار) هنوز بر پایه‌ی
