@@ -666,6 +666,11 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .rs-item:hover{background:var(--glass-hover)}
 .rs-item.on{background:var(--primary-soft)}
 .rs-item .rs-lb{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* نسخهٔ فشرده در جدولِ تسک‌ها (ویرایشِ inline) */
+.tsheet .rs{min-width:120px;width:100%}
+.tsheet .rs-btn{padding:4px 7px;background:transparent;border-color:transparent}
+.tsheet .rs-btn:hover{border-color:var(--stroke-soft);background:rgba(255,255,255,.04)}
+.tsheet .rs-av{width:18px;height:18px;font-size:8.5px}
 
 /* تاریخچهٔ تسک در مودال */
 .hist-box{margin-top:14px;border-top:1px solid var(--stroke-soft);padding-top:10px}

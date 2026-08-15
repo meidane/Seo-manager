@@ -184,8 +184,10 @@ def form_data(request):
     own_tasks_only = bool(m and not m.can('view_other_tasks'))
     my_colleague = getattr(request.user, 'colleague', None)
     return JsonResponse({
-        'projects': [[p.id, p.name] for p in projects],
-        'colleagues': [[c.id, c.full_name, c.needs_review]
+        # [id, name, color, logo_url] — logo/color برای دراپ‌داونِ غنیِ مودال (richselect)
+        'projects': [[p.id, p.name, p.color, (p.logo.url if p.logo else '')] for p in projects],
+        # [id, name, needs_review, color, avatar_url]
+        'colleagues': [[c.id, c.full_name, c.needs_review, c.color, (c.avatar.url if c.avatar else '')]
                         for c in Colleague.objects.filter(status=Colleague.ACTIVE)],
         'typeChoices': list(Task.TYPE_CHOICES),
         'customTypes': [
@@ -566,13 +568,25 @@ def _history_payload(task):
     """تاریخچه‌ی تسک برای مودال (جدیدترین اول)."""
     from core.jalali import format_jalali
     out = []
+    has_created = False
     for h in task.history.select_related('user')[:60]:
         lt = timezone.localtime(h.created_at)
+        if h.action == taskhistory.TaskHistory.CREATED:
+            has_created = True
         out.append({
             'action': h.action, 'action_label': h.get_action_display(),
             'user': (h.user.get_full_name() or h.user.get_username()) if h.user else 'سیستم',
             'when': format_jalali(lt) + ' ' + lt.strftime('%H:%M'),
             'changes': h.changes or {},
+        })
+    # تسک‌های قدیمی (پیش از افزودنِ تاریخچه) رکوردِ «ساخته شد» ندارند — از created_at بساز
+    if not has_created and task.created_at:
+        lt = timezone.localtime(task.created_at)
+        out.append({
+            'action': 'created', 'action_label': 'ساخته شد',
+            'user': (task.created_by.get_full_name() or task.created_by.get_username()) if task.created_by else 'سیستم',
+            'when': format_jalali(lt) + ' ' + lt.strftime('%H:%M'),
+            'changes': {},
         })
     return out
 

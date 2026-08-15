@@ -10,6 +10,9 @@
   }
 
   const opt = (v, l, sel) => `<option value="${v}"${String(v) === String(sel) ? ' selected' : ''}>${l}</option>`;
+  // گزینه با رنگ/تصویر برای دراپ‌داونِ غنی (پروژه/مسئول)
+  const optRich = (v, l, sel, color, img) => `<option value="${v}"${String(v) === String(sel) ? ' selected' : ''}` +
+    `${color ? ` data-color="${color}"` : ''}${img ? ` data-img="${img}"` : ''}>${l}</option>`;
   function field(id, label, inner) {
     return `<div class="field" data-f="${id}"><label>${label}</label>${inner}</div>`;
   }
@@ -56,7 +59,7 @@
     const assigneeSel = t.id ? t.assignee_id : (t.assignee_id || cfg.myColleagueId || '');
     const assigneeSelect = lockAssignee
       ? `<select id="f-assignee" disabled>${opt(cfg.myColleagueId || '', 'خودم', assigneeSel)}</select>`
-      : `<select id="f-assignee"><option value="">—</option>${cfg.colleagues.map(([v, l]) => opt(v, l, assigneeSel)).join('')}</select>`;
+      : `<select id="f-assignee" class="rich-select"><option value="">—</option>${cfg.colleagues.map(([v, l, , color, img]) => optRich(v, l, assigneeSel, color, img)).join('')}</select>`;
     // نیاز به بازبینی: پیش‌فرض از تسکِ موجود (t.needs_review)، وگرنه از تنظیمِ خودِ
     // مسئولِ فعلاً انتخاب‌شده (Colleague.needs_review) — هربار قابلِ‌تغییرِ دستی است.
     const needsReviewDefault = t.id ? !!t.needs_review : colleagueNeedsReview(assigneeSel);
@@ -65,7 +68,7 @@
     <div class="modal-b" id="tform">
       ${reviewNotesHtml(t)}
       <div class="grid3">
-        ${field('project', 'پروژه', `<select id="f-project"><option value="">— انتخاب پروژه —</option>${cfg.projects.map(([v, l]) => opt(v, l, t.project_id)).join('')}</select>`)}
+        ${field('project', 'پروژه', `<select id="f-project" class="rich-select"><option value="">— انتخاب پروژه —</option>${cfg.projects.map(([v, l, color, img]) => optRich(v, l, t.project_id, color, img)).join('')}</select>`)}
         ${field('assignee', 'مسئول', assigneeSelect)}
         ${field('task_type', 'نوع تسک', `<select id="f-task_type">${typeOptions(typeSel)}</select>`)}
       </div>
@@ -326,6 +329,7 @@
     let data = prefill || {};
     if (id) { try { data = await App.fetchJSON(`/tasks/api/${id}/`); } catch (_) { return; } }
     App.openModal(modalHtml(data));
+    if (window.RichSelect) RichSelect.init();  // دراپ‌داونِ غنیِ پروژه/مسئول در مودال
     if (data.status) document.getElementById('f-status').value = data.status;
     if (data.priority) document.getElementById('f-priority').value = data.priority;
     else document.getElementById('f-priority').value = 'med';
@@ -524,6 +528,7 @@
       try {
         const d = await App.fetchJSON(`/tasks/api/rows/?${params.toString()}`);
         tbody.insertAdjacentHTML('beforeend', d.html);
+        if (window.RichSelect) RichSelect.init(tbody);  // دراپ‌داونِ غنیِ ردیف‌های تازه‌لودشده
         lz.page = d.page; lz.hasMore = d.has_more;
         renderAllTimerCells();
       } catch (_) { lz.hasMore = false; } finally { loading = false; }
