@@ -31,6 +31,7 @@ class Project(TimeStampedModel):
     ]
 
     name = models.CharField('نام پروژه', max_length=150)
+    logo = models.ImageField('لوگو', upload_to='logos/projects/', null=True, blank=True)
     domain = models.CharField('دامنه', max_length=200, blank=True, help_text='بدون http')
     track_keyword_rank = models.BooleanField(
         'بررسی رتبه کلمات کلیدی', default=False,

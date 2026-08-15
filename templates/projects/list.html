@@ -23,7 +23,7 @@
         <tbody>
           {% for p in projects %}
             <tr onclick="location.href='{{ p.get_absolute_url }}'" {% if not p.is_active %}style="opacity:.5"{% endif %}>
-              <td><div class="proj"><i class="pdot" style="background:{{ p.color }}"></i><span><b>{{ p.name }}</b><span>{{ p.domain }}</span></span></div></td>
+              <td><div class="proj">{% include "projects/_logo.html" with project=p %}<span><b>{{ p.name }}</b><span>{{ p.domain }}</span></span></div></td>
               {% for c in columns %}<td>{% column_cell p c %}</td>{% endfor %}
             </tr>
           {% endfor %}
