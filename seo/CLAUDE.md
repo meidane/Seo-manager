@@ -8,14 +8,33 @@
 
 ## seed انواعِ تسکِ سئو
 - `management/commands/seed_seo.py` — ۴ نوع تسکِ سئوِ **کاملاً سفارشی** (`builtin_key=''`):
-  انتشار محتوا، رپورتاژ آگهی، لینک‌سازی خارجی، بروزرسانی محتوا — هرکدام با فیلدِ سفارشیِ
-  خودش (`TaskTypeField`) + KPI، per سازمان (`--org`). اجرای مکرر ایمن (نوعِ موجود را
+  **انتشار**، **آپدیت**، **رپورتاژ**، **لینک‌سازی** — هرکدام با فیلدِ سفارشیِ خودش
+  (`TaskTypeField`) + KPI، per سازمان (`--org`). اجرای مکرر ایمن (نوعِ موجود را
   دوباره دست نمی‌زند). چون `builtin_key` خالی است، مودال فقط ۱۰ فیلدِ عمومیِ هسته + فیلدهای
   همین نوع را نشان می‌دهد — نه فیلدهای هارد‌کدِ قدیمیِ `Task`.
   `python manage.py seed_seo`
-
-  انواعِ built-inِ قدیمیِ سئو (`publish/update/reportage/linkbuilding`) با
-  `tasks.seed_task_types` بازنشسته می‌شوند (`is_active=False`) تا این ۴ نوع جایگزینشان شود.
+  - **«تسکِ فنی» عمداً در `SEO_TYPES` نیست**: `tasks.seed_task_types` از قبل یک نوعِ
+    built-in به همین نام («فنی»، `builtin_key='tech'`) بدونِ فیلدِ سفارشی می‌سازد؛
+    `unique_together(organization, name)` باعث می‌شد `get_or_create` همان رکورد را
+    بگیرد (`created=False`) و فیلد/KPIِ این‌جا هرگز اضافه نشود (باگِ ساکت — تعدادِ
+    «نوعِ جدید» در خروجیِ دستور یکی کمتر از انتظار بود). فیلدهای پیش‌فرضِ هسته برای
+    «تسکِ فنی» طبقِ اسپک کافی است، پس چیزی از دست نرفت؛ اگر یک روز «فنی» نیاز به
+    فیلدِ سئوی خودش پیدا کرد، همان رکوردِ built-in را از `/settings/task-types/`
+    ویرایش کن، رکوردِ دومِ هم‌نام نساز.
+  - **فیلدهای مشترکِ کلمهٔ کلیدی** (`_KEYWORD_FIELDS` در `seed_seo.py`) بینِ
+    انتشار/آپدیت/رپورتاژ یک‌جا تعریف و reuse می‌شوند: «کلمات کلیدی»
+    (`kind=tags, required=True, is_keyword_source=True, track_keyword_rank=True`)،
+    «تعداد کلمه» (`kind=number, required=True, is_word_source=True`)، «مترادف و LSI»
+    (`kind=tags, required=False` — بدونِ ردیابیِ رتبه)، «عنوان سئو» (`kind=text`).
+    «لینک صفحه» (`kind=url, is_page_link=True`) هرکدام قاعدهٔ الزامِ خودش را دارد:
+    انتشار = `required_on_done` (موقعِ ساخت نه، موقعِ تکمیل بله)، آپدیت = `required`
+    (از همان لحظهٔ ساخت، چون صفحه از قبل موجود است)، رپورتاژ = نه اصلاً الزامی.
+    رپورتاژ علاوه‌بر این دو فیلدِ «کلمه کلیدی هدف»/«لینک هدف» هم دارد
+    (`is_keyword_source`/`is_link_source` **بدونِ** `track_keyword_rank` — چون این‌ها
+    به صفحه‌ای *دیگر* اشاره می‌کنند، نه صفحهٔ خودِ همین تسک؛ فقط برای جستجوی
+    «این کلمه/لینک برای کدام تسک‌ها کار شده»، نه ثبتِ رتبه).
+  - انواعِ built-inِ قدیمیِ سئو (`publish/update/reportage/linkbuilding`) با
+    `tasks.seed_task_types` بازنشسته می‌شوند (`is_active=False`) تا این ۴ نوع جایگزینشان شود.
 
 ## ردیابیِ رتبهٔ کلمات کلیدی (`models.py` + `rank.py` + `api.py`)
 - **`TrackedKeyword`** — یک (`page_url`, `keyword`) برای یک پروژه. `is_manual` = از مودالِ
@@ -37,6 +56,39 @@
   `.tabs/.tab-panel` سطحِ پروژه تا تداخل نکنند)، انتخابِ بازه = رفرشِ صفحه با
   `?kw_period=`، ستاره روی هر ردیف، آیکنِ ✏️ → مودالِ ویرایشِ کلمه/لینک + تاریخچهٔ
   روزانه‌ی قابل‌ویرایش (اصلاحِ دستیِ یک روزِ خاص).
+
+### اتصالِ خودکارِ «کلمهٔ کلیدیِ تسک» ↔ `TrackedKeyword`
+- **`seo/signals.py: sync_tracked_keywords`** (`post_save` روی `tasks.Task`، ثبت‌شده در
+  `seo/apps.py: ready()` — همان الگوی `finance/signals.py: ensure_salary_category`).
+  هروقت تسکی ذخیره شود: اگر پروژه‌اش `track_keyword_rank=True` است و نوعِ تسک یک فیلدِ
+  `is_page_link` پرشده دارد، برای هر فیلدِ `kind=tags` با `is_keyword_source=True و
+  track_keyword_rank=True` تک‌تکِ کلماتِ داخلش را `TrackedKeyword.get_or_create` می‌کند
+  (`page_url` از همان فیلدِ `is_page_link`، `is_manual=False` — یعنی مثلِ افزونهٔ مرورگر
+  خودکار محسوب می‌شود، نه دستیِ ستاره‌دار). فیلدهایی که `is_keyword_source` دارند ولی
+  `track_keyword_rank` ندارند (مثلِ «کلمه کلیدی هدف»ِ رپورتاژ) هرگز `TrackedKeyword`
+  نمی‌سازند — فقط برای جستجوی متنی (پایین) استفاده می‌شوند.
+- **`rank.rank_progress(tracked_keyword, target_date)`** — «جایگاهِ نزدیک‌ترین اسنپ‌شات
+  به `target_date` (معمولاً `planned_date`ی تسکی که این کلمه را تولید کرده) در برابرِ
+  جدیدترین جایگاهِ ثبت‌شده» → `{near_date, near_position, latest_date, latest_position,
+  delta, elapsed_label}`. `delta` مثبت یعنی بهبود (جایگاهِ کوچک‌تر بهتر است؛ مثلاً
+  #۱۰→#۸ یعنی `delta=+2`). اگر نزدیک‌ترین و جدیدترین یک رکورد باشند (هنوز دادهٔ بعدی
+  نیامده)، `delta=None`. `_elapsed_label` رشتهٔ فارسی می‌سازد («۴ روز»/«۲ ماه»/«۱ سال»،
+  ارقام با `core.jalali.to_fa_digits`). `nearest_snapshot` کمکیِ همین تابع است.
+  `keyword_rows` این را per-ردیف با `planned_dates = _keyword_planned_dates(project)`
+  (یک عبورِ پیشاپیش روی تسک‌های پروژه، نه کوئری به‌ازای هر کلمه) صدا می‌زند.
+- **تبِ «برنامه‌ریزی‌شده»** (سومین زیرتب، بعدِ «بر اساس کلمه»/«بر اساس لینک») —
+  `rank.scheduled_rows(project)`: تسک‌های هنوز `!= done` که فیلدِ `tags` با
+  `is_keyword_source و track_keyword_rank` پر دارند، جدیدترین `planned_date` اول —
+  یعنی «صفحاتِ جدیدی که در راه‌اند، کجا برنامه‌ریزی شده‌اند». `ProjectDetailView` این
+  را در `ctx['scheduled_rows']` می‌گذارد (فقط داخلِ `if p.track_keyword_rank`).
+- **کلیک روی یک کلمهٔ کلیدی → تسک‌های انجام‌شده‌اش**: `rank.tasks_for_keyword(project,
+  keyword)` / `rank.tasks_for_link(project, link)` — جستجوی متنیِ ساده روی
+  `Task.custom` (نه FK جدید، هم‌سو با سبکِ کوئریِ سبکِ همین کدبیس)، فقط تسک‌های `done`،
+  جدیدترین `done_date` اول. API: `GET /seo/api/keywords/<pk>/tasks/`
+  (`seo/api.py: keyword_tasks`). فرانت: `templates/projects/detail.html` روی هر ردیفِ
+  زیرتبِ «بر اساس کلمه» یک هندلرِ دلیگیت‌شده دارد (کلیکِ ردیف بجز `.star`/`.mini-edit`)
+  که همین API را فچ و نتیجه را در مودالِ `App.openModal` رندر می‌کند. **کاربردِ اصلی
+  برای آپدیتِ محتواست** (انتشار موقعِ ساخت هنوز جایگاهی ندارد)، ولی روی هر نوع کار می‌کند.
 - **API (`api.py` + `urls.py`, namespace `seo`):**
   `POST keywords/` (افزودنِ دستی، ستاره‌دار) · `PATCH/DELETE keywords/<id>/` ·
   `GET/POST keywords/<id>/history/` (تاریخچه / ثبتِ دستیِ یک روز) ·

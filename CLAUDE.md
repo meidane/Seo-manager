@@ -38,7 +38,10 @@
 | منبع | فایل |
 |---|---|
 | ذخیره‌ی فیلد تسک (create/update) | `tasks/api.py: apply_fields` |
-| فیلدهای اختصاصیِ نوع در مودال (نه هسته‌ای) | `TaskTypeDef.fields` → `tasks.js: renderCustom` (هسته فقط ۱۰ فیلد عمومی دارد؛ `task-schema.js` فقط fallback برچسب/رنگِ tech/other) |
+| اعتبارسنجیِ الزامِ فیلدِ سفارشی (required/required_on_done) | `tasks/api.py: _custom_fields_error` |
+| فیلدهای اختصاصیِ نوع در مودال (نه هسته‌ای) | `TaskTypeDef.fields` → `tasks.js: renderCustom` (هسته فقط ۱۰ فیلد عمومی دارد؛ `task-schema.js` فقط fallback برچسب/رنگِ tech/other) — فیلدِ `tags` با ویجتِ tagbox (`tasks.js: tagboxHtml/wireTagboxes`) |
+| اتصالِ کلمهٔ کلیدیِ تسک به ردیابیِ رتبهٔ سئو | `seo/signals.py: sync_tracked_keywords` |
+| پیشرفتِ رتبه نسبت به تاریخِ برنامه‌ریزی («+۲ بعدِ ۴ روز») | `seo/rank.py: rank_progress` |
 | داده‌ی مودال تسک (پروژه/همکار/انواع) | `tasks/api.py: form_data` → `/tasks/api/formdata/` |
 | بازه‌ی سراسری | `core/daterange.py: DateRangeMixin` |
 | کاتالوگِ ستون‌های قابل‌سفارشی‌سازی (تسک/پروژه/همکار) | `core/columns.py: get_catalog/get_columns/cell_value` + `core/models.py: ColumnConfig` + تگ `{% column_cell %}` |

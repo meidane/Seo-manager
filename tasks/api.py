@@ -268,9 +268,35 @@ def task_rows_page(request):
 
 
 def _publish_url_error(task):
-    """تسک انتشارِ «انجام‌شده» بدون لینک انتشار مجاز نیست (الزام لینک)."""
+    """تسک انتشارِ «انجام‌شده» بدون لینک انتشار مجاز نیست (الزام لینک؛ فقط برای نوعِ
+    built-inِ قدیمیِ publish — انواعِ سفارشیِ جدید از `_custom_fields_error` پایین
+    استفاده می‌کنند، `required`/`required_on_done` روی خودِ فیلد)."""
     if task.task_type == Task.PUBLISH and task.status == Task.DONE and not task.published_url:
         return 'برای تسک انتشارِ انجام‌شده، وارد کردن «لینک انتشار» الزامی است.'
+    return None
+
+
+def _field_is_empty(field, value):
+    if field.kind == field.TAGS:
+        return not isinstance(value, list) or len(value) == 0
+    return value in (None, '', [])
+
+
+def _custom_fields_error(task):
+    """فیلدهای سفارشیِ الزامیِ نوعِ تسک را چک می‌کند — `required`(همیشه) و
+    `required_on_done`(فقط وقتی وضعیت done است). منبعِ واحدِ این اعتبارسنجی؛ در
+    `task_create`/`task_detail` PATCH/`task_status` هر سه صدا زده می‌شود (مثلِ
+    `_publish_url_error`، همان الگو)."""
+    if not task.type_def_id:
+        return None
+    custom = task.custom or {}
+    for f in task.type_def.fields.all():
+        value = custom.get(f.key)
+        empty = _field_is_empty(f, value)
+        if f.required and empty:
+            return f'فیلدِ «{f.label}» الزامی است.'
+        if f.required_on_done and task.status == Task.DONE and empty:
+            return f'برای تکمیلِ این تسک، «{f.label}» الزامی است.'
     return None
 
 
@@ -302,7 +328,7 @@ def task_create(request):
             data['needs_review'] = assignee.needs_review
     task = Task(created_by=request.user, planned_date=date.today())
     apply_fields(task, data)
-    err = _publish_url_error(task)
+    err = _publish_url_error(task) or _custom_fields_error(task)
     if err:
         return JsonResponse({'detail': err}, status=400)
     task.save()
@@ -384,7 +410,7 @@ def task_detail(request, pk):
     was_done = task.status == Task.DONE
     before = taskhistory.snapshot(task)
     apply_fields(task, data)
-    err = _publish_url_error(task)
+    err = _publish_url_error(task) or _custom_fields_error(task)
     if err:
         return JsonResponse({'detail': err}, status=400)
     task.save()
@@ -429,7 +455,7 @@ def task_status(request, pk):
     if new_status in (Task.DONE, Task.PENDING):
         _stop_timer(task)
         fields += ['spent_minutes', 'timer_started_at']
-    err = _publish_url_error(task)
+    err = _publish_url_error(task) or _custom_fields_error(task)
     if err:
         return JsonResponse({'detail': err}, status=400)
     task.save(update_fields=fields)

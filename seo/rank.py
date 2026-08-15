@@ -66,11 +66,29 @@ def _series_by_keyword(project, since):
     return out
 
 
+def _keyword_planned_dates(project):
+    """{کلمه: جدیدترین planned_date} از تسک‌هایی که این کلمه را در فیلدِ ردیابیِ رتبه
+    دارند — یک عبور روی تسک‌های پروژه (نه یک کوئری به‌ازای هر کلمه)."""
+    from tasks.models import Task
+    out = {}
+    tasks = (Task.objects.filter(project=project, type_def__isnull=False)
+             .select_related('type_def').prefetch_related('type_def__fields')
+             .order_by('planned_date'))  # صعودی → آخرین رونویسی، جدیدترین می‌ماند
+    for t in tasks:
+        for f in _keyword_source_fields(t.type_def):
+            if not f.track_keyword_rank:
+                continue
+            for kw in (t.custom or {}).get(f.key) or []:
+                out[kw] = t.planned_date
+    return out
+
+
 def keyword_rows(project, period_days):
     """ردیف‌های تبِ «بر اساس کلمه کلیدی»."""
     start, end, prev_start, prev_end = _windows(period_days)
     since = date.today() - timedelta(days=SPARK_DAYS - 1)
     series = _series_by_keyword(project, since)
+    planned_dates = _keyword_planned_dates(project)
     rows = []
     for kw in project.tracked_keywords.all():
         by_date = series.get(kw.id, {})
@@ -79,14 +97,108 @@ def keyword_rows(project, period_days):
         cur = _window_position(by_date, start, end)
         prev = _window_position(by_date, prev_start, prev_end)
         change = (prev - cur) if (cur is not None and prev is not None) else None
+        target_date = planned_dates.get(kw.keyword)
         rows.append({
             'id': kw.id, 'keyword': kw.keyword, 'page_url': kw.page_url,
             'is_starred': kw.is_starred, 'is_manual': kw.is_manual,
             'last_position': last_position, 'change': change,
             'spark': sparkline_svg(points),
+            'progress': rank_progress(kw, target_date) if target_date else None,
         })
     rows.sort(key=lambda r: (not r['is_starred'], r['last_position'] if r['last_position'] is not None else 9999))
     return rows
+
+
+def nearest_snapshot(tracked_keyword, target_date):
+    """نزدیک‌ترین رکوردِ جایگاه به `target_date` (چه قبل چه بعد، هرکدام نزدیک‌تر بود)."""
+    snaps = list(tracked_keyword.snapshots.all())
+    if not snaps:
+        return None
+    return min(snaps, key=lambda s: abs((s.date - target_date).days))
+
+
+def _elapsed_label(d1, d2):
+    from core.jalali import to_fa_digits
+    days = abs((d2 - d1).days)
+    if not days:
+        return 'همون روز'
+    if days < 30:
+        return f'{to_fa_digits(days)} روز'
+    if days < 365:
+        return f'{to_fa_digits(days // 30)} ماه'
+    return f'{to_fa_digits(days // 365)} سال'
+
+
+def rank_progress(tracked_keyword, target_date):
+    """جایگاهِ نزدیک به `target_date` (معمولاً `planned_date`ی تسکی که این کلمه را
+    تولید کرده) در برابرِ جدیدترین جایگاهِ ثبت‌شده — برای «+۲ بعد از ۳ ماه» در
+    تبِ کلمات کلیدی. اگر فقط همان یک رکورد باشد یا اصلاً رکوردی نباشد، None."""
+    near = nearest_snapshot(tracked_keyword, target_date)
+    if not near:
+        return None
+    latest = tracked_keyword.snapshots.order_by('-date').first()
+    out = {'near_date': near.date, 'near_position': near.position,
+           'latest_date': latest.date, 'latest_position': latest.position,
+           'delta': None, 'elapsed_label': ''}
+    if latest.id != near.id:
+        # مثبت یعنی بهبود (جایگاهِ کوچک‌تر = بهتر؛ مثلاً از #۱۰ به #۸ → +۲)
+        out['delta'] = near.position - latest.position
+        out['elapsed_label'] = _elapsed_label(near.date, latest.date)
+    return out
+
+
+def _keyword_source_fields(type_def):
+    return [f for f in type_def.fields.all() if f.kind == f.TAGS and f.is_keyword_source]
+
+
+def scheduled_rows(project):
+    """تسک‌های هنوز انجام‌نشده که فیلدِ «کلمهٔ کلیدیِ ردیابی‌شونده» دارند — تبِ «کلمات
+    کلیدی برنامه‌ریزی‌شده» (صفحاتِ جدیدی که در راه‌اند)، جدیدترین تاریخِ برنامه اول."""
+    from tasks.models import Task
+    rows = []
+    tasks = (Task.objects.filter(project=project, type_def__isnull=False)
+             .exclude(status=Task.DONE).select_related('type_def', 'assignee')
+             .prefetch_related('type_def__fields').order_by('-planned_date'))
+    for t in tasks:
+        kw_field = next((f for f in _keyword_source_fields(t.type_def) if f.track_keyword_rank), None)
+        if not kw_field:
+            continue
+        keywords = (t.custom or {}).get(kw_field.key) or []
+        if not keywords:
+            continue
+        rows.append({'task': t, 'keywords': keywords})
+    return rows
+
+
+def tasks_for_keyword(project, keyword):
+    """تسک‌های انجام‌شده‌ای که این کلمهٔ کلیدی را در فیلدِ کلمه‌کلیدی/کلمه‌کلیدیِ‌هدفشان
+    دارند — جدیدترین اول («روی کلمه کلیک شد، چه تسک‌هایی برایش کار شده»)."""
+    from tasks.models import Task
+    out = []
+    tasks = (Task.objects.filter(project=project, type_def__isnull=False, status=Task.DONE)
+             .select_related('type_def', 'assignee').prefetch_related('type_def__fields')
+             .order_by('-done_date'))
+    for t in tasks:
+        for f in _keyword_source_fields(t.type_def):
+            if keyword in ((t.custom or {}).get(f.key) or []):
+                out.append(t)
+                break
+    return out
+
+
+def tasks_for_link(project, link):
+    """مشابهِ `tasks_for_keyword` ولی بر اساسِ فیلدِ «لینکِ هدف» (`is_link_source`)."""
+    from tasks.models import Task
+    out = []
+    tasks = (Task.objects.filter(project=project, type_def__isnull=False, status=Task.DONE)
+             .select_related('type_def', 'assignee').prefetch_related('type_def__fields')
+             .order_by('-done_date'))
+    for t in tasks:
+        for f in t.type_def.fields.all():
+            if f.is_link_source and (t.custom or {}).get(f.key) == link:
+                out.append(t)
+                break
+    return out
 
 
 def page_rows(project, period_days):

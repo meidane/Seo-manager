@@ -200,22 +200,64 @@
     return `<div class="hist-box"><button type="button" class="hist-toggle" id="hist-toggle">🕐 تاریخچهٔ تسک (${faNum})</button><div class="hist-list" id="hist-list" style="display:none">${body}</div></div>`;
   }
 
+  // ── چیپ‌های کلمه/برچسب (Enter یا دکمه‌ی + اضافه می‌کند؛ ویرگول خودکار جدا می‌شود) ──
+  function tagChip(word) {
+    return `<span class="tag t-mute tagbox-chip">${esc(word)}<i class="tagbox-x" data-w="${esc(word)}">×</i></span>`;
+  }
+  function tagboxHtml(key, words, placeholder) {
+    const chips = (words || []).map(tagChip).join('');
+    return `<div class="tagbox cf" data-key="${key}" data-kind="tags">
+      <div class="tagbox-chips">${chips}</div>
+      <div class="tagbox-row"><input type="text" class="input tagbox-input" placeholder="${esc(placeholder || 'بنویس و Enter بزن…')}"><button type="button" class="btn btn-sm tagbox-add">+</button></div>
+    </div>`;
+  }
+  function tagboxAddWords(box, raw) {
+    const chipsWrap = box.querySelector('.tagbox-chips');
+    const existing = new Set([...box.querySelectorAll('.tagbox-chip')].map((c) => c.dataset.w));
+    raw.split(',').map((w) => w.trim()).filter((w) => w && !existing.has(w)).forEach((w) => {
+      existing.add(w);
+      chipsWrap.insertAdjacentHTML('beforeend', tagChip(w));
+    });
+  }
+  // یک‌بار روی #custom-fields سیم‌کشی می‌شود (نه هر renderCustom، چون innerHTML عوض می‌شود
+  // ولی خودِ نودِ box ثابت می‌ماند — الگوی delegation مثل بقیه‌ی مودال).
+  function wireTagboxes(box) {
+    if (box.dataset.tagWired) return;
+    box.dataset.tagWired = '1';
+    box.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' || !e.target.matches('.tagbox-input')) return;
+      e.preventDefault();
+      const tb = e.target.closest('.tagbox');
+      if (e.target.value.trim()) { tagboxAddWords(tb, e.target.value); e.target.value = ''; }
+    });
+    box.addEventListener('click', (e) => {
+      const add = e.target.closest('.tagbox-add');
+      if (add) { const tb = add.closest('.tagbox'); const inp = tb.querySelector('.tagbox-input');
+        if (inp.value.trim()) { tagboxAddWords(tb, inp.value); inp.value = ''; } return; }
+      const x = e.target.closest('.tagbox-x');
+      if (x) x.closest('.tagbox-chip').remove();
+    });
+  }
+
   // ── رندر فیلدهای سفارشی یک نوع ──
   function renderCustom(t, values) {
     const box = document.getElementById('custom-fields');
     if (!t || !t.fields || !t.fields.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
     values = values || {};
     box.style.display = '';
+    wireTagboxes(box);
     box.innerHTML = t.fields.map((f) => {
       const v = values[f.key] != null ? values[f.key] : '';
       let input;
-      if (f.kind === 'textarea') input = `<textarea class="cf" data-key="${f.key}" rows="2" placeholder="${esc(f.placeholder)}">${esc(v)}</textarea>`;
+      if (f.kind === 'tags') input = tagboxHtml(f.key, Array.isArray(v) ? v : [], f.placeholder);
+      else if (f.kind === 'textarea') input = `<textarea class="cf" data-key="${f.key}" rows="2" placeholder="${esc(f.placeholder)}">${esc(v)}</textarea>`;
       else if (f.kind === 'checkbox') input = `<label style="display:flex;align-items:center;gap:8px;margin:0"><input type="checkbox" class="cf" data-key="${f.key}" ${v ? 'checked' : ''} style="width:auto"> ${esc(f.label)}</label>`;
       else if (f.kind === 'select') input = `<select class="cf" data-key="${f.key}"><option value="">—</option>${f.options.map((o) => opt(o, o, v)).join('')}</select>`;
       else if (f.kind === 'number') input = `<input type="number" class="cf input" data-key="${f.key}" value="${esc(v)}" placeholder="${esc(f.placeholder)}">`;
       else input = `<input type="text" class="cf input" data-key="${f.key}" dir="${f.kind === 'url' ? 'ltr' : 'rtl'}" value="${esc(v)}" placeholder="${esc(f.placeholder)}">`;
       if (f.kind === 'checkbox') return `<div class="field" data-cf>${input}</div>`;
-      return `<div class="field" data-cf><label>${esc(f.label)}${f.required ? ' *' : ''}</label>${input}</div>`;
+      const req = f.required ? ' *' : (f.required_on_done ? ' (برای تکمیل الزامی)' : '');
+      return `<div class="field" data-cf><label>${esc(f.label)}${req}</label>${input}</div>`;
     }).join('');
   }
 
@@ -244,7 +286,11 @@
     if (ty && ty.fields && ty.fields.length) {
       const custom = {};
       document.querySelectorAll('#custom-fields .cf').forEach((el) => {
-        custom[el.dataset.key] = el.type === 'checkbox' ? el.checked : el.value;
+        if (el.dataset.kind === 'tags') {
+          custom[el.dataset.key] = [...el.querySelectorAll('.tagbox-chip')].map((c) => c.dataset.w);
+        } else {
+          custom[el.dataset.key] = el.type === 'checkbox' ? el.checked : el.value;
+        }
       });
       p.custom = custom;
     }

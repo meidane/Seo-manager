@@ -712,6 +712,17 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .org-switch{max-width:170px;padding:6px 10px;font-size:12.5px;border-radius:var(--r-sm);
   background:rgba(255,255,255,.04);border:1px solid var(--stroke-soft);color:var(--text)}
 
+/* فیلدِ چندتایی (کلمه + Enter) — کلماتِ کلیدی/LSI/هدف در مودالِ تسک */
+.tagbox{background:rgba(255,255,255,.04);border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:8px}
+.tagbox-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.tagbox-chips:empty{display:none}
+.tagbox-chip{gap:4px;padding:3px 6px 3px 9px}
+.tagbox-x{cursor:pointer;font-style:normal;opacity:.6;font-size:13px;line-height:1}
+.tagbox-x:hover{opacity:1;color:var(--danger)}
+.tagbox-row{display:flex;gap:6px}
+.tagbox-input{flex:1}
+.tagbox-add{flex:none;padding:6px 14px}
+
 /* KPIها (مدیریت نوع تسک + مودال/بازبینی) */
 .kpi-item{border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:8px;background:rgba(255,255,255,.02)}
 .kpi-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}

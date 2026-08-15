@@ -165,6 +165,7 @@
     <div class="subtabs" id="kw-subtabs">
       <button class="subtab on" data-subtab="bykeyword">بر اساس کلمه کلیدی</button>
       <button class="subtab" data-subtab="bylink">بر اساس لینک</button>
+      <button class="subtab" data-subtab="scheduled">برنامه‌ریزی‌شده</button>
     </div>
 
     <div class="subtab-panel on" data-subpanel="bykeyword">
@@ -172,9 +173,15 @@
         <thead><tr><th style="width:24px"></th><th>کلمه کلیدی</th><th>آخرین جایگاه</th><th>روند ۳ ماه اخیر</th><th>تغییر ({{ kw_period|fa_digits }} روز)</th><th></th></tr></thead>
         <tbody>
           {% for r in keyword_rows %}
-            <tr data-id="{{ r.id }}">
+            <tr data-id="{{ r.id }}" class="kw-row" style="cursor:pointer" title="کلیک: تسک‌های انجام‌شده برای این کلمه">
               <td><i class="star {% if r.is_starred %}on{% endif %}" data-star-kw="{{ r.id }}">★</i></td>
-              <td>{{ r.keyword }}<br><span class="rk-url" dir="ltr">{{ r.page_url }}</span></td>
+              <td>{{ r.keyword }}<br><span class="rk-url" dir="ltr">{{ r.page_url }}</span>
+                {% if r.progress and r.progress.delta is not None %}
+                  <br><span class="chg {% if r.progress.delta > 0 %}up{% elif r.progress.delta < 0 %}down{% endif %}" title="جایگاه در {{ r.progress.near_date|jalali }}: #{{ r.progress.near_position|fa_digits }}">
+                    {% if r.progress.delta > 0 %}▲{% elif r.progress.delta < 0 %}▼{% else %}—{% endif %} {{ r.progress.delta|fa_digits }} بعدِ {{ r.progress.elapsed_label }}
+                  </span>
+                {% endif %}
+              </td>
               <td class="num-c">{% if r.last_position %}{{ r.last_position|fa_digits }}{% else %}<span class="zero">—</span>{% endif %}</td>
               <td>{% if r.spark %}{{ r.spark }}{% else %}<span class="zero">—</span>{% endif %}</td>
               <td>{% if r.change is not None %}<span class="chg {% if r.change > 0 %}up{% elif r.change < 0 %}down{% endif %}">{% if r.change > 0 %}▲{% elif r.change < 0 %}▼{% else %}—{% endif %} {{ r.change|fa_digits }}</span>{% else %}<span class="zero">—</span>{% endif %}</td>
@@ -182,6 +189,24 @@
             </tr>
           {% empty %}
             <tr><td colspan="6" class="zero" style="padding:24px;text-align:center">هنوز کلمه‌ای ردیابی نمی‌شود</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="subtab-panel" data-subpanel="scheduled">
+      <table>
+        <thead><tr><th>تسک</th><th>کلمات کلیدی</th><th>مسئول</th><th>تاریخ برنامه</th></tr></thead>
+        <tbody>
+          {% for r in scheduled_rows %}
+            <tr data-open-task="{{ r.task.id }}" style="cursor:pointer">
+              <td><span class="ttype" style="background:rgba({{ r.task.color_rgb }},.16);color:rgb({{ r.task.color_rgb }})">{{ r.task.type_label }}</span> {{ r.task.title }}</td>
+              <td>{% for kw in r.keywords %}<span class="tag t-mute" style="margin-inline-end:4px">{{ kw }}</span>{% endfor %}</td>
+              <td>{{ r.task.assignee.full_name|default:"—" }}</td>
+              <td>{{ r.task.planned_date|jalali }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4" class="zero" style="padding:24px;text-align:center">صفحه‌ی برنامه‌ریزی‌شده‌ای در راه نیست</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -364,6 +389,19 @@
   document.getElementById('kw-period').addEventListener('change', e=>{
     const u = new URL(location.href); u.searchParams.set('kw_period', e.target.value); u.hash='';
     location.href = u.toString();
+  });
+
+  // ── کلیک روی ردیفِ کلمه (نه ستاره/ویرایش) → تسک‌هایی که برایش انجام شده ──
+  document.querySelector('[data-subpanel="bykeyword"] tbody').addEventListener('click', async e=>{
+    if(e.target.closest('.star, .mini-edit')) return;
+    const tr = e.target.closest('.kw-row'); if(!tr) return;
+    let d; try{ d = await App.fetchJSON(`/seo/api/keywords/${tr.dataset.id}/tasks/`); }catch(_){ return; }
+    const rows = d.tasks.length ? d.tasks.map(t=>`<tr data-open-task="${t.id}" style="cursor:pointer">
+        <td><span class="ttype">${t.type_label}</span> ${t.title}</td><td>${t.assignee||'—'}</td><td>${t.done_date||'—'}</td></tr>`).join('')
+      : `<tr><td colspan="3" class="zero" style="padding:16px;text-align:center">هنوز تسکِ انجام‌شده‌ای برایِ این کلمه ثبت نشده</td></tr>`;
+    App.openModal(`<div class="modal-h"><h3>تسک‌های انجام‌شده برای این کلمه</h3><button class="x" onclick="App.closeModal()">×</button></div>
+      <div class="modal-b"><table><thead><tr><th>تسک</th><th>مسئول</th><th>تاریخ انجام</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="modal-f"><button class="btn" onclick="App.closeModal()">بستن</button></div>`);
   });
 
   // ── ستاره (کلمه/صفحه) ──

@@ -182,6 +182,7 @@ class ProjectDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
             ctx['kw_period_choices'] = seo_rank.PERIOD_CHOICES
             ctx['keyword_rows'] = seo_rank.keyword_rows(p, period)
             ctx['page_rows'] = seo_rank.page_rows(p, period)
+            ctx['scheduled_rows'] = seo_rank.scheduled_rows(p)
 
         ctx['task_rows'] = p.tasks.select_related('assignee','type_def').filter(
             Q(planned_date__range=(start, end)) | Q(status=Task.DONE, done_date__range=(start, end))

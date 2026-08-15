@@ -17,6 +17,7 @@ from accounts.models import Membership, Organization, Role, seed_roles
 from accounts.permissions import PERMS
 from colleagues.models import Colleague
 from projects.models import Project
+from seo.models import KeywordRankSnapshot, TrackedKeyword
 from tasks.models import Task, TaskTypeDef
 
 User = get_user_model()
@@ -78,6 +79,10 @@ class Command(BaseCommand):
         colleagues = self._people(org)
 
         call_command('seed_task_types', '--org', org.id)
+        try:
+            call_command('seed_seo', '--org', org.id)
+        except Exception:  # noqa: BLE001
+            pass
         call_command('seed_holidays')
         try:
             call_command('seed_categories', '--org', org.id)
@@ -131,11 +136,14 @@ class Command(BaseCommand):
             team = [colleagues['fsalehi'], colleagues['sebrahimi'],
                     colleagues['amoradi'], colleagues['mziarati']]
             projects = []
-            for name, domain, color in PROJECTS:
+            for idx, (name, domain, color) in enumerate(PROJECTS):
                 p, _ = Project.objects.update_or_create(
                     organization=org, name=name,
                     defaults={'domain': domain, 'color': color, 'status': Project.ACTIVE,
-                              'manager': salehi})
+                              'manager': salehi,
+                              # چند پروژه‌ی اول ردیابیِ رتبه دارند تا تبِ «کلمات کلیدی»
+                              # از همان seedِ اول قابل‌دمو باشد (بقیه عمداً خاموش‌اند).
+                              'track_keyword_rank': idx < 3})
                 p.members.set(team)  # صالحی مسئول + همه عضو (تولید محتوا هم view_all_projects دارد)
                 projects.append(p)
 
@@ -172,5 +180,50 @@ class Command(BaseCommand):
             if not rt.needs_review:
                 rt.needs_review = True
                 rt.save(update_fields=['needs_review'])
+
+            self._seo_demo_tasks(org, projects[0], content_people[0])
         finally:
             tenancy.set_current_org(None)
+
+    def _seo_demo_tasks(self, org, project, assignee):
+        """دو تسکِ «انتشار» روی اولین پروژهٔ ردیابیِ‌رتبه‌دار — یکی تمام‌شده (با
+        کلمات‌کلیدی+لینک، تا سیگنالِ `seo.signals` بلافاصله TrackedKeyword بسازد و
+        `seo/CLAUDE.md`ی «مانده‌ی رتبه» از همان seedِ اول قابل‌دمو باشد) و یکی هنوز
+        برنامه‌ریزی‌شده (برای تبِ «کلمات کلیدی برنامه‌ریزی‌شده»)."""
+        publish = TaskTypeDef.objects.filter(organization=org, name='انتشار').first()
+        if not publish:
+            return
+        fmap = {f.label: f.key for f in publish.fields.all()}
+        today = date.today()
+
+        done_task, _ = Task.objects.update_or_create(
+            organization=org, project=project, assignee=assignee,
+            title='راهنمای خرید لامپ خورشیدی', type_def=publish,
+            defaults={
+                'task_type': 'other', 'planned_date': today - timedelta(days=20),
+                'status': Task.DONE, 'done_date': today - timedelta(days=14),
+                'custom': {
+                    fmap['کلمات کلیدی']: ['لامپ خورشیدی', 'قیمت لامپ خورشیدی'],
+                    fmap['تعداد کلمه']: 1450,
+                    fmap['لینک صفحه']: f'https://{project.domain}/lamp-khorshidi',
+                },
+            })
+        kw = TrackedKeyword.all_objects.filter(
+            project=project, keyword='لامپ خورشیدی', page_url=done_task.custom[fmap['لینک صفحه']]).first()
+        if kw:
+            KeywordRankSnapshot.objects.get_or_create(
+                keyword=kw, date=today - timedelta(days=18), defaults={'position': 17})
+            KeywordRankSnapshot.objects.get_or_create(
+                keyword=kw, date=today - timedelta(days=2), defaults={'position': 9})
+
+        Task.objects.update_or_create(
+            organization=org, project=project, assignee=assignee,
+            title='مقایسهٔ باتری خورشیدی ۱۰۰ آمپر با ۲۰۰ آمپر', type_def=publish,
+            defaults={
+                'task_type': 'other', 'planned_date': today + timedelta(days=9),
+                'status': Task.TODO,
+                'custom': {
+                    fmap['کلمات کلیدی']: ['باتری خورشیدی', 'قیمت باتری خورشیدی ۱۰۰ آمپر'],
+                    fmap['تعداد کلمه']: 900,
+                },
+            })

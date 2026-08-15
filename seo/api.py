@@ -146,6 +146,23 @@ def page_star(request):
 
 
 @login_required
+@require_http_methods(['GET'])
+def keyword_tasks(request, pk):
+    """تسک‌های انجام‌شده‌ای که برای این کلمهٔ کلیدی کار شده — جدیدترین اول (کلیک روی
+    ردیفِ کلمه در تبِ کلمات کلیدی)."""
+    from core.jalali import format_jalali
+    from . import rank as seo_rank
+
+    tk = get_object_or_404(TrackedKeyword, pk=pk)
+    tasks = seo_rank.tasks_for_keyword(tk.project, tk.keyword)
+    return JsonResponse({'tasks': [{
+        'id': t.id, 'title': t.title, 'assignee': t.assignee.full_name if t.assignee_id else '',
+        'done_date': format_jalali(t.done_date) if t.done_date else '',
+        'type_label': t.type_label,
+    } for t in tasks]})
+
+
+@login_required
 @require_http_methods(['GET', 'POST'])
 def keyword_history(request, pk):
     """تاریخچهٔ روزانهٔ یک کلمه (۹۰ روزِ اخیر) + امکانِ ثبتِ/اصلاحِ دستیِ یک روز.

@@ -111,8 +111,14 @@ def field_create(request, pk):
     f = TaskTypeField.objects.create(
         type_def=t, label=label, kind=kind, options=d.get('options', ''),
         placeholder=d.get('placeholder', ''), required=bool(d.get('required')),
+        required_on_done=bool(d.get('required_on_done')),
         show_to_client=bool(d.get('show_to_client', True)),
-        is_word_source=bool(d.get('is_word_source')), order=t.fields.count(),
+        is_word_source=bool(d.get('is_word_source')),
+        is_keyword_source=bool(d.get('is_keyword_source')),
+        track_keyword_rank=bool(d.get('track_keyword_rank')),
+        is_link_source=bool(d.get('is_link_source')),
+        is_page_link=bool(d.get('is_page_link')),
+        order=t.fields.count(),
     )
     return JsonResponse({'id': f.id, 'key': f.key, 'label': f.label,
                          'kind': f.get_kind_display(), 'required': f.required,
@@ -131,10 +137,10 @@ def field_edit(request, pk):
     for attr in ('label', 'kind', 'options', 'placeholder'):
         if attr in d:
             setattr(f, attr, d[attr])
-    if 'required' in d:
-        f.required = bool(d['required'])
-    if 'show_to_client' in d:
-        f.show_to_client = bool(d['show_to_client'])
+    for attr in ('required', 'required_on_done', 'show_to_client', 'is_word_source',
+                 'is_keyword_source', 'track_keyword_rank', 'is_link_source', 'is_page_link'):
+        if attr in d:
+            setattr(f, attr, bool(d[attr]))
     f.save()
     return JsonResponse({'ok': True})
 

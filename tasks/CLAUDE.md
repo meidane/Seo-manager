@@ -80,6 +80,28 @@
 - «جمع ساعت» در آمار = `Sum(estimate_minutes)` (فیلتر `hours` در seo_extras؛ دقیقه→ساعت).
   با تایمرِ فاز بعد به زمانِ واقعی سوییچ می‌شود.
 
+## فیلدِ سفارشیِ نوعِ `tags` («چندتایی») + الزام/اجبار
+- **`TaskTypeField.KIND_CHOICES`** یک نوعِ `tags` هم دارد (کنارِ text/number/url/...):
+  مقدارش در `Task.custom` همیشه **لیستِ رشته** است، نه رشته‌ی تخت. ویجتِ مودال
+  («tagbox»، `static/js/tasks.js: tagboxHtml/wireTagboxes/tagboxAddWords`) با اینتر یا
+  دکمه‌ی + کلمه اضافه می‌کند، ویرگول را خودکار می‌شکند، × هر تگ را حذف می‌کند.
+  `renderCustom()` هر بار `innerHTML` را دوباره می‌سازد؛ سیم‌کشیِ رویداد delegated و
+  یک‌بار در `wireTagboxes` (`box.dataset.tagWired` گارد) است تا با تعویضِ نوع در مودال
+  چندبار سیم‌کشی نشود. `collect()` برای `.cf[data-kind="tags"]` مقدار را از
+  `.tagbox-chip[data-w]`ها جمع می‌کند، نه `.value`.
+- **`required` در برابرِ `required_on_done`**: قبلاً `required` فقط تزئینی بود (فقط `*`
+  کنارِ برچسبِ مودال)، هرگز سرورساید چک نمی‌شد. الان دو حالتِ اجبارِ جداگانه هست:
+  `required` = همیشه اجباری (ساختِ تسک هم شاملش می‌شود)؛ `required_on_done` = فقط وقتی
+  تسک به `done` می‌رود اجباری است (مثلِ «لینک صفحه»ی نوعِ «انتشار» — موقعِ ساختن هنوز
+  لینک نداریم، ولی برای تکمیل باید داشته باشیم). **منبعِ واحدِ اعتبارسنجی:**
+  `tasks/api.py: _custom_fields_error(task)` — از `task_create`، `task_detail` PATCH و
+  `task_status` صدا زده می‌شود (کنارِ `_publish_url_error` قدیمی، برای تسک‌های
+  built-inِ سئوِ قدیمی). `_field_is_empty(field, value)` برای `tags` یعنی لیستِ خالی،
+  برای بقیه یعنی `None/''/[]`.
+- **چهار فلگِ اتصال به بستهٔ `seo/`** (بدونِ رفتار در هستهٔ تسک؛ فقط `seo/signals.py` و
+  `seo/rank.py` می‌خوانندشان): `is_keyword_source`, `track_keyword_rank`,
+  `is_link_source`, `is_page_link` — توضیحِ کاملشان در `seo/CLAUDE.md`.
+
 ## افزودن فیلد به تسک
 تقریباً همیشه **فیلدِ سفارشیِ نوع** است، نه فیلدِ هسته‌ای: از `/settings/task-types/`
 (یا برای بستهٔ عمودیِ جدید، یک seed مثل `seo/seed_seo.py`) یک `TaskTypeField` بساز —

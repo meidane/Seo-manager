@@ -293,9 +293,11 @@ class TaskTypeField(models.Model):
     SELECT = 'select'
     URL = 'url'
     DATE = 'date'
+    TAGS = 'tags'
     KIND_CHOICES = [
         (TEXT, 'متن کوتاه'), (TEXTAREA, 'متن بلند'), (NUMBER, 'عدد'),
         (CHECKBOX, 'چک‌باکس'), (SELECT, 'انتخابی'), (URL, 'لینک'), (DATE, 'تاریخ'),
+        (TAGS, 'چندتایی (کلمه + اینتر)'),
     ]
 
     type_def = models.ForeignKey(TaskTypeDef, verbose_name='نوع', on_delete=models.CASCADE, related_name='fields')
@@ -304,10 +306,17 @@ class TaskTypeField(models.Model):
     kind = models.CharField('نوع فیلد', max_length=12, choices=KIND_CHOICES, default=TEXT)
     options = models.CharField('گزینه‌ها (با ویرگول)', max_length=500, blank=True)  # فقط select
     placeholder = models.CharField('راهنما', max_length=120, blank=True)
-    required = models.BooleanField('اجباری', default=False)
+    required = models.BooleanField('اجباری (همیشه)', default=False)
+    # مثلِ «لینکِ انتشار» که فقط موقعِ تمام‌کردنِ کار الزامی است، نه موقعِ ساختِ تسک
+    required_on_done = models.BooleanField('اجباری فقط برای تکمیل', default=False)
     show_to_client = models.BooleanField('نمایش به مشتری', default=True)
     # این فیلد به‌عنوان «تعداد کلمه» شناخته شود تا در آمار (همکار/داشبورد) حساب شود
     is_word_source = models.BooleanField('منبعِ تعداد کلمه', default=False)
+    # فیلدهای وصل‌شونده به بستهٔ سئو (`seo/`) — منبعِ واحدِ این چهارتا در seo/CLAUDE.md
+    is_keyword_source = models.BooleanField('حاویِ کلمهٔ کلیدیِ قابل‌جستجو', default=False)
+    track_keyword_rank = models.BooleanField('رتبهٔ این کلمه ردیابی شود', default=False)
+    is_link_source = models.BooleanField('حاویِ لینکِ هدفِ قابل‌جستجو', default=False)
+    is_page_link = models.BooleanField('لینکِ صفحهٔ خودِ همین تسک', default=False)
     order = models.PositiveIntegerField('ترتیب', default=0)
 
     class Meta:
@@ -332,7 +341,8 @@ class TaskTypeField(models.Model):
         return {
             'key': self.key, 'label': self.label, 'kind': self.kind,
             'options': self.options_list, 'placeholder': self.placeholder,
-            'required': self.required, 'show_to_client': self.show_to_client,
+            'required': self.required, 'required_on_done': self.required_on_done,
+            'show_to_client': self.show_to_client,
         }
 
 
