@@ -646,6 +646,22 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .assignee-cell{display:flex;align-items:center;gap:7px}
 .assignee-cell select,.assignee-cell span{min-width:0}
 
+/* تاریخچهٔ تسک در مودال */
+.hist-box{margin-top:14px;border-top:1px solid var(--stroke-soft);padding-top:10px}
+.hist-toggle{background:0;border:0;color:var(--text-dim);font-family:inherit;font-size:12.5px;cursor:pointer;padding:4px 0}
+.hist-toggle:hover{color:var(--text)}
+.hist-list{margin-top:8px;display:flex;flex-direction:column;gap:8px;max-height:240px;overflow:auto}
+.hist-item{background:var(--glass);border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:8px 10px}
+.hist-meta{font-size:11.5px;color:var(--text-faint);margin-bottom:3px}
+.hist-badge{display:inline-block;padding:1px 7px;border-radius:99px;font-size:10.5px;font-weight:700}
+.hist-created{background:rgba(45,212,167,.16);color:#6FE3C4}
+.hist-updated{background:rgba(56,189,248,.16);color:#7CC7F5}
+.hist-deleted{background:rgba(251,87,115,.16);color:#FFA3B3}
+.hist-restored{background:rgba(251,191,36,.16);color:#FCD98A}
+.hist-ch{font-size:12px;color:var(--text-dim);padding:1px 0}
+.hist-old{color:var(--text-faint);text-decoration:line-through}
+.hist-new{color:var(--text)}
+
 /* لوگوی کوچکِ پروژه (جدولِ پروژه‌ها و دراپ‌داون‌ها) */
 .mini-logo{width:24px;height:24px;border-radius:7px;flex:none;display:inline-grid;place-items:center;overflow:hidden;vertical-align:middle}
 .mini-logo img{width:100%;height:100%;object-fit:cover}

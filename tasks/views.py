@@ -58,6 +58,13 @@ class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
             done_qs = base.filter(status=Task.DONE).order_by('-done_date', '-id')
             ctx['box_done'] = list(done_qs[:PAGE_SIZE])
             ctx['has_more_done'] = done_qs[PAGE_SIZE:PAGE_SIZE + 1].exists()
+            # سطلِ زباله: تسک‌های حذف‌شده، آخرِ همه — فقط برای کسی که می‌تواند حذف/بازیابی کند
+            ctx['box_deleted'] = []
+            if m and m.can('delete_task'):
+                del_qs = Task.objects.deleted().select_related('project', 'assignee', 'type_def', 'deleted_by')
+                if ids is not None:
+                    del_qs = del_qs.filter(project_id__in=ids)
+                ctx['box_deleted'] = list(del_qs.order_by('-deleted_at')[:100])
         visible_projects = Project.objects.filter(id__in=ids) if ids is not None else Project.objects.all()
         ctx['projects'] = visible_projects.filter(status=Project.ACTIVE)
         ctx['colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)

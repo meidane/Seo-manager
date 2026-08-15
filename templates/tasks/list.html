@@ -55,6 +55,36 @@
   {% include "tasks/_task_box.html" with title="تسک‌های انجام‌شده" tasks=box_done table_id="done-tsheet" empty_icon="☑" empty_text="هنوز تسکِ انجام‌شده‌ای ثبت نشده" %}
   <script>window.TASKS_LAZY = {hasMore: {{ has_more_done|yesno:"true,false" }}, page: 1};</script>
 
+  {# ── سطلِ زباله: تسک‌های حذف‌شده (آخرِ همه) ── #}
+  {% if box_deleted %}
+  <section class="card glass" style="margin-top:14px">
+    <div class="card-h"><h3>🗑 تسک‌های حذف‌شده</h3><span class="chip">{{ box_deleted|length|fa_digits }} مورد</span></div>
+    <div class="tsheet-wrap">
+    <table class="tsheet">
+      <thead><tr><th style="min-width:200px">عنوان</th><th>پروژه</th><th>مسئول</th><th>حذف توسط</th><th></th></tr></thead>
+      <tbody>
+        {% for t in box_deleted %}
+          <tr data-id="{{ t.id }}" style="opacity:.75">
+            <td class="tcell"><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span> <span title="{{ t.title }}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px;display:inline-block;vertical-align:middle">{{ t.title }}</span></td>
+            <td><div class="assignee-cell">{% include "projects/_logo.html" with project=t.project %}<span>{{ t.project.name }}</span></div></td>
+            <td><div class="assignee-cell">{% include "tasks/_avatar.html" with colleague=t.assignee %}<span>{{ t.assignee.full_name|default:"—" }}</span></div></td>
+            <td>{{ t.deleted_by.get_full_name|default:t.deleted_by.username|default:"—" }}</td>
+            <td><button class="btn btn-sm task-restore" data-id="{{ t.id }}">بازیابی</button></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </section>
+  <script>
+  document.addEventListener('click', async function(e){
+    var b=e.target.closest('.task-restore'); if(!b) return;
+    try{ await App.fetchJSON('/tasks/api/'+b.dataset.id+'/restore/', {method:'POST'});
+      App.toast('بازیابی شد','ok'); b.closest('tr').remove(); }catch(_){}
+  });
+  </script>
+  {% endif %}
+
   {# ── نوار عملیات گروهی ── #}
   {% if can_edit_task %}
   <div class="glass" id="bulkbar" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);gap:8px;align-items:center;padding:10px 16px;z-index:30">

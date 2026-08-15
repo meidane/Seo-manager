@@ -16,6 +16,7 @@ from core.jalali import parse_jalali
 from core.models import Holiday
 from projects.access import accessible_project_ids
 
+from . import history as taskhistory
 from .models import Task, TaskComment
 
 
@@ -205,6 +206,20 @@ def form_data(request):
 
 
 @login_required
+@require_http_methods(['POST'])
+def task_restore(request, pk):
+    """بازیابیِ تسکِ حذف‌شده (از سطلِ زباله). نیازمندِ `delete_task`."""
+    task = get_object_or_404(Task.objects.deleted(), pk=pk)
+    if not _task_perm_ok(request, task, 'delete_task'):
+        return JsonResponse({'detail': 'دسترسیِ بازیابیِ این تسک را نداری'}, status=403)
+    task.deleted_at = None
+    task.deleted_by = None
+    task.save(update_fields=['deleted_at', 'deleted_by', 'updated_at'])
+    taskhistory.record(task, taskhistory.TaskHistory.RESTORED, request.user)
+    return JsonResponse({'ok': True})
+
+
+@login_required
 @require_http_methods(['GET'])
 def task_rows_page(request):
     """صفحه‌بندیِ جعبه‌ی «انجام‌شده‌ها» برای لودِ تنبل (اسکرول، بیش از PAGE_SIZE تا) —
@@ -288,6 +303,7 @@ def task_create(request):
     if err:
         return JsonResponse({'detail': err}, status=400)
     task.save()
+    taskhistory.record(task, taskhistory.TaskHistory.CREATED, request.user)
     # تکرارشونده: قاعده را بساز و اولین پیش‌نما را تولید کن (تولید تنبل)
     rec = data.get('recurrence')
     if rec and rec.get('freq'):
@@ -338,12 +354,18 @@ def task_detail(request, pk):
             'review_notes': _review_notes(task),
             'type_def': task.type_def_id, 'custom': task.custom or {},
             'recurrence': task.recurrence_id,
+            'history': _history_payload(task),
         })
         return JsonResponse(d)
     if request.method == 'DELETE':
         if not _task_perm_ok(request, task, 'delete_task'):
             return JsonResponse({'detail': 'دسترسیِ حذفِ این تسک را نداری'}, status=403)
-        task.delete()
+        # حذفِ نرم — به سطلِ زباله می‌رود (قابلِ بازیابی از تبِ «حذف‌شده‌ها»)
+        _stop_timer(task)
+        task.deleted_at = timezone.now()
+        task.deleted_by = request.user
+        task.save(update_fields=['deleted_at', 'deleted_by', 'spent_minutes', 'timer_started_at', 'updated_at'])
+        taskhistory.record(task, taskhistory.TaskHistory.DELETED, request.user)
         return JsonResponse({'ok': True})
     # PATCH
     if not _task_perm_ok(request, task, 'edit_task'):
@@ -357,11 +379,15 @@ def task_detail(request, pk):
         colleague = getattr(request.user, 'colleague', None)
         data['assignee'] = colleague.id if colleague else None
     was_done = task.status == Task.DONE
+    before = taskhistory.snapshot(task)
     apply_fields(task, data)
     err = _publish_url_error(task)
     if err:
         return JsonResponse({'detail': err}, status=400)
     task.save()
+    changes = taskhistory.diff(task, before)
+    if changes:
+        taskhistory.record(task, taskhistory.TaskHistory.UPDATED, request.user, changes)
     if not was_done and task.status == Task.DONE and task.recurrence_id and not task.is_placeholder:
         from .recurrence import advance
         advance(task)
@@ -385,6 +411,7 @@ def task_status(request, pk):
     # تسکِ نیازمندِ بازبینی مستقیم «انجام‌شده» نمی‌شود — فقط «تکمیل/در انتظارِ بازبینی»
     if task.needs_review and new_status == Task.DONE:
         new_status = Task.PENDING
+    old_status = task.status
     was_done = task.status == Task.DONE
     task.status = new_status
     fields = ['status', 'done_date', 'updated_at']
@@ -403,6 +430,10 @@ def task_status(request, pk):
     if err:
         return JsonResponse({'detail': err}, status=400)
     task.save(update_fields=fields)
+    if old_status != new_status:
+        taskhistory.record(task, taskhistory.TaskHistory.UPDATED, request.user,
+                           {'وضعیت': [dict(Task.STATUS_CHOICES).get(old_status, old_status),
+                                      dict(Task.STATUS_CHOICES).get(new_status, new_status)]})
     # تکرارشونده: با ورود به «انجام‌شده» رخدادِ بعدی تولید می‌شود (یک‌بار)
     if not was_done and new_status == Task.DONE and task.recurrence_id and not task.is_placeholder:
         from .recurrence import advance
@@ -529,6 +560,21 @@ def task_review(request, pk):
         from .models import TaskReviewNote
         TaskReviewNote.objects.create(task=task, note=note_html, author=request.user)
     return JsonResponse({'ok': True, 'review_status': task.review_status, 'status': task.status})
+
+
+def _history_payload(task):
+    """تاریخچه‌ی تسک برای مودال (جدیدترین اول)."""
+    from core.jalali import format_jalali
+    out = []
+    for h in task.history.select_related('user')[:60]:
+        lt = timezone.localtime(h.created_at)
+        out.append({
+            'action': h.action, 'action_label': h.get_action_display(),
+            'user': (h.user.get_full_name() or h.user.get_username()) if h.user else 'سیستم',
+            'when': format_jalali(lt) + ' ' + lt.strftime('%H:%M'),
+            'changes': h.changes or {},
+        })
+    return out
 
 
 def _review_notes(task):

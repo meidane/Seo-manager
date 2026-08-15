@@ -20,10 +20,14 @@ class TaskManager(TenantManager):
     تقویم برای دیدنِ پیش‌نماها از `with_placeholders()` استفاده می‌کند."""
 
     def get_queryset(self):
-        return super().get_queryset().filter(is_placeholder=False)
+        return super().get_queryset().filter(is_placeholder=False, deleted_at__isnull=True)
 
     def with_placeholders(self):
-        return super().get_queryset()
+        return super().get_queryset().filter(deleted_at__isnull=True)
+
+    def deleted(self):
+        """تسک‌های سافت‌دیلیت‌شده (برای تبِ «حذف‌شده‌ها»)."""
+        return super().get_queryset().filter(is_placeholder=False, deleted_at__isnull=False)
 
 # رنگ هر نوع تسک (RGB) — با پالت بخش ۲.۳ هم‌خوان؛ در فرانت هم در task-schema.js هست
 TYPE_COLORS = {
@@ -137,6 +141,10 @@ class Task(TimeStampedModel):
     # ── تکرارشونده ──
     recurrence = models.ForeignKey('tasks.RecurrenceRule', verbose_name='قاعده تکرار', on_delete=models.SET_NULL, null=True, blank=True, related_name='tasks')
     is_placeholder = models.BooleanField('پیش‌نمای تکرار', default=False)  # در تقویم کم‌رنگ؛ خارج از آمار/بازبینی
+
+    # ── حذفِ نرم (سطلِ زباله) ──
+    deleted_at = models.DateTimeField('زمان حذف', null=True, blank=True, db_index=True)
+    deleted_by = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name='حذف‌کننده', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
 
     organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
     objects = TaskManager()
@@ -520,3 +528,32 @@ class TaskComment(models.Model):
 
     def __str__(self):
         return f'کامنت روی {self.task_id}'
+
+
+class TaskHistory(models.Model):
+    """تاریخچهٔ تسک: ساخت/ویرایش/حذف/بازیابی + اینکه چه فیلدهایی تغییر کرده‌اند.
+
+    `changes` = {نامِ نمایشیِ فیلد: [قدیم, جدید]} — برای دیدنِ «نسخهٔ قبلی چه بود».
+    """
+    CREATED = 'created'
+    UPDATED = 'updated'
+    DELETED = 'deleted'
+    RESTORED = 'restored'
+    ACTION_CHOICES = [
+        (CREATED, 'ساخته شد'), (UPDATED, 'ویرایش شد'),
+        (DELETED, 'حذف شد'), (RESTORED, 'بازیابی شد'),
+    ]
+
+    task = models.ForeignKey(Task, verbose_name='تسک', on_delete=models.CASCADE, related_name='history')
+    action = models.CharField('عمل', max_length=10, choices=ACTION_CHOICES)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name='کاربر', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    changes = models.JSONField('تغییرات', default=dict, blank=True)
+    created_at = models.DateTimeField('زمان', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'تاریخچهٔ تسک'
+        verbose_name_plural = 'تاریخچهٔ تسک‌ها'
+        ordering = ['-created_at', '-id']
+
+    def __str__(self):
+        return f'{self.get_action_display()} — {self.task_id}'

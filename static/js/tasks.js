@@ -99,6 +99,8 @@
         </div>
         <div id="report-list" class="report-list"></div>
       </div>` : ''}
+
+      ${historyHtml(t)}
     </div>
     <div class="modal-f">
       ${canEditThis ? '<button class="btn btn-p" id="t-save">ذخیره</button>' : ''}
@@ -178,6 +180,20 @@
     const more = ns.length > 1
       ? `<button type="button" class="mini" id="fix-hist-toggle" style="margin-top:6px">نمایش سوابق قبلی (${ns.length - 1})</button>` : '';
     return `<div class="fixnote-box"><div class="fixnote-h">⚠ موارد نیاز به اصلاح</div>${ns.map(item).join('')}${more}</div>`;
+  }
+
+  // ── تاریخچهٔ تسک (آیکنِ کوچک پایینِ مودال، جمع‌شونده) ──
+  function historyHtml(t) {
+    if (!t || !t.id) return '';
+    const hs = t.history || [];
+    const item = (h) => {
+      const ch = Object.keys(h.changes || {}).map((k) =>
+        `<div class="hist-ch"><b>${esc(k)}</b>: <span class="hist-old">${esc(h.changes[k][0])}</span> ← <span class="hist-new">${esc(h.changes[k][1])}</span></div>`).join('');
+      return `<div class="hist-item"><div class="hist-meta"><span class="hist-badge hist-${h.action}">${esc(h.action_label)}</span> · ${esc(h.user)} · ${esc(h.when)}</div>${ch}</div>`;
+    };
+    const body = hs.length ? hs.map(item).join('') : '<div class="zero" style="padding:8px">تاریخچه‌ای نیست</div>';
+    const faNum = String(hs.length).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]);
+    return `<div class="hist-box"><button type="button" class="hist-toggle" id="hist-toggle">🕐 تاریخچهٔ تسک (${faNum})</button><div class="hist-list" id="hist-list" style="display:none">${body}</div></div>`;
   }
 
   // ── رندر فیلدهای سفارشی یک نوع ──
@@ -335,6 +351,11 @@
     if (histBtn) histBtn.onclick = () => {
       document.querySelectorAll('[data-fix-item]').forEach((el, i) => { if (i > 0) el.style.display = ''; });
       histBtn.style.display = 'none';
+    };
+    const histToggle = document.getElementById('hist-toggle');  // تاریخچهٔ تسک
+    if (histToggle) histToggle.onclick = () => {
+      const l = document.getElementById('hist-list');
+      l.style.display = l.style.display === 'none' ? '' : 'none';
     };
     wireRecur();               // نوار تکرار (تسک جدید)
     if (id) { initReports(id); initKpis(id); }  // گزارش + نمایش KPI (تسک موجود)
