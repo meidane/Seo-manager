@@ -446,6 +446,9 @@ def task_timer(request, pk):
     action = _body(request).get('action')
     now = timezone.now()
     stopped = None
+    # تسکِ انجام‌شده تایمرش قابلِ استارت نیست (تکمیل‌شده — کار تمام است)
+    if action == 'start' and task.status == Task.DONE:
+        return JsonResponse({'detail': 'تسکِ انجام‌شده تایمر ندارد'}, status=400)
     if action == 'start' and not task.timer_started_at:
         # هر کاربر هم‌زمان فقط یک تایمرِ فعال — تایمرِ دیگرِ همین مسئول را خودکار استاپ کن
         if task.assignee_id:

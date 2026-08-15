@@ -1,0 +1,1 @@
+{% load seo_extras %}{% if colleague %}<span class="mini-av" title="{{ colleague.full_name }}">{% if colleague.avatar %}<img src="{{ colleague.avatar.url }}" alt="">{% else %}<span class="fb" style="background:color-mix(in srgb,{{ colleague.color }} 24%,transparent);color:{{ colleague.color }}">{{ colleague.initials }}</span>{% endif %}</span>{% endif %}
