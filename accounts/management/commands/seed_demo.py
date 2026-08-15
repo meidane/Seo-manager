@@ -1,11 +1,8 @@
-"""یک سازمانِ نمایشیِ کامل می‌سازد: نقش‌ها (built-in + یک نقشِ سفارشی)، چند کاربرِ تست
-با یوزر/پسوردِ ثابت و سطحِ دسترسیِ متفاوت (برای تستِ دقیقاً همان چیزهایی که این پروژه
-رویشان حساس است: عضویتِ پروژه، تسکِ دلیگیت‌شده، دیدِ زیرمجموعه، view_other_tasks،
-زنجیره‌ی مدیریتیِ سه‌سطحی برای تستِ بازبینیِ مدیرِ بالادست)، چند پروژه، چند تسکِ نمونه
-(عقب‌افتاده/این‌هفته/آینده/انجام‌شده/در‌انتظارِ‌بازبینی) و تعطیلات/بابت‌های مالی.
+"""سازمانِ نمایشیِ واقع‌گرایانه: نقش‌ها (built-in + دو نقشِ سفارشی: «مدیرِ ارشد» و
+«تولید محتوا»)، ۵ فردِ واقعیِ نمونه با دسترسیِ متفاوت، ۱۴ پروژه‌ی واقعی (نام/دامنه/رنگ)
+و چند تسکِ نمونه (عقب‌افتاده/این‌هفته/آینده/انجام‌شده/در‌انتظارِ‌بازبینی).
 
-اجرای مکرر ایمن است (get_or_create/update_or_create همه‌جا) — بعدِ پاک‌کردنِ دیتابیس یا
-هر وقت خواستی محیطِ تست را دوباره بسازی همین یک دستور کافی است:
+اجرای مکرر ایمن است (get_or_create/update_or_create). بعدِ هر پاک‌کردنِ DB:
 
     python manage.py seed_demo
 """
@@ -17,6 +14,7 @@ from django.core.management.base import BaseCommand
 
 from accounts import tenancy
 from accounts.models import Membership, Organization, Role, seed_roles
+from accounts.permissions import PERMS
 from colleagues.models import Colleague
 from projects.models import Project
 from tasks.models import Task, TaskTypeDef
@@ -25,37 +23,57 @@ User = get_user_model()
 
 ORG_NAME = 'آژانس دمو'
 
-# نقشِ سفارشیِ «سرپرستِ تیم» — عمداً view_all_projects/manage_people ندارد، تا
-# سناریوی «سرپرستِ محدود به پروژه‌ی خودش + زیرمجموعه‌هایش» (نه دسترسیِ سازمانی) هم
-# قابل‌تست باشد؛ نقشِ built-in «سرپرست» (manager) خودش view_all_projects دارد (نامحدود در همه‌جا).
-TEAMLEAD_ROLE = {
-    'key': 'teamlead', 'name': 'سرپرستِ تیم (محدود)',
-    'perms': ['edit_task', 'review', 'edit_time', 'view_reports'],
-}
+# «مدیرِ ارشد» = همه‌ی دسترسی‌ها جز حسابداری (برای مدیرانِ سئو/طراحی)
+SENIOR_PERMS = [p for p in PERMS if p != 'manage_finance']
+# «تولید محتوا» = دسترسی به همه‌ی پروژه‌ها و تسک‌ها، بدونِ حسابداری/گزارش/تنظیمات/حذف
+CONTENT_PERMS = [
+    'view_all_projects', 'add_project', 'edit_project', 'project_files',
+    'project_colleagues_access', 'project_credentials',
+    'edit_task', 'view_other_tasks', 'edit_time',
+]
+CUSTOM_ROLES = [
+    {'key': 'senior', 'name': 'مدیرِ ارشد', 'perms': SENIOR_PERMS},
+    {'key': 'content', 'name': 'تولید محتوا', 'perms': CONTENT_PERMS},
+]
 
-# (username, password, نام‌کامل, کلیدِ نقش, یوزرنیمِ مدیرِ مستقیم یا None)
-# زنجیره‌ی مدیریتیِ سه‌سطحی عمداً اینجاست (admin1 → teamlead1 → member1/member2) تا
-# تستِ «مدیرِ بالادستی هم پندینگِ زیرمجموعه‌ی زیرمجموعه‌اش را ببیند» ممکن باشد
-# (`tasks/queries.py: all_subordinate_ids`، بدونِ آن فقط مدیرِ مستقیم می‌دید).
+# (username, password, نام‌کامل, کلیدِ نقش, یوزرنیمِ مدیرِ مستقیم, needs_review)
 PEOPLE = [
-    ('admin', 'admin1234', 'مدیرِ سیستم (سوپریوزر)', 'owner', None),
-    ('admin1', 'Admin123!', 'مدیرِ کل', 'admin', None),
-    ('teamlead1', 'Teamlead123!', 'سرپرستِ تیم', 'teamlead', 'admin1'),
-    ('member1', 'Member123!', 'عضوِ تیمِ یک', 'member', 'teamlead1'),
-    ('member2', 'Member123!', 'عضوِ تیمِ دو', 'member', 'teamlead1'),
-    ('viewer1', 'Viewer123!', 'ناظر', 'viewer', None),
+    ('admin', 'admin1234', 'امیر گودرزی', 'owner', None, False),
+    ('fsalehi', 'Salehi123!', 'فاطمه صالحی', 'senior', None, False),
+    ('sebrahimi', 'Sara123!', 'سارا ابراهیمی', 'senior', None, False),
+    ('amoradi', 'Moradi123!', 'امیر مرادی', 'content', 'fsalehi', True),
+    ('mziarati', 'Ziarati123!', 'مهتاب زیارتی', 'content', 'fsalehi', True),
+]
+
+# (نام, دامنه, رنگ)
+PROJECTS = [
+    ('تی تی بول', 'ttbol.ir', '#D4AF37'),                       # طلایی
+    ('ایران سان لایت', 'Iransunlight.com', '#34D399'),          # سبز
+    ('ایت پت شاپ', 'Eatpetshop.com', '#A78BFA'),                # بنفش
+    ('عرشیان کلینیک', 'Arshianclinic.com', '#38BDF8'),          # آبی
+    ('شکوه دندان', 'Shokohdandan.com', '#A78BFA'),              # بنفش
+    ('تاودکور', 'Taav.ir', '#FBBF24'),                          # زرد
+    ('استیل تک', 'steeltak.com', '#16A34A'),                    # سبز پررنگ
+    ('کاسیو دات ای ار', 'Casio.ir', '#1E3A8A'),                 # سرمه‌ای
+    ('عدل و حق', 'adlohagh.com', '#92400E'),                     # قهوه‌ای
+    ('بازرگانی هادی', 'HBCindustries.com', '#EF4444'),          # قرمز
+    ('دکتر رفعتی', 'Drrafati.com', '#A78BFA'),                  # بنفش
+    ('گلرنگ الکترونیک', 'Golrangelectronic.com', '#EF4444'),   # قرمز
+    ('مسترقلیون', 'Mrghelion.com', '#FBBF24'),                  # زرد
+    ('لیفتراک مقدم', 'Lifttruckmoghadam.com', '#FBBF24'),       # زرد
 ]
 
 
 class Command(BaseCommand):
-    help = 'سازمانِ دمو + نقش‌ها + چند کاربرِ تست با دسترسیِ متفاوت + پروژه/تسکِ نمونه'
+    help = 'سازمانِ دمو + نقش‌ها + ۵ فردِ واقعیِ نمونه + ۱۴ پروژه + تسک‌های نمونه'
 
     def handle(self, *args, **options):
         org, _ = Organization.objects.get_or_create(name=ORG_NAME)
         seed_roles(org)
-        Role.objects.update_or_create(
-            organization=org, key=TEAMLEAD_ROLE['key'],
-            defaults={'name': TEAMLEAD_ROLE['name'], 'perms': TEAMLEAD_ROLE['perms'], 'is_builtin': False})
+        for r in CUSTOM_ROLES:
+            Role.objects.update_or_create(
+                organization=org, key=r['key'],
+                defaults={'name': r['name'], 'perms': r['perms'], 'is_builtin': False})
 
         colleagues = self._people(org)
 
@@ -63,23 +81,21 @@ class Command(BaseCommand):
         call_command('seed_holidays')
         try:
             call_command('seed_categories', '--org', org.id)
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
         self._projects_and_tasks(org, colleagues)
 
         self.stdout.write(self.style.SUCCESS(f'\nسازمانِ «{org.name}» آماده شد. کاربرهای تست:\n'))
-        for username, password, full_name, role_key, manager in PEOPLE:
-            role_name = dict((r['key'], r['name']) for r in [TEAMLEAD_ROLE]).get(
-                role_key, dict(Role.objects.filter(organization=org).values_list('key', 'name')).get(role_key, role_key))
-            self.stdout.write(f'  {username:<12} / {password:<14} — {full_name} ({role_name})')
+        role_names = dict(Role.objects.filter(organization=org).values_list('key', 'name'))
+        for username, password, full_name, role_key, _mgr, _nr in PEOPLE:
+            self.stdout.write(f'  {username:<12} / {password:<14} — {full_name} ({role_names.get(role_key, role_key)})')
         self.stdout.write(self.style.SUCCESS(
-            '\nهمه با همین یوزر/پسورد لاگین می‌کنند (سازمانِ فعال خودکار همین «آژانس دمو» است).'))
+            f'\n{len(PROJECTS)} پروژه ساخته شد. همه با همین یوزر/پسورد لاگین می‌کنند.'))
 
     def _people(self, org):
-        """کاربر + Membership + Colleague برای هر فرد؛ زیرمجموعه‌ها به مدیرشان وصل می‌شوند."""
         colleagues = {}
-        for username, password, full_name, role_key, _mgr in PEOPLE:
+        for username, password, full_name, role_key, _mgr, _nr in PEOPLE:
             user, created = User.objects.get_or_create(username=username)
             if created:
                 user.set_password(password)
@@ -94,72 +110,67 @@ class Command(BaseCommand):
                 defaults={'full_name': full_name, 'status': Colleague.ACTIVE})
             colleagues[username] = colleague
 
-        # زیرمجموعه‌ها را به مدیرشان وصل کن؛ member1 هم برای تستِ صفِ بازبینیِ سرپرست،
-        # needs_review می‌گیرد (مستقل از پرمیشنِ سازمانیِ review — فقط مدیرِ مستقیمش می‌بیند).
-        for username, _pw, _fn, _rk, mgr_username in PEOPLE:
-            if not mgr_username:
-                continue
+        # مدیر + needs_review (تولیدِ محتوا زیرِ نظرِ صالحی، بازبینیِ تسک‌هایشان با اوست)
+        for username, _pw, _fn, _rk, mgr_username, needs_review in PEOPLE:
             c = colleagues[username]
-            c.manager = colleagues[mgr_username]
-            if username == 'member1':
+            changed = []
+            if mgr_username:
+                c.manager = colleagues[mgr_username]
+                changed.append('manager')
+            if needs_review:
                 c.needs_review = True
-            c.save(update_fields=['manager', 'needs_review'])
+                changed.append('needs_review')
+            if changed:
+                c.save(update_fields=changed + ['updated_at'])
         return colleagues
 
     def _projects_and_tasks(self, org, colleagues):
         tenancy.set_current_org(org)
         try:
-            proj_a, _ = Project.objects.update_or_create(
-                organization=org, name='پروژه‌ی الف', defaults={'domain': 'alef.example.com', 'status': Project.ACTIVE})
-            proj_a.members.set([colleagues['teamlead1'], colleagues['member1']])
-
-            proj_b, _ = Project.objects.update_or_create(
-                organization=org, name='پروژه‌ی ب', defaults={'domain': 'be.example.com', 'status': Project.ACTIVE})
-            proj_b.members.set([colleagues['teamlead1']])
-
-            # پروژه‌ی پ: عمداً هیچ‌کدام از کاربرهای تست عضوش نیستند — تسکِ زیر برای
-            # تستِ «دیدِ تسکِ دلیگیت‌شده/زیرمجموعه بیرون از عضویتِ پروژه» است.
-            proj_c, _ = Project.objects.update_or_create(
-                organization=org, name='پروژه‌ی پ', defaults={'domain': 'pe.example.com', 'status': Project.ACTIVE})
+            salehi = colleagues['fsalehi']
+            team = [colleagues['fsalehi'], colleagues['sebrahimi'],
+                    colleagues['amoradi'], colleagues['mziarati']]
+            projects = []
+            for name, domain, color in PROJECTS:
+                p, _ = Project.objects.update_or_create(
+                    organization=org, name=name,
+                    defaults={'domain': domain, 'color': color, 'status': Project.ACTIVE,
+                              'manager': salehi})
+                p.members.set(team)  # صالحی مسئول + همه عضو (تولید محتوا هم view_all_projects دارد)
+                projects.append(p)
 
             other_type = TaskTypeDef.objects.filter(organization=org, builtin_key='other').first()
             today = date.today()
+            content_people = [colleagues['amoradi'], colleagues['mziarati']]
 
-            def mk(title, project, assignee, planned_date, status, done_date=None, timer_ago_min=None):
+            def mk(title, project, assignee, planned_delta, status, done_delta=None, timer_ago=None):
                 t, _ = Task.objects.update_or_create(
                     organization=org, project=project, assignee=assignee, title=title,
                     defaults={
                         'task_type': 'other', 'type_def': other_type,
-                        'planned_date': planned_date, 'status': status, 'done_date': done_date,
+                        'planned_date': today + timedelta(days=planned_delta), 'status': status,
+                        'done_date': (today + timedelta(days=done_delta)) if done_delta is not None else None,
                     })
-                if timer_ago_min is not None:
+                if timer_ago is not None:
                     from django.utils import timezone
-                    t.timer_started_at = timezone.now() - timedelta(minutes=timer_ago_min)
+                    t.timer_started_at = timezone.now() - timedelta(minutes=timer_ago)
                     t.save(update_fields=['timer_started_at'])
                 return t
 
-            # جعبه‌ی «این‌هفته + عقب‌افتاده‌ها»
-            mk('نوشتنِ مقاله‌ی سئو (عقب‌افتاده)', proj_a, colleagues['member1'],
-               today - timedelta(days=4), Task.DOING, timer_ago_min=25)
-            mk('بهینه‌سازیِ صفحه‌ی محصول', proj_a, colleagues['member1'], today + timedelta(days=2), Task.TODO)
-            mk('بازبینیِ استراتژیِ محتوا', proj_a, colleagues['teamlead1'], today + timedelta(days=1), Task.TODO)
-            # جعبه‌ی «آینده»
-            mk('طراحیِ لندینگ‌پیجِ جدید', proj_a, colleagues['member1'], today + timedelta(days=15), Task.TODO)
-            # جعبه‌ی «انجام‌شده‌ها»
-            mk('گزارشِ ماهانه‌ی ترافیک', proj_a, colleagues['member1'],
-               today - timedelta(days=6), Task.DONE, done_date=today - timedelta(days=2))
-            # تسکِ دلیگیت‌شده: member2 نه عضوِ پروژه‌ی پ است نه teamlead1 — باید فقط
-            # همین یکی را ببینند (member2: تسکِ خودش، teamlead1: تسکِ زیرمجموعه‌اش)
-            mk('اصلاحِ متای صفحه‌ی اصلی (دلیگیت‌شده)', proj_c, colleagues['member2'],
-               today + timedelta(days=1), Task.TODO)
-            # تسکِ در انتظارِ بازبینی: همین موقعِ seed یک نمونه‌ی pending می‌سازد تا
-            # صفِ بازبینی (/tasks/review/) از همان لحظه‌ی اول خالی نباشد — هم برای
-            # teamlead1 (مدیرِ مستقیمِ member1) هم برای admin1 (مدیرِ بالادستیِ teamlead1،
-            # `all_subordinate_ids` باید تا اینجا هم برسد) قابل‌مشاهده و قابل‌تاییدست.
-            review_task = mk('محتوای صفحه‌ی فرود (نیازمندِ بازبینی)', proj_a, colleagues['member1'],
-                              today - timedelta(days=1), Task.PENDING)
-            if not review_task.needs_review:
-                review_task.needs_review = True
-                review_task.save(update_fields=['needs_review'])
+            # نمونه‌های واقع‌گرایانه روی چند پروژه، دستِ تولیدِ محتوا
+            mk('نگارشِ مقالهٔ «بهترین غذای گربه»', projects[2], content_people[0], -3, Task.DOING, timer_ago=18)
+            mk('بهینه‌سازیِ صفحهٔ محصولِ لامپِ خورشیدی', projects[1], content_people[1], -2, Task.TODO)
+            mk('بازنویسیِ متای صفحهٔ خدمات', projects[3], content_people[0], 1, Task.TODO)
+            mk('تولیدِ محتوای دستهٔ لیفتراکِ دیزلی', projects[13], content_people[1], 2, Task.TODO)
+            mk('پستِ وبلاگ: مراقبت از دندان', projects[4], content_people[0], 5, Task.TODO)
+            mk('کلمهٔ کلیدیِ «قیمت ساعت کاسیو»', projects[7], content_people[1], 12, Task.TODO)
+            mk('گزارشِ ماهانهٔ سئو — تی‌تی‌بول', projects[0], content_people[0], -6, Task.DONE, done_delta=-2)
+            mk('انتشارِ مقالهٔ حقوقی', projects[8], content_people[1], -7, Task.DONE, done_delta=-3)
+            # در انتظارِ بازبینی (زیرِ نظرِ صالحی) — صفِ /tasks/review/ از ابتدا خالی نباشد
+            rt = mk('محتوای صفحهٔ فرودِ کلینیک (نیازمندِ بازبینی)', projects[3],
+                    content_people[0], -1, Task.PENDING)
+            if not rt.needs_review:
+                rt.needs_review = True
+                rt.save(update_fields=['needs_review'])
         finally:
             tenancy.set_current_org(None)
