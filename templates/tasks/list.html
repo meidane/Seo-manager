@@ -30,20 +30,14 @@
       {% for grp in day_groups %}
         <section class="card glass" style="margin-bottom:12px">
           <div class="card-h"><h3>{{ grp.date_fa }}</h3><span class="chip">{{ grp.count|fa_digits }} تسک</span></div>
-          <table>
-            <thead><tr><th>عنوان</th><th>پروژه</th><th>مسئول</th><th>نوع</th><th>🔗</th></tr></thead>
+          <div class="tsheet-wrap">
+          <table class="tsheet">
+            <thead><tr><th style="min-width:200px">عنوان</th><th>پروژه</th><th>مسئول</th><th>تاریخ برنامه</th><th>تاریخ انجام</th><th>وضعیت</th><th>زمان</th>{% for c in extra_columns %}<th>{{ c.label }}</th>{% endfor %}</tr></thead>
             <tbody>
-              {% for t in grp.tasks %}
-                <tr data-open-task="{{ t.id }}" style="cursor:pointer">
-                  <td><span title="{{ t.title }}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px;display:inline-block;vertical-align:middle">{{ t.title }}</span></td>
-                  <td>{{ t.project.name }}</td>
-                  <td>{{ t.assignee.full_name|default:"—" }}</td>
-                  <td><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span></td>
-                  <td>{% if t.published_url %}<a class="lnk" href="{{ t.published_url }}" target="_blank" rel="noopener" onclick="event.stopPropagation()">↗</a>{% endif %}</td>
-                </tr>
-              {% endfor %}
+              {% include "tasks/_rows_readonly.html" with tasks=grp.tasks %}
             </tbody>
           </table>
+          </div>
         </section>
       {% endfor %}
     {% else %}
