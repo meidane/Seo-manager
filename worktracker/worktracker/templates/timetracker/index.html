@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/persianDatepicker-default.css" />
+    <title></title>
+    <link id="favicon" rel="shortcut icon" href="" type="image/x-icon">
+    <style>
+    </style>
+</head>
+<body> 
+  <div id="cover">
+    <div class="loader">
+  </div>
+  </div>
+    <div class="d-flex">
+        <div class="contain-timetracker">
+            <div class="head-timetracker">
+                <strong id="current_time"></strong>
+                <span id="current_date"></span>
+                <div class="btn-start-stop">
+                    <!-- <div class="btn-start-tracking" onclick="start_recording()">شروع کار</div> -->
+                </div>
+                
+                <div class="off-timetracker">
+                    <div class="time-off" onclick="add_vocation_request('hourly')">درخواست مرخصی <strong>ساعتی</strong></div>
+                    <div class="day-off" onclick="add_vocation_request('daily')">درخواست مرخصی <strong>روزانه</strong></div>
+                </div>
+
+    
+            </div>
+            <div class="body-timetracker">
+            </div>
+            {% if request.user.is_staff %}
+            <div class="reports-main">
+                <label>شروع</label>
+                <input id="start_date" type="text">
+                <label>پایان</label>
+                <input id="end_date" type="text">
+                <button onclick="sum_month_report()">فیلتر</button>
+                <div class="sum-records"></div>
+            </div>
+            {% endif %}
+            <div class="footer-timetracker">
+                <strong class="head-title">اطلاعیه ها</strong>
+                {% for v in future_vocations %}
+                    <div class="notify-timetracker">
+                        <span class="name-notify">{{v.user.first_name}} {{v.user.last_name}}</span>
+                        <div>
+                            <span>مرخصی {{v.v_type}} در {{v.start.date.year}}/{{v.start.date.month}}/{{v.start.date.day}}</span>
+                            {% if v.v_type == 'ساعتی' %}
+                            <span>از {{v.start.time}} تا  {{v.end.time}} </span>
+                            {% endif %}
+                        </div>
+                        <div>
+                            {% if request.user.is_superuser or v.user == request.user %}
+                            <span class="desc-notify">توضیحات</span>
+                            <span style="display: none;">{{v.description}}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% empty %}
+                    <p>اطلاعیه ای وجود ندارد</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% include "timetracker/clone_data.html" %}
+</body>
+<script src="/static/js/jquery.js"></script>
+<script type="text/javascript" src="/static/js/persianDatepicker.min.js" ></script>
+<script src="/static/js/main.js"></script>
+<script>
+    
+    var user_records_json = '{{user_records}}'
+    if( user_records_json.indexOf('&#39;') !== -1){
+        user_records_json = user_records_json.replaceAll('&#39;','"')
+    }
+    else if( user_records_json.indexOf('&#x27;') !== -1){
+        user_records_json = user_records_json.replaceAll('&#x27;','"')
+    }
+    var user_records = JSON.parse(user_records_json);
+    load_user_records(user_records)
+
+    var current_jdate = "{{current_date}}";
+    {% if not unfinished_rec %}
+        show_current_date_and_time()
+    {% else %}
+        start_recording(sum_minutes={{sum_minutes}},start_time='{{start_time}}')
+        rec_id = {{unfinished_rec.id}};
+        $( document ).ready(function() {
+            if(pageAccessedByReload){
+                res_status = request_ajax('/ajax/check-last-record-status')
+                console.log(res_status)
+                if(res_status.status=='finished'){
+                    location.reload()
+                }
+            }
+        });
+    {% endif %}
+
+    // update user status and last record every 60 second
+    var update_users_interval = setInterval(function(){update_users_last_record();}, timer_update_users_last_record);
+
+    var needToConfirmExitPage ;
+    // show confirm when closing page
+    // window.onbeforeunload = function (){
+    //     console.log(window.localLinkClicked)
+    //     if (needToConfirmExitPage && !window.localLinkClicked){
+    //         return '';
+    //     }   
+    // }
+    // // request to stop recording when page closed
+    // window.addEventListener('unload', function(event) {
+    //     if(needToConfirmExitPage && !window.localLinkClicked){
+    //         var stop_data = new FormData();        
+    //         stop_data.append('csrfmiddlewaretoken', $('input[name="csrfmiddlewaretoken]"').val());
+    //         stop_data.append('rec_id', rec_id);
+    //         stop_data.append('stop', true);
+    //         navigator.sendBeacon('/ajax/stop-recording' ,stop_data );
+    //     }
+    // });
+
+    window.localLinkClicked = false;
+    $("a").on("click",function() {
+        var url = $(this).attr("href");
+        // check if the link is relative or to your domain
+        if (! /^https?:\/\/./.test(url) || /https?:\/\/team.lomin\.com/.test(url)) {
+            window.localLinkClicked = true;
+            
+        }
+    });
+    $('#start_date').persianDatepicker({
+        cellWidth: 35,
+        cellHeight: 30,
+    });
+    $('#end_date').persianDatepicker({
+        cellWidth: 35,
+        cellHeight: 30,
+    });
+
+    {% if sum_app_times %}
+        var sum_app_times = JSON.parse('{{sum_app_times}}'.replaceAll('&quot;','"'));
+        load_sum_app_times(sum_app_times);
+    {% endif %}
+
+</script>
+
+</html>

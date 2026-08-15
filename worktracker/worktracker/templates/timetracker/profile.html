@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/persianDatepicker-default.css" />
+    <title>حضور و غیاب تیم لومین</title>
+</head>
+<body class="user-page">
+    <div class="d-flex">
+        <div class="contain-timetracker">
+            <a href="/" class="pre-step">بازگشت</a>
+            <div class="body-timetracker">
+                {% if statistics %}
+                    <div class="btn-working-hour">
+                        <div class="ezafekari">
+                            <span>جمع کارکرد</span>
+                            <strong><span>{{statistics.sum_worked}}</span> ساعت</strong>
+                        </div>
+                        <div class="kasrikar">
+                            <span>کسر و اضافه کار</span>
+                            <strong><span style="direction: ltr;">{{statistics.left_time}}</span> ساعت</strong>
+                        </div>
+                        <div class="morakhasi">
+                            <span>مرخصی</span>
+                            <strong><span>{{statistics.sum_vocation}}</span> ساعت</strong>
+                        </div>
+                    </div>
+                {% endif %}
+                {% if  request.user == user or request.user.is_staff %}
+                    <div class="reports-main">
+                        <div style="display: flex;">
+                            <div>
+                                <label>شروع</label>
+                                <input id="start_date" type="text" class="filter-field" style="margin-left: 3px;">
+                            </div>
+                            <div>
+                                <label>پایان</label>
+                                <input id="end_date" type="text" class="filter-field">
+                            </div>
+                        </div>
+                        
+                        <button onclick="sum_profile_report()" class="filter-btn">فیلتر</button>
+                        <div> میانگین غیرفعالی : <span class="average_inactive">{{average_inactive}}</span></div>
+                        <div class="sum-records"></div>
+                    </div>
+                {% endif %}
+                {% if can_see_log %}
+                    <a href="{% url 'user_logs' user.username %}" style="font-size: 10px;padding: 5px 10px;" target="_blank" rel="noopener noreferrer">مشاهده لاگ ها</a>
+                {% endif %}
+                <div class="work-days">
+                    
+                </div>
+            </div>
+            {% if request.user == user or request.user.is_superuser %}
+                <div class="availability">
+                    <button class="open-modal" onclick="showModalWindow(this)" data-target="availability-modal">ثبت ساعات کاری</button>
+
+                    <div class="modal-window" id="availability-modal">
+                        <strong style="text-align: center;display: block;background: #2263a9;color: white;padding: 3px;font-weight: 500;">ثبت ساعات کاری و ساعات در دسترس نبودن</strong>
+                        <div class="days-availability">
+
+                        </div>
+                
+                        <button class="modal-btn modal-hide" onclick="hideAllModalWindows()">بستن</button>
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if request.user == user or request.user.is_superuser %}
+                <div class="courses-image">
+                    <strong class="head-title">تصویر انتخاب واحد</strong>
+                    <form action="{% url 'save_courses_image' user.username %}" method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="file" name="courses_image" >
+                        <input type="submit" value="ذخیره">
+                    </form>
+                    
+                    
+                    {% if user.profile.courses_image %}
+                        <img src="{{user.profile.courses_image.url}}" width="100%" >
+                    {% endif %}
+                </div>
+            {% endif %}
+            <div class="footer-timetracker">
+                <strong class="head-title">اطلاعیه ها</strong>
+                {% for v in future_vocations %}
+                    <div class="notify-timetracker">
+                        <span class="name-notify">{{v.user.first_name}} {{v.user.last_name}}</span>
+                        <div>
+                            <span>مرخصی {{v.v_type}} در {{v.start.date.year}}/{{v.start.date.month}}/{{v.start.date.day}}</span>
+                            {% if v.v_type == 'ساعتی' %}
+                            <span>از {{v.start.time}} تا  {{v.end.time}} </span>
+                            {% endif %}
+                        </div>
+                        <div>
+                            {% if request.user.is_superuser or v.user == request.user %}
+                            <span class="desc-notify">توضیحات</span>
+                            <span style="display: none;">{{v.description}}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% empty %}
+                    <p>اطلاعیه ای وجود ندارد</p>
+                {% endfor %}
+            </div>
+
+        </div>
+    </div>
+    {% include "timetracker/clone_data.html" %}
+    <div class="modal-fader"></div>
+    <script src="/static/js/jquery.js"></script>
+    <script type="text/javascript" src="/static/js/persianDatepicker.min.js" ></script>
+    <script src="/static/js/main.js"></script>
+    <script>
+    var profile_records_json = '{{result}}'
+    if( profile_records_json.indexOf('&#39;') !== -1){
+        profile_records_json = profile_records_json.replaceAll('&#39;','"')
+    }
+    else if( profile_records_json.indexOf('&#x27;') !== -1){
+        profile_records_json = profile_records_json.replaceAll('&#x27;','"')
+    }
+
+    var profile_records = JSON.parse(profile_records_json);
+    var user_id = {{user.id}};
+    var is_super = '{{request.user.is_superuser}}';
+    console.log({is_super})
+    var availability_times_json = '{{availability_times}}';
+    if( availability_times_json.indexOf('&#39;') !== -1){
+        availability_times_json = availability_times_json.replaceAll('&#39;','"')
+    }
+    else if( availability_times_json.indexOf('&#x27;') !== -1){
+        availability_times_json = availability_times_json.replaceAll('&#x27;','"')
+    }
+    var availability_times = JSON.parse(availability_times_json);
+    console.log(profile_records)
+    load_profile_records(profile_records)
+    create_availability_boxes(availability_times)
+
+    // today = new JalaliDate()
+    // this_year = today.getFullYear()
+    // this_month = today.getMonth()
+    // num_day = new JalaliDate(this_year,this_month,1).getDate();
+    // var start_sum_date = new JalaliDate(this_year, this_month, 1);
+    // $('#start_date').datepicker({
+    //     defaultDate: start_sum_date,
+    //         changeMonth: true,
+    //         changeYear: true
+    // });
+    $('#start_date').persianDatepicker({
+        cellWidth: 35,
+        cellHeight: 30,
+    });
+    $('#end_date').persianDatepicker({
+        cellWidth: 35,
+        cellHeight: 30,
+    });
+    var sum_app_times = JSON.parse('{{sum_app_times}}'.replaceAll('&quot;','"'));
+    load_sum_app_times(sum_app_times)
+    </script>
+</body>
+<div id="cover">
+    <div class="loader">
+</div>
+</html>

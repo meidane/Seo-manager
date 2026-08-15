@@ -1,0 +1,127 @@
+<div id="clone_data" style="display: none;">
+    <div class="btn-start-tracking" onclick="start_recording()">شروع کار</div>
+    <div class="btn-stop-tracking" onclick="stop_recording()">
+        پایان کار : 
+        <span id="hours" style="padding: 5px;"> 0 ساعت </span>
+        <span id="minutes" style="padding: 5px;"> 0 دقیقه </span>
+        <span id="seconds" style="padding: 5px;"> 0 ثانیه </span>
+    </div>
+    <a href="#" class="employee-timetracker">
+        <div class="up-employee">
+            <img class="profile-image" src="/static/img/avatar.png" alt="">
+            <div>
+                <strong class="username"> </strong>
+                <div class="today-time">
+                    <span class="last-record-time"> </span>
+                    <span class="sum-time"></span>
+                    <span class="sum-inactive-time"></span>
+                </div>
+            </div>
+        </div>
+        <div class="timeline-employee">
+        </div>
+        <div class="sum-words">تعداد کلمات : <span></span></div>
+        <div class="app-records"></div>
+        <div class="website-records"></div>
+    </a>
+    <div class="vocation-request-box">
+        <span class="close" >&times</span>
+        <h4>درخواست مرخصی</h4>
+        <div>
+            <input name="v_date" type="text" class="vocation-date-inpt" placeholder="تاریخ">
+        </div>
+        <div class="time-box">
+            <input name="from_time" type="time" />
+            <label > الی </label>
+            <input name="to_time" type="time"  />
+        </div>
+        <div>
+            <textarea name="description" placeholder="توضیحات" class="vocation-desc-inpt"></textarea>
+        </div>
+        <span class="reminded"></span>
+        <button class="submit-req">ثبت درخواست</button>
+    </div>
+    <div class="profile-day">
+        <div class="date-sum">
+            <span class="day"> </span>
+            <span class="last-record-time"> </span>
+            <span class="sum-time"></span>
+            <span class="sum-inactive-time"></span>
+        </div>
+        <div class="timeline-employee">
+        </div>
+        <div class="sum-words">تعداد کلمات : <span></span></div>
+        <div class="app-records"></div>
+        <div class="website-records"></div>
+        <div class="contain-available">
+            <div class="availabilities">
+                <strong>در دسترس</strong>
+            </div>
+            <div class="unavailabilities">
+                <strong>خارج از دسترس</strong>
+            </div>    
+        </div>
+    </div>
+
+    <div class="more-timeline">بیشتر</div>
+
+    <div class="modal-window">
+        <h3>ویرایش زمان کاری :</h3>
+        <div style="margin:15px;">
+            <label>شروع</label>
+            <input type="time" class="start-time" />
+        </div>
+        <div style="margin:15px;">
+            <label>پایان</label>
+            <input type="time" class="end-time">
+        </div>
+        <button class="modal-btn modal-hide">ذخیره و بستن</button>
+    </div>
+
+
+    <div style="padding:15px;border:1px solid #ddd;" class="day-availability"  data-id="">
+        <label class="week-day-label"></label>
+        <div class="add-time" style="padding: 15px;border: 1p solid #ddd;">
+            <div>
+                <label>از</label> 
+                <input type="time" name="from" id="">
+            </div>
+            <div>
+                <label>تا</label> 
+                <input type="time" name="to" id="">
+            </div>
+            <div class="type-time">
+                <label for="">نوع</label>
+                <select name="av_type" id="">
+                    <option value="available">در دسترس</option>
+                    <option value="unavailable">خارج از دسترس</option>
+                </select>  
+                <button class="add-time-btn">افزودن</button>                                   
+            </div>
+        </div>
+        <div class="availabilities">
+            <strong>زمان های در دسترس</strong>
+        </div>
+        <div class="unavailabilities">
+            <strong>زمان های خارج از دسترس</strong>
+        </div>
+    </div>
+
+    <div class="availability-item">
+        <span></span>
+        <button>×</button>
+    </div>
+    <div class="unavailability-item">
+        <span></span>
+        <button>×</button>
+    </div>
+    <form>
+        {% csrf_token %}
+    </form>
+
+
+    <div class="app-record" style="display:flex;padding: 5px;">
+        <div class="app-icon"><img width="20px" height="20px" style="border-radius: 5px;" src="#" /></div>
+        <span></span>
+    </div>
+</div>
