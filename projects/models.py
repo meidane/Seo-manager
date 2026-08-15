@@ -56,6 +56,12 @@ class Project(TimeStampedModel):
     members = models.ManyToManyField(
         'colleagues.Colleague', verbose_name='تیم', blank=True, related_name='projects',
     )
+    # پروژه‌ی «شخصی» — خودکار برای هر فرد ساخته می‌شود و **فقط** خودش می‌بیند (حتی
+    # مالک/سوپریوزر هم نباید ببیند). گیتِ سراسری: `projects/access.py`.
+    personal_owner = models.ForeignKey(
+        'colleagues.Colleague', verbose_name='مالکِ پروژه‌ی شخصی',
+        on_delete=models.CASCADE, null=True, blank=True, related_name='personal_projects',
+    )
 
     # فاز ۳ — اتصال وردپرس (فعلاً فقط ساخته می‌شود)
     wp_api_url = models.URLField('WP API URL', blank=True)
@@ -87,6 +93,10 @@ class Project(TimeStampedModel):
     @property
     def is_active(self):
         return self.status == self.ACTIVE
+
+    @property
+    def is_personal(self):
+        return self.personal_owner_id is not None
 
     @property
     def types_list(self):

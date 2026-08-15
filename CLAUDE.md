@@ -60,7 +60,8 @@
 | ادیتور غنی | `static/js/richtext.js` (کلاس `rich-editor`) |
 | دیت‌پیکر شمسی | `static/js/datepicker.js` (کلاس `jdate`) |
 | چکِ دسترسیِ سازمانی در ویو/API | `accounts/access.py: require_perm/has_perm` |
-| فهرستِ id پروژه‌های قابل‌دیدنِ کاربرِ جاری | `projects/access.py: accessible_project_ids` |
+| فهرستِ id پروژه‌های قابل‌دیدنِ کاربرِ جاری (همیشه لیست، دیگر هیچ‌وقت `None` — پروژه‌ی شخصیِ دیگران همیشه حذف) | `projects/access.py: accessible_project_ids` |
+| پروژه‌ی «شخصی»ِ خودکارِ هر همکار (فقط خودش می‌بیند، حتی مالک نه) | `projects/models.py: Project.personal_owner/is_personal` + `projects/signals.py: ensure_personal_project` (enforcement فقط در `access.py`) |
 | دعوت‌نامه‌ی در انتظار (نه عضویتِ فوری، فقط با شماره تماس) | `accounts/models.py: Invite` + `colleagues.views.colleague_grant_access` (+ `docs/PLATFORM.md`) |
 | «این تسک قابلِ‌بازبینیِ این کاربر است؟» | `tasks/queries.py: reviewable_q` (صفحه‌ی بازبینی + فیدِ داشبورد) — زنجیره‌ای، نه فقط مدیرِ مستقیم (`colleagues/access.py: all_subordinate_ids`) |
 | زیرمجموعه‌ی مدیریتی در هر عمقی (نه فقط مدیرِ مستقیم) | `colleagues/access.py: all_subordinate_ids` (BFS روی `Colleague.manager`) — `tasks/queries.py` و `tasks/api.py: task_review` از همین می‌خوانند |
