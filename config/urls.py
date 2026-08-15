@@ -5,11 +5,14 @@ from django.contrib import admin
 from django.urls import include, path
 
 from core.views import editor_upload
+from core.pwa import manifest as pwa_manifest, service_worker as pwa_sw
 from reports.views import PublicReportView as ReportPublicView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/editor/upload/', editor_upload, name='editor_upload'),
+    path('manifest.webmanifest', pwa_manifest, name='pwa_manifest'),
+    path('sw.js', pwa_sw, name='pwa_sw'),
     path('', include('dashboard.urls')),
     path('', include('accounts.urls')),
     path('colleagues/', include('colleagues.urls')),

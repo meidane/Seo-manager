@@ -2,8 +2,16 @@
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{% block title %}{{ page_title|default:"پنل مدیریت" }}{% endblock %} — {{ current_org.name|default:"پنل مدیریت" }}</title>
+  {# ── PWA ── #}
+  <link rel="manifest" href="{% url 'pwa_manifest' %}">
+  <meta name="theme-color" content="#070C18">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="{% static 'img/icon-192.png' %}">
+  <link rel="icon" href="{% static 'img/icon-192.png' %}">
   <link rel="stylesheet" href="{% static 'vendor/vazirmatn/vazirmatn.css' %}">
   <link rel="stylesheet" href="{% static 'css/style.css' %}">
   {% block head %}{% endblock %}
@@ -47,6 +55,10 @@
 {% endif %}
 
 <script>
+/* ثبتِ سرویس‌ورکرِ PWA (فقط در بسترِ امن: https یا localhost) */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(){}); });
+}
 /* کشوی سایدبار در موبایل */
 (function(){var t=document.getElementById('nav-toggle'),b=document.getElementById('nav-backdrop');if(!t)return;
 var close=function(){document.body.classList.remove('nav-open');};

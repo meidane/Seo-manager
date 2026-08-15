@@ -15,11 +15,13 @@
         <select id="cal-f-type_def" style="max-width:130px"><option value="">همه‌ی انواع</option>{% for t in task_types %}<option value="{{ t.id }}">{{ t.icon }} {{ t.name }}</option>{% endfor %}</select>
       </div>
     </div>
-    <div class="grid7">
-      <div class="dow">شنبه</div><div class="dow">یکشنبه</div><div class="dow">دوشنبه</div><div class="dow">سه‌شنبه</div><div class="dow">چهارشنبه</div><div class="dow">پنجشنبه</div><div class="dow off">جمعه</div>
-    </div>
-    <div class="grid7" id="cal-grid">
-      {% include "calendarapp/_cells.html" %}
+    <div class="cal-scroll">
+      <div class="grid7">
+        <div class="dow">شنبه</div><div class="dow">یکشنبه</div><div class="dow">دوشنبه</div><div class="dow">سه‌شنبه</div><div class="dow">چهارشنبه</div><div class="dow">پنجشنبه</div><div class="dow off">جمعه</div>
+      </div>
+      <div class="grid7" id="cal-grid">
+        {% include "calendarapp/_cells.html" %}
+      </div>
     </div>
     <div class="legend">
       <span><i style="background:var(--info)"></i>انتشار</span><span><i style="background:var(--warning)"></i>آپدیت سطحی</span>
