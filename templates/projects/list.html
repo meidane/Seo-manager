@@ -13,19 +13,32 @@
   </div>
 
   <section class="card glass">
-    <div class="card-h"><h3>وضعیت پروژه‌ها در بازه</h3><a href="{% url 'core:columns' %}" class="mini" title="سفارشی‌سازی ستون‌ها">⚙ ستون‌ها</a></div>
+    <div class="card-h"><h3>وضعیت پروژه‌ها در بازه</h3>
+      <div class="side-c" style="gap:8px">
+        <button type="button" class="chip" id="rm-toggle" title="نمایشِ ماه‌های گزارش زیرِ هر پروژه">📅 ماه‌های گزارش</button>
+        <a href="{% url 'core:columns' %}" class="mini" title="سفارشی‌سازی ستون‌ها">⚙ ستون‌ها</a>
+      </div>
+    </div>
     {% if projects %}
       <div style="overflow-x:auto">
-      <table style="min-width:920px">
+      <table style="min-width:920px" id="proj-table" class="rm-on">
         <thead><tr>
           <th>پروژه</th>{% for c in columns %}<th>{{ c.label }}</th>{% endfor %}
         </tr></thead>
         <tbody>
           {% for p in projects %}
-            <tr onclick="location.href='{{ p.get_absolute_url }}'" {% if not p.is_active %}style="opacity:.5"{% endif %}>
+            <tr class="proj-row" onclick="location.href='{{ p.get_absolute_url }}'" {% if not p.is_active %}style="opacity:.5"{% endif %}>
               <td><div class="proj">{% include "projects/_logo.html" with project=p %}<span><b>{{ p.name }}</b><span>{{ p.domain }}</span></span></div></td>
               {% for c in columns %}<td>{% column_cell p c %}</td>{% endfor %}
             </tr>
+            {% with pr=month_rows|dictkey:p.id %}
+            {% for m in month_meta %}{% with mr=pr|dictkey:m.0 %}
+              <tr class="rmonth-row" onclick="location.href='{% url 'tasks:list' %}?project={{ p.id }}&report_month={{ m.0 }}&assignee='" title="مشاهده‌ی تسک‌های {{ m.1 }} در صفحه‌ی تسک‌ها">
+                <td><span class="rm-label">↳ {{ m.1 }} <span class="rm-tag">{{ m.2 }}</span></span></td>
+                {% for c in columns %}<td>{% column_cell mr c %}</td>{% endfor %}
+              </tr>
+            {% endwith %}{% endfor %}
+            {% endwith %}
           {% endfor %}
         </tbody>
       </table>
@@ -36,4 +49,15 @@
       </div>
     {% endif %}
   </section>
+
+  <script>
+  (function(){
+    var tbl=document.getElementById('proj-table'), btn=document.getElementById('rm-toggle');
+    if(!tbl||!btn) return;
+    var on = localStorage.getItem('rm-show'); on = (on===null) ? true : on==='1';  // پیش‌فرض فعال
+    function apply(){ tbl.classList.toggle('rm-on', on); btn.classList.toggle('on', on); }
+    apply();
+    btn.onclick=function(){ on=!on; localStorage.setItem('rm-show', on?'1':'0'); apply(); };
+  })();
+  </script>
 {% endblock %}

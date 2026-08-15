@@ -69,6 +69,21 @@
     </tbody></table>
     {% if project.description %}<div style="padding:16px 17px;color:var(--text-dim);line-height:2;border-top:1px solid var(--stroke-soft)">{{ project.description|linebreaksbr }}</div>{% endif %}
   </section>
+
+  {# ── تفکیک بر اساس ماهِ گزارش (شخصی‌سازیِ سئو) ── #}
+  {% if month_breakdown %}
+  <section class="card glass">
+    <div class="card-h"><h3>به تفکیک ماهِ گزارش</h3></div>
+    <div style="padding:12px 14px;display:flex;flex-wrap:wrap;gap:10px">
+      {% for m in month_breakdown %}
+        <a href="{% url 'tasks:list' %}?project={{ project.pk }}&report_month={{ m.num }}&assignee=" class="month-card" title="مشاهده‌ی تسک‌های {{ m.label }}">
+          <div class="mc-name">{{ m.label }}</div>
+          <div class="mc-stat"><b>{{ m.done|fa_digits }}</b> / {{ m.total|fa_digits }} انجام‌شده</div>
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
   </div>
 
   {# دسترسی به همکاران — چه کسی این پروژه/تسک‌هایش را ببیند (غیر از مالکِ سازمان که همیشه می‌بیند) #}

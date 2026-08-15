@@ -20,6 +20,63 @@ from .forms import ProjectForm
 from .models import Credential, Project
 
 
+def _current_jalali_month():
+    from datetime import date
+
+    from core.jalali import g2j
+    return g2j(date.today()).month
+
+
+def _report_month_rows(project_ids, months):
+    """{project_id: {month: ستون‌های آماریِ همان ماهِ گزارش}} — برای ردیف‌های ماهانهٔ
+    صفحهٔ پروژه‌ها (شخصی‌سازیِ سئو). همان ستون‌های جدول، ولی فیلترشده روی report_month."""
+    from datetime import date
+    from types import SimpleNamespace
+
+    from django.db.models import Count, Max, Q, Sum
+
+    from tasks.models import Task
+
+    if not project_ids:
+        return {}
+    today = date.today()
+    agg = (Task.objects.filter(project_id__in=project_ids, report_month__in=months)
+           .values('project_id', 'report_month')
+           .annotate(
+               planned=Count('id'),
+               done=Count('id', filter=Q(status=Task.DONE)),
+               words=Sum('word_count', filter=Q(status=Task.DONE)),
+               minutes=Sum('spent_minutes', filter=Q(status=Task.DONE)),
+               overdue=Count('id', filter=Q(status__in=[Task.TODO, Task.DOING], planned_date__lt=today)),
+               last_activity=Max('updated_at')))
+    by = {(r['project_id'], r['report_month']): r for r in agg}
+    out = {}
+    for pid in project_ids:
+        out[pid] = {}
+        for mo in months:
+            r = by.get((pid, mo), {})
+            planned = r.get('planned') or 0
+            done = r.get('done') or 0
+            progress = round(done / planned * 100) if planned else 0
+            overdue = r.get('overdue') or 0
+            if planned == 0:
+                state = ('mute', 'بدون کار')
+            elif overdue:
+                state = ('bad', 'عقب‌افتاده')
+            elif progress < 60:
+                state = ('warn', 'عقب')
+            elif progress < 100:
+                state = ('ok', 'روی روال')
+            else:
+                state = ('info', 'کامل')
+            out[pid][mo] = SimpleNamespace(
+                planned=planned, done=done, remaining=max(planned - done, 0),
+                overdue=overdue, words=r.get('words') or 0, minutes=r.get('minutes') or 0,
+                progress=progress, state=state,
+                last_report=None, last_payment=None, last_activity=r.get('last_activity'))
+    return out
+
+
 class ProjectListView(LoginRequiredMixin, DateRangeMixin, ListView):
     """لیست جدولی پروژه‌ها با اطلاعات مدیریتی (مثل جدول داشبورد)."""
 
@@ -73,6 +130,14 @@ class ProjectListView(LoginRequiredMixin, DateRangeMixin, ListView):
             else:
                 p.state = ('info', 'جلوتر')
         ctx['columns'] = get_columns(ColumnConfig.PROJECTS, ColumnConfig.PAGE)
+        # ── ماه‌های گزارش (شخصی‌سازیِ سئو): ماهِ قبل/جاری/بعد ──
+        from tasks.models import Task
+        cur = _current_jalali_month()
+        prev = 12 if cur == 1 else cur - 1
+        nxt = 1 if cur == 12 else cur + 1
+        month_labels = dict(Task.REPORT_MONTH_CHOICES)
+        ctx['month_meta'] = [(prev, month_labels[prev], 'قبل'), (cur, month_labels[cur], 'جاری'), (nxt, month_labels[nxt], 'بعد')]
+        ctx['month_rows'] = _report_month_rows([p.id for p in ctx['projects']], [prev, cur, nxt])
         ctx['page_title'] = 'پروژه‌ها'
         ctx['q'] = self.request.GET.get('q', '')
         return ctx
@@ -121,6 +186,17 @@ class ProjectDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
         ctx['task_rows'] = p.tasks.select_related('assignee','type_def').filter(
             Q(planned_date__range=(start, end)) | Q(status=Task.DONE, done_date__range=(start, end))
         ).order_by('-planned_date')[:40]
+
+        # ── تفکیکِ ماهِ گزارش (شخصی‌سازیِ سئو) — آخرِ تبِ «نمای کلی» ──
+        from django.db.models import Count
+        labels = dict(Task.REPORT_MONTH_CHOICES)
+        mb = {r['report_month']: r for r in p.tasks.filter(report_month__isnull=False)
+              .values('report_month')
+              .annotate(total=Count('id'), done=Count('id', filter=Q(status=Task.DONE)))}
+        ctx['month_breakdown'] = [
+            {'num': mo, 'label': labels[mo], 'total': mb[mo]['total'], 'done': mb[mo]['done']}
+            for mo in sorted(mb)]
+
         ctx['page_title'] = p.name
         ctx['credentials'] = p.credentials.all()
         from colleagues.models import Colleague

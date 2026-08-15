@@ -83,6 +83,7 @@
         ${field('status', 'وضعیت', `<select id="f-status">${statusOptions(t.status, needsReviewDefault)}</select>`)}
         ${field('estimate_minutes', 'تخمین زمان (دقیقه)', `<input id="f-estimate_minutes" class="input" type="number" dir="ltr" placeholder="۶۰" value="${t.estimate_minutes || ''}">`)}
       </div>
+      ${field('report_month', 'ماه گزارش', `<select id="f-report_month"><option value="">— بدون ماه —</option>${(cfg.reportMonths || []).map(([v, l]) => opt(v, l, t.report_month)).join('')}</select>`)}
 
       ${recurBarHtml(t)}
       ${t.id ? '<div id="kpi-box" style="display:none;margin-top:8px"></div>' : ''}
@@ -238,6 +239,7 @@
       planned_date: g('f-planned_date'), status: g('f-status'),
       needs_review: document.getElementById('f-needs-review').checked,
       estimate_minutes: g('f-estimate_minutes'), description: g('f-description'),
+      report_month: g('f-report_month'),
     };
     if (ty && ty.fields && ty.fields.length) {
       const custom = {};

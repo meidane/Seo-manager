@@ -688,6 +688,21 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .hist-old{color:var(--text-faint);text-decoration:line-through}
 .hist-new{color:var(--text)}
 
+/* کارت‌های تفکیکِ ماهِ گزارش در سینگلِ پروژه */
+.month-card{display:block;min-width:130px;padding:11px 14px;border-radius:var(--r-sm);background:var(--glass);border:1px solid var(--stroke-soft);text-decoration:none;transition:var(--ease)}
+.month-card:hover{border-color:var(--primary-ring);background:var(--glass-hover);transform:translateY(-1px)}
+.month-card .mc-name{font-weight:700;color:var(--text);font-size:13px;margin-bottom:4px}
+.month-card .mc-stat{font-size:11.5px;color:var(--text-dim)}
+.month-card .mc-stat b{color:var(--success)}
+
+/* ردیف‌های ماهِ گزارش زیرِ هر پروژه (شخصی‌سازیِ سئو) */
+#proj-table:not(.rm-on) .rmonth-row{display:none}
+.rmonth-row{cursor:pointer;background:rgba(255,255,255,.015)}
+.rmonth-row:hover td{background:rgba(65,131,242,.06)}
+.rmonth-row td{font-size:12px;color:var(--text-dim);border-top:0}
+.rm-label{padding-inline-start:22px;color:var(--text-dim)}
+.rm-tag{font-size:9.5px;background:var(--glass-2);color:var(--text-faint);padding:1px 6px;border-radius:99px;margin-inline-start:4px}
+
 /* لوگوی کوچکِ پروژه (جدولِ پروژه‌ها و دراپ‌داون‌ها) */
 .mini-logo{width:24px;height:24px;border-radius:7px;flex:none;display:inline-grid;place-items:center;overflow:hidden;vertical-align:middle}
 .mini-logo img{width:100%;height:100%;object-fit:cover}

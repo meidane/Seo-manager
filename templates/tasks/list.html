@@ -18,6 +18,8 @@
       {% for t in task_types %}<option value="{{ t.id }}" {% if filters.type_def == t.id|stringformat:'s' %}selected{% endif %}>{{ t.icon }} {{ t.name }}</option>{% endfor %}</select>
     <select name="status" onchange="this.form.submit()"><option value="">همه‌ی وضعیت‌ها</option>
       {% for v,l in status_choices %}<option value="{{ v }}" {% if filters.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+    <select name="report_month" onchange="this.form.submit()"><option value="">همه‌ی ماه‌های گزارش</option>
+      {% for v,l in report_months %}<option value="{{ v }}" {% if filters.report_month == v|stringformat:'s' %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
     <span class="sep"></span>
     <a href="?overdue=1" class="chip {% if filters.overdue == '1' %}on{% endif %}" style="border-color:rgba(251,87,115,.4);color:#FFA3B3">🔴 عقب‌افتاده‌ها</a>
     <a href="?group=day" class="chip {% if grouped_by_day %}on{% endif %}">📅 تفکیکِ روزانه (انجام‌شده)</a>

@@ -74,6 +74,7 @@ class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
         # انواعِ فعال (built-in عمومی + سفارشی) برای دراپ‌داونِ فیلتر «نوع»
         ctx['task_types'] = TaskTypeDef.objects.filter(is_active=True)
         ctx['status_choices'] = Task.STATUS_CHOICES
+        ctx['report_months'] = Task.REPORT_MONTH_CHOICES
         # ستون‌های اضافیِ قابل‌سفارشی‌سازی (بعد از ستون‌های ثابت جدول) — /settings/columns/
         ctx['extra_columns'] = get_columns(ColumnConfig.TASKS, ColumnConfig.PAGE)
         ctx['page_title'] = 'تسک‌ها'

@@ -95,6 +95,12 @@ class Task(TimeStampedModel):
     description = models.TextField('توضیحات', blank=True)
     planned_date = models.DateField('تاریخ برنامه')
     planned_time = models.TimeField('ساعت', default=time(8, 0))
+    # ماهِ گزارش (شخصی‌سازیِ سئو) — ۱=فروردین … ۱۲=اسفند. اختیاری؛ روی هستهٔ سیستم رفتاری ندارد.
+    REPORT_MONTH_CHOICES = [
+        (1, 'فروردین'), (2, 'اردیبهشت'), (3, 'خرداد'), (4, 'تیر'), (5, 'مرداد'), (6, 'شهریور'),
+        (7, 'مهر'), (8, 'آبان'), (9, 'آذر'), (10, 'دی'), (11, 'بهمن'), (12, 'اسفند'),
+    ]
+    report_month = models.PositiveSmallIntegerField('ماه گزارش', null=True, blank=True, choices=REPORT_MONTH_CHOICES, db_index=True)
     status = models.CharField('وضعیت', max_length=12, choices=STATUS_CHOICES, default=TODO)
     done_date = models.DateField('تاریخ انجام', null=True, blank=True)
     priority = models.CharField('اولویت', max_length=6, choices=PRIORITY_CHOICES, default=MED)

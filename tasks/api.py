@@ -75,7 +75,7 @@ TEXT_FIELDS = [
     'update_type', 'link_type', 'review_note',
 ]
 CHOICE_FIELDS = ['task_type', 'status', 'priority']
-INT_FIELDS = ['word_count', 'current_rank', 'link_count', 'estimate_minutes']
+INT_FIELDS = ['word_count', 'current_rank', 'link_count', 'estimate_minutes', 'report_month']
 DECIMAL_FIELDS = ['media_cost']
 BOOL_FIELDS = ['needs_review']
 FK_FIELDS = {'project': 'project_id', 'assignee': 'assignee_id'}
@@ -190,6 +190,7 @@ def form_data(request):
         'colleagues': [[c.id, c.full_name, c.needs_review, c.color, (c.avatar.url if c.avatar else '')]
                         for c in Colleague.objects.filter(status=Colleague.ACTIVE)],
         'typeChoices': list(Task.TYPE_CHOICES),
+        'reportMonths': list(Task.REPORT_MONTH_CHOICES),  # [[1,'فروردین'],…] برای دراپ‌داونِ «ماه گزارش»
         'customTypes': [
             {'id': t.id, 'name': t.name, 'color': t.color, 'icon': t.icon,
              'builtin_key': t.builtin_key, 'fields': t.schema(),
@@ -355,7 +356,7 @@ def task_detail(request, pk):
             'review_status': task.review_status, 'review_note': task.review_note,
             'review_notes': _review_notes(task),
             'type_def': task.type_def_id, 'custom': task.custom or {},
-            'recurrence': task.recurrence_id,
+            'recurrence': task.recurrence_id, 'report_month': task.report_month,
             'history': _history_payload(task),
         })
         return JsonResponse(d)
