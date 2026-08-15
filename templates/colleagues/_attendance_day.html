@@ -1,0 +1,33 @@
+{% load seo_extras %}
+{# تایم‌لاینِ یک روزِ حضورغیاب — همان طرحِ worktracker. ورودی: `day` (خروجیِ API). #}
+<div class="wt-day">
+  <div class="wt-row">
+    <div class="wt-sum wt-sum-r">
+      <span class="wt-chip">{{ day.sum_minutes|min_hm }} ساعت</span>
+      {% if day.sum_inactive %}<span class="wt-chip wt-in">بی‌فعالیتی {{ day.sum_inactive|min_hm }}</span>{% endif %}
+    </div>
+    {% if day.start %}<div class="wt-startend">{{ day.start|fa_digits }}{% if day.end %} – {{ day.end|fa_digits }}{% elif day.online %} – اکنون{% endif %}</div>{% endif %}
+  </div>
+
+  <div class="wt-timeline" title="۲۴ ساعتِ شبانه‌روز">
+    {% for r in day.records %}
+      <div class="wt-seg" style="inset-inline-start:{{ r.start_p }}%;width:{{ r.width }}%" title="{{ r.start }}{% if r.end != 'null' %} – {{ r.end }}{% endif %}"></div>
+      {% for it in r.inactive_times %}<div class="wt-seg wt-inact" style="inset-inline-start:{{ it.start_p }}%;width:{{ it.width }}%"></div>{% endfor %}
+    {% empty %}
+      <div class="wt-empty">فعالیتی ثبت نشده</div>
+    {% endfor %}
+  </div>
+
+  {% if day.sum_words %}<div class="wt-words">تعداد کلمات : {{ day.sum_words|fa_digits }}</div>{% endif %}
+
+  {% if day.app_records or day.website_records %}
+  <div class="wt-apps">
+    {% for name, a in day.app_records.items %}
+      <span class="wt-app" title="{{ a.name }}">{% if a.icon and a.icon != 'null' %}<img src="{{ a.icon }}" alt="">{% endif %}<b>{{ a.total|sec_hm }}</b></span>
+    {% endfor %}
+    {% for name, a in day.website_records.items %}
+      <span class="wt-app" title="{{ a.name }}">{% if a.icon and a.icon != 'null' %}<img src="{{ a.icon }}" alt="">{% endif %}<b>{{ a.total|sec_hm }}</b></span>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>

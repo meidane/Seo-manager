@@ -36,11 +36,18 @@ def _get(path):
 
 
 def today_all():
-    """[{username, name, online, start, end, sum_minutes, sum_words, records, app_records,…}]
-    برای همه‌ی کاربرانِ worktracker (لیستِ همکاران/سایدبار). دیکشنریِ index‌شده با username."""
+    """{username: {online, start, end, sum_minutes, sum_words, records, app_records,…}}
+    برای همه‌ی کاربرانِ worktracker (لیستِ همکاران/سایدبار). با کشِ ۶۰ثانیه‌ای — چون در
+    سایدبار روی هر ریکوئست خوانده می‌شود، نباید هر بار به API بزند."""
+    from django.core.cache import cache
+    cached = cache.get('wt_today_all')
+    if cached is not None:
+        return cached
     d = _get('/api/attendance/today/')
     users = (d or {}).get('users', []) if d else []
-    return {u.get('username'): u for u in users}
+    result = {u.get('username'): u for u in users}
+    cache.set('wt_today_all', result, 60)
+    return result
 
 
 def user_detail(username, days=5):

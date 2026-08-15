@@ -109,6 +109,25 @@ per-object (این فردِ مشخص).
   چون فقط به `Colleague` وابسته است (جهتِ درستِ وابستگی: `tasks` به `colleagues`
   وابسته است، نه برعکس).
 
+## اتصال به حضورغیاب (worktracker — پروژه‌ی مجزا)
+هر همکار می‌تواند به سامانه‌ی حضورغیابِ **worktracker** وصل شود (`Colleague.
+worktracker_username`) + `Colleague.birth_date`. seo-manager فقط **می‌خواند** (سرور-به-سرور):
+- **کلاینت:** `colleagues/worktracker.py` — `today_all()` (خلاصه‌ی امروزِ همه، کشِ ۶۰ثانیه)
+  و `user_detail(username, days)`. اگر `WORKTRACKER_BASE_URL/TOKEN` (settings/env) خالی
+  یا سامانه در دسترس نباشد، **بی‌صدا خالی برمی‌گردد** (روی هستهٔ سیستم بی‌اثر).
+- **تبِ «حضور غیاب»** = تبِ **اولِ** سینگلِ همکار (`ColleagueDetailView.wt_detail`)، تایم‌لاینِ
+  چند روزِ اخیر با پارشالِ `colleagues/_attendance_day.html` (همان طرحِ worktracker:
+  نوارِ آبی/بی‌فعالیتی، جمع ساعت، شروع/پایان، تعداد کلمات، آیکنِ برنامه‌ها).
+- **لیستِ همکاران:** زیرِ هر فرد یک ردیفِ حضورِ امروز (`c.wt_today`) + نشانگرِ آنلاین
+  (سبز) روی آواتار.
+- **سایدبار، بخشِ «همکاران»** (آخرِ منو): `colleagues/context_processors.sidebar_attendance`
+  (فقط اگر worktracker پیکربندی شده — وگرنه هیچ کوئری‌ای نمی‌زند). هر فرد: آواتار+آنلاین،
+  نام، آخرین تسکِ انجام‌شده (هاور: تاریخ)، مینی‌تایم‌لاین + جمع ساعت + شروع/پایان (هاور).
+- ساختار/APIِ worktracker: **repoِ مجزا** `meidane/worktracker` (شاخهٔ `claude/attendance-api`)
+  — `CLAUDE.md`ی همان‌جا. اندپوینت‌ها: `GET /api/attendance/today/` و
+  `/api/attendance/user/<username>/` (هدرِ `Authorization: Token <WORKTRACKER_API_TOKEN>`).
+- فیلترها/فرمتِ زمان: `seo_extras: min_hm`(دقیقه→HH:MM)، `sec_hm`(ثانیه→HH:MM).
+
 ## نکته
 `.who/.spark/.donut-legend` باید در `static/css/style.css` باشند (بودند نبودند → رفع شد).
 

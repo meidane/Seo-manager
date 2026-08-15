@@ -32,5 +32,28 @@
       {% csrf_token %}
       <button type="submit"><span class="ico">⏻</span> خروج</button>
     </form>
+
+    {% if sidebar_attendance %}
+    {% load seo_extras %}
+    <div class="nav-label">همکاران</div>
+    <div class="side-att">
+      {% for it in sidebar_attendance %}
+        <a href="{{ it.c.get_absolute_url }}" class="satt" title="{{ it.c.full_name }}{% if it.wt %} · {{ it.wt.sum_minutes|min_hm }} ساعت{% if it.wt.start %} · شروع {{ it.wt.start|fa_digits }}{% if it.wt.end %} – پایان {{ it.wt.end|fa_digits }}{% endif %}{% endif %}{% endif %}">
+          <span class="wt-avwrap {% if it.wt.online %}online{% endif %}">
+            {% if it.c.avatar %}<img src="{{ it.c.avatar.url }}">{% else %}<span class="fb" style="background:color-mix(in srgb,{{ it.c.color }} 24%,transparent);color:{{ it.c.color }}">{{ it.c.initials }}</span>{% endif %}
+            {% if it.wt %}<i class="wt-dot"></i>{% endif %}
+          </span>
+          <span class="satt-main">
+            <b>{{ it.c.full_name }}</b>
+            {% if it.last_task %}<span class="satt-task" title="آخرین تسک: {{ it.last_task.done_date|jalali }}">{{ it.last_task.title }}</span>{% endif %}
+            {% if it.wt and it.wt.records %}
+              <span class="satt-tl">{% for r in it.wt.records %}<i class="s" style="inset-inline-start:{{ r.start_p }}%;width:{{ r.width }}%"></i>{% for x in r.inactive_times %}<i class="s in" style="inset-inline-start:{{ x.start_p }}%;width:{{ x.width }}%"></i>{% endfor %}{% endfor %}</span>
+            {% endif %}
+          </span>
+          {% if it.wt %}<span class="satt-sum">{{ it.wt.sum_minutes|min_hm }}</span>{% endif %}
+        </a>
+      {% endfor %}
+    </div>
+    {% endif %}
   </nav>
 </aside>

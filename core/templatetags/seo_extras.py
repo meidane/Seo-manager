@@ -151,3 +151,23 @@ def timeago(value):
         return f'{j.to_fa_digits(months)} ماه پیش'
     years = days // 365
     return f'{j.to_fa_digits(years)} سال پیش'
+
+
+@register.filter(name='min_hm')
+def min_hm(value):
+    """دقیقه → «HH:MM» با ارقامِ فارسی (برای ساعتِ کاریِ حضورغیاب)."""
+    try:
+        m = int(value or 0)
+    except (ValueError, TypeError):
+        return '۰۰:۰۰'
+    return j.to_fa_digits(f'{m // 60:02d}:{m % 60:02d}')
+
+
+@register.filter(name='sec_hm')
+def sec_hm(value):
+    """ثانیه → «HH:MM» با ارقامِ فارسی (زمانِ برنامه‌ها در حضورغیاب)."""
+    try:
+        m = int(value or 0) // 60
+    except (ValueError, TypeError):
+        return '۰۰:۰۰'
+    return j.to_fa_digits(f'{m // 60:02d}:{m % 60:02d}')

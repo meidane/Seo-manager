@@ -38,13 +38,39 @@
   </div>
 
   <div class="tabs">
-    <button class="tab on" data-tab="info">اطلاعات</button>
+    <button class="tab on" data-tab="attendance">حضور غیاب</button>
+    <button class="tab" data-tab="info">اطلاعات</button>
     <button class="tab" data-tab="charts">نمودارها</button>
     <button class="tab" data-tab="calendar">تقویم شخصی</button>
     <button class="tab" data-tab="tasks">تسک‌ها</button>
   </div>
 
-  <div class="tab-panel on" data-panel="info">
+  {# ── حضور غیاب (worktracker) — تبِ اول ── #}
+  <div class="tab-panel on" data-panel="attendance">
+    <section class="card glass">
+      <div class="card-h"><h3>حضور و غیاب — چند روزِ اخیر</h3>
+        {% if wt_username %}<span class="tag t-mute">worktracker: {{ wt_username }}</span>{% endif %}
+      </div>
+      {% if not wt_username %}
+        <div class="wt-notcfg">نام‌کاربریِ حضورغیابِ این فرد ثبت نشده — از «ویرایش» فیلدِ «اتصال به حضورغیاب» را پر کن.</div>
+      {% elif not wt_configured %}
+        <div class="wt-notcfg">اتصال به سامانه‌ی حضورغیاب پیکربندی نشده (WORKTRACKER_BASE_URL / TOKEN).</div>
+      {% elif not wt_detail %}
+        <div class="wt-notcfg">داده‌ای از سامانه‌ی حضورغیاب دریافت نشد (سامانه در دسترس نیست یا کاربر یافت نشد).</div>
+      {% else %}
+        <div style="padding:6px 16px 16px">
+          {% for day in wt_detail.days %}
+            <div style="border-bottom:1px solid var(--stroke-soft);padding:10px 0">
+              <div style="font-size:12.5px;color:var(--text-dim);margin-bottom:2px">{{ day.date|fa_digits }}</div>
+              {% include "colleagues/_attendance_day.html" with day=day %}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </section>
+  </div>
+
+  <div class="tab-panel" data-panel="info">
     <div class="duo" style="margin-top:0">
       <section class="card glass"><div class="card-h"><h3>اطلاعات</h3></div>
         <table><tbody>

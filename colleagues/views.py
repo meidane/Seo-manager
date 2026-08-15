@@ -130,8 +130,12 @@ class ColleagueListView(LoginRequiredMixin, DateRangeMixin, ListView):
         pending_ids = set(Invite.objects.filter(
             colleague_id__in=[c.id for c in colleagues], status=Invite.PENDING
         ).values_list('colleague_id', flat=True))
+        # حضورغیابِ امروز (worktracker) — به هر همکار طبقِ نام‌کاربریِ متصل ضمیمه می‌شود
+        from . import worktracker as wt
+        wt_today = wt.today_all()
         for c in colleagues:
             c.access_status = 'has_access' if c.user_id else ('pending' if c.id in pending_ids else 'none')
+            c.wt_today = wt_today.get(c.worktracker_username) if c.worktracker_username else None
 
         ctx['columns'] = get_columns(ColumnConfig.COLLEAGUES, ColumnConfig.PAGE)
         ctx['page_title'] = 'افراد و دسترسی‌ها'
@@ -198,6 +202,12 @@ class ColleagueDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
         ctx['task_rows'] = tasks_qs.select_related('project','type_def').filter(
             Q(planned_date__range=(start, end)) | done_q).order_by('-planned_date')[:40]
         ctx['page_title'] = c.full_name
+
+        # ── حضورغیاب (worktracker): جزئیاتِ چند روزِ اخیر برای تبِ اولِ صفحه ──
+        from . import worktracker as wt
+        ctx['wt_configured'] = wt.is_configured()
+        ctx['wt_username'] = c.worktracker_username
+        ctx['wt_detail'] = wt.user_detail(c.worktracker_username, days=7) if c.worktracker_username else None
 
         from accounts.models import Invite, Membership
         org = getattr(self.request, 'organization', None)

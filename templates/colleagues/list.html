@@ -21,9 +21,9 @@
         <thead><tr><th>فرد</th>{% for c in columns %}<th>{{ c.label }}</th>{% endfor %}<th>روند ۱۴ روز</th><th>دسترسی</th><th>وضعیت</th></tr></thead>
         <tbody>
           {% for c in colleagues %}
-            <tr onclick="location.href='{{ c.get_absolute_url }}'" {% if not c.is_active %}style="opacity:.5"{% endif %}>
+            <tr onclick="location.href='{{ c.get_absolute_url }}'" {% if not c.is_active %}style="opacity:.5"{% endif %} {% if c.wt_today %}style="border-bottom:0"{% endif %}>
               <td><div class="who">
-                {% if c.avatar %}<img src="{{ c.avatar.url }}">{% else %}<span class="fb" style="background:color-mix(in srgb,{{ c.color }} 22%,transparent);color:{{ c.color }}">{{ c.initials }}</span>{% endif %}
+                <span class="wt-avwrap {% if c.wt_today.online %}online{% endif %}">{% if c.avatar %}<img src="{{ c.avatar.url }}">{% else %}<span class="fb" style="background:color-mix(in srgb,{{ c.color }} 22%,transparent);color:{{ c.color }}">{{ c.initials }}</span>{% endif %}{% if c.wt_today %}<i class="wt-dot"></i>{% endif %}</span>
                 <span><b>{{ c.full_name }}</b><span>{{ c.roles_display|default:"—" }}</span></span></div></td>
               {% for col in columns %}<td>{% column_cell c col %}</td>{% endfor %}
               <td><div class="spark">{% for h in c.spark %}<i style="height:{{ h }}%"></i>{% endfor %}</div></td>
@@ -32,6 +32,9 @@
                   {% else %}<span class="tag t-mute">بدون دسترسی</span>{% endif %}</td>
               <td>{% if c.is_active %}<span class="tag t-ok">فعال</span>{% else %}<span class="tag t-mute">غیرفعال</span>{% endif %}</td>
             </tr>
+            {% if c.wt_today %}
+            <tr class="wt-subrow"><td colspan="20" style="padding:0 14px 12px">{% include "colleagues/_attendance_day.html" with day=c.wt_today %}</td></tr>
+            {% endif %}
           {% endfor %}
         </tbody>
       </table>

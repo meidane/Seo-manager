@@ -688,6 +688,42 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .hist-old{color:var(--text-faint);text-decoration:line-through}
 .hist-new{color:var(--text)}
 
+/* ── حضورغیاب (worktracker): تایم‌لاینِ روزانه، مثلِ طرحِ آن‌طرف ── */
+.wt-day{padding:8px 0}
+.wt-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.wt-sum{display:flex;gap:6px;align-items:center}
+.wt-chip{font-size:11px;background:var(--primary-soft);color:#BBD4FF;border:1px solid var(--primary-ring);padding:2px 9px;border-radius:99px;white-space:nowrap}
+.wt-chip.wt-in{background:rgba(251,191,36,.10);border-color:rgba(251,191,36,.26);color:#FCD98A}
+.wt-startend{font-size:11.5px;color:var(--text-dim);direction:ltr}
+.wt-timeline{position:relative;height:14px;border-radius:99px;background:rgba(255,255,255,.05);overflow:hidden;border:1px solid var(--stroke-soft)}
+.wt-seg{position:absolute;top:0;bottom:0;background:var(--primary);border-radius:99px;min-width:2px}
+.wt-seg.wt-inact{background:repeating-linear-gradient(45deg,rgba(251,87,115,.85),rgba(251,87,115,.85) 3px,rgba(251,87,115,.5) 3px,rgba(251,87,115,.5) 6px);z-index:2}
+.wt-empty{position:absolute;inset:0;display:grid;place-items:center;font-size:10.5px;color:var(--text-faint)}
+.wt-words{font-size:12px;color:var(--text-dim);margin-top:7px}
+.wt-apps{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.wt-app{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-dim);background:var(--glass);border:1px solid var(--stroke-soft);padding:2px 8px;border-radius:99px;direction:ltr}
+.wt-app img{width:15px;height:15px;object-fit:contain;border-radius:3px}
+.wt-app b{font-variant-numeric:tabular-nums;font-weight:600}
+/* آواتار با نشانگرِ آنلاین (لیستِ همکاران/سایدبار) */
+.wt-avwrap{position:relative;flex:none}
+.wt-avwrap .wt-dot{position:absolute;top:-1px;inset-inline-end:-1px;width:9px;height:9px;border-radius:50%;background:var(--text-faint);border:2px solid var(--bg)}
+.wt-avwrap.online .wt-dot{background:var(--success)}
+.wt-notcfg{font-size:12px;color:var(--text-faint);padding:14px}
+/* بخشِ «همکاران» در سایدبار (خیلی جزئی) */
+.side-att{display:flex;flex-direction:column;gap:2px;max-height:280px;overflow:auto;padding:2px 0}
+.satt{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--r-sm);text-decoration:none;color:var(--text-dim)}
+.satt:hover{background:var(--glass-hover);color:var(--text)}
+.satt .wt-avwrap{width:26px;height:26px;border-radius:50%;overflow:hidden;display:grid;place-items:center}
+.satt .wt-avwrap img{width:100%;height:100%;object-fit:cover}
+.satt .wt-avwrap .fb{width:100%;height:100%;display:grid;place-items:center;font-size:10px;font-weight:700;border-radius:50%}
+.satt-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.satt-main b{font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.satt-task{font-size:10.5px;color:var(--text-faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.satt-tl{position:relative;height:5px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden;margin-top:1px}
+.satt-tl .s{position:absolute;top:0;bottom:0;background:var(--primary);border-radius:99px;min-width:1px}
+.satt-tl .s.in{background:rgba(251,87,115,.8);z-index:2}
+.satt-sum{font-size:10.5px;color:var(--text-dim);font-variant-numeric:tabular-nums;flex:none;direction:ltr}
+
 /* کارت‌های تفکیکِ ماهِ گزارش در سینگلِ پروژه */
 .month-card{display:block;min-width:130px;padding:11px 14px;border-radius:var(--r-sm);background:var(--glass);border:1px solid var(--stroke-soft);text-decoration:none;transition:var(--ease)}
 .month-card:hover{border-color:var(--primary-ring);background:var(--glass-hover);transform:translateY(-1px)}
