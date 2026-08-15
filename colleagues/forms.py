@@ -18,12 +18,18 @@ class ColleagueForm(forms.ModelForm):
         required=False,
         widget=forms.TextInput(attrs={'placeholder': '۱۴۰۴/۰۵/۱۵', 'dir': 'ltr', 'class': 'input jdate'}),
     )
+    birth_date = forms.CharField(
+        label='تاریخ تولد (شمسی)',
+        required=False,
+        widget=forms.TextInput(attrs={'placeholder': '۱۳۷۰/۰۵/۱۵', 'dir': 'ltr', 'class': 'input jdate'}),
+    )
 
     class Meta:
         model = Colleague
         fields = [
             'full_name', 'avatar', 'color', 'phone', 'email',
             'status', 'description', 'manager', 'needs_review',
+            'worktracker_username',
         ]
 
     def __init__(self, *args, **kwargs):
@@ -41,6 +47,10 @@ class ColleagueForm(forms.ModelForm):
                 self.fields['join_date'].initial = format_jalali(
                     self.instance.join_date, fa_digits=False
                 )
+            if self.instance.birth_date:
+                self.fields['birth_date'].initial = format_jalali(
+                    self.instance.birth_date, fa_digits=False
+                )
         self.fields['manager'].queryset = managers
         self.fields['manager'].required = False
         self.fields['needs_review'].required = False
@@ -50,8 +60,8 @@ class ColleagueForm(forms.ModelForm):
         from core.htmlsan import clean_html
         return clean_html(self.cleaned_data.get('description', ''))
 
-    def clean_join_date(self):
-        value = (self.cleaned_data.get('join_date') or '').strip()
+    def _clean_jdate(self, field):
+        value = (self.cleaned_data.get(field) or '').strip()
         if not value:
             return None
         try:
@@ -59,10 +69,17 @@ class ColleagueForm(forms.ModelForm):
         except (ValueError, TypeError):
             raise forms.ValidationError('تاریخ نامعتبر است. نمونه: ۱۴۰۴/۰۵/۱۵')
 
+    def clean_join_date(self):
+        return self._clean_jdate('join_date')
+
+    def clean_birth_date(self):
+        return self._clean_jdate('birth_date')
+
     def save(self, commit=True):
         obj = super().save(commit=False)
         obj.roles = ','.join(self.cleaned_data.get('roles', []))
         obj.join_date = self.cleaned_data.get('join_date')
+        obj.birth_date = self.cleaned_data.get('birth_date')
         if commit:
             obj.save()
         return obj

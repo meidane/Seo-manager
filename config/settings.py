@@ -150,3 +150,9 @@ CACHES = {
 THURSDAY_IS_WORKDAY = config('THURSDAY_IS_WORKDAY', default=True, cast=bool)
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ── اتصال به سامانه‌ی حضورغیاب (worktracker، پروژه‌ی مجزا) ──────────────
+# برای نمایشِ ساعتِ کاری/آنلاین‌بودنِ همکاران. اگر خالی بماند، بخشِ حضورغیاب نمایش
+# داده نمی‌شود (بدونِ خطا). جزئیاتِ API در `colleagues/worktracker.py`.
+WORKTRACKER_BASE_URL = config('WORKTRACKER_BASE_URL', default='')
+WORKTRACKER_API_TOKEN = config('WORKTRACKER_API_TOKEN', default='')

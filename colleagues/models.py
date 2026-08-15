@@ -35,6 +35,9 @@ class Colleague(TimeStampedModel):
     status = models.CharField('وضعیت', max_length=10, choices=STATUS_CHOICES, default=ACTIVE)
     archived_at = models.DateTimeField('زمان غیرفعال‌سازی', null=True, blank=True)
     join_date = models.DateField('تاریخ عضویت', null=True, blank=True)
+    birth_date = models.DateField('تاریخ تولد', null=True, blank=True)
+    # نام‌کاربریِ همین فرد در سامانه‌ی حضورغیاب (worktracker) — برای نمایشِ ساعتِ کاری/آنلاین
+    worktracker_username = models.CharField('اتصال به حضورغیاب (نام کاربری worktracker)', max_length=150, blank=True)
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         verbose_name='کاربر',
