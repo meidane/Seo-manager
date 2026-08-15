@@ -549,13 +549,71 @@ table.sheet tr:hover td{background:rgba(255,255,255,.02)}
   cursor:pointer;transition:var(--ease);margin-inline-start:4px}
 .mini:hover{background:var(--glass-hover);color:var(--text)}
 
+/* ══ ریسپانسیو + انیمیشن‌ها (سبک، حرفه‌ای) ══════════════════════════════ */
+html{scroll-behavior:smooth}
+
+/* همبرگر و پس‌زمینه‌ی کشوی موبایل */
+.nav-toggle{display:none;flex:none;width:38px;height:38px;border-radius:var(--r-sm);
+  border:1px solid var(--stroke-soft);background:rgba(255,255,255,.04);color:var(--text);
+  font-size:17px;line-height:1;cursor:pointer;align-items:center;justify-content:center;transition:var(--ease)}
+.nav-toggle:hover{background:var(--glass-hover)}
+.nav-backdrop{position:fixed;inset:0;z-index:110;background:rgba(3,7,18,.55);
+  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
+  opacity:0;visibility:hidden;transition:opacity .25s,visibility .25s}
+body.nav-open{overflow:hidden}
+body.nav-open .nav-backdrop{opacity:1;visibility:visible}
+
+/* ورودِ نرمِ محتوا (استگرِ ظریف روی هر بارگذاری صفحه) */
+@keyframes rise{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+.main>*{animation:rise .38s cubic-bezier(.22,1,.36,1) both}
+.main>*:nth-child(2){animation-delay:.05s}
+.main>*:nth-child(3){animation-delay:.10s}
+.main>*:nth-child(4){animation-delay:.15s}
+.main>*:nth-child(n+5){animation-delay:.19s}
+
+/* ریزتعامل‌ها — فشارِ دکمه، بالاآمدنِ کارت‌ها، لغزشِ ناوبری */
+.btn:active,.mini:active,.chip:active,.tab:active{transform:translateY(1px) scale(.985)}
+.stat{transition:transform var(--ease),box-shadow var(--ease),border-color var(--ease)}
+.stat:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(0,0,0,.30);border-color:var(--stroke)}
+.project-card:hover,.ca-card:hover,.month-card:hover{transform:translateY(-3px)}
+.nav a:not(.on):hover{transform:translateX(-3px)}
+.brand-mark{transition:transform .3s cubic-bezier(.22,1,.36,1),box-shadow var(--ease)}
+.side:hover .brand-mark{transform:rotate(-5deg) scale(1.06)}
+.avatar,.mini-av img,.mini-logo img{transition:transform var(--ease)}
+.avatar:hover,.mini-av:hover img{transform:scale(1.08)}
+/* درخششِ نوارِ فعالِ سایدبار */
+.nav a.on::after{box-shadow:0 0 10px 1px var(--primary-ring)}
+
 @media(max-width:1100px){
   .shell{grid-template-columns:1fr}
-  .side{display:none}
+  .nav-toggle{display:inline-flex}
+  /* سایدبار → کشوی کنارِ راست (RTL) */
+  .side{position:fixed;top:0;bottom:0;right:0;width:min(280px,84vw);height:100vh;z-index:120;
+    transform:translateX(100%);transition:transform .3s cubic-bezier(.22,1,.36,1);
+    box-shadow:-14px 0 44px rgba(0,0,0,.45)}
+  body.nav-open .side{transform:translateX(0)}
   .stats{grid-template-columns:repeat(2,1fr)}
   .duo{grid-template-columns:1fr}
   .topbar{flex-wrap:wrap}
 }
+@media(max-width:640px){
+  .main{padding:12px 12px 40px}
+  .topbar{padding:8px;gap:8px}
+  .search{max-width:none;order:5;flex-basis:100%}
+  .stats{grid-template-columns:1fr 1fr;gap:8px}
+  .stat .num{font-size:18px}
+  .page-h{flex-wrap:wrap;gap:8px}
+  .page-h h1{font-size:17px}
+  .page-h .side-c{margin-inline-start:0;width:100%;flex-wrap:wrap}
+  .duo{grid-template-columns:1fr}
+  .filters{gap:6px;padding:10px}
+  .fin-nav,.settings-nav,.tabs{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}
+  /* مودالِ تمام‌عرض که از پایین بالا می‌آید (شیتِ موبایل) */
+  .modal-backdrop{align-items:flex-end}
+  .modal{max-width:100%;max-height:92vh;border-radius:18px 18px 0 0;animation:sheet-up .26s cubic-bezier(.22,1,.36,1)}
+  .side-att{max-height:220px}
+}
+@keyframes sheet-up{from{transform:translateY(24px);opacity:.6}to{transform:translateY(0);opacity:1}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 
 /* عکس‌های محتوای غنی (توضیحات تسک/گزارش/بازبینی) هرگز از عرض جعبه بیرون نزنند */

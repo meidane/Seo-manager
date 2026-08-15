@@ -9,6 +9,7 @@
   {% block head %}{% endblock %}
 </head>
 <body>
+<div class="nav-backdrop" id="nav-backdrop"></div>
 <div class="shell">
 
   {% include "components/sidebar.html" %}
@@ -45,6 +46,15 @@
   <div id="timer-widget" class="timer-widget"></div>
 {% endif %}
 
+<script>
+/* کشوی سایدبار در موبایل */
+(function(){var t=document.getElementById('nav-toggle'),b=document.getElementById('nav-backdrop');if(!t)return;
+var close=function(){document.body.classList.remove('nav-open');};
+t.addEventListener('click',function(){document.body.classList.toggle('nav-open');});
+if(b)b.addEventListener('click',close);
+document.addEventListener('keydown',function(e){if(e.key==='Escape')close();});
+document.querySelectorAll('.side .nav a').forEach(function(a){a.addEventListener('click',close);});})();
+</script>
 <script src="{% static 'js/app.js' %}"></script>
 {% if user.is_authenticated %}
 <script src="{% static 'js/timer-widget.js' %}"></script>

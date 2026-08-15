@@ -1,5 +1,6 @@
 {% load seo_extras %}
 <div class="topbar glass">
+  <button type="button" class="nav-toggle" id="nav-toggle" aria-label="منو">☰</button>
   <form class="search" method="get" action="{% url 'tasks:list' %}">
     <span>⌕</span>
     <input type="text" name="q" placeholder="جستجو در عنوان تسک‌ها…" autocomplete="off"
