@@ -25,8 +25,9 @@ def jalali_long(value):
 
 @register.filter(name='fa_digits')
 def fa_digits(value):
-    """ارقام لاتین → فارسی."""
-    return j.to_fa_digits(value)
+    """اعداد را لاتین نگه می‌دارد (طبق درخواست: نمایشِ همه‌ی اعداد انگلیسی).
+    نامش تاریخی است؛ اگر ورودی فارسی بود هم به لاتین برمی‌گرداند."""
+    return j.to_en_digits(value)
 
 
 @register.filter(name='elided_pages')
@@ -42,27 +43,26 @@ def elided_pages(page_obj, on_each_side=2):
 
 @register.filter(name='hours')
 def hours(minutes):
-    """دقیقه → ساعت (عددِ فارسی، مثلاً «۲.۵»). صفر/خالی → «۰»."""
+    """دقیقه → ساعت (لاتین، مثلاً «2.5»). صفر/خالی → «0»."""
     try:
         m = int(minutes or 0)
     except (ValueError, TypeError):
-        return '۰'
+        return '0'
     if not m:
-        return '۰'
-    s = f'{m / 60:.1f}'.rstrip('0').rstrip('.')
-    return j.to_fa_digits(s)
+        return '0'
+    return f'{m / 60:.1f}'.rstrip('0').rstrip('.')
 
 
 @register.filter(name='money')
 def money(value):
-    """قالب‌بندی مبلغ با جداکننده‌ی هزارگان و ارقام فارسی."""
+    """قالب‌بندی مبلغ با جداکننده‌ی هزارگان و ارقامِ لاتین (طبق درخواست)."""
     if value is None or value == '':
-        return '۰'
+        return '0'
     try:
         num = int(round(float(value)))
     except (ValueError, TypeError):
-        return j.to_fa_digits(value)
-    return j.to_fa_digits(f'{num:,}')
+        return j.to_en_digits(value)
+    return f'{num:,}'
 
 
 @register.filter(name='dictkey')
@@ -148,37 +148,37 @@ def timeago(value):
         return 'همین حالا'
     minutes = int(seconds // 60)
     if minutes < 60:
-        return f'{j.to_fa_digits(minutes)} دقیقه پیش'
+        return f'{minutes} دقیقه پیش'
     hours = minutes // 60
     if hours < 24:
-        return f'{j.to_fa_digits(hours)} ساعت پیش'
+        return f'{hours} ساعت پیش'
     days = hours // 24
     if days == 1:
         return 'دیروز'
     if days < 30:
-        return f'{j.to_fa_digits(days)} روز پیش'
+        return f'{days} روز پیش'
     months = days // 30
     if months < 12:
-        return f'{j.to_fa_digits(months)} ماه پیش'
+        return f'{months} ماه پیش'
     years = days // 365
-    return f'{j.to_fa_digits(years)} سال پیش'
+    return f'{years} سال پیش'
 
 
 @register.filter(name='min_hm')
 def min_hm(value):
-    """دقیقه → «HH:MM» با ارقامِ فارسی (برای ساعتِ کاریِ حضورغیاب)."""
+    """دقیقه → «HH:MM» با ارقامِ لاتین (برای ساعتِ کاریِ حضورغیاب)."""
     try:
         m = int(value or 0)
     except (ValueError, TypeError):
-        return '۰۰:۰۰'
-    return j.to_fa_digits(f'{m // 60:02d}:{m % 60:02d}')
+        return '00:00'
+    return f'{m // 60:02d}:{m % 60:02d}'
 
 
 @register.filter(name='sec_hm')
 def sec_hm(value):
-    """ثانیه → «HH:MM» با ارقامِ فارسی (زمانِ برنامه‌ها در حضورغیاب)."""
+    """ثانیه → «HH:MM» با ارقامِ لاتین (زمانِ برنامه‌ها در حضورغیاب)."""
     try:
         m = int(value or 0) // 60
     except (ValueError, TypeError):
-        return '۰۰:۰۰'
-    return j.to_fa_digits(f'{m // 60:02d}:{m % 60:02d}')
+        return '00:00'
+    return f'{m // 60:02d}:{m % 60:02d}'

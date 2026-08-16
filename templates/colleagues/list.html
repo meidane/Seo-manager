@@ -18,7 +18,7 @@
     <div class="card-h"><h3>افراد و عملکردشان در بازه</h3><a href="{% url 'core:columns' %}" class="mini" title="سفارشی‌سازی ستون‌ها">⚙ ستون‌ها</a></div>
     {% if colleagues %}
       <table>
-        <thead><tr><th>فرد</th>{% for c in columns %}<th>{{ c.label }}</th>{% endfor %}<th>روند ۱۴ روز</th><th>دسترسی</th><th>وضعیت</th></tr></thead>
+        <thead><tr><th>فرد</th>{% for c in columns %}<th>{{ c.label }}</th>{% endfor %}<th>روند 14 روز</th><th>دسترسی</th><th>وضعیت</th></tr></thead>
         <tbody>
           {% for c in colleagues %}
             <tr onclick="location.href='{{ c.get_absolute_url }}'" {% if not c.is_active %}style="opacity:.5"{% endif %} {% if c.wt_today %}style="border-bottom:0"{% endif %}>

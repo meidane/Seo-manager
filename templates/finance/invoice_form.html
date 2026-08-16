@@ -19,12 +19,12 @@
     <div style="padding:12px 14px">
       <div class="grid3">
         <div class="field"><label>تاریخ ثبت فاکتور</label>
-          <input class="input jdate" id="inv-issue" dir="ltr" value="{% if invoice %}{{ invoice.issue_date|jalali }}{% endif %}" placeholder="۱۴۰۵/۰۵/۰۱"></div>
+          <input class="input jdate" id="inv-issue" dir="ltr" value="{% if invoice %}{{ invoice.issue_date|jalali }}{% endif %}" placeholder="1405/05/01"></div>
         <div class="field"><label>پروژه</label>
           <select id="inv-project" class="rich-select"><option value="">—</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if invoice.project_id == p.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></div>
 
         <div class="field"><label>تاریخ پرداخت</label>
-          <input class="input jdate" id="inv-due" dir="ltr" value="{% if invoice.due_date %}{{ invoice.due_date|jalali }}{% endif %}" placeholder="۱۴۰۵/۰۶/۰۱"></div>
+          <input class="input jdate" id="inv-due" dir="ltr" value="{% if invoice.due_date %}{{ invoice.due_date|jalali }}{% endif %}" placeholder="1405/06/01"></div>
       </div>
       <div class="field"><label>توضیحات فاکتور</label>
         <textarea class="input" id="inv-desc" rows="2" placeholder="توضیحات…">{% if invoice %}{{ invoice.description }}{% endif %}</textarea></div>
@@ -59,7 +59,7 @@
             <td class="edit"><input class="li-unit num money" dir="ltr" value="{{ li.unit_price|floatformat:0 }}"></td>
             <td class="edit"><input class="li-tax num money" dir="ltr" value="{{ li.tax|floatformat:0 }}"></td>
             <td class="edit"><input class="li-disc num money" dir="ltr" value="{{ li.discount|floatformat:0 }}"></td>
-            <td class="li-total num-c">۰</td>
+            <td class="li-total num-c">0</td>
             <td><button class="mini li-del" type="button">×</button></td>
           </tr>
           {% endfor %}
@@ -70,10 +70,10 @@
     {# ── جمع‌بندی ── #}
     <div style="display:flex;justify-content:flex-end;padding:14px">
       <div style="min-width:280px">
-        <div class="inv-sumrow"><span>جمع (مبالغ واحد)</span><b id="sum-sub">۰</b></div>
-        <div class="inv-sumrow"><span>جمع مالیات‌ها</span><b id="sum-tax">۰</b></div>
-        <div class="inv-sumrow"><span>جمع تخفیف‌ها</span><b id="sum-disc">۰</b></div>
-        <div class="inv-sumrow inv-grand"><span>جمع کل</span><b id="sum-grand">۰</b></div>
+        <div class="inv-sumrow"><span>جمع (مبالغ واحد)</span><b id="sum-sub">0</b></div>
+        <div class="inv-sumrow"><span>جمع مالیات‌ها</span><b id="sum-tax">0</b></div>
+        <div class="inv-sumrow"><span>جمع تخفیف‌ها</span><b id="sum-disc">0</b></div>
+        <div class="inv-sumrow inv-grand"><span>جمع کل</span><b id="sum-grand">0</b></div>
       </div>
     </div>
   </section>
@@ -102,7 +102,7 @@
 
   // fa/en اعداد → عدد
   const toNum = v => { if(v==null) return 0; const s=String(v).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[^\d.\-]/g,''); const n=parseFloat(s); return isNaN(n)?0:n; };
-  const fa = n => Math.round(n).toLocaleString('en-US').replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);
+  const fa = n => Math.round(n).toLocaleString('en-US');
 
   function rowHTML(){
     return `<tr class="inv-row">
@@ -113,7 +113,7 @@
       <td class="edit"><input class="li-unit num money" dir="ltr" value=""></td>
       <td class="edit"><input class="li-tax num money" dir="ltr" value=""></td>
       <td class="edit"><input class="li-disc num money" dir="ltr" value=""></td>
-      <td class="li-total num-c">۰</td>
+      <td class="li-total num-c">0</td>
       <td><button class="mini li-del" type="button">×</button></td></tr>`;
   }
   function addRow(){ body.insertAdjacentHTML('beforeend', rowHTML()); recalc(); }
@@ -121,7 +121,7 @@
   function recalc(){
     let sub=0, tax=0, disc=0;
     [...body.querySelectorAll('.inv-row')].forEach((r,i)=>{
-      r.querySelector('.rownum').textContent = (i+1).toString().replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);
+      r.querySelector('.rownum').textContent = (i+1).toString();
       const qty=toNum(r.querySelector('.li-qty').value)||1;
       const unit=toNum(r.querySelector('.li-unit').value);
       const t=toNum(r.querySelector('.li-tax').value);
@@ -158,7 +158,7 @@
   // ── تاریخ‌ها: تبدیلِ فشرده‌ی جالی↔میلادی برای «تاریخ پرداخت = ثبت + ۱۰ روز» ──
   function jToG(jy,jm,jd){var gy=jy<=979?621:1600;jy-=jy<=979?0:979;var days=365*jy+Math.floor(jy/33)*8+Math.floor(((jy%33)+3)/4)+78+jd+(jm<7?(jm-1)*31:(jm-7)*30+186);gy+=400*Math.floor(days/146097);days%=146097;if(days>36524){gy+=100*Math.floor(--days/36524);days%=36524;if(days>=365)days++;}gy+=4*Math.floor(days/1461);days%=1461;if(days>365){gy+=Math.floor((days-1)/365);days=(days-1)%365;}var gd=days+1;var sal=[0,31,((gy%4===0&&gy%100!==0)||gy%400===0)?29:28,31,30,31,30,31,31,30,31,30,31];var gm;for(gm=1;gm<=12;gm++){if(gd<=sal[gm])break;gd-=sal[gm];}return[gy,gm,gd];}
   function gToJ(gy,gm,gd){var gdm=[0,31,59,90,120,151,181,212,243,273,304,334];var gy2=gm>2?gy+1:gy;var days=355666+365*gy+Math.floor((gy2+3)/4)-Math.floor((gy2+99)/100)+Math.floor((gy2+399)/400)+gd+gdm[gm-1];var jy=-1595+33*Math.floor(days/12053);days%=12053;jy+=4*Math.floor(days/1461);days%=1461;if(days>365){jy+=Math.floor((days-1)/365);days=(days-1)%365;}var jm,jd;if(days<186){jm=1+Math.floor(days/31);jd=1+(days%31);}else{jm=7+Math.floor((days-186)/30);jd=1+((days-186)%30);}return[jy,jm,jd];}
-  const faD=x=>String(x).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);
+  const faD=x=>String(x);
   const enD=s=>String(s).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
   function jFmt(a){return faD(a[0])+'/'+faD(String(a[1]).padStart(2,'0'))+'/'+faD(String(a[2]).padStart(2,'0'));}
   function addDaysJ(jstr,n){const p=enD(jstr).split('/').map(Number);if(p.length!==3||!p[0])return '';const g=jToG(p[0],p[1],p[2]);const dt=new Date(g[0],g[1]-1,g[2]);dt.setDate(dt.getDate()+n);return jFmt(gToJ(dt.getFullYear(),dt.getMonth()+1,dt.getDate()));}

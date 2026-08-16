@@ -143,7 +143,7 @@
   // انتخاب و گروهی
   const bar=document.getElementById('bulkbar');
   const selected=()=>[...sheet.querySelectorAll('.row-check:checked')].map(c=>+c.dataset.id);
-  function refresh(){ const n=selected().length; bar.style.display=n?'flex':'none'; document.getElementById('bulk-count').textContent=n.toLocaleString('fa-IR'); }
+  function refresh(){ const n=selected().length; bar.style.display=n?'flex':'none'; document.getElementById('bulk-count').textContent=n.toLocaleString('en-US'); }
   sheet.addEventListener('change', e=>{
     if(e.target.id==='check-all'){ sheet.querySelectorAll('.row-check').forEach(c=>c.checked=e.target.checked); refresh(); }
     else if(e.target.classList.contains('row-check')) refresh();
