@@ -202,7 +202,10 @@
 
   // ── چیپ‌های کلمه/برچسب (Enter یا دکمه‌ی + اضافه می‌کند؛ ویرگول خودکار جدا می‌شود) ──
   function tagChip(word) {
-    return `<span class="tag t-mute tagbox-chip">${esc(word)}<i class="tagbox-x" data-w="${esc(word)}">×</i></span>`;
+    // data-w روی خودِ چیپ (span) — چون collect()/dedup از `.tagbox-chip`.dataset.w می‌خوانند،
+    // نه از آیکنِ ×. (باگِ قبلی: data-w روی <i> بود → collect همیشه undefined→[None] ذخیره می‌کرد
+    // و بعدِ ذخیره چیپِ خالی فقط با × می‌ماند.)
+    return `<span class="tag t-mute tagbox-chip" data-w="${esc(word)}">${esc(word)}<i class="tagbox-x">×</i></span>`;
   }
   function tagboxHtml(key, words, placeholder) {
     const chips = (words || []).map(tagChip).join('');
