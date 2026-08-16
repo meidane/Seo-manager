@@ -530,44 +530,84 @@ def _find_header(rows, fmt):
     return -1
 
 
+# ── نگاشتِ ستون‌ها بر اساسِ نامِ هدر (مقاوم به تغییر جای ستون‌ها / قالبِ متفاوتِ هر بانک) ──
+def _hmap(row):
+    """{برچسبِ هدر → ایندکسِ ستون} از یک ردیفِ هدر."""
+    return {str(c).strip(): i for i, c in enumerate(row) if c is not None and str(c).strip()}
+
+
+def _col(hmap, *needles):
+    """ایندکسِ ستونی که برچسبش یکی از needleها را دارد. سه لایه به ترتیبِ دقت: تطبیقِ
+    دقیق → آغازشونده‌با → شامل. لایه‌ی «آغازشونده» ابهامِ «شناسه واریز» با «واریز (ریال)»
+    را حل می‌کند (فقط دومی با «واریز» شروع می‌شود)."""
+    for lbl, i in hmap.items():
+        if lbl in needles:
+            return i
+    for lbl, i in hmap.items():
+        if any(lbl.startswith(n) for n in needles):
+            return i
+    for lbl, i in hmap.items():
+        if any(n in lbl for n in needles):
+            return i
+    return None
+
+
+def _at(r, i):
+    return r[i] if (i is not None and i < len(r)) else None
+
+
 def _parse_saman(rows, h):
-    """سامان/موبایلت (+ قالبِ کلاسیکِ قبلی):
-    0=ردیف 1=تاریخ(+ساعت، چندخطی) 2=شرح 3=واریز 4=برداشت 5=مانده 6=توضیحات."""
+    """سامان (و موبایلت/کلاسیک). نگاشت با نامِ هدر — پس هم قالبِ ۷ستونیِ موبایلت و هم
+    قالبِ کاملِ سامان (۱۱ ستون: ردیف/تاریخ/شرح سند/شماره سند/شماره برگه/شناسه واریز/شعبه/
+    واریز/برداشت/مانده/توضیحات کاربر) کار می‌کند. توضیحات ← «توضیحات کاربر»."""
+    if h < 0:
+        h = 0
+    hm = _hmap(rows[h])
+    ci_date, ci_desc = _col(hm, 'تاریخ'), _col(hm, 'شرح سند', 'شرح')
+    ci_dep, ci_wd = _col(hm, 'واریز'), _col(hm, 'برداشت')
+    ci_bal, ci_note = _col(hm, 'مانده'), _col(hm, 'توضیحات')
     out = []
     for r in rows[h + 1:]:
-        d, tm = parse_excel_date(_cell(r, 1))
+        d, tm = parse_excel_date(_at(r, ci_date))
         if d is None:
             continue
-        bal = _cell(r, 5)
+        bal = _at(r, ci_bal)
         out.append({
             'date': d.isoformat(), 'time': tm,
-            'description': str(_cell(r, 2) or '').strip(),
-            'deposit': parse_amount(_cell(r, 3)),
-            'withdrawal': parse_amount(_cell(r, 4)),
+            'description': str(_at(r, ci_desc) or '').strip(),
+            'deposit': parse_amount(_at(r, ci_dep)),
+            'withdrawal': parse_amount(_at(r, ci_wd)),
             'balance': parse_amount(bal) if bal not in (None, '') else None,
-            'user_note': str(_cell(r, 6) or '').strip(),
+            'user_note': str(_at(r, ci_note) or '').strip(),
         })
     return out
 
 
 def _parse_mehr(rows, h):
-    """بانک مهر: 0=ردیف 1=شرح 6=مبلغ(علامت‌دار: +واریز/−برداشت) 8=نوع 9=زمان تراکنش
-    11=مانده. ردیف‌های خالیِ بینابین خودبه‌خود رد می‌شوند (زمانِ نامعتبر)."""
+    """بانک مهر (سلول‌های مرج‌شده؛ هر تراکنش ۲ ردیفِ اکسل، ردیفِ دوم خالی). نگاشت با نامِ
+    هدر: توضیح / مبلغ(علامت‌دار: +واریز −برداشت) / نوع / زمان تراکنش / مانده. ردیف‌های
+    خالیِ بینابین با تاریخِ نامعتبر رد می‌شوند."""
+    if h < 0:
+        return []
+    hm = _hmap(rows[h])
+    ci_desc, ci_amt = _col(hm, 'توضیح'), _col(hm, 'مبلغ')
+    ci_type, ci_dt = _col(hm, 'نوع'), _col(hm, 'زمان')
+    ci_bal = _col(hm, 'مانده')
     out = []
     for r in rows[h + 1:]:
-        d, tm = parse_excel_date(_cell(r, 9))
+        d, tm = parse_excel_date(_at(r, ci_dt))
         if d is None:
             continue
-        amount = _num(_cell(r, 6))
-        typ = str(_cell(r, 8) or '')
+        amount = _num(_at(r, ci_amt))
+        typ = str(_at(r, ci_type) or '')
         if amount < 0 or 'برداشت' in typ:
             deposit, withdrawal = 0, abs(amount)
         else:
             deposit, withdrawal = abs(amount), 0
-        bal = _cell(r, 11)
+        bal = _at(r, ci_bal)
         out.append({
             'date': d.isoformat(), 'time': tm,
-            'description': str(_cell(r, 1) or '').strip(),
+            'description': str(_at(r, ci_desc) or '').strip(),
             'deposit': deposit, 'withdrawal': withdrawal,
             'balance': _num(bal) if bal not in (None, '') else None,
             'user_note': '',
@@ -576,21 +616,34 @@ def _parse_mehr(rows, h):
 
 
 def _parse_tejarat(rows, h):
-    """بانک تجارت: 6=شرح سند 7=شرح تراکنش 10=واریز 11=برداشت 12=موجودی 13=زمان 14=تاریخ."""
+    """بانک تجارت (هدر پایینِ «جزئیاتِ دوره»، ستونِ اولِ خالی). نگاشت با نامِ هدر:
+    شرح سند → **توضیحات**؛ شرح تراکنش (یا شرح عملیات) → **شرح سندِ خروجی**؛
+    واریز/برداشت/موجودی حساب/زمان/تاریخ."""
+    if h < 0:
+        return []
+    hm = _hmap(rows[h])
+    ci_date, ci_time = _col(hm, 'تاریخ'), _col(hm, 'زمان')
+    ci_dep, ci_wd = _col(hm, 'واریز'), _col(hm, 'برداشت')
+    ci_bal = _col(hm, 'موجودی')
+    ci_snd = _col(hm, 'شرح سند')      # → توضیحات
+    ci_trx = _col(hm, 'شرح تراکنش')   # → شرح سندِ خروجی (توضیحِ اصلی)
+    ci_op = _col(hm, 'شرح عملیات')
     out = []
     for r in rows[h + 1:]:
-        d, tm = parse_excel_date(f"{_cell(r, 14)} {_cell(r, 13)}")
+        d, tm = parse_excel_date(f"{_at(r, ci_date)} {_at(r, ci_time)}")
         if d is None:
             continue
-        desc = str(_cell(r, 6) or '').strip() or str(_cell(r, 7) or '').strip()
-        bal = _cell(r, 12)
+        desc = (str(_at(r, ci_trx) or '').strip()
+                or str(_at(r, ci_op) or '').strip()
+                or str(_at(r, ci_snd) or '').strip())
+        bal = _at(r, ci_bal)
         out.append({
             'date': d.isoformat(), 'time': tm,
             'description': desc,
-            'deposit': parse_amount(_cell(r, 10)),
-            'withdrawal': parse_amount(_cell(r, 11)),
+            'deposit': parse_amount(_at(r, ci_dep)),
+            'withdrawal': parse_amount(_at(r, ci_wd)),
             'balance': parse_amount(bal) if bal not in (None, '') else None,
-            'user_note': '',
+            'user_note': str(_at(r, ci_snd) or '').strip(),
         })
     return out
 
@@ -598,7 +651,7 @@ def _parse_tejarat(rows, h):
 # «سایر» = قالبِ استانداردِ فعلی (همان پارسرِ سامان/کلاسیک)
 _PARSERS = {'saman': _parse_saman, 'mehr': _parse_mehr,
             'tejarat': _parse_tejarat, 'other': _parse_saman}
-_FORMAT_LABEL = {'saman': 'سامان / موبایلت', 'mehr': 'مهر',
+_FORMAT_LABEL = {'saman': 'سامان', 'mehr': 'مهر',
                  'tejarat': 'تجارت', 'other': 'قالبِ استاندارد'}
 
 
@@ -610,7 +663,8 @@ def _parse_workbook(f, fmt=None):
     ws = wb.active
     rows = [list(r) for r in ws.iter_rows(values_only=True)]
     if fmt in _PARSERS:
-        return fmt, _PARSERS[fmt](rows, _find_header(rows, fmt))
+        real = 'saman' if fmt == 'other' else fmt
+        return fmt, _PARSERS[fmt](rows, _find_header(rows, real))
     fmt, h = _detect_format(rows)
     return fmt, _PARSERS[fmt](rows, h)
 
