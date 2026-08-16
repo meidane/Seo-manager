@@ -58,6 +58,8 @@
 | KPI (تعریف/امتیاز/سقف) | `tasks/models.py: TaskTypeKPI/KPIChecklistItem/TaskKPIScore` |
 | تکرارِ تسک (تولید تنبل) | `tasks/recurrence.py` + `RecurrenceRule` |
 | ادیتور غنی | `static/js/richtext.js` (کلاس `rich-editor`) |
+| جلوگیری از دابل‌کلیکِ ذخیره/ایجاد | `static/js/app.js: fetchJSON` (دکمه‌ی آغازگر خودکار disable + `.is-loading` تا پایانِ درخواست؛ نیازی به کد در هر دکمه نیست) |
+| ویرگولِ زندهٔ اینپوت مبلغ (سه‌تاسه‌تا) | `static/js/app.js` — کلاسِ `.money` روی `<input>` (بک‌اند `finance/utils.parse_amount` و فرمِ نیتیو روی submit ویرگول را پاک می‌کنند) |
 | دیت‌پیکر شمسی | `static/js/datepicker.js` (کلاس `jdate`) |
 | چکِ دسترسیِ سازمانی در ویو/API | `accounts/access.py: require_perm/has_perm` |
 | فهرستِ id پروژه‌های قابل‌دیدنِ کاربرِ جاری (همیشه لیست، دیگر هیچ‌وقت `None` — پروژه‌ی شخصیِ دیگران همیشه حذف) | `projects/access.py: accessible_project_ids` |

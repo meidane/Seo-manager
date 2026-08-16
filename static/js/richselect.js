@@ -34,8 +34,9 @@
       var o = sel.options[sel.selectedIndex];
       btn.innerHTML = o ? (media(o) + '<span class="rs-lb">' + esc(o.textContent) + '</span><span class="rs-caret">▾</span>') : '';
     }
-    function renderMenu(filter) {
-      var q = (filter || '').trim().toLowerCase();
+    // فقط آیتم‌ها را می‌سازد (نه اینپوتِ جستجو) — تا موقعِ تایپ فوکوس/متن از دست نرود
+    function itemsHTML(q) {
+      q = (q || '').trim().toLowerCase();
       var items = '';
       for (var i = 0; i < sel.options.length; i++) {
         var o = sel.options[i];
@@ -43,10 +44,9 @@
         items += '<div class="rs-item' + (i === sel.selectedIndex ? ' on' : '') + '" data-i="' + i + '">' +
           media(o) + '<span class="rs-lb">' + esc(o.textContent) + '</span></div>';
       }
-      var search = sel.options.length > 8 ? '<input class="rs-search" placeholder="جستجو…" autocomplete="off">' : '';
-      menu.innerHTML = search + '<div class="rs-items">' + items + '</div>';
-      var si = menu.querySelector('.rs-search');
-      if (si) { si.oninput = function () { renderMenu(si.value); menu.querySelector('.rs-search').focus(); }; si.focus(); }
+      return items || '<div class="rs-nomatch">موردی یافت نشد</div>';
+    }
+    function bindItems() {
       menu.querySelectorAll('.rs-item').forEach(function (it) {
         it.onclick = function () {
           sel.selectedIndex = +it.getAttribute('data-i');
@@ -55,8 +55,22 @@
         };
       });
     }
-    function open() { renderMenu(''); menu.classList.add('open'); }
-    function close() { menu.classList.remove('open'); }
+    function open() {
+      var withSearch = sel.options.length > 8;
+      menu.innerHTML = (withSearch ? '<input class="rs-search" placeholder="جستجو…" autocomplete="off">' : '') +
+        '<div class="rs-items">' + itemsHTML('') + '</div>';
+      var box = menu.querySelector('.rs-items');
+      bindItems();
+      var si = menu.querySelector('.rs-search');
+      if (si) {
+        // فقط لیست را به‌روز کن؛ خودِ اینپوت دست‌نخورده می‌ماند (فوکوس و متن حفظ می‌شود)
+        si.oninput = function () { box.innerHTML = itemsHTML(si.value); bindItems(); };
+        setTimeout(function () { si.focus(); }, 0);
+      }
+      menu.classList.add('open');
+      wrap.classList.add('rs-open');
+    }
+    function close() { menu.classList.remove('open'); wrap.classList.remove('rs-open'); }
     btn.onclick = function (e) { e.preventDefault(); menu.classList.contains('open') ? close() : open(); };
     document.addEventListener('click', function (e) { if (!wrap.contains(e.target)) close(); });
     // اگر مقدارِ select با کدِ دیگری عوض شد، دکمه هم به‌روز شود

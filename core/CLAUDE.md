@@ -24,8 +24,11 @@
   bool, badge(status/priority/state/عمومی), link_icon, progress`. **فیلدِ جدید = فقط اینجا
   اضافه کن**، در ویو/تمپلیت تکرار نکن.
 - `templatetags/seo_extras.py` — `jalali, jalali_long, money, timeago, fa_digits, dictkey,
-  repfield` + **`{% column_cell obj col %}`** (رندرِ یک سلولِ جدولِ سفارشی طبق `col.display`؛
-  منبعِ واحدِ رندرِ ستون‌ها — در تسک/پروژه/همکار/داشبورد همه‌جا از همین استفاده کن).
+  repfield, elided_pages` + **`{% column_cell obj col %}`** (رندرِ یک سلولِ جدولِ سفارشی طبق
+  `col.display`؛ منبعِ واحدِ رندرِ ستون‌ها — در تسک/پروژه/همکار/داشبورد همه‌جا از همین استفاده کن).
+- **صفحه‌بندیِ شماره‌دارِ مشترک:** `templates/components/_pagination.html` (۱ ۲ ۳ … ۲۰) — فقط
+  به `page_obj` نیاز دارد (`{% querystring %}` بقیه‌ی پارامترها را حفظ می‌کند، `elided_pages`
+  بازه را می‌سازد). در هر لیستِ صفحه‌بندی‌شده `{% include %}`اش کن؛ CSS: `.pagi/.pg` در `style.css`.
 
 ## ویوها / دستورها
 - `views.py`: `HolidayListView` (`/settings/holidays/`) + **`editor_upload`** (`/api/editor/upload/`

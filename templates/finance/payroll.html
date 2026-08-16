@@ -45,7 +45,7 @@ const PAYROLLS = { {% for p in payrolls %}"{{ p.id }}":{colleague:"{{ p.colleagu
 function itemRow(t,a){ const d=document.createElement('div'); d.className='pi-row';
   d.style.cssText='display:flex;gap:8px;margin-bottom:6px;align-items:center';
   d.innerHTML=`<input class="input pi-t" placeholder="عنوان (حقوق پایه)" value="${(t||'').replace(/"/g,'&quot;')}" style="flex:1">
-    <input class="input pi-a" dir="ltr" placeholder="مبلغ" value="${a||''}" style="max-width:150px">
+    <input class="input pi-a money" dir="ltr" placeholder="مبلغ" value="${a||''}" style="max-width:150px">
     <button type="button" class="mini pi-del" tabindex="-1">×</button>`;
   return d;
 }
@@ -75,8 +75,11 @@ function openPay(data){
 
   function addRow(){ const r=itemRow('',''); items.appendChild(r); r.querySelector('.pi-t').focus(); }
   document.getElementById('p-add-item').onclick=addRow;
+  // Enter: عنوان → مبلغ (ستونِ بعد)؛ روی مبلغ (آخرین ستون) → ردیفِ جدید
   items.addEventListener('keydown', e=>{
-    if(e.key==='Enter' && e.target.matches('.pi-t,.pi-a')){ e.preventDefault(); addRow(); }
+    if(e.key!=='Enter') return;
+    if(e.target.matches('.pi-t')){ e.preventDefault(); e.target.closest('.pi-row').querySelector('.pi-a').focus(); }
+    else if(e.target.matches('.pi-a')){ e.preventDefault(); addRow(); }
   });
   items.addEventListener('click', e=>{ const d=e.target.closest('.pi-del'); if(d){ if(items.children.length>1) d.closest('.pi-row').remove(); } });
 

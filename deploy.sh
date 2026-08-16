@@ -3,13 +3,15 @@
 # اجرا از ریشه‌ی پروژه:  ./deploy.sh
 set -euo pipefail
 
-BRANCH="${1:-main}"                 # ./deploy.sh <branch>  (پیش‌فرض: main)
+# برنچِ فعالِ توسعه/استقرار (کارها روی همین برنچ‌اند، نه main). قابلِ override:
+#   ./deploy.sh <branch>
+BRANCH="${1:-claude/invoices-reports-section-2lydte}"
 SERVICE="${SERVICE:-teams}"         # نامِ سرویسِ systemd
 cd "$(dirname "$0")"
 
 echo "▶ گرفتنِ کد از گیت (origin/$BRANCH)…"
 git fetch --prune origin
-git reset --hard "origin/$BRANCH"   # دقیقاً برابرِ ریموت (تغییرِ محلی نگه داشته نمی‌شود)
+git checkout -B "$BRANCH" "origin/$BRANCH"   # سوییچ + همگام با ریموت (حتی اگر روی main باشد)
 
 echo "▶ فعال‌سازیِ venv و نصبِ وابستگی‌ها…"
 source .venv/bin/activate

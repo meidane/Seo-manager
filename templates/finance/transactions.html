@@ -66,7 +66,7 @@
   </div>
 
   {# ── صفحه‌بندی (۱ ۲ ۳ … ۲۰) ── #}
-  {% include "finance/_pagination.html" %}
+  {% include "components/_pagination.html" %}
 
   {% else %}
     <section class="card glass"><div class="empty"><div class="ico">▦</div><h4>تراکنشی مطابق فیلتر نیست</h4><a href="{% url 'finance:transactions' %}" class="btn" style="margin-top:12px">پاک‌کردن فیلترها</a></div></section>
@@ -129,9 +129,17 @@
     const id=el.closest('tr').dataset.id;
     try{ await App.fetchJSON(`/finance/api/tx/${id}/`,{method:'PATCH',body:{note:el.value}}); }catch(_){}
   }, true);
-  // اینتر = ردیف بعد
-  sheet.addEventListener('keydown', e=>{ if(e.key==='Enter'&&e.target.matches('.tx-f')){ e.preventDefault();
-    const tr=e.target.closest('tr').nextElementSibling; if(tr){ const same=tr.querySelector(`.tx-f[data-f="${e.target.dataset.f}"]`); if(same)same.focus(); } } });
+  // Enter = ستونِ بعد (بابت → توضیحات)؛ روی آخرین ستون → ردیفِ بعد
+  const TX_EDIT=['.tx-cat','.tx-f[data-f="note"]'];
+  sheet.addEventListener('keydown', e=>{
+    if(e.key!=='Enter') return;
+    const idx=TX_EDIT.findIndex(s=>e.target.matches && e.target.matches(s));
+    if(idx<0) return;
+    e.preventDefault();
+    const tr=e.target.closest('tr');
+    if(idx<TX_EDIT.length-1){ const nx=tr.querySelector(TX_EDIT[idx+1]); if(nx){nx.focus(); nx.select&&nx.select();} }
+    else { const ntr=tr.nextElementSibling; if(ntr){ const f=ntr.querySelector(TX_EDIT[0]); if(f){f.focus(); f.select&&f.select();} } }
+  });
   // انتخاب و گروهی
   const bar=document.getElementById('bulkbar');
   const selected=()=>[...sheet.querySelectorAll('.row-check:checked')].map(c=>+c.dataset.id);
