@@ -1,40 +1,108 @@
 {% extends "base.html" %}
 {% load seo_extras %}
-{% block title %}همکاران{% endblock %}
+{% block title %}افراد و دسترسی‌ها{% endblock %}
 
 {% block content %}
   <div class="page-h">
-    <h1>همکاران</h1>
+    <h1>افراد و دسترسی‌ها</h1>
     {% if range_start_fa %}<span class="range-note">{{ range_start_fa }} تا {{ range_end_fa }} — {{ range_days|fa_digits }} روز</span>{% endif %}
     <div class="side-c">
       <form method="get" style="display:flex"><input type="text" name="q" value="{{ q }}" placeholder="جستجوی نام…" class="input" style="max-width:200px"></form>
-      <a href="{% url 'colleagues:add' %}" class="btn btn-p">＋ همکار جدید</a>
+      {% if can_manage_colleagues %}
+        <button type="button" class="btn btn-p" id="new-user-btn">＋ کاربر جدید</button>
+      {% endif %}
     </div>
   </div>
 
   <section class="card glass">
-    <div class="card-h"><h3>عملکرد همکاران در بازه</h3></div>
+    <div class="card-h"><h3>افراد و عملکردشان در بازه</h3><a href="{% url 'core:columns' %}" class="mini" title="سفارشی‌سازی ستون‌ها">⚙ ستون‌ها</a></div>
     {% if colleagues %}
       <table>
-        <thead><tr><th>همکار</th><th>برنامه‌ریزی</th><th>انجام‌شده</th><th>عقب‌افتاده</th><th>جمع ساعت</th><th>روند ۱۴ روز</th><th>وضعیت</th></tr></thead>
+        <thead><tr><th>فرد</th>{% for c in columns %}<th>{{ c.label }}</th>{% endfor %}<th>روند ۱۴ روز</th><th>دسترسی</th><th>وضعیت</th></tr></thead>
         <tbody>
           {% for c in colleagues %}
-            <tr onclick="location.href='{{ c.get_absolute_url }}'" {% if not c.is_active %}style="opacity:.5"{% endif %}>
+            <tr onclick="location.href='{{ c.get_absolute_url }}'" {% if not c.is_active %}style="opacity:.5"{% endif %} {% if c.wt_today %}style="border-bottom:0"{% endif %}>
               <td><div class="who">
-                {% if c.avatar %}<img src="{{ c.avatar.url }}">{% else %}<span class="fb" style="background:color-mix(in srgb,{{ c.color }} 22%,transparent);color:{{ c.color }}">{{ c.initials }}</span>{% endif %}
+                <span class="wt-avwrap {% if c.wt_today.online %}online{% endif %}">{% if c.avatar %}<img src="{{ c.avatar.url }}">{% else %}<span class="fb" style="background:color-mix(in srgb,{{ c.color }} 22%,transparent);color:{{ c.color }}">{{ c.initials }}</span>{% endif %}{% if c.wt_today %}<i class="wt-dot"></i>{% endif %}</span>
                 <span><b>{{ c.full_name }}</b><span>{{ c.roles_display|default:"—" }}</span></span></div></td>
-              <td class="num-c">{{ c.planned|fa_digits }}</td>
-              <td class="num-c">{{ c.done|fa_digits }}</td>
-              <td class="num-c {% if c.overdue %}red-n{% else %}zero{% endif %}">{{ c.overdue|fa_digits }}</td>
-              <td class="num-c {% if not c.minutes %}zero{% endif %}">{{ c.minutes|hours }}</td>
+              {% for col in columns %}<td>{% column_cell c col %}</td>{% endfor %}
               <td><div class="spark">{% for h in c.spark %}<i style="height:{{ h }}%"></i>{% endfor %}</div></td>
+              <td>{% if c.access_status == 'has_access' %}<span class="tag t-ok">دسترسی دارد</span>
+                  {% elif c.access_status == 'pending' %}<span class="tag t-mute">در انتظار تایید دعوت</span>
+                  {% else %}<span class="tag t-mute">بدون دسترسی</span>{% endif %}</td>
               <td>{% if c.is_active %}<span class="tag t-ok">فعال</span>{% else %}<span class="tag t-mute">غیرفعال</span>{% endif %}</td>
             </tr>
+            {% if c.wt_today %}
+            <tr class="wt-subrow"><td colspan="20" style="padding:0 14px 12px">{% include "colleagues/_attendance_day.html" with day=c.wt_today %}</td></tr>
+            {% endif %}
           {% endfor %}
         </tbody>
       </table>
     {% else %}
-      <div class="empty"><div class="ico">◉</div><h4>همکاری یافت نشد</h4><a href="{% url 'colleagues:add' %}" class="btn btn-p" style="margin-top:12px">＋ همکار جدید</a></div>
+      <div class="empty"><div class="ico">◉</div><h4>فردی یافت نشد</h4>
+        {% if can_manage_colleagues %}<button type="button" class="btn btn-p" id="new-user-btn-empty" style="margin-top:12px">＋ کاربر جدید</button>{% endif %}
+      </div>
     {% endif %}
   </section>
+{% endblock %}
+
+{% block scripts %}
+{% if can_manage_colleagues %}
+<script>
+(function(){
+  const ORG_ROLES = [{% for r in org_roles %}{key:"{{ r.key|escapejs }}",name:"{{ r.name|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}];
+  const roleOpts = () => ORG_ROLES.map(r => `<option value="${r.key}" ${r.key==='member'?'selected':''}>${r.name}</option>`).join('');
+
+  function openNewUserModal(){
+    App.openModal(`<div class="modal-h"><h3>کاربر جدید</h3><button class="x" onclick="App.closeModal()">×</button></div>
+      <div class="modal-b">
+        <div class="grid2"><div class="field"><label>نام و نام خانوادگی</label><input class="input" id="nu-name"></div>
+          <div class="field"><label>شماره تماس</label><input class="input" id="nu-phone" dir="ltr"></div></div>
+        <div class="field"><label>نقش سازمانی</label><select id="nu-role">${roleOpts()}</select></div>
+        <div style="display:flex;gap:14px;margin:10px 0">
+          <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="radio" name="nu-mode" value="invite" checked> دعوت با شماره (خودش رمز می‌سازد)</label>
+          <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="radio" name="nu-mode" value="password"> تعیینِ رمزِ مستقیم (خودم دسترسی می‌سازم)</label>
+        </div>
+        <div class="grid2" id="nu-pass-fields" style="display:none">
+          <div class="field"><label>نام‌کاربری</label><input class="input" id="nu-username" dir="ltr"></div>
+          <div class="field"><label>رمز عبور</label><input class="input" id="nu-password" dir="ltr"></div>
+        </div>
+      </div>
+      <div class="modal-f"><button class="btn btn-p" id="nu-save">ذخیره</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+
+    const passFields = document.getElementById('nu-pass-fields');
+    document.querySelectorAll('input[name="nu-mode"]').forEach(r => r.addEventListener('change', () => {
+      passFields.style.display = document.querySelector('input[name="nu-mode"]:checked').value === 'password' ? '' : 'none';
+    }));
+
+    document.getElementById('nu-save').onclick = async () => {
+      const mode = document.querySelector('input[name="nu-mode"]:checked').value;
+      const body = {
+        full_name: document.getElementById('nu-name').value.trim(),
+        phone: document.getElementById('nu-phone').value.trim(),
+        role: document.getElementById('nu-role').value,
+        mode,
+      };
+      if (!body.full_name) { App.toast('نام لازم است', 'warn'); return; }
+      if (mode === 'invite' && !body.phone) { App.toast('شماره لازم است', 'warn'); return; }
+      if (mode === 'password') {
+        body.username = document.getElementById('nu-username').value.trim();
+        body.password = document.getElementById('nu-password').value;
+        if (!body.username || !body.password) { App.toast('نام‌کاربری و رمز لازم است', 'warn'); return; }
+      }
+      try {
+        await App.fetchJSON("{% url 'colleagues:quick_create' %}", {method: 'POST', body});
+        App.toast('ذخیره شد', 'ok');
+        window.location.reload();
+      } catch (_) {}
+    };
+  }
+
+  const btn1 = document.getElementById('new-user-btn');
+  const btn2 = document.getElementById('new-user-btn-empty');
+  if (btn1) btn1.addEventListener('click', openNewUserModal);
+  if (btn2) btn2.addEventListener('click', openNewUserModal);
+})();
+</script>
+{% endif %}
 {% endblock %}

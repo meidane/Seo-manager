@@ -1,0 +1,766 @@
+@font-face {
+    font-family: "iranyekan";
+    src: url("iranyekanwebregular_FaNum.woff");
+}
+
+body {
+    background: #fafafa;
+    direction: rtl;
+    font-family: "iranyekan";
+    margin: 0;
+    line-height: 1.7;
+    color: #383838;
+    font-size: 14px;
+}
+
+body * {
+    font-family: 'iranyekan';
+}
+
+.d-flex {
+    display: flex;
+    height: 100vh;
+    width: 100%;
+}
+
+.employee-timetracker {
+    color: unset;
+    text-decoration: none;
+}
+
+.btn-stop-tracking>span {
+    margin: auto !important;
+}
+
+.vocation-request-box {
+    border-radius: 10px;
+    padding: 15px;
+}
+
+button.submit-req {
+    width: 100%;
+    border: 0;
+    background: #407eca;
+    border-radius: 10px;
+    padding: 8px;
+    font-family: 'iranyekan';
+    font-weight: 700;
+    color: white;
+    font-size: 16px;
+}
+
+.contain-timetracker {
+    width: 800px;
+    margin: auto;
+}
+
+.contain-timetracker>div {
+    background: white;
+    padding: 15px;
+    border-radius: 15px;
+    box-shadow: 0px 2px 10px rgb(0 0 0 / 2%);
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+img {
+    max-width: 100%;
+}
+
+.head-title {
+    display: block;
+    text-align: center;
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+.name-notify {
+    font-weight: 700;
+}
+
+.notify-timetracker>div {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.desc-notify {
+    font-size: 12px;
+    background: #5f96d1;
+    color: white;
+    padding: 0 8px;
+    border-radius: 5px;
+    margin-right: auto;
+    margin-top: 5px;
+}
+
+.notify-timetracker {
+    background: #f8fafc;
+    border-radius: 5px;
+    padding: 8px;
+}
+
+.up-employee {
+    display: flex;
+    align-items: center;
+    background: #f8fafc;
+    border-radius: 5px 5px 0 0;
+    padding: 8px;
+    z-index: 1;
+    position: relative;
+}
+
+.timeline-employee img {
+    border-radius: 0 0 5px 5px;
+}
+
+.up-employee img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-left: 10px;
+}
+
+.day-off strong {
+    color: #407eca;
+    font-size: 16px !important;
+}
+
+.time-off strong {
+    font-size: 16px !important;
+    color: #808e2d;
+}
+
+.up-employee>div {
+    width: 100%;
+}
+
+.today-time {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}
+
+
+.sum-time {
+    background: #e6f2ff;
+    color: #6297d1 !important;
+    padding: 0 5px;
+    border-radius: 5px;
+}
+
+.sum-inactive-time {
+    background: #e6f2ff;
+    color: #999 !important;
+    padding: 0 5px;
+    border-radius: 5px;
+}
+
+.head-timetracker {
+    text-align: center;
+}
+
+.head-timetracker strong {
+    font-size: 34px;
+    display: block;
+}
+
+.is-online {
+    width: 5px;
+    height: 5px;
+    background: #48a631;
+    display: inline-block;
+    border-radius: 50%;
+    position: relative;
+    border: 3px solid #bdecb1;
+    margin-right: 5px;
+}
+.is-offline {
+    width: 5px;
+    height: 5px;
+    background: #ddd;
+    display: inline-block;
+    border-radius: 50%;
+    position: relative;
+    border: 3px solid #f5f5f5;
+    margin-right: 5px;
+}
+.head-timetracker span {
+    font-size: 14px;
+    margin-bottom: 15px;
+    display: block;
+}
+
+.btn-start-tracking {
+    font-size: 18px;
+    background: #407eca;
+    border-radius: 10px;
+    padding: 10px;
+    font-weight: 700;
+    color: white;
+}
+
+.btn-stop-tracking {
+    display: flex;
+    font-size: 18px;
+    background: #B90E0A;
+    border-radius: 10px;
+    padding: 10px;
+    font-weight: 700;
+    color: white;
+}
+
+
+.employee-timetracker {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+}
+
+.up-employee strong {
+    display: block;
+    font-size: 14px;
+}
+
+.up-employee span {
+    font-size: 12px;
+    color: #3c3c3c;
+}
+
+.off-timetracker {
+    display: flex;
+    text-align: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.time-off {
+    background: #eff4d0;
+}
+
+.day-off {
+    background: #e6f2ff;
+}
+
+.off-timetracker>div {
+    padding: 10px;
+    flex: 1;
+    border-radius: 10px;
+}
+
+.btn-working-hour {
+    display: flex;
+    text-align: center;
+    gap: 5px;
+}
+
+.btn-working-hour>div {
+    flex: 1;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.btn-working-hour span {
+    display: block;
+    font-size: 13px;
+    color: white;
+}
+
+.btn-working-hour strong {
+    display: block;
+    background: rgb(255 255 255 / 20%);
+    border-radius: 5px;
+    margin-top: 8px;
+    color: white;
+}
+
+.ezafekari {
+    background: #317ba6;
+}
+
+.kasrikar {
+    background: #a6313c;
+}
+
+.morakhasi {
+    background: #69a631;
+}
+
+.more-timeline {
+    text-align: center;
+    color: #5f96d1;
+    font-weight: 700;
+}
+
+.date-sum {
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.user-page .timeline-employee {
+    margin: 5px;
+}
+
+.profile-day {
+    background: #f8fafc;
+    padding: 8px;
+    border-radius: 5px;
+    margin-bottom: 5px;
+}
+
+.timeline-employee {
+    display: flex;
+    background: #e6f2ff;
+    width: 100%;
+    height: 15px;
+    border-radius: 5px;
+    position: relative;
+}
+
+.timeline-h {
+    display: flex;
+    width: 14px;
+    height: 15px;
+    /* background: #e6f2ff; */
+    margin-right: 1px;
+}
+
+.timeline-m {
+    width: 1.5%;
+    height: 15px;
+    background: #e6f2ff;
+}
+
+.vocation-request-box {
+    background: #fafafa;
+    position: relative;
+}
+
+.vocation-request-box .close {
+    position: absolute;
+    left: 20px;
+    cursor: pointer;
+    font-size: 32px;
+    line-height: 1;
+    margin: 0;
+    color: #407eca;
+}
+
+.vocation-request-box div {
+    margin: 8px 0;
+}
+
+.vocation-date-inpt,
+.vocation-desc-inpt {
+    width: 93%;
+    display: block !important;
+    font-family: 'iranyekan';
+    border-radius: 10px !important;
+    border: 0 !important;
+    padding: 10px !important;
+}
+
+#ui-datepicker-div {
+    font-family: 'iranyekan';
+    width: 279px;
+    border-radius: 10px;
+    border: 0;
+    box-shadow: -3px 3px 10px #00000026;
+    padding: 10px;
+}
+
+.show {
+    display: block !important;
+}
+
+.time-box label {
+    margin: auto;
+    color: #545454;
+}
+
+.time-box>input {
+    width: 100%;
+    border-radius: 10px;
+    padding: 8px;
+    border: 0;
+    font-family: iranyekan;
+}
+
+.time-box {
+    display: flex;
+    justify-content: space-between;
+    gap: 5px;
+}
+
+.vocation-request-box h4 {
+    margin: 0 0 15px;
+    font-size: 16px;
+    color: #626262;
+}
+
+.reminded {
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #5e5e5e;
+}
+
+.user-page .employee-timetracker .timeline-employee {
+    display: none;
+}
+
+.work-record {
+    background: #407eca;
+    position: absolute;
+    height: 100%;
+    border-radius: 5px;
+    z-index: 10;
+}
+
+.vocation-record {
+    background: #808e2d;
+    position: absolute;
+    height: 100%;
+    border-radius: 5px;
+    z-index: 10;
+}
+
+.available-record {
+    background: #a9f85f;
+    position: absolute;
+    height: 100%;
+    border-radius: 5px;
+}
+
+.unavailable-record {
+    background: #c7c7c7;
+    position: absolute;
+    height: 100%;
+    border-radius: 5px;
+}
+
+.inactive-record {
+    background: #e6f2ff ;
+    position: absolute;
+    height: 100%;
+    border-radius: 5px;
+    z-index: 11;
+}
+
+.in-person .timeline-employee .inactive-record {
+    background: #84b1ea !important;
+}
+
+.app-records, .website-records {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+
+.app-record {
+    background: #f8fbff;
+    border-radius: 10px;
+    margin:2px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    font-size:12px;
+    padding:4px 5px !important;
+}
+
+.app-icon img{
+    width:15px;
+    height:15px;
+    margin-left:4px;
+}
+.contain-available {
+    display: flex;
+    justify-content: space-between;
+    gap: 5px;
+    margin: 5px;
+}
+
+.contain-available>* {
+    flex: 1;
+    text-align: center;
+    font-size: 12px;
+}
+
+.availabilities {
+    border-radius: 5px;
+    color: #4a7008;
+    text-align: center;
+}
+
+.availability {
+    padding: 0 !important;
+}
+
+.availability>button {
+    background: #6297d1;
+    border: 0;
+    border-radius: 10px;
+    padding: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    color: white;
+}
+
+.availabilities strong {
+    margin-bottom: 3px;
+    display: block;
+    background: #a9f85f;
+    color: #222222;
+    width: 100%;
+    border-radius: 5px;
+    padding: 2px 0;
+}
+
+.unavailabilities {
+    border-radius: 5px;
+    color: #6E6E6E;
+    text-align: center;
+}
+
+.type-time select {
+    width: 100%;
+    border: 0;
+    background: #6297d1;
+    color: white;
+    border-radius: 5px;
+    padding: 2px 4px;
+}
+
+.type-time {
+    gap: 5px;
+    margin-top: 5px;
+}
+
+.add-time-btn {
+    border: 0;
+    background: #2263a9;
+    color: white;
+    padding: 4px 5px;
+    border-radius: 5px;
+    font-size: 12px;
+}
+
+label.week-day-label {
+    display: block;
+    font-weight: 700;
+    font-size: 16px;
+    color: #2263a9;
+    background: #ebf5ff;
+    padding: 5px;
+    border-radius: 40px;
+}
+
+.add-time input {
+    width: 83%;
+    background: #ebf5ff;
+    border: 0;
+    margin: 2px;
+    padding: 3px 10px;
+    border-radius: 5px;
+    font-weight: 700;
+}
+
+.add-time>div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.day-availability {
+    text-align: center;
+}
+
+.availability-item,
+.unavailability-item {
+    display: flex;
+    justify-content: space-between;
+}
+
+.availability-item button,
+.unavailability-item button {
+    border: 0;
+    margin-bottom: 5px;
+    border-radius: 5px;
+    background: #fff4f6;
+    color: #ff0033;
+    font-size: 18px;
+    line-height: 1.1;
+}
+
+.unavailabilities strong {
+    margin-bottom: 3px;
+    display: block;
+    background: #dadada;
+    color: #414141;
+    width: 100%;
+    border-radius: 5px;
+    padding: 2px 0;
+}
+
+.courses-image input[type=submit] {
+    background: #6297d1;
+    border: 0;
+    border-radius: 5px;
+    padding: 3px;
+    color: white;
+    width: 102px;
+}
+
+.courses-image {
+    text-align: center;
+}
+
+[aria-label]:after {
+    content: attr(aria-label);
+    display: none;
+    position: absolute;
+    top: 110%;
+    left: 10px;
+    z-index: 5000;
+    pointer-events: none;
+    padding: 8px 10px;
+    line-height: 15px;
+    white-space: nowrap;
+    text-decoration: none;
+    text-indent: 0;
+    overflow: visible;
+    font-size: .9em;
+    font-weight: normal;
+    color: #fff;
+    text-shadow: 1px 0 1px #888;
+    background-color: #412917;
+    border-left: 6px solid #d37092;
+    -webkit-border-radius: 2px;
+    border-radius: 2px;
+    -webkit-box-shadow: 1px 2px 6px rgba(0, 0, 0, 0.3);
+    box-shadow: 1px 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+
+[aria-label]:hover:after,
+[aria-label]:focus:after {
+    display: block;
+}
+
+
+.modal-fader {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    z-index: 99998;
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.modal-fader.active {
+    display: block;
+}
+
+.modal-window {
+    display: none;
+    width: 300px;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 99999;
+    background: #fff;
+    padding: 20px;
+    border-radius: 5px;
+    font-family: sans-serif;
+    top: 50px;
+}
+
+.modal-window.active {
+    display: block;
+}
+
+.modal-window h1,
+.modal-window h2,
+.modal-window h3,
+.modal-window h4,
+.modal-window h5,
+.modal-window h6 {
+    margin: 0;
+}
+
+.modal-btn {
+    background: #2263a9;
+    border: none;
+    color: #fff;
+    padding: 10px 15px;
+    box-shadow: none;
+    border-radius: 3px;
+    text-decoration: none;
+    display: block !important;
+    width: 100%;
+    margin-top: 5px;
+}
+
+#cover {
+    position: fixed;
+    height: 100%;
+    width: 100%;
+    top: 0;
+    left: 0;
+    background: #ddd;
+    opacity: 0.6;
+    z-index: 9999;
+    font-size: 65px;
+    text-align: center;
+    padding-top: 200px;
+    color: #fff;
+    font-family:tahoma;
+  }
+  .loader {
+    border: 16px solid #f3f3f3; /* Light grey */
+    border-top: 16px solid #3498db; /* Blue */
+    border-radius: 50%;
+    width: 120px;
+    height: 120px;
+    animation: spin 2s linear infinite;
+    margin: auto;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }  
+
+  .pre-step {
+    cursor: pointer;
+    margin: 20px 0 10px;
+    font-size: 12px;
+    color: var(--gray);
+}
+
+.filter-btn{
+    text-align: center;
+    margin: 5px auto;
+    width: 50%;
+    border: 0;
+    background: #407eca;
+    border-radius: 10px;
+    padding: 8px;
+    font-family: 'iranyekan';
+    font-weight: 700;
+    color: white;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.filter-field{
+    font-family: 'iranyekan';
+    border-radius: 10px !important;
+    padding: 10px !important;
+    border: 1px solid #ddd;
+}

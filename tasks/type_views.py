@@ -12,6 +12,8 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_http_methods
 from django.views.generic import DetailView, ListView
 
+from accounts.access import require_perm
+
 from .models import KPIChecklistItem, TaskTypeDef, TaskTypeField, TaskTypeKPI
 
 
@@ -27,6 +29,10 @@ class TaskTypeListView(LoginRequiredMixin, ListView):
     template_name = 'settings/task_types.html'
     context_object_name = 'types'
 
+    def dispatch(self, request, *args, **kwargs):
+        require_perm(request, 'manage_task_types')
+        return super().dispatch(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['page_title'] = 'انواع تسک'
@@ -37,6 +43,10 @@ class TaskTypeEditView(LoginRequiredMixin, DetailView):
     model = TaskTypeDef
     template_name = 'settings/task_type_edit.html'
     context_object_name = 'type_def'
+
+    def dispatch(self, request, *args, **kwargs):
+        require_perm(request, 'manage_task_types')
+        return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -52,6 +62,7 @@ class TaskTypeEditView(LoginRequiredMixin, DetailView):
 @login_required
 @require_http_methods(['POST'])
 def type_create(request):
+    require_perm(request, 'manage_task_types')
     d = _body(request)
     name = (d.get('name') or '').strip()
     if not name:
@@ -68,6 +79,7 @@ def type_create(request):
 @login_required
 @require_http_methods(['PATCH', 'DELETE'])
 def type_edit(request, pk):
+    require_perm(request, 'manage_task_types')
     t = get_object_or_404(TaskTypeDef, pk=pk)
     if request.method == 'DELETE':
         t.delete()
@@ -87,6 +99,7 @@ def type_edit(request, pk):
 @login_required
 @require_http_methods(['POST'])
 def field_create(request, pk):
+    require_perm(request, 'manage_task_types')
     t = get_object_or_404(TaskTypeDef, pk=pk)
     d = _body(request)
     label = (d.get('label') or '').strip()
@@ -98,8 +111,14 @@ def field_create(request, pk):
     f = TaskTypeField.objects.create(
         type_def=t, label=label, kind=kind, options=d.get('options', ''),
         placeholder=d.get('placeholder', ''), required=bool(d.get('required')),
+        required_on_done=bool(d.get('required_on_done')),
         show_to_client=bool(d.get('show_to_client', True)),
-        is_word_source=bool(d.get('is_word_source')), order=t.fields.count(),
+        is_word_source=bool(d.get('is_word_source')),
+        is_keyword_source=bool(d.get('is_keyword_source')),
+        track_keyword_rank=bool(d.get('track_keyword_rank')),
+        is_link_source=bool(d.get('is_link_source')),
+        is_page_link=bool(d.get('is_page_link')),
+        order=t.fields.count(),
     )
     return JsonResponse({'id': f.id, 'key': f.key, 'label': f.label,
                          'kind': f.get_kind_display(), 'required': f.required,
@@ -109,6 +128,7 @@ def field_create(request, pk):
 @login_required
 @require_http_methods(['PATCH', 'DELETE'])
 def field_edit(request, pk):
+    require_perm(request, 'manage_task_types')
     f = get_object_or_404(TaskTypeField, pk=pk)
     if request.method == 'DELETE':
         f.delete()
@@ -117,10 +137,10 @@ def field_edit(request, pk):
     for attr in ('label', 'kind', 'options', 'placeholder'):
         if attr in d:
             setattr(f, attr, d[attr])
-    if 'required' in d:
-        f.required = bool(d['required'])
-    if 'show_to_client' in d:
-        f.show_to_client = bool(d['show_to_client'])
+    for attr in ('required', 'required_on_done', 'show_to_client', 'is_word_source',
+                 'is_keyword_source', 'track_keyword_rank', 'is_link_source', 'is_page_link'):
+        if attr in d:
+            setattr(f, attr, bool(d[attr]))
     f.save()
     return JsonResponse({'ok': True})
 
@@ -128,6 +148,7 @@ def field_edit(request, pk):
 @login_required
 @require_http_methods(['POST'])
 def field_reorder(request, pk):
+    require_perm(request, 'manage_task_types')
     t = get_object_or_404(TaskTypeDef, pk=pk)
     for i, fid in enumerate(_body(request).get('order', [])):
         t.fields.filter(id=fid).update(order=i)
@@ -144,6 +165,7 @@ def _kpi(request, pk):
 @login_required
 @require_http_methods(['POST'])
 def kpi_create(request, pk):
+    require_perm(request, 'manage_task_types')
     t = get_object_or_404(TaskTypeDef, pk=pk)  # org-scoped (TenantManager)
     d = _body(request)
     title = (d.get('title') or '').strip()
@@ -159,6 +181,7 @@ def kpi_create(request, pk):
 @login_required
 @require_http_methods(['PATCH', 'DELETE'])
 def kpi_edit(request, pk):
+    require_perm(request, 'manage_task_types')
     k = _kpi(request, pk)
     if request.method == 'DELETE':
         k.delete()
@@ -179,6 +202,7 @@ def kpi_edit(request, pk):
 @login_required
 @require_http_methods(['POST'])
 def kpi_item_create(request, pk):
+    require_perm(request, 'manage_task_types')
     k = _kpi(request, pk)
     d = _body(request)
     title = (d.get('title') or '').strip()
@@ -193,6 +217,7 @@ def kpi_item_create(request, pk):
 @login_required
 @require_http_methods(['PATCH', 'DELETE'])
 def kpi_item_edit(request, pk):
+    require_perm(request, 'manage_task_types')
     it = get_object_or_404(KPIChecklistItem, pk=pk, kpi__type_def__organization=request.organization)
     if request.method == 'DELETE':
         kpi = it.kpi

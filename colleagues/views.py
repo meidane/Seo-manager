@@ -1,16 +1,45 @@
 """ویوهای همکاران — CRUD کامل + غیرفعال/فعال‌سازی + آمار سینگل (گام ۶)."""
+import json
 from datetime import timedelta
 
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, Q, Sum
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
-from django.views.generic import CreateView, DetailView, ListView, UpdateView, View
+from django.views.decorators.http import require_http_methods
+from django.views.generic import DetailView, ListView, UpdateView, View
 
+from django.core.exceptions import PermissionDenied
+
+from accounts.access import has_perm, is_elevated_role
+from core.columns import get_columns
 from core.daterange import DateRangeMixin
+from core.models import ColumnConfig
+from projects.access import accessible_project_ids
 from tasks.models import Task
 
+from .access import can_manage_colleague, is_manager_tier
 from .forms import ColleagueForm
-from .models import Colleague
+from .models import Colleague, ensure_colleague_for_user
+
+
+def _body(request):
+    try:
+        return json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return {}
+
+
+def _grantable_roles(org, full_access):
+    """نقش‌هایی که این کاربر اجازه دارد موقعِ دادنِ دسترسی انتخاب کند — `manage_people`
+    همه‌ی نقش‌ها را می‌بیند؛ مدیرِ scoped (فقط زیرمجموعه‌ی خودش) نقش‌های سطح‌بالا
+    (`accounts.access.is_elevated_role`) را نمی‌بیند، تا نتواند برای زیردستش نقشِ
+    مدیرِ کل بسازد."""
+    roles = list(org.roles.all())
+    if full_access:
+        return roles
+    return [r for r in roles if not is_elevated_role(org, r.key)]
 
 # رنگ hex هر نوع تسک — برای نمودار دونات
 TYPE_HEX = {
@@ -45,6 +74,13 @@ class ColleagueListView(LoginRequiredMixin, DateRangeMixin, ListView):
     context_object_name = 'colleagues'
     paginate_by = 50
 
+    def dispatch(self, request, *args, **kwargs):
+        # هرکسی که به سازمان دسترسی دارد باید در همین فهرست هم دیده شود (own_tasks_only
+        # و پیش‌فرضِ «مسئول = خودم» به Colleagueِ وصل نیاز دارند، نه فقط عضویتِ سازمانی).
+        if request.user.is_authenticated and getattr(request, 'organization', None):
+            ensure_colleague_for_user(request.user, request.organization)
+        return super().dispatch(request, *args, **kwargs)
+
     def get_queryset(self):
         from datetime import date
 
@@ -54,11 +90,14 @@ class ColleagueListView(LoginRequiredMixin, DateRangeMixin, ListView):
         query = self.request.GET.get('q', '').strip()
         if query:
             qs = qs.filter(Q(full_name__icontains=query) | Q(email__icontains=query))
+        ids = accessible_project_ids(self.request)
+        tq = Q(tasks__project_id__in=ids) if ids is not None else Q()
         return qs.annotate(
-            planned=Count('tasks', filter=Q(tasks__planned_date__range=(start, end))),
-            done=Count('tasks', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
-            minutes=Sum('tasks__spent_minutes', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
-            overdue=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING], tasks__planned_date__lt=date.today())),
+            planned=Count('tasks', filter=Q(tasks__planned_date__range=(start, end)) & tq),
+            done=Count('tasks', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end)) & tq),
+            words=Sum('tasks__word_count', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end)) & tq),
+            minutes=Sum('tasks__spent_minutes', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end)) & tq),
+            overdue=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING], tasks__planned_date__lt=date.today()) & tq),
         ).order_by('status', 'full_name')  # ترتیب صریح برای صفحه‌بندیِ پایدار
 
     def get_context_data(self, **kwargs):
@@ -85,8 +124,28 @@ class ColleagueListView(LoginRequiredMixin, DateRangeMixin, ListView):
             mx = max(raw) or 1
             c.spark = [max(round(v / mx * 100), 5) if v else 5 for v in raw]
 
-        ctx['page_title'] = 'همکاران'
+        # وضعیتِ دسترسی: «دسترسی دارد» (colleague.user ست است) / «در انتظار تایید دعوت»
+        # (Invite در انتظار) / «بدون دسترسی» — یک کوئری برای همه‌ی ردیف‌های صفحه.
+        from accounts.models import Invite
+        pending_ids = set(Invite.objects.filter(
+            colleague_id__in=[c.id for c in colleagues], status=Invite.PENDING
+        ).values_list('colleague_id', flat=True))
+        # حضورغیابِ امروز (worktracker) — به هر همکار طبقِ نام‌کاربریِ متصل ضمیمه می‌شود
+        from . import worktracker as wt
+        wt_today = wt.today_all()
+        for c in colleagues:
+            c.access_status = 'has_access' if c.user_id else ('pending' if c.id in pending_ids else 'none')
+            c.wt_today = wt_today.get(c.worktracker_username) if c.worktracker_username else None
+
+        ctx['columns'] = get_columns(ColumnConfig.COLLEAGUES, ColumnConfig.PAGE)
+        ctx['page_title'] = 'افراد و دسترسی‌ها'
         ctx['q'] = self.request.GET.get('q', '')
+        org = getattr(self.request, 'organization', None)
+        full_access = has_perm(self.request, 'manage_people')
+        ctx['org_roles'] = _grantable_roles(org, full_access) if org else []
+        # «＋ کاربر جدید»: دسترسیِ سازمانی (همه) یا سرپرست‌بودن (فقط برای زیرِمجموعه‌ی
+        # خودش — colleague_quick_create با manager خودکار محدودش می‌کند).
+        ctx['can_manage_colleagues'] = full_access or is_manager_tier(self.request)
         return ctx
 
 
@@ -106,15 +165,19 @@ class ColleagueDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
         from datetime import date
 
         from core.jalali import format_jalali
+        from projects.access import accessible_project_ids
+        ids = accessible_project_ids(self.request)
+        tasks_qs = c.tasks.filter(project_id__in=ids) if ids is not None else c.tasks.all()
+
         done_q = Q(status=Task.DONE, done_date__range=(start, end))
-        done_qs = c.tasks.filter(done_q)
+        done_qs = tasks_qs.filter(done_q)
 
         done = done_qs.count()
         words = done_qs.aggregate(s=Sum('word_count'))['s'] or 0
-        planned = c.tasks.filter(planned_date__range=(start, end)).count()
+        planned = tasks_qs.filter(planned_date__range=(start, end)).count()
         minutes = done_qs.aggregate(s=Sum('spent_minutes'))['s'] or 0
-        open_count = c.tasks.filter(status__in=[Task.TODO, Task.DOING]).count()
-        overdue = c.tasks.filter(status__in=[Task.TODO, Task.DOING], planned_date__lt=date.today()).count()
+        open_count = tasks_qs.filter(status__in=[Task.TODO, Task.DOING]).count()
+        overdue = tasks_qs.filter(status__in=[Task.TODO, Task.DOING], planned_date__lt=date.today()).count()
 
         # نرخ تحویل به‌موقع: انجام‌شده‌هایی که done_date <= planned_date
         on_time = sum(1 for t in done_qs.only('done_date', 'planned_date') if t.done_date and t.done_date <= t.planned_date)
@@ -136,9 +199,33 @@ class ColleagueDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
         ctx['daily_from'] = format_jalali(start, '%m/%d')
         ctx['daily_to'] = format_jalali(end, '%m/%d')
         # لیست تسک‌های او در بازه
-        ctx['task_rows'] = c.tasks.select_related('project','type_def').filter(
+        ctx['task_rows'] = tasks_qs.select_related('project','type_def').filter(
             Q(planned_date__range=(start, end)) | done_q).order_by('-planned_date')[:40]
         ctx['page_title'] = c.full_name
+
+        # ── حضورغیاب (worktracker): جزئیاتِ چند روزِ اخیر برای تبِ اولِ صفحه ──
+        from . import worktracker as wt
+        ctx['wt_configured'] = wt.is_configured()
+        ctx['wt_username'] = c.worktracker_username
+        ctx['wt_detail'] = wt.user_detail(c.worktracker_username, days=7) if c.worktracker_username else None
+
+        from accounts.models import Invite, Membership
+        org = getattr(self.request, 'organization', None)
+        full_access = has_perm(self.request, 'manage_people')
+        # ویرایشِ پروفایل/آرشیو/دادنِ دسترسیِ اولیه: scoped (سازمانی یا مدیرِ همین فرد).
+        ctx['can_manage_colleagues'] = can_manage_colleague(self.request, c)
+        # تغییرِ نقشِ سازمانی/تیمِ کسی که از قبل حساب دارد: عمداً فقط سازمانی می‌ماند —
+        # نقشِ فعلاً فعالِ یک نفر را عوض‌کردن ریسکش از ویرایشِ پروفایل بالاتر است.
+        ctx['can_manage_org_role'] = full_access
+        ctx['pending_invite'] = Invite.objects.filter(colleague=c, status=Invite.PENDING).first()
+        ctx['org_roles'] = _grantable_roles(org, full_access) if org else []
+        # اگر همکار دسترسی دارد، عضویتِ سازمانی/تیم‌هایش را هم برای ویرایش نشان بده
+        # (تبِ «دسترسی به سیستم» — دیگر جدولِ جدا در `/settings/people/` نیست).
+        if c.user_id and org:
+            ctx['access_membership'] = Membership.objects.filter(user_id=c.user_id, organization=org).first()
+            ctx['org_teams'] = list(org.teams.select_related('parent').all())
+            ctx['member_team_ids'] = list(
+                c.user.team_memberships.filter(team__organization=org).values_list('team_id', flat=True))
         return ctx
 
     @staticmethod
@@ -177,26 +264,19 @@ class ColleagueDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
         return bars, mx
 
 
-class ColleagueCreateView(LoginRequiredMixin, CreateView):
-    model = Colleague
-    form_class = ColleagueForm
-    template_name = 'colleagues/form.html'
-
-    def form_valid(self, form):
-        form.instance.created_by = self.request.user
-        return super().form_valid(form)
-
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        ctx['page_title'] = 'همکار جدید'
-        ctx['is_edit'] = False
-        return ctx
-
-
 class ColleagueUpdateView(LoginRequiredMixin, UpdateView):
+    """ویرایشِ پروفایل — دسترسیِ سازمانیِ `manage_people` (همه) یا مدیرِ مستقیم/
+    غیرمستقیمِ همین فرد بودن (فقط زیرمجموعه‌ی خودش، `can_manage_colleague`)."""
+
     model = Colleague
     form_class = ColleagueForm
     template_name = 'colleagues/form.html'
+
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset)
+        if not can_manage_colleague(self.request, obj):
+            raise PermissionDenied('دسترسیِ ویرایشِ این فرد را نداری')
+        return obj
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -208,6 +288,8 @@ class ColleagueUpdateView(LoginRequiredMixin, UpdateView):
 class ColleagueArchiveView(LoginRequiredMixin, View):
     def post(self, request, pk):
         colleague = get_object_or_404(Colleague, pk=pk)
+        if not can_manage_colleague(request, colleague):
+            raise PermissionDenied('دسترسیِ آرشیوِ این فرد را نداری')
         colleague.archive()
         return redirect(colleague.get_absolute_url())
 
@@ -215,5 +297,119 @@ class ColleagueArchiveView(LoginRequiredMixin, View):
 class ColleagueRestoreView(LoginRequiredMixin, View):
     def post(self, request, pk):
         colleague = get_object_or_404(Colleague, pk=pk)
+        if not can_manage_colleague(request, colleague):
+            raise PermissionDenied('دسترسیِ بازگردانیِ این فرد را نداری')
         colleague.restore()
         return redirect(colleague.get_absolute_url())
+
+
+# ── API: دسترسیِ همکار به سیستم (دعوت‌نامه یا رمزِ مستقیم) ──────────────────
+
+def _grant_access(request, org, colleague, d, allow_elevated_roles=True):
+    """منطقِ مشترکِ دادنِ دسترسی — هم از `colleague_grant_access` (فردِ موجود) هم از
+    `colleague_quick_create` (فردِ تازه) صدا زده می‌شود.
+    `mode='invite'`: فقط شماره؛ دعوت‌نامه‌ی در انتظار (خودش بعداً رمز می‌سازد).
+    `mode='password'`: مدیر خودش نام‌کاربری/رمز را تعیین می‌کند — دسترسی **فوری**، نه
+    در انتظار (برای نسخه‌ی اولیه که خودمان دسترسی‌ها را می‌سازیم).
+    `allow_elevated_roles=False`: مدیرِ scoped (بدونِ `manage_people`) نمی‌تواند نقشِ
+    سطح‌بالا (`accounts.access.is_elevated_role`) به کسی بدهد — جلوگیری از اینکه
+    برای زیردستش نقشِ مدیرِ کل بسازد."""
+    from accounts.models import Invite, Membership, User
+
+    mode = d.get('mode') or 'invite'
+    role = d.get('role') if org.roles.filter(key=d.get('role')).exists() else 'member'
+    if not allow_elevated_roles and is_elevated_role(org, role):
+        return JsonResponse({'detail': 'اجازه‌ی تعیینِ این نقش را نداری'}, status=403)
+
+    if mode == 'password':
+        username = (d.get('username') or '').strip()
+        password = d.get('password') or ''
+        if not username or not password:
+            return JsonResponse({'detail': 'نام‌کاربری و رمز لازم است'}, status=400)
+        if len(password) < 6:
+            return JsonResponse({'detail': 'رمز عبور حداقل ۶ کاراکتر باشد'}, status=400)
+        if User.objects.filter(username=username).exists():
+            return JsonResponse({'detail': 'این نام‌کاربری قبلاً ثبت شده'}, status=400)
+        name_parts = colleague.full_name.split(maxsplit=1)
+        u = User.objects.create_user(
+            username=username, password=password,
+            first_name=name_parts[0] if name_parts else '',
+            last_name=name_parts[1] if len(name_parts) > 1 else '',
+            email=colleague.email, phone=colleague.phone)
+        Membership.objects.create(user=u, organization=org, role=role)
+        colleague.user = u
+        colleague.save(update_fields=['user'])
+        return JsonResponse({'ok': True}, status=201)
+
+    phone = (d.get('phone') or '').strip()
+    if not phone:
+        return JsonResponse({'detail': 'شماره‌ی تماس لازم است'}, status=400)
+    u = User.objects.filter(phone=phone).first()
+    if u and Membership.objects.filter(user=u, organization=org).exists():
+        return JsonResponse({'detail': 'این کاربر قبلاً عضو سازمان است'}, status=400)
+    Invite.objects.create(
+        organization=org, user=u, phone=phone, role=role,
+        colleague=colleague, invited_by=request.user)
+    return JsonResponse({'ok': True}, status=201)
+
+
+@login_required
+@require_http_methods(['POST'])
+def colleague_grant_access(request, pk):
+    """به همکارِ موجود دسترسی می‌دهد — یا با دعوت‌نامه‌ی شماره‌محور (`mode=invite`،
+    پیش‌فرض) یا با تعیینِ مستقیمِ نام‌کاربری/رمز توسطِ مدیر (`mode=password`، دسترسیِ
+    فوری، بدونِ در انتظار). `_grant_access` منطقِ مشترک را دارد. دسترسیِ سازمانی
+    (همه) یا مدیرِ همین فرد بودن (فقط زیرِمجموعه‌ی خودش، با سقفِ نقشِ غیرِسطح‌بالا)."""
+    from accounts.models import Invite
+
+    org = getattr(request, 'organization', None)
+    colleague = get_object_or_404(Colleague, pk=pk)
+    if not org or not can_manage_colleague(request, colleague):
+        raise PermissionDenied('دسترسیِ این فرد را نداری')
+    if colleague.user_id:
+        return JsonResponse({'detail': 'این همکار قبلاً به سیستم دسترسی دارد'}, status=400)
+    if Invite.objects.filter(colleague=colleague, status=Invite.PENDING).exists():
+        return JsonResponse({'detail': 'قبلاً دعوت‌نامه‌ی در انتظار برای این همکار ثبت شده'}, status=400)
+    return _grant_access(request, org, colleague, _body(request),
+                          allow_elevated_roles=has_perm(request, 'manage_people'))
+
+
+@login_required
+@require_http_methods(['POST'])
+def colleague_quick_create(request):
+    """افزودنِ فردِ تازه + دادنِ دسترسی در یک قدم — دکمه‌های «کاربر جدید»/«دعوت با شماره»
+    در صفحه‌ی فهرستِ افراد. بدنه: `{full_name, phone, mode, username?, password?, role}`.
+    دسترسیِ سازمانی (`manage_people`) یا «سرپرست‌بودن» (`is_manager_tier` — زیرمجموعه
+    دارد یا پرمیشنِ ناظر) لازم است؛ در حالتِ دوم فردِ تازه خودکار **زیردستِ خودِ ساینده**
+    می‌شود (وگرنه فردی می‌ساخت که خودش دیگر اجازه‌ی مدیریتش را نداشت)."""
+    org = getattr(request, 'organization', None)
+    full_access = has_perm(request, 'manage_people')
+    if not org or not (full_access or is_manager_tier(request)):
+        raise PermissionDenied('دسترسیِ افزودنِ فرد را نداری')
+    d = _body(request)
+    full_name = (d.get('full_name') or '').strip()
+    if not full_name:
+        return JsonResponse({'detail': 'نام لازم است'}, status=400)
+    my_colleague = getattr(request.user, 'colleague', None)
+    colleague = Colleague.objects.create(
+        full_name=full_name, phone=(d.get('phone') or '').strip(),
+        organization=org, created_by=request.user,
+        manager=None if full_access else my_colleague)
+    resp = _grant_access(request, org, colleague, d, allow_elevated_roles=full_access)
+    if resp.status_code >= 400:
+        colleague.delete()
+        return resp
+    return JsonResponse({'ok': True, 'id': colleague.id}, status=201)
+
+
+@login_required
+@require_http_methods(['POST'])
+def colleague_revoke_invite(request, pk):
+    """دعوت‌نامه‌ی در انتظارِ این همکار را لغو می‌کند (حذف، نه رد — تا بشود دوباره دعوت کرد)."""
+    from accounts.models import Invite
+
+    colleague = get_object_or_404(Colleague, pk=pk)
+    if not can_manage_colleague(request, colleague):
+        raise PermissionDenied('دسترسیِ این فرد را نداری')
+    Invite.objects.filter(colleague=colleague, status=Invite.PENDING).delete()
+    return JsonResponse({'ok': True})

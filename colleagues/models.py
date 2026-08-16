@@ -14,18 +14,6 @@ from core.models import Attachment, TimeStampedModel
 
 
 class Colleague(TimeStampedModel):
-    # نقش‌ها
-    WRITER = 'writer'
-    SEO = 'seo'
-    SUPERVISOR = 'supervisor'
-    WEBTECH = 'webtech'
-    ROLE_CHOICES = [
-        (WRITER, 'نویسنده'),
-        (SEO, 'مدیر سئو'),
-        (SUPERVISOR, 'سرپرست'),
-        (WEBTECH, 'مدیر طراحی سایت و فنی'),
-    ]
-
     # وضعیت
     ACTIVE = 'active'
     INACTIVE = 'inactive'
@@ -47,6 +35,9 @@ class Colleague(TimeStampedModel):
     status = models.CharField('وضعیت', max_length=10, choices=STATUS_CHOICES, default=ACTIVE)
     archived_at = models.DateTimeField('زمان غیرفعال‌سازی', null=True, blank=True)
     join_date = models.DateField('تاریخ عضویت', null=True, blank=True)
+    birth_date = models.DateField('تاریخ تولد', null=True, blank=True)
+    # نام‌کاربریِ همین فرد در سامانه‌ی حضورغیاب (worktracker) — برای نمایشِ ساعتِ کاری/آنلاین
+    worktracker_username = models.CharField('اتصال به حضورغیاب (نام کاربری worktracker)', max_length=150, blank=True)
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         verbose_name='کاربر',
@@ -55,11 +46,13 @@ class Colleague(TimeStampedModel):
         blank=True,
         related_name='colleague',
     )
-    rate_per_word = models.DecimalField(
-        'دستمزد هر کلمه', max_digits=12, decimal_places=2, null=True, blank=True
+    manager = models.ForeignKey(
+        'self', verbose_name='مدیر', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='reports',
     )
-    rate_per_task = models.DecimalField(
-        'دستمزد هر تسک', max_digits=12, decimal_places=2, null=True, blank=True
+    needs_review = models.BooleanField(
+        'تسک‌هایش نیاز به بازبینی دارد', default=False,
+        help_text='فقط با تعیینِ مدیر معنا دارد؛ تسک‌های انجام‌شده برای تاییدِ مدیرش به «بازبینی تسک» می‌رود.',
     )
     files = GenericRelation(Attachment)
 
@@ -75,6 +68,10 @@ class Colleague(TimeStampedModel):
 
     def save(self, *args, **kwargs):
         stamp_org(self)
+        if self.manager_id == self.pk:  # همکار نمی‌تواند مدیرِ خودش باشد
+            self.manager_id = None
+        if not self.manager_id:
+            self.needs_review = False
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -93,8 +90,15 @@ class Colleague(TimeStampedModel):
 
     @property
     def roles_display(self):
-        labels = dict(self.ROLE_CHOICES)
-        return ' · '.join(labels.get(r, r) for r in self.roles_list)
+        """برچسبِ نمایشیِ نقش‌ها — از کاتالوگِ نقش‌های سازمان می‌خواند (`accounts.Role`،
+        همان‌هایی که در «تنظیمات → تیم‌ها و نقش‌ها» تعریف می‌شوند)، نه فهرستِ ثابتِ قدیمی."""
+        keys = self.roles_list
+        if not keys:
+            return ''
+        from accounts.models import Role
+        labels = dict(Role.objects.filter(
+            organization_id=self.organization_id, key__in=keys).values_list('key', 'name'))
+        return ' · '.join(labels.get(r, r) for r in keys)
 
     @property
     def initials(self):
@@ -110,3 +114,18 @@ class Colleague(TimeStampedModel):
         self.status = self.ACTIVE
         self.archived_at = None
         self.save(update_fields=['status', 'archived_at', 'updated_at'])
+
+
+def ensure_colleague_for_user(user, org):
+    """اگر کاربرِ عضوِ سازمان (مثلاً مالک، که در ساختِ سازمان Colleague ندارد) هنوز
+    پروفایلِ همکار وصل ندارد، یکی می‌سازد — تا هرکسی که به سازمان دسترسی دارد در
+    «افراد و دسترسی‌ها» هم دیده شود و بتواند مسئولِ تسک باشد (own_tasks_only و
+    پیش‌فرضِ «مسئول = خودم» به این نیاز دارند)."""
+    if not user or not org or not getattr(user, 'is_authenticated', False):
+        return None
+    existing = getattr(user, 'colleague', None)
+    if existing:
+        return existing
+    return Colleague.objects.create(
+        full_name=user.get_full_name() or user.username,
+        email=user.email, phone=user.phone, user=user, organization=org)

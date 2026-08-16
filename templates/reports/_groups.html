@@ -7,7 +7,8 @@
       <tbody>
         {% for it in items %}
           <tr>
-            <td><span contenteditable="true" data-item-title="{{ it.id }}" style="outline:none">{{ it.eff_title }}</span></td>
+            <td><span contenteditable="true" data-item-title="{{ it.id }}" style="outline:none">{{ it.eff_title }}</span>
+              {% if it.task and it.task.status != 'done' %}<span class="tag t-warn" title="این تسک هنوز انجام‌نشده — فقط برای خودِ ما، در گزارشِ مشتری دیده نمی‌شود">⏳ {{ it.task.get_status_display }}</span>{% endif %}</td>
             <td>{% if it.task.assignee %}{{ it.task.assignee.full_name }}{% else %}<span class="zero">—</span>{% endif %}</td>
             <td><input class="input jdate" style="max-width:110px;padding:5px 8px" dir="ltr" data-item-date="{{ it.id }}" value="{{ it.eff_done_date|jalali:'%Y/%m/%d' }}"></td>
             <td>{% if it.eff_url %}<a class="lnk" href="{{ it.eff_url }}" target="_blank" rel="noopener">↗</a>{% else %}<span class="zero">—</span>{% endif %}</td>

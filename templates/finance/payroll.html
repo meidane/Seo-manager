@@ -9,18 +9,23 @@
   <section class="card glass">
     {% if payrolls %}
       <table>
-        <thead><tr><th>همکار</th><th>ماه</th><th>اجزا</th><th>جمع</th><th>پرداخت‌شده</th><th>مانده</th><th>وضعیت</th><th></th></tr></thead>
+        <thead><tr><th>همکار</th><th>ماه</th><th>اجزا</th><th>جمع</th><th>مانده (کل حساب)</th><th></th></tr></thead>
         <tbody>
           {% for p in payrolls %}
             <tr data-id="{{ p.id }}">
               <td><b>{{ p.colleague.full_name }}</b></td>
-              <td class="num-c">{{ p.year|fa_digits }}/{{ p.month|fa_digits }}</td>
+              <td class="num-c">{{ p.month_name }} {{ p.year|fa_digits }}</td>
               <td>{% for it in p.items.all %}<span class="tag t-mute" style="margin:1px">{{ it.title }}: {{ it.amount|money }}</span>{% endfor %}</td>
               <td class="num-c" style="font-weight:700">{{ p.total|money }}</td>
-              <td class="num-c"><input class="pay-paid input" data-id="{{ p.id }}" dir="ltr" style="max-width:120px;padding:5px 8px" value="{{ p.paid_amount|floatformat:0 }}"></td>
-              <td class="num-c {% if p.remaining > 0 %}red-n{% else %}zero{% endif %}">{{ p.remaining|money }}</td>
-              <td>{% if p.status == 'paid' %}<span class="tag t-ok">تسویه</span>{% elif p.status == 'partial' %}<span class="tag t-warn">ناقص</span>{% else %}<span class="tag t-bad">پرداخت‌نشده</span>{% endif %}</td>
-              <td><button class="mini pay-del" data-id="{{ p.id }}">حذف</button></td>
+              {% with bal=balances|dictkey:p.colleague_id catid=salary_cat|dictkey:p.colleague_id %}
+              <td class="num-c">
+                {% if catid %}<a href="{% url 'finance:ledger' %}?category={{ catid }}" class="lnk" title="مشاهده‌ی گردش حساب" style="font-weight:700;{% if bal > 0 %}color:var(--danger){% elif bal < 0 %}color:var(--warning){% endif %}">{{ bal|money }} ↗</a>{% else %}{{ bal|money }}{% endif %}
+              </td>
+              {% endwith %}
+              <td style="white-space:nowrap">
+                <button class="mini pay-edit" data-id="{{ p.id }}">ویرایش</button>
+                <button class="mini pay-del" data-id="{{ p.id }}">حذف</button>
+              </td>
             </tr>
           {% endfor %}
         </tbody>
@@ -33,32 +38,66 @@
 
 {% block scripts %}
 <script>
-function openPay(){
-  const cols=`{% for c in colleagues %}<option value="{{ c.id }}">{{ c.full_name|escapejs }}</option>{% endfor %}`;
-  App.openModal(`<div class="modal-h"><h3>صدور حقوق</h3><button class="x" onclick="App.closeModal()">×</button></div>
+const COLS = `{% for c in colleagues %}<option value="{{ c.id }}">{{ c.full_name|escapejs }}</option>{% endfor %}`;
+const MONTHS = `{% for num,name in months %}<option value="{{ num }}">{{ name|escapejs }}</option>{% endfor %}`;
+const PAYROLLS = { {% for p in payrolls %}"{{ p.id }}":{colleague:"{{ p.colleague_id }}",year:"{{ p.year }}",month:"{{ p.month }}",items:[{% for it in p.items.all %}{title:"{{ it.title|escapejs }}",amount:"{{ it.amount|floatformat:0 }}"}{% if not forloop.last %},{% endif %}{% endfor %}]}{% if not forloop.last %},{% endif %}{% endfor %} };
+
+function itemRow(t,a){ const d=document.createElement('div'); d.className='pi-row';
+  d.style.cssText='display:flex;gap:8px;margin-bottom:6px;align-items:center';
+  d.innerHTML=`<input class="input pi-t" placeholder="عنوان (حقوق پایه)" value="${(t||'').replace(/"/g,'&quot;')}" style="flex:1">
+    <input class="input pi-a" dir="ltr" placeholder="مبلغ" value="${a||''}" style="max-width:150px">
+    <button type="button" class="mini pi-del" tabindex="-1">×</button>`;
+  return d;
+}
+
+function openPay(data){
+  data = data || {};
+  const isEdit = !!data.id;
+  App.openModal(`<div class="modal-h"><h3>${isEdit?'ویرایش حقوق':'صدور حقوق'}</h3><button class="x" onclick="App.closeModal()">×</button></div>
     <div class="modal-b">
-      <div class="grid3"><div class="field"><label>همکار</label><select id="p-col">${cols}</select></div>
-        <div class="field"><label>سال</label><input class="input" id="p-year" dir="ltr" value="۱۴۰۵"></div>
-        <div class="field"><label>ماه</label><input class="input" id="p-month" dir="ltr" value="۵"></div></div>
-      <label>اجزای حقوق</label>
-      <div id="p-items">
-        <div class="grid2" style="margin-bottom:8px"><input class="input pi-t" placeholder="حقوق پایه"><input class="input pi-a" dir="ltr" placeholder="مبلغ"></div>
+      <div class="grid3">
+        <div class="field"><label>همکار</label><select id="p-col">${COLS}</select></div>
+        <div class="field"><label>سال</label><input class="input" id="p-year" dir="ltr" value="${data.year||'۱۴۰۵'}"></div>
+        <div class="field"><label>ماه</label><select id="p-month">${MONTHS}</select></div>
       </div>
+      <label>اجزای حقوق <span style="color:var(--text-faint);font-size:11px">(اینتر = ردیف بعد)</span></label>
+      <div id="p-items"></div>
       <button class="mini" id="p-add-item" style="margin-bottom:6px">＋ افزودن جزء</button>
     </div>
-    <div class="modal-f"><button class="btn btn-p" id="p-save">صدور</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
-  document.getElementById('p-add-item').onclick=()=>{ const d=document.createElement('div'); d.className='grid2'; d.style.marginBottom='8px';
-    d.innerHTML='<input class="input pi-t" placeholder="عنوان"><input class="input pi-a" dir="ltr" placeholder="مبلغ">'; document.getElementById('p-items').appendChild(d); };
+    <div class="modal-f"><button class="btn btn-p" id="p-save">${isEdit?'ذخیره':'صدور'}</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+
+  if(data.colleague) document.getElementById('p-col').value=data.colleague;
+  if(data.month) document.getElementById('p-month').value=data.month;
+
+  const items=document.getElementById('p-items');
+  const rows = (data.items && data.items.length) ? data.items : [{title:'',amount:''}];
+  rows.forEach(r=>items.appendChild(itemRow(r.title,r.amount)));
+
+  function addRow(){ const r=itemRow('',''); items.appendChild(r); r.querySelector('.pi-t').focus(); }
+  document.getElementById('p-add-item').onclick=addRow;
+  items.addEventListener('keydown', e=>{
+    if(e.key==='Enter' && e.target.matches('.pi-t,.pi-a')){ e.preventDefault(); addRow(); }
+  });
+  items.addEventListener('click', e=>{ const d=e.target.closest('.pi-del'); if(d){ if(items.children.length>1) d.closest('.pi-row').remove(); } });
+
   document.getElementById('p-save').onclick=async()=>{
-    const items=[...document.querySelectorAll('#p-items .grid2')].map(r=>({title:r.querySelector('.pi-t').value.trim(),amount:r.querySelector('.pi-a').value})).filter(x=>x.title);
-    try{ await App.fetchJSON("{% url 'finance:payroll_create' %}",{method:'POST',body:{colleague:document.getElementById('p-col').value,year:document.getElementById('p-year').value.replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)),month:document.getElementById('p-month').value.replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)),items}}); location.reload(); }catch(_){}
+    const its=[...items.querySelectorAll('.pi-row')].map(r=>({title:r.querySelector('.pi-t').value.trim(),amount:r.querySelector('.pi-a').value})).filter(x=>x.title);
+    const body={ colleague:document.getElementById('p-col').value,
+      year:document.getElementById('p-year').value.replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)),
+      month:document.getElementById('p-month').value, items:its };
+    try{
+      if(isEdit){ await App.fetchJSON(`/finance/api/payroll/${data.id}/`,{method:'PATCH',body}); }
+      else{ await App.fetchJSON("{% url 'finance:payroll_create' %}",{method:'POST',body}); }
+      location.reload();
+    }catch(_){}
   };
 }
-document.getElementById('add-pay').onclick=openPay;
-const p2=document.getElementById('add-pay2'); if(p2)p2.onclick=openPay;
-document.addEventListener('change',async e=>{ if(e.target.classList.contains('pay-paid')){
-  try{ const d=await App.fetchJSON(`/finance/api/payroll/${e.target.dataset.id}/`,{method:'PATCH',body:{paid_amount:e.target.value}}); App.toast('ذخیره شد','ok'); setTimeout(()=>location.reload(),400);}catch(_){}
-}});
-document.addEventListener('click',async e=>{ const b=e.target.closest('.pay-del'); if(b){ if(await App.confirm('این صورت‌حساب حذف شود؟')){ await App.fetchJSON(`/finance/api/payroll/${b.dataset.id}/`,{method:'DELETE'}); location.reload(); } } });
+
+document.getElementById('add-pay').onclick=()=>openPay();
+const p2=document.getElementById('add-pay2'); if(p2)p2.onclick=()=>openPay();
+document.addEventListener('click',async e=>{
+  const ed=e.target.closest('.pay-edit'); if(ed){ openPay(Object.assign({id:ed.dataset.id},PAYROLLS[ed.dataset.id])); return; }
+  const del=e.target.closest('.pay-del'); if(del){ if(await App.confirm('این صورت‌حساب حذف شود؟')){ await App.fetchJSON(`/finance/api/payroll/${del.dataset.id}/`,{method:'DELETE'}); location.reload(); } }
+});
 </script>
 {% endblock %}

@@ -1,4 +1,5 @@
-"""ویوهای core — مدیریت تعطیلات + آپلود عکس ادیتور."""
+"""ویوهای core — مدیریت تعطیلات، آپلود عکس ادیتور، سفارشی‌سازی ستون‌ها."""
+import json
 import os
 import uuid
 
@@ -8,9 +9,12 @@ from django.core.files.storage import default_storage
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
-from django.views.generic import ListView
+from django.views.generic import ListView, TemplateView
 
-from .models import Holiday
+from accounts.access import require_perm
+
+from .columns import get_catalog, resolve_state
+from .models import ColumnConfig, Holiday
 
 IMAGE_EXTS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
 
@@ -42,3 +46,76 @@ class HolidayListView(LoginRequiredMixin, ListView):
     template_name = 'settings/holidays.html'
     context_object_name = 'holidays'
     paginate_by = 50
+
+    def dispatch(self, request, *args, **kwargs):
+        require_perm(request, 'manage_holidays')
+        return super().dispatch(request, *args, **kwargs)
+
+
+# ── سفارشی‌سازیِ ستون‌ها `/settings/columns/` ───────────────────────────────
+# پنج بخشِ قابل‌تنظیم: تسک‌ها(صفحه)، پروژه‌ها(صفحه/داشبورد)، همکاران(صفحه/داشبورد).
+COLUMN_SECTIONS = [
+    (ColumnConfig.TASKS, ColumnConfig.PAGE, 'تسک‌ها — ستون‌های اضافی (صفحه‌ی تسک‌ها)'),
+    (ColumnConfig.PROJECTS, ColumnConfig.PAGE, 'وضعیت پروژه‌ها — صفحه‌ی پروژه‌ها'),
+    (ColumnConfig.PROJECTS, ColumnConfig.DASHBOARD, 'وضعیت پروژه‌ها — داشبورد'),
+    (ColumnConfig.COLLEAGUES, ColumnConfig.PAGE, 'عملکرد همکاران — صفحه‌ی همکاران'),
+    (ColumnConfig.COLLEAGUES, ColumnConfig.DASHBOARD, 'عملکرد همکاران — داشبورد'),
+]
+
+
+class ColumnsSettingsView(LoginRequiredMixin, TemplateView):
+    """تنظیمِ ستون‌های قابل‌نمایش/ترتیبشان برای هر جدول+محل — per سازمان."""
+
+    template_name = 'settings/columns.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        require_perm(request, 'manage_columns')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        sections = []
+        for table, scope, title in COLUMN_SECTIONS:
+            catalog, saved, configured = resolve_state(table, scope)
+            by_key = {c['key']: c for c in catalog}
+            # ترتیب: کلیدهای فعال (ذخیره‌شده یا پیش‌فرض) اول، بعد بقیه‌ی کاتالوگ (غیرفعال)
+            ordered = [by_key[k] for k in saved if k in by_key]
+            ordered += [c for c in catalog if c['key'] not in saved]
+            items = [{'key': c['key'], 'label': c['label'], 'checked': c['key'] in saved} for c in ordered]
+            sections.append({'table': table, 'scope': scope, 'title': title, 'items': items, 'configured': configured})
+        ctx['sections'] = sections
+        ctx['page_title'] = 'سفارشی‌سازی ستون‌ها'
+        return ctx
+
+
+@login_required
+@require_http_methods(['POST'])
+def columns_save(request):
+    """ذخیره‌ی ترتیب/انتخابِ ستون‌های یک (table, scope). بدنه: {table, scope, keys:[...]}."""
+    require_perm(request, 'manage_columns')
+    try:
+        data = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'detail': 'بدنه نامعتبر'}, status=400)
+    table, scope, keys = data.get('table'), data.get('scope'), data.get('keys')
+    if table not in dict(ColumnConfig.TABLE_CHOICES) or scope not in dict(ColumnConfig.SCOPE_CHOICES):
+        return JsonResponse({'detail': 'جدول/محلِ نامعتبر'}, status=400)
+    if not isinstance(keys, list):
+        return JsonResponse({'detail': 'فهرستِ ستون‌ها لازم است'}, status=400)
+    valid_keys = {c['key'] for c in get_catalog(table)}
+    keys = [k for k in keys if k in valid_keys]
+    ColumnConfig.objects.update_or_create(table=table, scope=scope, defaults={'keys': keys})
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_http_methods(['POST'])
+def columns_reset(request):
+    """حذفِ تنظیمِ ذخیره‌شده = برگشت به پیش‌فرضِ کاتالوگ (نه «خالی»). بدنه: {table, scope}."""
+    require_perm(request, 'manage_columns')
+    try:
+        data = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'detail': 'بدنه نامعتبر'}, status=400)
+    ColumnConfig.objects.filter(table=data.get('table'), scope=data.get('scope')).delete()
+    return JsonResponse({'ok': True})

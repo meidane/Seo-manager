@@ -3,9 +3,6 @@
    به App (app.js) و TASK_SCHEMA (task-schema.js) وابسته است. */
 (function () {
   'use strict';
-  const S = window.TASK_SCHEMA;
-  const ALWAYS = ['project', 'assignee', 'task_type', 'title', 'planned_date', 'status', 'priority', 'description', 'estimate_minutes'];
-
   let cfg = null;
   async function ensureCfg() {
     if (!cfg) cfg = await App.fetchJSON('/tasks/api/formdata/');
@@ -13,6 +10,9 @@
   }
 
   const opt = (v, l, sel) => `<option value="${v}"${String(v) === String(sel) ? ' selected' : ''}>${l}</option>`;
+  // گزینه با رنگ/تصویر برای دراپ‌داونِ غنی (پروژه/مسئول)
+  const optRich = (v, l, sel, color, img) => `<option value="${v}"${String(v) === String(sel) ? ' selected' : ''}` +
+    `${color ? ` data-color="${color}"` : ''}${img ? ` data-img="${img}"` : ''}>${l}</option>`;
   function field(id, label, inner) {
     return `<div class="field" data-f="${id}"><label>${label}</label>${inner}</div>`;
   }
@@ -27,58 +27,70 @@
     return typeList().map((t) => opt(t.id, (t.icon ? t.icon + ' ' : '') + t.name, sel)).join('');
   }
 
+  // آیا این همکار به‌طورِ پیش‌فرض نیاز به بازبینی دارد؟ (cfg.colleagues: [id, name, needsReview])
+  function colleagueNeedsReview(id) {
+    const c = (cfg.colleagues || []).find((x) => String(x[0]) === String(id));
+    return !!(c && c[2]);
+  }
+
+  // گزینه‌های وضعیت — تسکِ needs_review هرگز «انجام‌شده» ندارد (فقط «تکمیل»)، برعکسش هم همین‌طور
+  const STATUS_LABELS = [['todo', 'در انتظار'], ['doing', 'در حال انجام'], ['pending', 'تکمیل — در انتظار بازبینی'], ['done', 'انجام شده']];
+  function statusOptions(sel, needsReview) {
+    return STATUS_LABELS
+      .filter(([v]) => (needsReview ? v !== 'done' : v !== 'pending'))
+      .map(([v, l]) => opt(v, l, sel)).join('');
+  }
+
   function modalHtml(t) {
     t = t || {};
-    const _bt = typeList().find((x) => x.builtin_key === (t.type || 'publish'));
+    const isNew = !t.id;
+    // اگر own_tasks_only داشت، فقط روی تسکِ خودش ویرایش/حذف مجاز است (بقیه‌ی تسک‌ها را
+    // اصلاً نمی‌بیند تا اینجا برسد، ولی این چک برای بازکردنِ مستقیم/لینکِ قدیمی هم درست کار کند).
+    const ownMatch = !cfg.ownTasksOnly || t.assignee_id === cfg.myColleagueId;
+    // تسکِ جدید: هرکسی با createTask (پروفایلِ همکار) می‌تواند برای خودش بسازد، حتی
+    // بدونِ edit_task؛ تسکِ موجود: فقط edit_task واقعی (+ own_tasks_only اگر داشت).
+    const canEditThis = isNew ? (cfg.editTask || cfg.createTask) : (cfg.editTask && ownMatch);
+    const canDeleteThis = t.id && cfg.deleteTask && ownMatch;
+    const _bt = typeList().find((x) => x.builtin_key === (t.type || 'other'));
     const typeSel = t.type_def || (_bt ? _bt.id : (typeList()[0] || {}).id);
+    // مسئول: پیش‌فرض خودِ کاربر (فقط برای تسکِ جدید)؛ اگر own_tasks_only داشت، یا
+    // تسکِ جدیدی که بدونِ edit_task فقط برای خودش مجاز است، دراپ‌داون قفل می‌شود.
+    const lockAssignee = cfg.ownTasksOnly || (isNew && !cfg.editTask);
+    const assigneeSel = t.id ? t.assignee_id : (t.assignee_id || cfg.myColleagueId || '');
+    const assigneeSelect = lockAssignee
+      ? `<select id="f-assignee" disabled>${opt(cfg.myColleagueId || '', 'خودم', assigneeSel)}</select>`
+      : `<select id="f-assignee" class="rich-select"><option value="">—</option>${cfg.colleagues.map(([v, l, , color, img]) => optRich(v, l, assigneeSel, color, img)).join('')}</select>`;
+    // نیاز به بازبینی: پیش‌فرض از تسکِ موجود (t.needs_review)، وگرنه از تنظیمِ خودِ
+    // مسئولِ فعلاً انتخاب‌شده (Colleague.needs_review) — هربار قابلِ‌تغییرِ دستی است.
+    const needsReviewDefault = t.id ? !!t.needs_review : colleagueNeedsReview(assigneeSel);
     return `
     <div class="modal-h"><h3>${t.id ? 'ویرایش تسک' : 'تسک جدید'}</h3><button class="x" onclick="App.closeModal()">×</button></div>
     <div class="modal-b" id="tform">
       ${reviewNotesHtml(t)}
       <div class="grid3">
-        ${field('project', 'پروژه', `<select id="f-project">${cfg.projects.map(([v, l]) => opt(v, l, t.project_id)).join('')}</select>`)}
-        ${field('assignee', 'مسئول', `<select id="f-assignee"><option value="">—</option>${cfg.colleagues.map(([v, l]) => opt(v, l, t.assignee_id)).join('')}</select>`)}
+        ${field('project', 'پروژه', `<select id="f-project" class="rich-select"><option value="">— انتخاب پروژه —</option>${cfg.projects.map(([v, l, color, img]) => optRich(v, l, t.project_id, color, img)).join('')}</select>`)}
+        ${field('assignee', 'مسئول', assigneeSelect)}
         ${field('task_type', 'نوع تسک', `<select id="f-task_type">${typeOptions(typeSel)}</select>`)}
       </div>
-      <div class="grid2">
-        ${field('update_type', 'زیرنوع', `<select id="f-update_type"><option value="">—</option><option value="minor"${t.update_type === 'minor' ? ' selected' : ''}>سطحی</option><option value="major"${t.update_type === 'major' ? ' selected' : ''}>اساسی</option></select>`)}
-        ${field('priority', 'اولویت', `<select id="f-priority"><option value="low">کم</option><option value="med">متوسط</option><option value="high">زیاد</option></select>`)}
-      </div>
+      ${field('priority', 'اولویت', `<select id="f-priority"><option value="low">کم</option><option value="med">متوسط</option><option value="high">زیاد</option></select>`)}
       ${field('title', 'عنوان', `<input id="f-title" class="input" value="${esc(t.title)}">`)}
+      <label style="display:flex;align-items:center;gap:8px;margin:0 0 14px;cursor:pointer">
+        <input type="checkbox" id="f-needs-review" ${needsReviewDefault ? 'checked' : ''} style="width:auto">
+        نیاز به بازبینی (بدونِ تاییدِ مدیر، «انجام‌شده» نمی‌شود)
+      </label>
       <div class="grid3">
         ${field('planned_date', 'تاریخ برنامه (شمسی)', `<input id="f-planned_date" class="input jdate" dir="ltr" readonly placeholder="۱۴۰۵/۰۵/۱۵" value="${t.planned_date_fa || ''}">`)}
-        ${field('status', 'وضعیت', `<select id="f-status"><option value="todo">در انتظار</option><option value="doing">در حال انجام</option><option value="done">انجام شده</option></select>`)}
+        ${field('status', 'وضعیت', `<select id="f-status">${statusOptions(t.status, needsReviewDefault)}</select>`)}
         ${field('estimate_minutes', 'تخمین زمان (دقیقه)', `<input id="f-estimate_minutes" class="input" type="number" dir="ltr" placeholder="۶۰" value="${t.estimate_minutes || ''}">`)}
       </div>
+      ${field('report_month', 'ماه گزارش', `<select id="f-report_month"><option value="">— بدون ماه —</option>${(cfg.reportMonths || []).map(([v, l]) => opt(v, l, t.report_month)).join('')}</select>`)}
 
       ${recurBarHtml(t)}
       ${t.id ? '<div id="kpi-box" style="display:none;margin-top:8px"></div>' : ''}
 
-      <!-- فیلدهای سفارشی نوع (داینامیک) -->
+      <!-- فیلدهای سفارشی نوع (داینامیک، از TaskTypeDef.fields) -->
       <div id="custom-fields" style="display:none"></div>
 
-      <!-- فیلدهای built-in محتوایی -->
-      <div class="grid2">
-        ${field('word_count', 'تعداد کلمه', `<input id="f-word_count" class="input" type="number" value="${t.word_count || ''}">`)}
-        ${field('seo_title', 'عنوان سئو', `<input id="f-seo_title" class="input" value="${esc(t.seo_title)}">`)}
-      </div>
-      ${field('keywords', 'کلمات کلیدی', `<input id="f-keywords" class="input" value="${esc(t.keywords)}">`)}
-      ${field('lsi_keywords', 'کلمات LSI', `<input id="f-lsi_keywords" class="input" value="${esc(t.lsi_keywords)}">`)}
-      ${field('current_rank', 'جایگاه فعلی', `<input id="f-current_rank" class="input" type="number" value="${t.current_rank || ''}">`)}
-      ${field('published_url', 'لینک انتشار', `<input id="f-published_url" class="input" dir="ltr" value="${esc(t.published_url)}">`)}
-      ${field('source_url', 'آدرس مطلب فعلی', `<input id="f-source_url" class="input" dir="ltr" value="${esc(t.source_url)}">`)}
-      <div class="grid2">
-        ${field('media_name', 'نام رسانه', `<input id="f-media_name" class="input" value="${esc(t.media_name)}">`)}
-        ${field('media_cost', 'هزینه رپورتاژ', `<input id="f-media_cost" class="input" type="number" value="${t.media_cost || ''}">`)}
-      </div>
-      <div class="grid2">
-        ${field('anchor_text', 'انکر تکست', `<input id="f-anchor_text" class="input" value="${esc(t.anchor_text)}">`)}
-        ${field('target_url', 'لینک مقصد', `<input id="f-target_url" class="input" dir="ltr" value="${esc(t.target_url)}">`)}
-      </div>
-      <div class="grid2">
-        ${field('link_type', 'نوع لینک', `<select id="f-link_type"><option value="">—</option><option value="comment">کامنت</option><option value="profile">پروفایل</option><option value="forum">فروم</option><option value="directory">دایرکتوری</option><option value="social">سوشال</option><option value="other">سایر</option></select>`)}
-        ${field('link_count', 'تعداد لینک', `<input id="f-link_count" class="input" type="number" value="${t.link_count || ''}">`)}
-      </div>
       ${field('description', 'توضیحات', `<textarea id="f-description" class="rich-editor" rows="3">${esc(t.description)}</textarea>`)}
 
       <!-- گزارش کار (فقط برای تسک موجود) -->
@@ -91,12 +103,14 @@
         </div>
         <div id="report-list" class="report-list"></div>
       </div>` : ''}
+
+      ${historyHtml(t)}
     </div>
     <div class="modal-f">
-      <button class="btn btn-p" id="t-save">ذخیره</button>
-      ${t.id ? '' : '<button class="btn" id="t-save-next">ذخیره و ایجاد بعدی</button>'}
+      ${canEditThis ? '<button class="btn btn-p" id="t-save">ذخیره</button>' : ''}
+      ${canEditThis && !t.id ? '<button class="btn" id="t-save-next">ذخیره و ایجاد بعدی</button>' : ''}
       <button class="btn" onclick="App.closeModal()">انصراف</button>
-      ${t.id ? '<button class="btn" id="t-del" style="margin-inline-start:auto;color:var(--danger)">حذف</button>' : ''}
+      ${canDeleteThis ? '<button class="btn" id="t-del" style="margin-inline-start:auto;color:var(--danger)">حذف</button>' : ''}
     </div>`;
   }
 
@@ -172,35 +186,85 @@
     return `<div class="fixnote-box"><div class="fixnote-h">⚠ موارد نیاز به اصلاح</div>${ns.map(item).join('')}${more}</div>`;
   }
 
+  // ── تاریخچهٔ تسک (آیکنِ کوچک پایینِ مودال، جمع‌شونده) ──
+  function historyHtml(t) {
+    if (!t || !t.id) return '';
+    const hs = t.history || [];
+    const item = (h) => {
+      const ch = Object.keys(h.changes || {}).map((k) =>
+        `<div class="hist-ch"><b>${esc(k)}</b>: <span class="hist-old">${esc(h.changes[k][0])}</span> ← <span class="hist-new">${esc(h.changes[k][1])}</span></div>`).join('');
+      return `<div class="hist-item"><div class="hist-meta"><span class="hist-badge hist-${h.action}">${esc(h.action_label)}</span> · ${esc(h.user)} · ${esc(h.when)}</div>${ch}</div>`;
+    };
+    const body = hs.length ? hs.map(item).join('') : '<div class="zero" style="padding:8px">تاریخچه‌ای نیست</div>';
+    const faNum = String(hs.length).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]);
+    return `<div class="hist-box"><button type="button" class="hist-toggle" id="hist-toggle">🕐 تاریخچهٔ تسک (${faNum})</button><div class="hist-list" id="hist-list" style="display:none">${body}</div></div>`;
+  }
+
+  // ── چیپ‌های کلمه/برچسب (Enter یا دکمه‌ی + اضافه می‌کند؛ ویرگول خودکار جدا می‌شود) ──
+  function tagChip(word) {
+    return `<span class="tag t-mute tagbox-chip">${esc(word)}<i class="tagbox-x" data-w="${esc(word)}">×</i></span>`;
+  }
+  function tagboxHtml(key, words, placeholder) {
+    const chips = (words || []).map(tagChip).join('');
+    return `<div class="tagbox cf" data-key="${key}" data-kind="tags">
+      <div class="tagbox-chips">${chips}</div>
+      <div class="tagbox-row"><input type="text" class="input tagbox-input" placeholder="${esc(placeholder || 'بنویس و Enter بزن…')}"><button type="button" class="btn btn-sm tagbox-add">+</button></div>
+    </div>`;
+  }
+  function tagboxAddWords(box, raw) {
+    const chipsWrap = box.querySelector('.tagbox-chips');
+    const existing = new Set([...box.querySelectorAll('.tagbox-chip')].map((c) => c.dataset.w));
+    raw.split(',').map((w) => w.trim()).filter((w) => w && !existing.has(w)).forEach((w) => {
+      existing.add(w);
+      chipsWrap.insertAdjacentHTML('beforeend', tagChip(w));
+    });
+  }
+  // یک‌بار روی #custom-fields سیم‌کشی می‌شود (نه هر renderCustom، چون innerHTML عوض می‌شود
+  // ولی خودِ نودِ box ثابت می‌ماند — الگوی delegation مثل بقیه‌ی مودال).
+  function wireTagboxes(box) {
+    if (box.dataset.tagWired) return;
+    box.dataset.tagWired = '1';
+    box.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' || !e.target.matches('.tagbox-input')) return;
+      e.preventDefault();
+      const tb = e.target.closest('.tagbox');
+      if (e.target.value.trim()) { tagboxAddWords(tb, e.target.value); e.target.value = ''; }
+    });
+    box.addEventListener('click', (e) => {
+      const add = e.target.closest('.tagbox-add');
+      if (add) { const tb = add.closest('.tagbox'); const inp = tb.querySelector('.tagbox-input');
+        if (inp.value.trim()) { tagboxAddWords(tb, inp.value); inp.value = ''; } return; }
+      const x = e.target.closest('.tagbox-x');
+      if (x) x.closest('.tagbox-chip').remove();
+    });
+  }
+
   // ── رندر فیلدهای سفارشی یک نوع ──
   function renderCustom(t, values) {
     const box = document.getElementById('custom-fields');
     if (!t || !t.fields || !t.fields.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
     values = values || {};
     box.style.display = '';
+    wireTagboxes(box);
     box.innerHTML = t.fields.map((f) => {
       const v = values[f.key] != null ? values[f.key] : '';
       let input;
-      if (f.kind === 'textarea') input = `<textarea class="cf" data-key="${f.key}" rows="2" placeholder="${esc(f.placeholder)}">${esc(v)}</textarea>`;
+      if (f.kind === 'tags') input = tagboxHtml(f.key, Array.isArray(v) ? v : [], f.placeholder);
+      else if (f.kind === 'textarea') input = `<textarea class="cf" data-key="${f.key}" rows="2" placeholder="${esc(f.placeholder)}">${esc(v)}</textarea>`;
       else if (f.kind === 'checkbox') input = `<label style="display:flex;align-items:center;gap:8px;margin:0"><input type="checkbox" class="cf" data-key="${f.key}" ${v ? 'checked' : ''} style="width:auto"> ${esc(f.label)}</label>`;
       else if (f.kind === 'select') input = `<select class="cf" data-key="${f.key}"><option value="">—</option>${f.options.map((o) => opt(o, o, v)).join('')}</select>`;
       else if (f.kind === 'number') input = `<input type="number" class="cf input" data-key="${f.key}" value="${esc(v)}" placeholder="${esc(f.placeholder)}">`;
       else input = `<input type="text" class="cf input" data-key="${f.key}" dir="${f.kind === 'url' ? 'ltr' : 'rtl'}" value="${esc(v)}" placeholder="${esc(f.placeholder)}">`;
       if (f.kind === 'checkbox') return `<div class="field" data-cf>${input}</div>`;
-      return `<div class="field" data-cf><label>${esc(f.label)}${f.required ? ' *' : ''}</label>${input}</div>`;
+      const req = f.required ? ' *' : (f.required_on_done ? ' (برای تکمیل الزامی)' : '');
+      return `<div class="field" data-cf><label>${esc(f.label)}${req}</label>${input}</div>`;
     }).join('');
   }
 
+  // نمایش فیلدها دیگر برحسبِ نوعِ built-in نیست: فیلدهای عمومی همیشه دیده می‌شوند،
+  // فقط فیلدهای سفارشیِ همان نوع (renderCustom) داینامیک اضافه/عوض می‌شوند.
   function applyVisibility(loadedCustom) {
     const ty = findType(document.getElementById('f-task_type').value);
-    const bk = ty ? ty.builtin_key : '';
-    const on = bk ? S.fieldsFor(bk) : new Set();
-    document.querySelectorAll('#tform [data-f]').forEach((el) => {
-      const f = el.dataset.f;
-      if (ALWAYS.includes(f)) return;
-      if (f === 'update_type') { el.style.display = (bk === 'update') ? '' : 'none'; return; }
-      el.style.display = on.has(f) ? '' : 'none';
-    });
     renderCustom(ty, loadedCustom);
   }
 
@@ -213,18 +277,20 @@
       project: g('f-project'), assignee: g('f-assignee'),
       task_type: bk || 'other',
       type_def: (ty && typeof ty.id === 'number') ? ty.id : null,
-      update_type: g('f-update_type'), priority: g('f-priority'), title: g('f-title'),
-      planned_date: g('f-planned_date'), status: g('f-status'), word_count: g('f-word_count'),
-      seo_title: g('f-seo_title'), keywords: g('f-keywords'), lsi_keywords: g('f-lsi_keywords'),
-      current_rank: g('f-current_rank'), published_url: g('f-published_url'), estimate_minutes: g('f-estimate_minutes'),
-      source_url: g('f-source_url'), media_name: g('f-media_name'), media_cost: g('f-media_cost'),
-      anchor_text: g('f-anchor_text'), target_url: g('f-target_url'), link_type: g('f-link_type'),
-      link_count: g('f-link_count'), description: g('f-description'),
+      priority: g('f-priority'), title: g('f-title'),
+      planned_date: g('f-planned_date'), status: g('f-status'),
+      needs_review: document.getElementById('f-needs-review').checked,
+      estimate_minutes: g('f-estimate_minutes'), description: g('f-description'),
+      report_month: g('f-report_month'),
     };
     if (ty && ty.fields && ty.fields.length) {
       const custom = {};
       document.querySelectorAll('#custom-fields .cf').forEach((el) => {
-        custom[el.dataset.key] = el.type === 'checkbox' ? el.checked : el.value;
+        if (el.dataset.kind === 'tags') {
+          custom[el.dataset.key] = [...el.querySelectorAll('.tagbox-chip')].map((c) => c.dataset.w);
+        } else {
+          custom[el.dataset.key] = el.type === 'checkbox' ? el.checked : el.value;
+        }
       });
       p.custom = custom;
     }
@@ -311,9 +377,24 @@
     let data = prefill || {};
     if (id) { try { data = await App.fetchJSON(`/tasks/api/${id}/`); } catch (_) { return; } }
     App.openModal(modalHtml(data));
+    if (window.RichSelect) RichSelect.init();  // دراپ‌داونِ غنیِ پروژه/مسئول در مودال
     if (data.status) document.getElementById('f-status').value = data.status;
     if (data.priority) document.getElementById('f-priority').value = data.priority;
     else document.getElementById('f-priority').value = 'med';
+    // نیاز به بازبینی: با عوضِ مسئول، پیش‌فرضِ خودش را می‌گیرد؛ با تیک‌زدن/برداشتنِ
+    // دستی، گزینه‌های وضعیت (انجام‌شده ⇄ تکمیل) دوباره ساخته می‌شوند.
+    const needsReviewBox = document.getElementById('f-needs-review');
+    const statusSel = document.getElementById('f-status');
+    const rebuildStatus = () => {
+      const cur = statusSel.value;
+      statusSel.innerHTML = statusOptions(cur, needsReviewBox.checked);
+      if (!statusSel.value) statusSel.selectedIndex = 0;  // مقدارِ ازدست‌رفته → اولین گزینه
+    };
+    document.getElementById('f-assignee').addEventListener('change', (e) => {
+      needsReviewBox.checked = colleagueNeedsReview(e.target.value);
+      rebuildStatus();
+    });
+    needsReviewBox.addEventListener('change', rebuildStatus);
     const loaded = data.custom || {};
     document.getElementById('f-task_type').addEventListener('change', () => applyVisibility(loaded));
     applyVisibility(loaded);
@@ -322,6 +403,11 @@
     if (histBtn) histBtn.onclick = () => {
       document.querySelectorAll('[data-fix-item]').forEach((el, i) => { if (i > 0) el.style.display = ''; });
       histBtn.style.display = 'none';
+    };
+    const histToggle = document.getElementById('hist-toggle');  // تاریخچهٔ تسک
+    if (histToggle) histToggle.onclick = () => {
+      const l = document.getElementById('hist-list');
+      l.style.display = l.style.display === 'none' ? '' : 'none';
     };
     wireRecur();               // نوار تکرار (تسک جدید)
     if (id) { initReports(id); initKpis(id); }  // گزارش + نمایش KPI (تسک موجود)
@@ -351,7 +437,7 @@
         btns.forEach((b) => { b.disabled = false; b.classList.remove('loading'); });
       }
     };
-    document.getElementById('t-save').onclick = () => save(false);
+    const s = document.getElementById('t-save'); if (s) s.onclick = () => save(false);
     const n = document.getElementById('t-save-next'); if (n) n.onclick = () => save(true);
     const d = document.getElementById('t-del');
     if (d) d.onclick = async () => { if (await App.confirm('این تسک حذف شود؟')) { await App.fetchJSON(`/tasks/api/${id}/`, { method: 'DELETE' }); App.closeModal(); location.reload(); } };
@@ -414,8 +500,8 @@
   // ── عملیات گروهی ──
   const selected = () => Array.from(document.querySelectorAll('.row-check:checked')).map((c) => c.dataset.id);
   document.addEventListener('change', (e) => {
-    if (e.target.matches('.row-check, #check-all')) {
-      if (e.target.id === 'check-all') document.querySelectorAll('.row-check').forEach((c) => (c.checked = e.target.checked));
+    if (e.target.matches('.row-check, .check-all')) {
+      if (e.target.matches('.check-all')) document.querySelectorAll('.row-check').forEach((c) => (c.checked = e.target.checked));
       const bar = document.getElementById('bulkbar');
       if (bar) { const n = selected().length; bar.style.display = n ? 'flex' : 'none'; const c = document.getElementById('bulk-count'); if (c) c.textContent = n; }
     }
@@ -427,43 +513,78 @@
   }
   window.TaskBulk = { shift: (d) => bulk('shift_date', { days: d, skip_holidays: true }), done: () => bulk('mark_done', {}) };
 
-  // ── تایمر تسک (ستون «زمان» لیست) ──
+  // ── تایمر تسک (ستون «زمان» لیست) — با delegation تا ردیف‌های بعداً اضافه‌شده
+  //    (جدولِ تسک‌های آینده، لودِ تنبل) هم بدونِ سیم‌کشیِ دوباره کار کنند. ──
   function fmtMin(m) { m = Math.max(0, Math.round(m)); const h = Math.floor(m / 60), mm = m % 60; return h ? `${h}:${String(mm).padStart(2, '0')}` : `${mm}د`; }
-  document.querySelectorAll('.timer-cell').forEach((cell) => {
-    const id = cell.dataset.id;
+  function renderTimerCell(cell) {
     const val = cell.querySelector('.tval');
     const btn = cell.querySelector('.tbtn');
-    const edit = cell.querySelector('.tedit');
-    let running = cell.dataset.running === '1';
-    let started = cell.dataset.started ? new Date(cell.dataset.started) : null;
-    let base = +cell.dataset.spent || 0;
-    let ticker = null;
-    function render() {
-      if (running && started) {
-        val.textContent = fmtMin(base + (Date.now() - started.getTime()) / 60000);
-        btn.textContent = '⏸'; cell.classList.add('running');
-      } else { val.textContent = fmtMin(base); btn.textContent = '▶'; cell.classList.remove('running'); }
-    }
-    function startTick() { if (!ticker) ticker = setInterval(render, 15000); }
-    function stopTick() { if (ticker) { clearInterval(ticker); ticker = null; } }
-    if (running) startTick();
-    render();
-    btn.onclick = async (e) => {
-      e.stopPropagation();
-      try {
-        const d = await App.fetchJSON(`/tasks/api/${id}/timer/`, { method: 'POST', body: { action: running ? 'stop' : 'start' } });
-        base = d.spent_minutes; running = d.timer_running; started = d.timer_started ? new Date(d.timer_started) : null;
-        running ? startTick() : stopTick();
-        render();
-        window.dispatchEvent(new CustomEvent('timer-changed'));  // به‌روزرسانی ویجت سراسری
-      } catch (_) {}
-    };
-    if (edit) edit.onclick = async (e) => {
-      e.stopPropagation();
-      const cur = prompt('زمان کارکرد (دقیقه):', base);
-      if (cur === null) return;
-      try { const d = await App.fetchJSON(`/tasks/api/${id}/timer/`, { method: 'PATCH', body: { minutes: cur } }); base = d.spent_minutes; render(); } catch (_) {}
-    };
+    if (!val) return;
+    const running = cell.dataset.running === '1';
+    const started = cell.dataset.started ? new Date(cell.dataset.started) : null;
+    const base = +cell.dataset.spent || 0;
+    if (running && started) {
+      val.textContent = fmtMin(base + (Date.now() - started.getTime()) / 60000);
+      if (btn) btn.textContent = '⏸'; cell.classList.add('running');
+    } else { val.textContent = fmtMin(base); if (btn) btn.textContent = '▶'; cell.classList.remove('running'); }
+  }
+  function renderAllTimerCells() { document.querySelectorAll('.timer-cell').forEach(renderTimerCell); }
+  renderAllTimerCells();
+  setInterval(renderAllTimerCells, 15000);
+
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.timer-cell .tbtn'); if (!btn) return;
+    e.stopPropagation();
+    const cell = btn.closest('.timer-cell');
+    const id = cell.dataset.id;
+    const running = cell.dataset.running === '1';
+    try {
+      const d = await App.fetchJSON(`/tasks/api/${id}/timer/`, { method: 'POST', body: { action: running ? 'stop' : 'start' } });
+      cell.dataset.spent = d.spent_minutes; cell.dataset.running = d.timer_running ? '1' : '0';
+      cell.dataset.started = d.timer_started || '';
+      renderTimerCell(cell);
+      // اگر با استارتِ این یکی تایمرِ دیگری از همین مسئول خودکار استاپ شد، آن سلول را هم به‌روز کن
+      if (d.stopped_id) {
+        const other = document.querySelector(`.timer-cell[data-id="${d.stopped_id}"]`);
+        if (other) { other.dataset.spent = d.stopped_spent; other.dataset.running = '0'; other.dataset.started = ''; renderTimerCell(other); }
+      }
+      window.dispatchEvent(new CustomEvent('timer-changed'));  // به‌روزرسانی ویجت سراسری
+    } catch (_) {}
   });
+  document.addEventListener('click', async (e) => {
+    const edit = e.target.closest('.timer-cell .tedit'); if (!edit) return;
+    e.stopPropagation();
+    const cell = edit.closest('.timer-cell');
+    const id = cell.dataset.id;
+    const cur = prompt('زمان کارکرد (دقیقه):', cell.dataset.spent);
+    if (cur === null) return;
+    try { const d = await App.fetchJSON(`/tasks/api/${id}/timer/`, { method: 'PATCH', body: { minutes: cur } }); cell.dataset.spent = d.spent_minutes; renderTimerCell(cell); } catch (_) {}
+  });
+
+  // ── لودِ تنبل: اسکرول برای صفحه‌بندیِ جعبه‌ی «انجام‌شده‌ها» (بیش از ۵۰ ردیف) ──
+  (function () {
+    const lz = window.TASKS_LAZY;
+    if (!lz) return;
+    const tbody = document.querySelector('#done-tsheet tbody');
+    if (!tbody) return;
+    let loading = false;
+    async function loadMore() {
+      if (loading || !lz.hasMore) return;
+      loading = true;
+      const params = new URLSearchParams(location.search);
+      params.set('page', lz.page + 1);
+      try {
+        const d = await App.fetchJSON(`/tasks/api/rows/?${params.toString()}`);
+        tbody.insertAdjacentHTML('beforeend', d.html);
+        if (window.RichSelect) RichSelect.init(tbody);  // دراپ‌داونِ غنیِ ردیف‌های تازه‌لودشده
+        lz.page = d.page; lz.hasMore = d.has_more;
+        renderAllTimerCells();
+      } catch (_) { lz.hasMore = false; } finally { loading = false; }
+    }
+    window.addEventListener('scroll', () => {
+      if (!lz.hasMore || loading) return;
+      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 400) loadMore();
+    });
+  })();
 
 })();

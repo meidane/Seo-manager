@@ -5,21 +5,23 @@
 {% block content %}
   <section class="card glass cal" style="margin-top:0">
     <div class="cal-bar">
-      <button class="nav-b" id="cal-next">›</button>
+      <button class="nav-b" id="cal-prev">›</button>
       <h3 id="cal-title">{{ month_title }}</h3>
-      <button class="nav-b" id="cal-prev">‹</button>
+      <button class="nav-b" id="cal-next">‹</button>
       <button class="btn btn-sm" id="cal-today">برو به امروز</button>
       <div class="side-c" style="margin-inline-start:auto;display:flex;gap:6px;flex-wrap:wrap">
-        <select id="cal-f-project" style="max-width:150px"><option value="">همه‌ی پروژه‌ها</option>{% for p in projects %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}</select>
-        <select id="cal-f-assignee" style="max-width:150px"><option value="">همه‌ی همکاران</option>{% for c in colleagues %}<option value="{{ c.id }}">{{ c.full_name }}</option>{% endfor %}</select>
-        <select id="cal-f-type" style="max-width:130px"><option value="">همه‌ی انواع</option>{% for v,l in type_choices %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select>
+        <select id="cal-f-project" class="rich-select" style="max-width:150px"><option value="">همه‌ی پروژه‌ها</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %}>{{ p.name }}</option>{% endfor %}</select>
+        <select id="cal-f-assignee" class="rich-select" style="max-width:150px"><option value="">همه‌ی همکاران</option>{% for c in colleagues %}<option value="{{ c.id }}" data-color="{{ c.color }}"{% if c.avatar %} data-img="{{ c.avatar.url }}"{% endif %}>{{ c.full_name }}</option>{% endfor %}</select>
+        <select id="cal-f-type_def" style="max-width:130px"><option value="">همه‌ی انواع</option>{% for t in task_types %}<option value="{{ t.id }}">{{ t.icon }} {{ t.name }}</option>{% endfor %}</select>
       </div>
     </div>
-    <div class="grid7">
-      <div class="dow">شنبه</div><div class="dow">یکشنبه</div><div class="dow">دوشنبه</div><div class="dow">سه‌شنبه</div><div class="dow">چهارشنبه</div><div class="dow">پنجشنبه</div><div class="dow off">جمعه</div>
-    </div>
-    <div class="grid7" id="cal-grid">
-      {% include "calendarapp/_cells.html" %}
+    <div class="cal-scroll">
+      <div class="grid7">
+        <div class="dow">شنبه</div><div class="dow">یکشنبه</div><div class="dow">دوشنبه</div><div class="dow">سه‌شنبه</div><div class="dow">چهارشنبه</div><div class="dow">پنجشنبه</div><div class="dow off">جمعه</div>
+      </div>
+      <div class="grid7" id="cal-grid">
+        {% include "calendarapp/_cells.html" %}
+      </div>
     </div>
     <div class="legend">
       <span><i style="background:var(--info)"></i>انتشار</span><span><i style="background:var(--warning)"></i>آپدیت سطحی</span>
@@ -31,6 +33,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script>window.CAL_INIT = { year: {{ jyear }}, month: {{ jmonth }} };</script>
+<script>window.CAL_INIT = { year: {{ jyear }}, month: {{ jmonth }}, canCreateTask: {% if can_create_task %}true{% else %}false{% endif %} };</script>
 <script src="{% static 'js/calendar-page.js' %}"></script>
 {% endblock %}

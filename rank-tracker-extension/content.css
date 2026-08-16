@@ -1,0 +1,16 @@
+/* نشانِ جایگاه — کنارِ خودِ نتیجه در صفحه‌ی گوگل، سبز و کوچک.
+   دیگر باکسِ ثابتِ گوشه‌ی پایین-چپِ صفحه وجود ندارد. */
+.rt-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-inline-start: 8px;
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.15);
+  color: #16a34a;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: Tahoma, Arial, sans-serif;
+  vertical-align: middle;
+  direction: rtl;
+}

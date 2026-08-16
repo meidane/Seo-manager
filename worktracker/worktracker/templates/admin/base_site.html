@@ -1,0 +1,41 @@
+{% extends 'admin/base_site.html' %}
+
+{% load static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    @font-face {
+    font-family: "iransans";
+    font-weight: 500;
+    src: url("../fonts/IRANSansWeb(FaNum).woff") format("woff"),
+        url("../fonts/IRANSansWeb(FaNum).eot") format("eot"),
+        url("../fonts/IRANSansWeb(FaNum).woff2") format("woff2"),
+        url("../fonts/IRANSansWeb(FaNum).ttf") format("ttf");
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "iransans";
+    font-weight: 300;
+    src: url("/static/fonts/IRANSansWeb(FaNum)_Light.woff") format("woff"),
+        url("/static/fonts/IRANSansWeb(FaNum)_Light.eot") format("eot"),
+        url("/static/fonts/IRANSansWeb(FaNum)_Light.woff2") format("woff2"),
+        url("/static/fonts/IRANSansWeb(FaNum)_Light.ttf") format("ttf");
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "iransans";
+    font-weight: 700;
+    src: url("/static/fonts/IRANSansWeb(FaNum)_Medium.woff") format("woff"),
+        url("/static/fonts/IRANSansWeb(FaNum)_Medium.eot") format("eot"),
+        url("/static/fonts/IRANSansWeb(FaNum)_Medium.woff2") format("woff2"),
+        url("/static/fonts/IRANSansWeb(FaNum)_Medium.ttf") format("ttf");
+    font-display: swap;
+}
+* {
+    font-family: "iransans" !important;
+}
+</style>
+{% endblock %}

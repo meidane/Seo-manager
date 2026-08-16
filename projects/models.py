@@ -31,7 +31,11 @@ class Project(TimeStampedModel):
     ]
 
     name = models.CharField('نام پروژه', max_length=150)
+    logo = models.ImageField('لوگو', upload_to='logos/projects/', null=True, blank=True)
     domain = models.CharField('دامنه', max_length=200, blank=True, help_text='بدون http')
+    track_keyword_rank = models.BooleanField(
+        'بررسی رتبه کلمات کلیدی', default=False,
+        help_text='با فعال‌بودن، افزونهٔ مرورگر جایگاهِ این دامنه را در نتایجِ گوگل ثبت می‌کند.')
     color = models.CharField('رنگ', max_length=7, default='#4183F2')
     project_types = models.CharField('نوع پروژه', max_length=100, blank=True)
     status = models.CharField('وضعیت', max_length=10, choices=STATUS_CHOICES, default=ACTIVE)
@@ -51,6 +55,12 @@ class Project(TimeStampedModel):
     )
     members = models.ManyToManyField(
         'colleagues.Colleague', verbose_name='تیم', blank=True, related_name='projects',
+    )
+    # پروژه‌ی «شخصی» — خودکار برای هر فرد ساخته می‌شود و **فقط** خودش می‌بیند (حتی
+    # مالک/سوپریوزر هم نباید ببیند). گیتِ سراسری: `projects/access.py`.
+    personal_owner = models.ForeignKey(
+        'colleagues.Colleague', verbose_name='مالکِ پروژه‌ی شخصی',
+        on_delete=models.CASCADE, null=True, blank=True, related_name='personal_projects',
     )
 
     # فاز ۳ — اتصال وردپرس (فعلاً فقط ساخته می‌شود)
@@ -83,6 +93,10 @@ class Project(TimeStampedModel):
     @property
     def is_active(self):
         return self.status == self.ACTIVE
+
+    @property
+    def is_personal(self):
+        return self.personal_owner_id is not None
 
     @property
     def types_list(self):

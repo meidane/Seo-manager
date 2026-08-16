@@ -1,0 +1,14 @@
+django==5.2
+django_jalali==7.4.0
+psycopg2 == 2.8.5
+requests==2.23.0
+Pillow==9.0.0
+djangorestframework==3.16.0
+djangorestframework-simplejwt==5.5.0
+keyboard==0.13.5
+uiautomation==2.0.25
+pyautogui==0.9.54
+schedule==1.2.2
+pynput==1.8.1
+pyinstaller==6.13.0
+pywin32

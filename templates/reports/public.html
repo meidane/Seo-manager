@@ -1,45 +1,53 @@
 {% load static seo_extras %}<!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="fa" dir="rtl" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ report.title }} — {{ report.project.name }}</title>
 <link rel="stylesheet" href="{% static 'vendor/vazirmatn/vazirmatn.css' %}">
 <style>
-/* نسخه‌ی چاپ/عمومی — تم روشن (طبق سند) */
-:root{--bg:#F7F8FB;--card:#fff;--text:#1F2937;--dim:#6B7280;--faint:#9CA3AF;--stroke:#E5E7EB;--primary:#2E6BD9;--ok:#059669;--pink:#DB2777}
+/* نسخه‌ی عمومی — پیش‌فرض دارک، با دکمه‌ی خاموش/روشن (لایت) بالای صفحه */
+:root{--bg:#0E1420;--card:#161E2E;--text:#E7ECF5;--dim:#9AA6BC;--faint:#6B7688;--stroke:#26324A;--th-bg:#1B2536;--primary:#6BA1FF;--ok:#34D399;--pink:#F472B6;--grad2:#7C3AED}
+:root[data-theme="light"]{--bg:#F7F8FB;--card:#fff;--text:#1F2937;--dim:#6B7280;--faint:#9CA3AF;--stroke:#E5E7EB;--th-bg:#F3F4F6;--primary:#2E6BD9;--ok:#059669;--pink:#DB2777;--grad2:#7C3AED}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Vazirmatn,system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.9;font-size:14px}
 .wrap{max-width:900px;margin:0 auto;padding:28px 20px 60px}
 .head{display:flex;align-items:center;gap:14px;border-bottom:2px solid var(--stroke);padding-bottom:18px;margin-bottom:22px}
-.head .mark{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--primary),#7C3AED);color:#fff;display:grid;place-items:center;font-weight:700;font-size:19px;flex:none}
+.head .mark{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--primary),var(--grad2));color:#fff;display:grid;place-items:center;font-weight:700;font-size:19px;flex:none;overflow:hidden}
+.head .mark img{width:100%;height:100%;object-fit:cover}
 .head h1{font-size:21px;font-weight:700}
 .head .meta{color:var(--dim);font-size:13px;margin-top:3px}
-.head .print{margin-inline-start:auto}
-.btn{border:1px solid var(--stroke);background:#fff;color:var(--text);font-family:inherit;font-size:13px;padding:8px 16px;border-radius:99px;cursor:pointer}
+.head .actions{margin-inline-start:auto;display:flex;gap:8px;align-items:center}
+.btn{border:1px solid var(--stroke);background:var(--card);color:var(--text);font-family:inherit;font-size:13px;padding:8px 16px;border-radius:99px;cursor:pointer}
+.theme-toggle{width:38px;height:38px;padding:0;display:grid;place-items:center;font-size:16px;border-radius:50%}
 .desc{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:20px 22px;margin-bottom:22px;line-height:2}
 .desc img{max-width:100%;border-radius:8px;margin:8px 0}
 .desc h3{margin:10px 0 6px}
 h2.group{font-size:16px;font-weight:700;margin:22px 0 10px;color:var(--primary)}
 table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--stroke);border-radius:12px;overflow:hidden}
-th{background:#F3F4F6;text-align:right;font-size:12px;font-weight:600;color:var(--dim);padding:10px 14px;border-bottom:1px solid var(--stroke)}
+th{background:var(--th-bg);text-align:right;font-size:12px;font-weight:600;color:var(--dim);padding:10px 14px;border-bottom:1px solid var(--stroke)}
 td{padding:11px 14px;border-bottom:1px solid var(--stroke);font-size:13px}
 tr:last-child td{border-bottom:0}
 td a{color:var(--primary);text-decoration:none}
+.inv-totals{display:flex;justify-content:flex-end;gap:22px;background:var(--card);border:1px solid var(--stroke);border-top:0;border-radius:0 0 12px 12px;padding:12px 16px;font-size:13px;color:var(--dim)}
+.inv-totals b{color:var(--text)}
 .foot{text-align:center;color:var(--faint);font-size:12px;margin-top:34px}
-@media print{.print{display:none}body{background:#fff}.desc,table{border-color:#ddd}}
+@media print{:root{--bg:#fff;--card:#fff;--text:#1F2937;--dim:#6B7280;--faint:#9CA3AF;--stroke:#ddd;--th-bg:#F3F4F6}.print,.theme-toggle{display:none}}
 </style>
 </head>
 <body>
 {% if is_preview %}<div style="background:#2E6BD9;color:#fff;text-align:center;padding:7px;font-size:13px">حالت پیش‌نمایش — دقیقاً همان چیزی که مشتری می‌بیند (لینک عمومی جداست).</div>{% endif %}
 <div class="wrap">
   <div class="head">
-    <div class="mark">{{ report.project.name|first }}</div>
+    <div class="mark">{% if report.project.logo %}<img src="{{ report.project.logo.url }}" alt="">{% else %}{{ report.project.name|first }}{% endif %}</div>
     <div>
       <h1>{{ report.title }}</h1>
       <div class="meta">{{ report.project.name }} — {{ report.date_from|jalali }} تا {{ report.date_to|jalali }}</div>
     </div>
-    <button class="btn print" onclick="window.print()">چاپ / PDF</button>
+    <div class="actions">
+      <button class="btn theme-toggle" id="theme-toggle" title="تغییرِ تم روشن/تاریک" aria-label="تغییر تم">🌙</button>
+      <button class="btn print" onclick="window.print()">چاپ / PDF</button>
+    </div>
   </div>
 
   {% if report.description %}<div class="desc">{{ report.description|safe }}</div>{% endif %}
@@ -69,7 +77,43 @@ td a{color:var(--primary);text-decoration:none}
     <p style="color:var(--dim);text-align:center;padding:30px">محتوایی برای نمایش نیست.</p>
   {% endfor %}
 
+  {% if invoice_ctx %}
+    <h2 class="group">فاکتور #{{ invoice_ctx.invoice.number|fa_digits }}</h2>
+    <table>
+      <thead><tr><th>بابت</th><th>توضیح</th><th>تعداد</th><th>مبلغ واحد</th><th>جمع</th></tr></thead>
+      <tbody>
+        {% for li in invoice_ctx.lines %}
+          <tr>
+            <td>{{ li.category.name|default:"—" }}</td>
+            <td>{{ li.description|default:"—" }}</td>
+            <td>{{ li.qty|fa_digits }}</td>
+            <td>{{ li.unit_price|money }}</td>
+            <td>{{ li.total|money }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="inv-totals">
+      <span>جمع: <b>{{ invoice_ctx.invoice.subtotal|money }}</b></span>
+      <span>مالیات: <b>{{ invoice_ctx.invoice.tax_total|money }}</b></span>
+      <span>تخفیف: <b>{{ invoice_ctx.invoice.discount_total|money }}</b></span>
+      <span>جمعِ کل: <b>{{ invoice_ctx.invoice.grand_total|money }} تومان</b></span>
+    </div>
+  {% endif %}
+
   <div class="foot">این گزارش توسط سئوپنل تولید شده است.</div>
 </div>
+<script>
+(function(){
+  var root=document.documentElement, btn=document.getElementById('theme-toggle');
+  var saved=null; try{ saved=localStorage.getItem('report-theme'); }catch(e){}
+  function apply(t){ root.setAttribute('data-theme', t); btn.textContent = t==='light' ? '☀️' : '🌙'; }
+  apply(saved==='light' ? 'light' : 'dark');   // پیش‌فرض: دارک
+  btn.addEventListener('click', function(){
+    var next = root.getAttribute('data-theme')==='light' ? 'dark' : 'light';
+    apply(next); try{ localStorage.setItem('report-theme', next); }catch(e){}
+  });
+})();
+</script>
 </body>
 </html>

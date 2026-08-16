@@ -3,6 +3,7 @@
 {% block title %}{{ type_def.name }}{% endblock %}
 
 {% block content %}
+{% include "settings/_nav.html" %}
 <div data-type="{{ type_def.pk }}">
   <div class="page-h">
     <a href="{% url 'task_types:list' %}" class="btn btn-sm">← انواع</a>
@@ -44,10 +45,18 @@
       </div>
       <div class="field" id="nf-options-wrap" style="display:none"><label>گزینه‌ها (با ویرگول جدا کن)</label><input class="input" id="nf-options" placeholder="کم، متوسط، زیاد"></div>
       <div class="field"><label>راهنمای فیلد (اختیاری)</label><input class="input" id="nf-placeholder"></div>
-      <div style="display:flex;gap:18px;margin-bottom:14px">
-        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-required" style="width:auto"> اجباری</label>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:8px">
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-required" style="width:auto"> اجباری (همیشه)</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-required-done" style="width:auto"> اجباری فقط برای تکمیل</label>
         <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-client" checked style="width:auto"> نمایش به مشتری</label>
         <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-wordsrc" style="width:auto"> منبعِ تعداد کلمه</label>
+      </div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:14px;padding-top:8px;border-top:1px solid var(--stroke-soft)">
+        <small style="color:var(--text-faint);width:100%">اتصال به بستهٔ سئو (اختیاری):</small>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-kwsrc" style="width:auto"> حاویِ کلمهٔ کلیدی</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-kwrank" style="width:auto"> رتبه‌اش ردیابی شود</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-linksrc" style="width:auto"> حاویِ لینکِ هدف</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-pagelink" style="width:auto"> لینکِ صفحهٔ همین تسک</label>
       </div>
       <button class="btn btn-p" id="nf-add">افزودن فیلد</button>
     </div>
@@ -107,8 +116,13 @@ document.getElementById('nf-add').onclick=async()=>{
     options:document.getElementById('nf-options').value.trim(),
     placeholder:document.getElementById('nf-placeholder').value.trim(),
     required:document.getElementById('nf-required').checked,
+    required_on_done:document.getElementById('nf-required-done').checked,
     show_to_client:document.getElementById('nf-client').checked,
-    is_word_source:document.getElementById('nf-wordsrc').checked};
+    is_word_source:document.getElementById('nf-wordsrc').checked,
+    is_keyword_source:document.getElementById('nf-kwsrc').checked,
+    track_keyword_rank:document.getElementById('nf-kwrank').checked,
+    is_link_source:document.getElementById('nf-linksrc').checked,
+    is_page_link:document.getElementById('nf-pagelink').checked};
   try{ const f=await App.fetchJSON(`/settings/task-types/api/${TID}/fields/`,{method:'POST',body});
     const empty=document.getElementById('f-empty'); if(empty)empty.remove();
     const tb=document.querySelector('#f-table tbody');

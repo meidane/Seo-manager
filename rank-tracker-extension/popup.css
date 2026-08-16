@@ -1,0 +1,118 @@
+body {
+  width: 320px;
+  font-family: Tahoma, Arial, sans-serif;
+  background: #14161c;
+  color: #eee;
+  padding: 10px;
+  direction: rtl;
+}
+
+h1 {
+  font-size: 15px;
+  margin: 0 0 10px 0;
+}
+
+.entry {
+  background: #1f2430;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+
+.entry .query {
+  font-size: 12px;
+  color: #9fd3ff;
+  margin-bottom: 6px;
+  word-break: break-word;
+}
+
+.entry .row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 2px 0;
+}
+
+.entry .domain {
+  color: #ccc;
+}
+
+.entry .found {
+  color: #7CFC9A;
+  font-weight: bold;
+}
+
+.entry .not-found {
+  color: #ff8080;
+}
+
+.empty {
+  color: #888;
+  font-size: 12px;
+  text-align: center;
+  padding: 20px 0;
+}
+
+.actions {
+  margin-top: 10px;
+}
+
+button {
+  width: 100%;
+  padding: 8px;
+  background: #2a2f3b;
+  color: #eee;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+button:hover {
+  background: #383f4f;
+}
+
+.settings-box {
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #2a2f3b;
+  font-size: 12px;
+}
+.settings-box label {
+  display: block;
+  color: #9fd3ff;
+  margin-bottom: 3px;
+}
+.settings-box input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px;
+  margin: 0 0 8px 0;
+  border-radius: 4px;
+  border: 1px solid #333;
+  background: #1f2430;
+  color: #eee;
+}
+.settings-box .actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 0;
+}
+.settings-box .actions button {
+  width: auto;
+  flex: 1;
+}
+.status {
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: #888;
+  min-height: 14px;
+}
+.status.ok { color: #7CFC9A; }
+.status.err { color: #ff8080; }
+
+h2 {
+  font-size: 12.5px;
+  color: #9fd3ff;
+  margin: 0 0 8px 0;
+  font-weight: normal;
+}

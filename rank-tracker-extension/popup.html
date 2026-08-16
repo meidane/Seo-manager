@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+  <meta charset="UTF-8" />
+  <title>Rank Tracker</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <h1>Rank Tracker</h1>
+
+  <div class="settings-box">
+    <label>آدرس پلتفرم</label>
+    <input type="text" id="apiUrl" placeholder="https://seo.example.com" dir="ltr" />
+    <label>توکن API</label>
+    <input type="text" id="apiToken" placeholder="از /settings/api-tokens/" dir="ltr" />
+    <div class="actions">
+      <button id="saveBtn">ذخیره</button>
+      <button id="testBtn">تست اتصال</button>
+    </div>
+    <div id="status" class="status"></div>
+  </div>
+
+  <h2>فعالیت اخیر</h2>
+  <div id="list"></div>
+
+  <div class="actions">
+    <button id="clearBtn">پاک‌کردنِ فعالیتِ اخیر</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

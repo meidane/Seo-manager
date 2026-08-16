@@ -45,6 +45,17 @@
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="field">
+          <label>تاریخ تولد (شمسی)</label>{{ form.birth_date }}
+          {% if form.birth_date.errors %}<small style="color:var(--danger)">{{ form.birth_date.errors|striptags }}</small>{% endif %}
+        </div>
+        <div class="field">
+          <label>اتصال به حضورغیاب (نام کاربری worktracker)</label>{{ form.worktracker_username }}
+          <small style="color:var(--text-faint)">نام‌کاربریِ این فرد در سامانه‌ی حضورغیاب</small>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
         <div class="field"><label>رنگ (نمودارها)</label>
           <input type="color" name="color" value="{{ form.color.value|default:'#4183F2' }}"
                  style="width:100%;height:40px;padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--stroke-soft);border-radius:var(--r-sm)">
@@ -52,10 +63,12 @@
         <div class="field"><label>آواتار</label>{{ form.avatar }}</div>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-        <div class="field"><label>دستمزد هر کلمه (اختیاری)</label>{{ form.rate_per_word }}</div>
-        <div class="field"><label>دستمزد هر تسک (اختیاری)</label>{{ form.rate_per_task }}</div>
+      <div class="field">
+        <label>مدیر (اختیاری)</label>{{ form.manager }}
       </div>
+      <label id="needs-review-wrap" style="display:{% if form.manager.value %}flex{% else %}none{% endif %};align-items:center;gap:8px;cursor:pointer;margin:0 0 14px">
+        {{ form.needs_review }} تسک‌هایش نیاز به بازبینیِ مدیرش دارد
+      </label>
 
       <div class="field"><label>توضیحات</label>{{ form.description }}</div>
 
@@ -65,4 +78,18 @@
       </div>
     </form>
   </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  const mgr = document.getElementById('id_manager');
+  const wrap = document.getElementById('needs-review-wrap');
+  if(!mgr || !wrap) return;
+  mgr.addEventListener('change', ()=>{
+    wrap.style.display = mgr.value ? 'flex' : 'none';
+    if(!mgr.value) document.getElementById('id_needs_review').checked = false;
+  });
+})();
+</script>
 {% endblock %}

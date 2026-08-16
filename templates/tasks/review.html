@@ -1,28 +1,50 @@
 {% extends "base.html" %}
 {% load static seo_extras %}
-{% block title %}بازبینی محتوا{% endblock %}
+{% block title %}بازبینی تسک{% endblock %}
 
 {% block content %}
-  <div class="page-h"><h1>بازبینی محتوا</h1>
+  <div class="page-h"><h1>بازبینی تسک</h1>
     <div class="side-c">
       <a href="?review=unreviewed" class="chip {% if review == 'unreviewed' %}on{% endif %}">بازبینی‌نشده</a>
       <a href="?review=all" class="chip {% if review == 'all' %}on{% endif %}">همه</a>
     </div>
   </div>
 
-  {% for t in tasks %}
-    <section class="card glass rev-card" id="rev-{{ t.id }}" data-id="{{ t.id }}">
-      <div class="rev-top"><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span><h3>{{ t.seo_title|default:t.title }}</h3></div>
-      <div class="rev-meta"><span>پروژه: <b>{{ t.project.name }}</b></span><span>نویسنده: <b>{{ t.assignee.full_name|default:"—" }}</b></span><span>تاریخ: <b>{{ t.done_date|jalali_long }}</b></span>{% if t.word_count %}<span>تعداد کلمه: <b>{{ t.word_count|fa_digits }}</b></span>{% endif %}</div>
-      {% if t.keywords %}<div class="rev-kw">{% for kw in t.keywords|slice:":120" %}{% endfor %}<span class="tag t-mute">{{ t.keywords }}</span></div>{% endif %}
-      <div class="rev-actions">
-        {% if t.published_url %}<a href="{{ t.published_url }}" target="_blank" rel="noopener" class="btn btn-p">باز کردن مطلب ↗</a>{% endif %}
-        <button class="btn" onclick="window.openTask({{ t.id }})">باز کردن تسک</button>
-        <button class="btn" onclick="window.scoreKpis({{ t.id }})" style="border-color:rgba(65,131,242,.4);color:#8FB8FF">★ امتیاز کیفیت</button>
-        <button class="btn rev-ok" data-id="{{ t.id }}" style="border-color:rgba(45,212,167,.4);color:#6FE3C4">✓ تایید</button>
-        <button class="btn" onclick="window.openFixModal({{ t.id }})" style="border-color:rgba(249,115,22,.4);color:#FDBA8C">⚠ نیاز به اصلاح</button>
-      </div>
-    </section>
+  {% regroup tasks by is_my_scope as scope_groups %}
+  {% for grp in scope_groups %}
+    {% if not grp.grouper %}
+      <div class="rev-sep"><span>نظارتِ سازمانی — مسئولیتِ مدیرِ دیگری</span></div>
+    {% endif %}
+    {% for t in grp.list %}
+      <section class="card glass rev-card" id="rev-{{ t.id }}" data-id="{{ t.id }}">
+        <div class="rev-top">
+          <span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span>
+          <h3>{{ t.seo_title|default:t.title }}</h3>
+          {% if t.is_my_scope %}<span class="tag t-info" title="مسئولِ این تسک زیرمجموعه‌ی شماست">مسئولیتِ شما</span>{% endif %}
+          <span class="tag t-{% if t.status == 'pending' %}warn{% else %}ok{% endif %} rev-status">{{ t.get_status_display }}</span>
+          {% if t.review_status == 'needs_fix' %}<span class="tag t-warn">⚠ اصلاحِ قبلی</span>{% endif %}
+        </div>
+        <div class="rev-meta">
+          <span>پروژه: <b>{{ t.project.name }}</b></span>
+          <span>مسئول: <b>{{ t.assignee.full_name|default:"—" }}</b></span>
+          <span>تاریخِ برنامه: <b>{{ t.planned_date|jalali }}</b></span>
+          {% if t.done_date %}<span>تاریخِ تکمیل: <b>{{ t.done_date|jalali }}</b></span>{% endif %}
+          {% if t.word_count %}<span>تعداد کلمه: <b>{{ t.word_count|fa_digits }}</b></span>{% endif %}
+          <span class="rev-why" title="چرا این تسک نیاز به بازبینی دارد">
+            {% if t.needs_review %}نیازِ بازبینیِ فردی{% else %}نوعِ تسک نیاز به بازبینی دارد{% endif %}
+          </span>
+        </div>
+        {% if t.description %}<div class="rev-desc">{{ t.description|safe|truncatewords_html:40 }}</div>{% endif %}
+        {% if t.keywords %}<div class="rev-kw"><span class="tag t-mute">{{ t.keywords }}</span></div>{% endif %}
+        <div class="rev-actions">
+          {% if t.published_url %}<a href="{{ t.published_url }}" target="_blank" rel="noopener" class="btn btn-p">باز کردن مطلب ↗</a>{% endif %}
+          <button class="btn" onclick="window.openTask({{ t.id }})">باز کردن تسک</button>
+          <button class="btn" onclick="window.scoreKpis({{ t.id }})" style="border-color:rgba(65,131,242,.4);color:#8FB8FF">★ امتیاز کیفیت</button>
+          <button class="btn rev-ok" data-id="{{ t.id }}" style="border-color:rgba(45,212,167,.4);color:#6FE3C4">✓ تایید</button>
+          <button class="btn" onclick="window.openFixModal({{ t.id }})" style="border-color:rgba(249,115,22,.4);color:#FDBA8C">⚠ نیاز به اصلاح</button>
+        </div>
+      </section>
+    {% endfor %}
   {% empty %}
     <section class="card glass"><div class="empty"><div class="ico">◎</div><h4>محتوایی برای بازبینی نیست</h4></div></section>
   {% endfor %}
@@ -41,7 +63,7 @@ document.querySelectorAll('.rev-ok').forEach(b=>b.onclick=()=>review(b.dataset.i
 // ── امتیازدهی KPI (مدیر) ──
 async function scoreKpis(id){
   let d; try{ d=await App.fetchJSON(`/tasks/api/${id}/kpis/`); }catch(_){ return; }
-  if(!d.has){ App.toast('برای این نوع تسک KPI تعریف نشده','warn'); return; }
+  if(!d.has){ scoreQuality(id, d.quality_score); return; }
   const body=d.kpis.map(k=>{
     if(k.has_checklist){
       const items=k.items.map(it=>`<label style="display:flex;align-items:center;gap:8px;margin:0;padding:3px 0;cursor:pointer">
@@ -66,6 +88,20 @@ async function scoreKpis(id){
     try{ await App.fetchJSON(`/tasks/api/${id}/kpi-score/`,{method:'POST',body:{scores}}); App.toast('امتیاز ثبت شد','ok'); App.closeModal(); }catch(_){}
   };
 }
+
+// ── امتیازِ سادهٔ ۱ تا ۱۰ (وقتی نوعِ تسک KPI ندارد) ──
+function scoreQuality(id, current){
+  const opts=[...Array(10)].map((_,i)=>i+1).map(n=>`<option value="${n}" ${current===n?'selected':''}>${n}</option>`).join('');
+  App.openModal(`<div class="modal-h"><h3>امتیاز کیفیت</h3><button class="x" onclick="App.closeModal()">×</button></div>
+    <div class="modal-b"><p class="sub" style="margin-bottom:10px">برای این نوع تسک KPIای تعریف نشده — امتیازِ ساده‌ی ۱ تا ۱۰:</p>
+      <select id="qs-score" class="input" style="max-width:120px"><option value="">—</option>${opts}</select></div>
+    <div class="modal-f"><button class="btn btn-p" id="qs-save">ذخیره امتیاز</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+  document.getElementById('qs-save').onclick=async()=>{
+    const score=+document.getElementById('qs-score').value;
+    if(!score){ App.toast('یک امتیاز انتخاب کن','warn'); return; }
+    try{ await App.fetchJSON(`/tasks/api/${id}/quality-score/`,{method:'POST',body:{score}}); App.toast('امتیاز ثبت شد','ok'); App.closeModal(); }catch(_){}
+  };
+}
 window.scoreKpis=scoreKpis;
 
 // ── میان‌بر کیبورد: J/K حرکت، Enter باز کردن لینک، A تایید ──
@@ -73,9 +109,9 @@ const cards=[...document.querySelectorAll('.rev-card')];
 let idx=-1;
 function focusCard(i){
   if(i<0||i>=cards.length)return;
-  if(idx>=0)cards[idx].style.outline='';
+  if(idx>=0)cards[idx].classList.remove('rev-focus');
   idx=i; const c=cards[idx];
-  c.style.outline='2px solid var(--primary)'; c.style.borderRadius='var(--r)';
+  c.classList.add('rev-focus');
   c.scrollIntoView({block:'center',behavior:'smooth'});
 }
 document.addEventListener('keydown',e=>{

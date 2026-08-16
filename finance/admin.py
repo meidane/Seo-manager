@@ -1,6 +1,7 @@
 from django.contrib import admin
 
-from .models import BankAccount, Category, Payroll, PayrollItem, Transaction
+from .models import (BankAccount, Category, Invoice, InvoiceLine, Payroll,
+                     PayrollItem, Transaction)
 
 
 @admin.register(BankAccount)
@@ -29,3 +30,16 @@ class ItemInline(admin.TabularInline):
 class PayrollAdmin(admin.ModelAdmin):
     list_display = ('colleague', 'year', 'month', 'paid_amount')
     inlines = [ItemInline]
+
+
+class InvoiceLineInline(admin.TabularInline):
+    model = InvoiceLine
+    extra = 1
+
+
+@admin.register(Invoice)
+class InvoiceAdmin(admin.ModelAdmin):
+    list_display = ('number', 'issue_date', 'project', 'due_date')
+    list_filter = ('project',)
+    date_hierarchy = 'issue_date'
+    inlines = [InvoiceLineInline]

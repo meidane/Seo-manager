@@ -22,7 +22,19 @@
         </div>
       </div>
 
+      <div class="field">
+        <label>لوگوی پروژه</label>
+        <div style="display:flex;align-items:center;gap:12px">
+          {% if object.logo %}<img src="{{ object.logo.url }}" alt="" style="width:44px;height:44px;border-radius:10px;object-fit:cover;border:1px solid var(--stroke)">{% endif %}
+          <input type="file" name="logo" accept="image/*" class="input">
+        </div>
+      </div>
+
       <div class="field"><label>دامنه (بدون http)</label>{{ form.domain }}</div>
+
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0 0 14px">
+        {{ form.track_keyword_rank }} بررسی رتبه کلمات کلیدی (با افزونهٔ مرورگر)
+      </label>
 
       <div class="field">
         <label>نوع پروژه</label>

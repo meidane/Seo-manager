@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}تنظیمات{% endblock %}
+
+{% block content %}
+  {% include "settings/_nav.html" %}
+  <div class="page-h"><h1>تنظیمات</h1></div>
+
+  <section class="card glass" style="margin-bottom:14px">
+    <div class="card-h"><h3>سازمان</h3></div>
+    <div style="padding:16px 17px">
+      {% if can_manage_org %}
+        <div class="field" style="max-width:360px">
+          <label>نام شرکت / کسب‌وکار</label>
+          <input class="input" id="org-name" value="{{ org.name }}">
+        </div>
+        <button type="button" class="btn btn-p btn-sm" id="org-save-btn" style="margin-top:8px">ذخیره</button>
+      {% else %}
+        <p class="sub">نام سازمان: <b>{{ org.name }}</b></p>
+      {% endif %}
+    </div>
+  </section>
+
+  <div class="cards-grid">
+    {% if 'manage_teams' in org_perms %}
+      <a href="{% url 'accounts:teams' %}" class="colleague-card card glass">
+        <span class="ca-avatar ca-fallback" style="--c:#4183F2">◍</span>
+        <div class="ca-body"><b>تیم‌ها</b><span class="ca-roles">زیرمجموعه‌های سازمان</span></div>
+      </a>
+    {% endif %}
+    {% if 'manage_people' in org_perms %}
+      <a href="{% url 'accounts:roles' %}" class="colleague-card card glass">
+        <span class="ca-avatar ca-fallback" style="--c:#6BA1FF">⚙</span>
+        <div class="ca-body"><b>نقش‌ها</b><span class="ca-roles">دسترسی‌های سفارشی هر نقش</span></div>
+      </a>
+    {% endif %}
+    {% if 'manage_task_types' in org_perms %}
+      <a href="{% url 'task_types:list' %}" class="colleague-card card glass">
+        <span class="ca-avatar ca-fallback" style="--c:#A78BFA">◫</span>
+        <div class="ca-body"><b>انواع تسک</b><span class="ca-roles">فیلد سفارشی + KPI هر نوع</span></div>
+      </a>
+    {% endif %}
+    {% if 'manage_columns' in org_perms %}
+      <a href="{% url 'core:columns' %}" class="colleague-card card glass">
+        <span class="ca-avatar ca-fallback" style="--c:#2DD4A7">▥</span>
+        <div class="ca-body"><b>ستون‌ها</b><span class="ca-roles">سفارشی‌سازیِ جدولِ تسک/پروژه/فرد</span></div>
+      </a>
+    {% endif %}
+    {% if 'manage_holidays' in org_perms %}
+      <a href="{% url 'core:holidays' %}" class="colleague-card card glass">
+        <span class="ca-avatar ca-fallback" style="--c:#FBBF24">✦</span>
+        <div class="ca-body"><b>تعطیلات</b><span class="ca-roles">مدیریتِ تعطیلاتِ تقویم</span></div>
+      </a>
+    {% endif %}
+    {% if 'manage_api_tokens' in org_perms %}
+      <a href="{% url 'accounts:api_tokens' %}" class="colleague-card card glass">
+        <span class="ca-avatar ca-fallback" style="--c:#38BDF8">⚿</span>
+        <div class="ca-body"><b>توکن‌های API</b><span class="ca-roles">اتصالِ افزونه/اتوماسیون/AI</span></div>
+      </a>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block scripts %}
+{% if can_manage_org %}
+<script>
+document.getElementById('org-save-btn').addEventListener('click', () => {
+  const name = document.getElementById('org-name').value.trim();
+  if (!name) { App.toast('نام سازمان لازم است', 'warn'); return; }
+  App.fetchJSON("{% url 'accounts:organization_edit' %}", {method: 'PATCH', body: {name}})
+    .then(() => { App.toast('ذخیره شد', 'ok'); window.location.reload(); })
+    .catch(() => {});
+});
+</script>
+{% endif %}
+{% endblock %}

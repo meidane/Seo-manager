@@ -1,0 +1,12 @@
+{% comment %}
+منبعِ واحدِ دراپ‌داونِ وضعیت — تسکِ needs_review هرگز گزینه‌ی «انجام‌شده» ندارد (فقط
+«تکمیل — در انتظار بازبینی»)؛ تسکِ عادی هم هرگز گزینه‌ی «تکمیل» ندارد. رسیدن به
+«انجام‌شده» برای تسکِ needs_review فقط از طریقِ تاییدِ بازبینی ممکن است (api.task_review).
+{% endcomment %}
+<select class="row-status st-{{ t.status }}" data-id="{{ t.id }}" style="padding:3px 8px;font-size:12px">
+  {% for v,l in status_choices %}
+    {% if v == 'pending' and not t.needs_review %}
+    {% elif v == 'done' and t.needs_review %}
+    {% else %}<option value="{{ v }}" {% if t.status == v %}selected{% endif %}>{{ l }}</option>{% endif %}
+  {% endfor %}
+</select>

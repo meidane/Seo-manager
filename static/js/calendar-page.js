@@ -2,13 +2,13 @@
    طوسی ته سلول، دکمه‌ی + با hover، درگ‌ودراپ تسک بین روزها. */
 (function () {
   'use strict';
-  let { year, month } = window.CAL_INIT;
+  let { year, month, canCreateTask } = window.CAL_INIT;
 
   const grid = document.getElementById('cal-grid');
   const title = document.getElementById('cal-title');
   const q = () => {
     const p = new URLSearchParams({ year, month });
-    ['project', 'assignee', 'type'].forEach((k) => {
+    ['project', 'assignee', 'type_def'].forEach((k) => {
       const el = document.getElementById('cal-f-' + k);
       if (el && el.value) p.set(k, el.value);
     });
@@ -31,7 +31,7 @@
       `<div class="cell-h"><span class="dnum">${c.jday_fa}</span>` +
       `${c.holiday_title && !c.dim ? `<span class="hol">${c.holiday_title}</span>` : ''}` +
       `${c.tasks.length ? `<span class="cnt">${c.tasks.length.toLocaleString('fa-IR')}</span>` : ''}</div>`;
-    if (!c.dim) h += `<button class="cell-add" data-jdate="${c.jdate}" title="تسک جدید در این روز">＋</button>`;
+    if (!c.dim && canCreateTask) h += `<button class="cell-add" data-jdate="${c.jdate}" title="تسک جدید در این روز">＋</button>`;
     c.tasks.slice(0, 5).forEach((t) => (h += chip(t)));
     if (c.tasks.length > 5) h += `<span class="more">+${(c.tasks.length - 5).toLocaleString('fa-IR')} مورد دیگر</span>`;
     return h + '</div>';
@@ -51,7 +51,7 @@
   document.getElementById('cal-prev').onclick = prev;
   document.getElementById('cal-next').onclick = next;
   document.getElementById('cal-today').onclick = () => { year = window.CAL_INIT.year; month = window.CAL_INIT.month; load(); };
-  ['cal-f-project', 'cal-f-assignee', 'cal-f-type'].forEach((id) => { const el = document.getElementById(id); if (el) el.onchange = load; });
+  ['cal-f-project', 'cal-f-assignee', 'cal-f-type_def'].forEach((id) => { const el = document.getElementById(id); if (el) el.onchange = load; });
 
   // ── دکمه‌ی + هر روز → مودال تسک با تاریخ پرشده ──
   grid.addEventListener('click', (e) => {

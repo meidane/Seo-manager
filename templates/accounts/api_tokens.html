@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}توکن‌های API{% endblock %}
+
+{% block content %}
+  {% include "settings/_nav.html" %}
+  <div class="page-h"><h1>توکن‌های API</h1>
+    <div class="side-c"><button class="btn btn-p" id="new-token">＋ توکن جدید</button></div>
+  </div>
+
+  <div class="note glass" style="margin:0 0 14px">
+    برای اتصالِ افزونهٔ مرورگر یا هر برنامهٔ بیرونی (اتوماسیون، AI) به این سازمان.
+    کلید فقط یک‌بار — بلافاصله بعدِ ساخت — نشان داده می‌شود؛ جایی ذخیره‌اش کن.
+  </div>
+
+  <section class="card glass">
+    {% if tokens %}
+      <table>
+        <thead><tr><th>نام</th><th>کلید</th><th>ساخته‌شده توسط</th><th>آخرین استفاده</th><th></th></tr></thead>
+        <tbody id="tok-body">
+          {% for t in tokens %}
+            <tr data-id="{{ t.id }}">
+              <td>{{ t.name|default:"—" }}</td>
+              <td class="pw" dir="ltr">{{ t.key_prefix }}••••••••••••••••</td>
+              <td>{{ t.user.get_full_name|default:t.user.username }}</td>
+              <td>{% if t.last_used_at %}{{ t.last_used_at|timeago }}{% else %}<span class="zero">هنوز استفاده نشده</span>{% endif %}</td>
+              <td><button class="mini tok-del">حذف</button></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty" id="tok-empty"><div class="ico">🔑</div><h4>هنوز توکنی نساخته‌ای</h4>
+        <button class="btn btn-p" id="new-token-2" style="margin-top:12px">＋ توکن جدید</button></div>
+    {% endif %}
+  </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function rowHtml(t){
+  return `<tr data-id="${t.id}"><td>${t.name||'—'}</td><td class="pw" dir="ltr">${t.prefix}••••••••••••••••</td>
+    <td>شما</td><td><span class="zero">هنوز استفاده نشده</span></td><td><button class="mini tok-del">حذف</button></td></tr>`;
+}
+function openCreate(){
+  App.openModal(`<div class="modal-h"><h3>توکن جدید</h3><button class="x" onclick="App.closeModal()">×</button></div>
+    <div class="modal-b"><div class="field"><label>نام (اختیاری، مثلاً «افزونهٔ رتبه»)</label><input class="input" id="tk-name" placeholder="افزونهٔ رتبه"></div></div>
+    <div class="modal-f"><button class="btn btn-p" id="tk-save">ساخت</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+  document.getElementById('tk-save').onclick = async ()=>{
+    try{
+      const t = await App.fetchJSON("{% url 'accounts:token_create' %}", {method:'POST', body:{name: document.getElementById('tk-name').value.trim()}});
+      App.openModal(`<div class="modal-h"><h3>کلید ساخته شد</h3><button class="x" onclick="App.closeModal()">×</button></div>
+        <div class="modal-b">
+          <p style="color:var(--text-dim);font-size:12.5px;margin-bottom:8px">این کلید فقط همین یک‌بار نشان داده می‌شود — کپی و جایی امن نگه دار.</p>
+          <input class="input" dir="ltr" readonly value="${t.key}" onclick="this.select()" style="font-family:monospace">
+        </div>
+        <div class="modal-f"><button class="btn btn-p" onclick="App.closeModal()">فهمیدم، کپی کردم</button></div>`);
+      const empty = document.getElementById('tok-empty'); if(empty) empty.remove();
+      let tbody = document.getElementById('tok-body');
+      if(!tbody){
+        const table = `<table><thead><tr><th>نام</th><th>کلید</th><th>ساخته‌شده توسط</th><th>آخرین استفاده</th><th></th></tr></thead><tbody id="tok-body"></tbody></table>`;
+        document.querySelector('.card.glass').insertAdjacentHTML('beforeend', table);
+        tbody = document.getElementById('tok-body');
+      }
+      tbody.insertAdjacentHTML('beforeend', rowHtml(t));
+    }catch(_){}
+  };
+}
+document.addEventListener('click', e=>{
+  if(e.target.closest('#new-token') || e.target.closest('#new-token-2')) openCreate();
+});
+document.addEventListener('click', async e=>{
+  const b = e.target.closest('.tok-del'); if(!b) return;
+  const tr = b.closest('tr');
+  if(!await App.confirm('این توکن حذف شود؟ برنامه‌هایی که با آن وصل شده‌اند دیگر کار نمی‌کنند.')) return;
+  try{ await App.fetchJSON(`/settings/api-tokens/api/${tr.dataset.id}/`, {method:'DELETE'}); tr.remove(); App.toast('حذف شد','ok'); }catch(_){}
+});
+</script>
+{% endblock %}

@@ -9,7 +9,6 @@ from django.contrib.auth import login
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -17,8 +16,9 @@ from django.urls import reverse_lazy
 from django.views.decorators.http import require_http_methods
 from django.views.generic import TemplateView
 
-from .models import Membership, Organization, Role, Team, TeamMembership, User, seed_roles
-from .permissions import PERM_LABELS, PERMS
+from .access import require_perm as _require
+from .models import APIToken, Invite, Membership, Organization, Role, Team, TeamMembership, User, seed_roles
+from .permissions import PERM_GROUPS, PERM_LABELS, PERMS
 
 
 class LoginView(auth_views.LoginView):
@@ -31,14 +31,6 @@ class LogoutView(auth_views.LogoutView):
 
 
 # ── کمکی ────────────────────────────────────────────────────────────────
-
-def _require(request, perm):
-    """سازمانِ جاری (از میدل‌ور) را برمی‌گرداند یا اگر دسترسی نبود، 403."""
-    m = getattr(request, 'membership', None)
-    if not m or not m.can(perm):
-        raise PermissionDenied('دسترسی کافی نداری')
-    return m.organization
-
 
 def _body(request):
     try:
@@ -62,32 +54,113 @@ def _team_tree(org):
 
 # ── صفحه ────────────────────────────────────────────────────────────────
 
-class PeopleView(LoginRequiredMixin, TemplateView):
-    template_name = 'accounts/people.html'
+class SettingsHomeView(LoginRequiredMixin, TemplateView):
+    """هابِ تنظیمات (`/settings/`) — تکِ لینکِ سایدبار زیرِ «تنظیمات»؛ کارت‌های راهنما
+    به تک‌تکِ صفحه‌ها (هرکدام فقط اگر دسترسی‌اش را داشته باشی) + ویرایشِ نامِ سازمان."""
+
+    template_name = 'accounts/settings_home.html'
+
+    def get_context_data(self, **kwargs):
+        from .permissions import SETTINGS_PERMS
+        ctx = super().get_context_data(**kwargs)
+        m = getattr(self.request, 'membership', None)
+        if not m or not any(m.can(p) for p in SETTINGS_PERMS):
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied('دسترسی کافی نداری')
+        ctx['org'] = self.request.organization
+        ctx['can_manage_org'] = m.can('manage_org')
+        ctx['page_title'] = 'تنظیمات'
+        return ctx
+
+
+@login_required
+@require_http_methods(['PATCH'])
+def organization_edit(request):
+    org = _require(request, 'manage_org')
+    d = _body(request)
+    name = (d.get('name') or '').strip()
+    if not name:
+        return JsonResponse({'detail': 'نام سازمان لازم است'}, status=400)
+    org.name = name
+    org.save(update_fields=['name'])
+    return JsonResponse({'ok': True, 'name': org.name})
+
+
+@login_required
+@require_http_methods(['POST'])
+def profile_edit(request):
+    """ویرایشِ پروفایلِ خودِ کاربر (منوی بالا-راستِ هدر) — فقط ظاهریاتِ خودش: نام، ایمیل،
+    آواتار، رنگ. چیزهایی مثل مدیر/توضیحات/نقش دستِ خودِ او نیست (آن‌ها مالِ مدیر است،
+    از تبِ «دسترسی به سیستم» در `colleagues`)."""
+    user = request.user
+    full_name = (request.POST.get('full_name') or '').strip()
+    email = (request.POST.get('email') or '').strip()
+    color = (request.POST.get('color') or '').strip()
+    avatar = request.FILES.get('avatar')
+
+    if full_name:
+        first, _, last = full_name.partition(' ')
+        user.first_name, user.last_name = first, last
+    if email:
+        user.email = email
+    if avatar:
+        user.avatar = avatar
+    user.save(update_fields=['first_name', 'last_name', 'email', 'avatar'])
+
+    colleague = getattr(user, 'colleague', None)
+    if colleague:
+        if full_name:
+            colleague.full_name = full_name
+        if email:
+            colleague.email = email
+        if color:
+            colleague.color = color
+        if avatar:
+            colleague.avatar = avatar
+        colleague.save(update_fields=['full_name', 'email', 'color', 'avatar'])
+
+    return JsonResponse({
+        'ok': True,
+        'avatar_url': user.avatar.url if user.avatar else '',
+        'full_name': user.get_full_name(),
+    })
+
+
+class TeamsView(LoginRequiredMixin, TemplateView):
+    """تیم‌ها/زیرمجموعه‌ها (`/settings/teams/`) — از «نقش‌ها» جدا شد (هرکدام تبِ خودِ
+    مستقل در نوارِ تنظیمات دارند، به‌جای یک صفحه‌ی ترکیبی)."""
+
+    template_name = 'accounts/teams.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        org = _require(self.request, 'manage_teams')
+        ctx.update({
+            'org': org,
+            'teams_flat': list(org.teams.select_related('parent').all()),
+            'team_tree': _team_tree(org),
+            'page_title': 'تیم‌ها',
+        })
+        return ctx
+
+
+class RolesView(LoginRequiredMixin, TemplateView):
+    """نقش‌های سفارشی و ویرایشگرِ گروه‌بندی‌شده‌ی دسترسی‌ها (`/settings/roles/`)."""
+
+    template_name = 'accounts/roles.html'
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         org = _require(self.request, 'manage_people')
-        members = (Membership.objects.filter(organization=org)
-                   .select_related('user').order_by('-joined_at'))
-        # عضویت‌های تیمیِ هر کاربر در این سازمان
-        tm = {}
-        for x in TeamMembership.objects.filter(team__organization=org).select_related('team'):
-            tm.setdefault(x.user_id, []).append(x.team)
-        rows = []
-        for m in members:
-            rows.append({'m': m, 'teams': tm.get(m.user_id, [])})
         role_objs = list(org.roles.all())
         ctx.update({
             'org': org,
-            'rows': rows,
-            'teams_flat': list(org.teams.select_related('parent').all()),
-            'team_tree': _team_tree(org),
             'roles': [(r.key, r.name) for r in role_objs],
             'role_objs': role_objs,
+            'perm_groups': PERM_GROUPS,
             'all_perms': list(PERM_LABELS.items()),
             'perm_label_map': PERM_LABELS,
-            'page_title': 'افراد و دسترسی‌ها',
+            'page_title': 'نقش‌ها',
         })
         return ctx
 
@@ -97,7 +170,7 @@ class PeopleView(LoginRequiredMixin, TemplateView):
 @login_required
 @require_http_methods(['POST'])
 def team_create(request):
-    org = _require(request, 'manage_org')
+    org = _require(request, 'manage_teams')
     d = _body(request)
     name = (d.get('name') or '').strip()
     if not name:
@@ -112,7 +185,7 @@ def team_create(request):
 @login_required
 @require_http_methods(['PATCH', 'DELETE'])
 def team_edit(request, pk):
-    org = _require(request, 'manage_org')
+    org = _require(request, 'manage_teams')
     t = get_object_or_404(Team, pk=pk, organization=org)
     if request.method == 'DELETE':
         t.delete()  # زیرمجموعه‌ها و عضویت‌های تیمی هم CASCADE می‌شوند
@@ -135,39 +208,24 @@ def _set_teams(user, org, team_ids):
 
 
 @login_required
-@require_http_methods(['POST'])
-def person_create(request):
-    org = _require(request, 'manage_people')
-    d = _body(request)
-    username = (d.get('username') or '').strip()
-    password = d.get('password') or ''
-    if not username or not password:
-        return JsonResponse({'detail': 'نام‌کاربری و رمز لازم است'}, status=400)
-    if User.objects.filter(username=username).exists():
-        return JsonResponse({'detail': 'این نام‌کاربری قبلاً ثبت شده'}, status=400)
-    role = d.get('role') if org.roles.filter(key=d.get('role')).exists() else 'member'
-    u = User.objects.create_user(
-        username=username, password=password,
-        first_name=(d.get('first_name') or '').strip(),
-        last_name=(d.get('last_name') or '').strip(),
-        email=(d.get('email') or '').strip(),
-        phone=(d.get('phone') or '').strip())
-    Membership.objects.create(user=u, organization=org, role=role)
-    _set_teams(u, org, d.get('teams'))
-    return JsonResponse({'id': u.id}, status=201)
-
-
-@login_required
 @require_http_methods(['PATCH', 'DELETE'])
 def person_edit(request, pk):
+    """ویرایشِ نقشِ سازمانی/تیم/فعال‌بودنِ کسی که از قبل عضو است (دعوت را پذیرفته) —
+    از تبِ «دسترسی به سیستم» در سینگلِ همکار صدا زده می‌شود (`colleagues/detail.html`)،
+    نه از یک جدولِ جدا؛ `pk` همان `user_id` است (`Membership` با `colleague.user` یکی است)."""
     org = _require(request, 'manage_people')
     m = get_object_or_404(Membership, user_id=pk, organization=org)
+    is_self = m.user_id == request.user.id
     if request.method == 'DELETE':
+        if is_self:
+            return JsonResponse({'detail': 'نمی‌توانی دسترسیِ خودت را حذف کنی'}, status=400)
         # فقط عضویتِ این سازمان حذف می‌شود؛ خودِ کاربر (شاید در سازمان دیگر) می‌ماند
         TeamMembership.objects.filter(user=m.user, team__organization=org).delete()
         m.delete()
         return JsonResponse({'ok': True})
     d = _body(request)
+    if is_self and ('role' in d and d['role'] != m.role or d.get('is_active') is False):
+        return JsonResponse({'detail': 'نمی‌توانی نقش/دسترسیِ خودت را محدود کنی — از یک مدیرِ دیگر بخواه'}, status=400)
     if d.get('role') and org.roles.filter(key=d['role']).exists():
         # نگذار آخرین مالک از مالکی خارج شود
         if m.role == 'owner' and d['role'] != 'owner' and \
@@ -188,21 +246,35 @@ def person_edit(request, pk):
 
 @login_required
 @require_http_methods(['POST'])
-def person_invite(request):
-    """دعوتِ فردی که «قبلاً ثبت‌نام کرده» با شماره‌ی تماس، به سازمانِ جاری."""
-    org = _require(request, 'manage_people')
-    d = _body(request)
-    phone = (d.get('phone') or '').strip()
-    if not phone:
-        return JsonResponse({'detail': 'شماره‌ی تماس لازم است'}, status=400)
-    role = d.get('role') if org.roles.filter(key=d.get('role')).exists() else 'member'
-    u = User.objects.filter(phone=phone).first()
-    if not u:
-        return JsonResponse({'detail': 'کاربری با این شماره ثبت‌نام نکرده است'}, status=400)
-    if Membership.objects.filter(user=u, organization=org).exists():
-        return JsonResponse({'detail': 'این فرد قبلاً عضو سازمان است'}, status=400)
-    Membership.objects.create(user=u, organization=org, role=role)
-    return JsonResponse({'ok': True}, status=201)
+def invite_accept(request, pk):
+    inv = get_object_or_404(Invite, pk=pk, user=request.user, status=Invite.PENDING)
+    inv.accept()
+    request.session['active_org_id'] = inv.organization_id
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_http_methods(['POST'])
+def invite_reject(request, pk):
+    inv = get_object_or_404(Invite, pk=pk, user=request.user, status=Invite.PENDING)
+    inv.reject()
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_http_methods(['POST'])
+def create_own_org(request):
+    """کاربرِ لاگین‌شده‌ی بدونِ سازمان (مثلاً سوپریوزری که با `createsuperuser` ساخته شده،
+    نه از `/signup/`) از صفحه‌ی `/invites/` می‌تواند به‌جای ماندن در بن‌بستِ «فقط دعوت‌نامه»،
+    برای خودش سازمانِ تازه بسازد — همان مسیرِ `/signup/` ولی برای کاربرِ ازقبل‌لاگین‌شده."""
+    org_name = (_body(request).get('org_name') or '').strip()
+    if not org_name:
+        return JsonResponse({'detail': 'نام سازمان لازم است'}, status=400)
+    org = Organization.objects.create(name=org_name)
+    seed_roles(org)
+    Membership.objects.create(user=request.user, organization=org, role='owner')
+    request.session['active_org_id'] = org.id
+    return JsonResponse({'ok': True})
 
 
 # ── API: نقش‌های سفارشی ───────────────────────────────────────────────────
@@ -210,7 +282,7 @@ def person_invite(request):
 @login_required
 @require_http_methods(['POST'])
 def role_create(request):
-    org = _require(request, 'manage_org')
+    org = _require(request, 'manage_people')
     d = _body(request)
     name = (d.get('name') or '').strip()
     if not name:
@@ -229,7 +301,7 @@ def role_create(request):
 @login_required
 @require_http_methods(['PATCH', 'DELETE'])
 def role_edit(request, pk):
-    org = _require(request, 'manage_org')
+    org = _require(request, 'manage_people')
     r = get_object_or_404(Role, pk=pk, organization=org)
     if request.method == 'DELETE':
         if r.is_builtin:
@@ -259,9 +331,59 @@ def switch_org(request):
     return JsonResponse({'detail': 'به این سازمان دسترسی نداری'}, status=403)
 
 
+class InvitesLandingView(LoginRequiredMixin, TemplateView):
+    """صفحه‌ی مستقل (بدون سایدبار) برای کاربرِ لاگین‌شده‌ای که هنوز عضوِ هیچ
+    سازمانی نیست — فقط دعوت‌نامه‌های در انتظارش را می‌بیند (`OrgRequiredMiddleware`
+    هرکسی در این وضعیت را به اینجا می‌فرستد)."""
+
+    template_name = 'accounts/invites.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['invites'] = Invite.objects.filter(
+            user=self.request.user, status=Invite.PENDING).select_related('organization')
+        return ctx
+
+
+class APITokenListView(LoginRequiredMixin, TemplateView):
+    """توکن‌های API سازمان — برای اتصال افزونهٔ مرورگر/اتوماسیون/AI (`/settings/api-tokens/`)."""
+
+    template_name = 'accounts/api_tokens.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        org = _require(self.request, 'manage_api_tokens')
+        ctx['tokens'] = org.api_tokens.select_related('user').all()
+        ctx['page_title'] = 'توکن‌های API'
+        return ctx
+
+
+@login_required
+@require_http_methods(['POST'])
+def token_create(request):
+    org = _require(request, 'manage_api_tokens')
+    data = json.loads(request.body or '{}')
+    token, raw_key = APIToken.generate(organization=org, user=request.user, name=(data.get('name') or '').strip())
+    return JsonResponse({'id': token.id, 'name': token.name, 'key': raw_key, 'prefix': token.key_prefix}, status=201)
+
+
+@login_required
+@require_http_methods(['DELETE'])
+def token_revoke(request, pk):
+    org = _require(request, 'manage_api_tokens')
+    get_object_or_404(APIToken, pk=pk, organization=org).delete()
+    return JsonResponse({'ok': True})
+
+
 @require_http_methods(['GET', 'POST'])
 def signup(request):
-    """ثبت‌نامِ آزاد: کاربرِ مالک + سازمانِ جدید + نقش‌های پیش‌فرض."""
+    """ثبت‌نامِ آزاد: کاربرِ مالک + سازمانِ جدید + نقش‌های پیش‌فرض.
+
+    **مسیرِ دومِ همین صفحه:** اگر شماره‌ی واردشده دعوت‌نامه‌ی در انتظارِ بدونِ‌کاربر دارد
+    (`Invite.user is None` — یعنی کسی از `colleagues:` با همین شماره دعوتش کرده، بدونِ
+    اینکه هنوز حساب داشته باشد)، سازمانِ تازه ساخته نمی‌شود؛ فقط حساب ساخته و به همان
+    دعوت‌نامه(ها) وصل می‌شود، تا در `/invites/` قبول/ردش کند. این یعنی «ساختِ حساب» همیشه
+    دستِ خودِ فرد است، نه مدیرِ سازمان (که فقط شماره را وارد می‌کند)."""
     if request.user.is_authenticated:
         return redirect('dashboard:index')
     if request.method == 'GET':
@@ -273,9 +395,15 @@ def signup(request):
     password = p.get('password') or ''
     phone = (p.get('phone') or '').strip()
     full_name = (p.get('full_name') or '').strip()
+
+    pending_invites = list(Invite.objects.filter(
+        phone=phone, user__isnull=True, status=Invite.PENDING)) if phone else []
+
     err = None
-    if not (org_name and username and password):
-        err = 'نام شرکت، نام‌کاربری و رمز الزامی است'
+    if not username or not password:
+        err = 'نام‌کاربری و رمز الزامی است'
+    elif not pending_invites and not org_name:
+        err = 'نام شرکت الزامی است'
     elif User.objects.filter(username=username).exists():
         err = 'این نام‌کاربری قبلاً ثبت شده'
     elif len(password) < 6:
@@ -285,12 +413,17 @@ def signup(request):
 
     first, _, last = full_name.partition(' ')
     with transaction.atomic():
-        org = Organization.objects.create(name=org_name)
-        seed_roles(org)
         user = User.objects.create_user(
             username=username, password=password, phone=phone,
             first_name=first, last_name=last)
-        Membership.objects.create(user=user, organization=org, role='owner')
+        if pending_invites:
+            Invite.objects.filter(pk__in=[i.pk for i in pending_invites]).update(user=user)
+        else:
+            org = Organization.objects.create(name=org_name)
+            seed_roles(org)
+            Membership.objects.create(user=user, organization=org, role='owner')
     login(request, user)
+    if pending_invites:
+        return redirect('accounts:invites_landing')
     request.session['active_org_id'] = org.id
     return redirect('dashboard:index')

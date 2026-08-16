@@ -6,9 +6,11 @@
   {% if not colleague.is_active %}
     <div class="alert a-red" style="width:100%;margin-bottom:14px;cursor:default">
       <b>این همکار غیرفعال است.</b>
-      <form method="post" action="{% url 'colleagues:restore' colleague.pk %}" style="margin-inline-start:auto">
-        {% csrf_token %}<button class="btn btn-sm">فعال‌سازی مجدد</button>
-      </form>
+      {% if can_manage_colleagues %}
+        <form method="post" action="{% url 'colleagues:restore' colleague.pk %}" style="margin-inline-start:auto">
+          {% csrf_token %}<button class="btn btn-sm">فعال‌سازی مجدد</button>
+        </form>
+      {% endif %}
     </div>
   {% endif %}
 
@@ -17,10 +19,12 @@
     {% else %}<span class="ca-avatar ca-fallback" style="width:66px;height:66px;font-size:22px;--c:{{ colleague.color }}">{{ colleague.initials }}</span>{% endif %}
     <div style="flex:1"><h1 style="font-size:20px;font-weight:700">{{ colleague.full_name }}</h1>
       <p style="color:var(--text-dim);font-size:13px;margin-top:4px">{{ colleague.roles_display|default:"بدون نقش" }}</p></div>
-    <div class="side-c">
-      <a href="{% url 'colleagues:edit' colleague.pk %}" class="btn">ویرایش</a>
-      {% if colleague.is_active %}<form method="post" action="{% url 'colleagues:archive' colleague.pk %}" onsubmit="return confirm('این همکار غیرفعال شود؟')">{% csrf_token %}<button class="btn">غیرفعال‌سازی</button></form>{% endif %}
-    </div>
+    {% if can_manage_colleagues %}
+      <div class="side-c">
+        <a href="{% url 'colleagues:edit' colleague.pk %}" class="btn">ویرایش</a>
+        {% if colleague.is_active %}<form method="post" action="{% url 'colleagues:archive' colleague.pk %}" onsubmit="return confirm('این همکار غیرفعال شود؟')">{% csrf_token %}<button class="btn">غیرفعال‌سازی</button></form>{% endif %}
+      </div>
+    {% endif %}
   </section>
 
   {# ── کارت‌های آمار بازه ── #}
@@ -34,26 +38,111 @@
   </div>
 
   <div class="tabs">
-    <button class="tab on" data-tab="info">اطلاعات</button>
+    <button class="tab on" data-tab="attendance">حضور غیاب</button>
+    <button class="tab" data-tab="info">اطلاعات</button>
     <button class="tab" data-tab="charts">نمودارها</button>
     <button class="tab" data-tab="calendar">تقویم شخصی</button>
     <button class="tab" data-tab="tasks">تسک‌ها</button>
   </div>
 
-  <div class="tab-panel on" data-panel="info">
+  {# ── حضور غیاب (worktracker) — تبِ اول ── #}
+  <div class="tab-panel on" data-panel="attendance">
+    <section class="card glass">
+      <div class="card-h"><h3>حضور و غیاب — چند روزِ اخیر</h3>
+        {% if wt_username %}<span class="tag t-mute">worktracker: {{ wt_username }}</span>{% endif %}
+      </div>
+      {% if not wt_username %}
+        <div class="wt-notcfg">نام‌کاربریِ حضورغیابِ این فرد ثبت نشده — از «ویرایش» فیلدِ «اتصال به حضورغیاب» را پر کن.</div>
+      {% elif not wt_configured %}
+        <div class="wt-notcfg">اتصال به سامانه‌ی حضورغیاب پیکربندی نشده (WORKTRACKER_BASE_URL / TOKEN).</div>
+      {% elif not wt_detail %}
+        <div class="wt-notcfg">داده‌ای از سامانه‌ی حضورغیاب دریافت نشد (سامانه در دسترس نیست یا کاربر یافت نشد).</div>
+      {% else %}
+        <div style="padding:6px 16px 16px">
+          {% for day in wt_detail.days %}
+            <div style="border-bottom:1px solid var(--stroke-soft);padding:10px 0">
+              <div style="font-size:12.5px;color:var(--text-dim);margin-bottom:2px">{{ day.date|fa_digits }}</div>
+              {% include "colleagues/_attendance_day.html" with day=day %}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </section>
+  </div>
+
+  <div class="tab-panel" data-panel="info">
     <div class="duo" style="margin-top:0">
       <section class="card glass"><div class="card-h"><h3>اطلاعات</h3></div>
         <table><tbody>
           <tr><td style="color:var(--text-dim);width:130px">تلفن</td><td dir="ltr" style="text-align:right">{{ colleague.phone|default:"—" }}</td></tr>
           <tr><td style="color:var(--text-dim)">ایمیل</td><td dir="ltr" style="text-align:right">{{ colleague.email|default:"—" }}</td></tr>
           <tr><td style="color:var(--text-dim)">تاریخ عضویت</td><td>{{ colleague.join_date|jalali|default:"—" }}</td></tr>
-          {% if colleague.rate_per_word %}<tr><td style="color:var(--text-dim)">دستمزد هر کلمه</td><td>{{ colleague.rate_per_word|money }} تومان</td></tr>{% endif %}
+          <tr><td style="color:var(--text-dim)">مدیر</td><td>{% if colleague.manager %}<a href="{{ colleague.manager.get_absolute_url }}" style="color:var(--primary-400)">{{ colleague.manager.full_name }}</a>{% if colleague.needs_review %} <span class="tag t-info" style="font-size:10px">نیاز به بازبینی</span>{% endif %}{% else %}<span class="zero">—</span>{% endif %}</td></tr>
         </tbody></table>
       </section>
       <section class="card glass"><div class="card-h"><h3>توضیحات</h3></div>
         <div style="padding:16px 17px;color:var(--text-dim);line-height:2">{{ colleague.description|linebreaksbr|default:"توضیحی ثبت نشده است." }}</div>
       </section>
     </div>
+
+    <section class="card glass" style="margin-top:14px" id="access-card">
+      <div class="card-h"><h3>دسترسی به سیستم</h3></div>
+      <div style="padding:16px 17px">
+        {% if colleague.user %}
+          <p class="sub" style="margin-bottom:12px">این فرد با کاربرِ <b>{{ colleague.user.username }}</b> به سیستم دسترسی دارد.</p>
+          {% if can_manage_org_role and access_membership %}
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="field"><label>نقش سازمانی</label>
+                <select id="acc-role">
+                  {% for r in org_roles %}<option value="{{ r.key }}" {% if r.key == access_membership.role %}selected{% endif %}>{{ r.name }}</option>{% endfor %}
+                </select>
+              </div>
+              <label style="display:flex;align-items:center;gap:8px;margin-top:26px;cursor:pointer"><input type="checkbox" id="acc-active" {% if access_membership.is_active %}checked{% endif %}> فعال</label>
+            </div>
+            {% if org_teams %}
+              <label style="font-weight:700;display:block;margin-top:10px">تیم‌ها</label>
+              <div style="max-height:140px;overflow:auto;border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:8px;margin-top:6px">
+                {% for t in org_teams %}<label style="display:flex;align-items:center;gap:7px;margin:0;padding:3px 0;cursor:pointer">
+                  <input type="checkbox" class="acc-team" value="{{ t.id }}" {% if t.id in member_team_ids %}checked{% endif %}>
+                  {% if t.parent %}↳ {% endif %}{{ t.name }}</label>{% endfor %}
+              </div>
+            {% endif %}
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <button type="button" class="btn btn-p btn-sm" id="acc-save-btn">ذخیره</button>
+              <button type="button" class="btn btn-sm" id="acc-revoke-btn" style="color:var(--danger)">حذف دسترسی</button>
+            </div>
+          {% endif %}
+        {% elif pending_invite %}
+          <p class="sub">
+            {% if pending_invite.user %}دعوت‌نامه‌ای برای کاربرِ <b>{{ pending_invite.user.username }}</b> در انتظارِ قبول اوست.
+            {% else %}دعوت‌نامه برای شمارهٔ <b dir="ltr">{{ pending_invite.phone }}</b> ثبت شد؛ وقتی این شماره ثبت‌نام کند خودکار به این دعوت وصل می‌شود.
+            {% endif %}
+            {% if can_manage_colleagues %}
+              <button type="button" class="btn btn-sm" id="revoke-invite-btn">لغوِ دعوت‌نامه</button>
+            {% endif %}
+          </p>
+        {% elif can_manage_colleagues %}
+          <p class="sub" style="margin-bottom:12px">این فرد هنوز حساب کاربری ندارد.</p>
+          <div style="display:flex;gap:14px;margin-bottom:12px">
+            <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="radio" name="grant-mode" value="invite" checked> دعوت با شماره (خودش رمز می‌سازد)</label>
+            <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="radio" name="grant-mode" value="password"> تعیینِ رمزِ مستقیم (خودم دسترسی می‌سازم)</label>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="field" data-grant="invite"><label>شماره تماس</label><input type="text" id="grant-phone" dir="ltr" value="{{ colleague.phone }}"></div>
+            <div class="field" data-grant="password" style="display:none"><label>نام‌کاربری</label><input type="text" id="grant-username" dir="ltr"></div>
+            <div class="field" data-grant="password" style="display:none"><label>رمز عبور</label><input type="text" id="grant-password" dir="ltr"></div>
+            <div class="field"><label>نقش سازمانی</label>
+              <select id="grant-role">
+                {% for r in org_roles %}<option value="{{ r.key }}" {% if r.key == 'member' %}selected{% endif %}>{{ r.name }}</option>{% endfor %}
+              </select>
+            </div>
+          </div>
+          <button type="button" class="btn btn-p" id="grant-access-btn" style="margin-top:10px">ذخیره</button>
+        {% else %}
+          <p class="sub">این فرد هنوز حساب کاربری ندارد.</p>
+        {% endif %}
+      </div>
+    </section>
   </div>
 
   <div class="tab-panel" data-panel="charts">
@@ -110,5 +199,68 @@
 document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(!b)return;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));b.classList.add('on');
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('on',p.dataset.panel===b.dataset.tab));});
+
+(function(){
+  const card = document.getElementById('access-card');
+  if(!card) return;
+
+  const modeRadios = card.querySelectorAll('input[name="grant-mode"]');
+  function syncMode(){
+    const mode = card.querySelector('input[name="grant-mode"]:checked').value;
+    card.querySelectorAll('[data-grant]').forEach(el => { el.style.display = el.dataset.grant === mode ? '' : 'none'; });
+  }
+  modeRadios.forEach(r => r.addEventListener('change', syncMode));
+  if(modeRadios.length) syncMode();
+
+  const grantBtn = document.getElementById('grant-access-btn');
+  if(grantBtn){
+    grantBtn.addEventListener('click', () => {
+      const mode = card.querySelector('input[name="grant-mode"]:checked').value;
+      const body = {mode, role: document.getElementById('grant-role').value};
+      if(mode === 'password'){
+        body.username = document.getElementById('grant-username').value.trim();
+        body.password = document.getElementById('grant-password').value;
+        if(!body.username || !body.password){ App.toast('نام‌کاربری و رمز لازم است', 'warn'); return; }
+      } else {
+        body.phone = document.getElementById('grant-phone').value.trim();
+        if(!body.phone){ App.toast('شماره لازم است', 'warn'); return; }
+      }
+      App.fetchJSON('{% url "colleagues:grant_access" colleague.pk %}', {method: 'POST', body})
+        .then(() => { App.toast('ذخیره شد', 'ok'); window.location.reload(); })
+        .catch(() => {});
+    });
+  }
+
+  const revokeBtn = document.getElementById('revoke-invite-btn');
+  if(revokeBtn){
+    revokeBtn.addEventListener('click', () => {
+      App.fetchJSON('{% url "colleagues:revoke_invite" colleague.pk %}', {method: 'POST'})
+        .then(() => window.location.reload());
+    });
+  }
+
+  const accSaveBtn = document.getElementById('acc-save-btn');
+  if(accSaveBtn){
+    accSaveBtn.addEventListener('click', () => {
+      const body = {
+        role: document.getElementById('acc-role').value,
+        is_active: document.getElementById('acc-active').checked,
+        teams: [...document.querySelectorAll('.acc-team:checked')].map(c => +c.value),
+      };
+      App.fetchJSON('{% url "accounts:person_edit" colleague.user_id|default:0 %}', {method: 'PATCH', body})
+        .then(() => { App.toast('ذخیره شد', 'ok'); window.location.reload(); })
+        .catch(() => {});
+    });
+  }
+
+  const accRevokeBtn = document.getElementById('acc-revoke-btn');
+  if(accRevokeBtn){
+    accRevokeBtn.addEventListener('click', async () => {
+      if(!(await App.confirm('دسترسیِ این فرد به سازمان حذف شود؟'))) return;
+      App.fetchJSON('{% url "accounts:person_edit" colleague.user_id|default:0 %}', {method: 'DELETE'})
+        .then(() => window.location.reload());
+    });
+  }
+})();
 </script>
 {% endblock %}

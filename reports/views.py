@@ -6,6 +6,7 @@ import bleach
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.http import require_http_methods
@@ -48,8 +49,10 @@ class ReportListView(LoginRequiredMixin, ListView):
         return super().get_queryset().select_related('project')
 
     def get_context_data(self, **kwargs):
+        from finance.models import Invoice
         ctx = super().get_context_data(**kwargs)
         ctx['projects'] = Project.objects.filter(status=Project.ACTIVE)
+        ctx['invoices'] = Invoice.objects.select_related('project')
         ctx['page_title'] = 'گزارش‌ها'
         return ctx
 
@@ -62,6 +65,7 @@ class ReportCreateView(LoginRequiredMixin, View):
         try:
             report = Report.objects.create(
                 project_id=data['project'],
+                invoice_id=data.get('invoice') or None,
                 title=data.get('title') or 'گزارش جدید',
                 date_from=parse_jalali(data['date_from']),
                 date_to=parse_jalali(data['date_to']),
@@ -72,16 +76,32 @@ class ReportCreateView(LoginRequiredMixin, View):
         return redirect(report.get_absolute_url())
 
 
+def _invoice_ctx(report):
+    """جزئیاتِ فاکتورِ متصل (اگر هست) — منبعِ واحد برای هم صفحه‌ی ادیت هم نسخه‌ی
+    عمومی/پیش‌نمایش، تا جمع‌ها دو جا حساب نشوند (`finance.Invoice` خودش property دارد)."""
+    if not report.invoice_id:
+        return None
+    return {
+        'invoice': report.invoice,
+        'lines': list(report.invoice.lines.select_related('category').all()),
+    }
+
+
 class ReportDetailView(LoginRequiredMixin, DetailView):
     model = Report
     template_name = 'reports/detail.html'
     context_object_name = 'report'
 
     def get_context_data(self, **kwargs):
+        from finance.balances import project_balance
+        from finance.models import Invoice
         ctx = super().get_context_data(**kwargs)
         ctx['groups'] = self.object.grouped_items()
         ctx['client_fields'] = CLIENT_FIELDS
         ctx['visible_fields'] = self.object.visible_fields
+        ctx['invoices'] = Invoice.objects.select_related('project')
+        ctx['invoice_ctx'] = _invoice_ctx(self.object)
+        ctx['client_balance'] = project_balance(self.object.project_id)
         ctx['page_title'] = self.object.title
         return ctx
 
@@ -103,6 +123,7 @@ class PublicReportView(DetailView):
         ctx['groups'] = self.object.grouped_items()
         # فقط فیلدهای مجاز، به‌ترتیب تعریف
         ctx['fields'] = [(k, lbl) for k, lbl in CLIENT_FIELDS if self.object.sees(k)]
+        ctx['invoice_ctx'] = _invoice_ctx(self.object)
         return ctx
 
 
@@ -117,6 +138,7 @@ class ReportPreviewView(LoginRequiredMixin, DetailView):
         ctx = super().get_context_data(**kwargs)
         ctx['groups'] = self.object.grouped_items()
         ctx['fields'] = [(k, lbl) for k, lbl in CLIENT_FIELDS if self.object.sees(k)]
+        ctx['invoice_ctx'] = _invoice_ctx(self.object)
         ctx['is_preview'] = True
         return ctx
 
@@ -127,7 +149,13 @@ class ReportPreviewView(LoginRequiredMixin, DetailView):
 @require_http_methods(['GET'])
 def pull_tasks(request, pk):
     """تسک‌های بازه، گروه‌بندی‌شده بر اساس نوع، برای انتخاب و افزودن.
-    تسک‌های قبلاً افزوده‌شده کنار گذاشته می‌شوند. GET ?from=&to="""
+    تسک‌های قبلاً افزوده‌شده کنار گذاشته می‌شوند. GET ?from=&to=
+
+    **تسکِ انجام‌نشده هم قابلِ‌واکشی است** (قبلاً فقط `done` بود) — چون هنوز `done_date`
+    ندارد، با `planned_date` در بازه پیدا می‌شود، نه `done_date`. پاسخ `done:false`/
+    `status_label` می‌فرستد تا در UIِ انتخاب («واکشی») مشخص باشد کدام‌ها هنوز تمام
+    نشده‌اند — این برچسب فقط برای خودِ ماست، هیچ‌وقت در گزارشِ نهایی/عمومی چاپ نمی‌شود
+    (نمایشِ مشتری از `CLIENT_FIELDS`/`visible_fields` می‌آید، نه از این API)."""
     report = get_object_or_404(Report, pk=pk)
     g = request.GET
     try:
@@ -137,8 +165,10 @@ def pull_tasks(request, pk):
         d_from, d_to = report.date_from, report.date_to
 
     added = set(report.items.exclude(task__isnull=True).values_list('task_id', flat=True))
-    qs = Task.objects.select_related('assignee','type_def').filter(
-        project=report.project, done_date__range=(d_from, d_to), status=Task.DONE
+    qs = Task.objects.select_related('assignee', 'type_def').filter(
+        Q(status=Task.DONE, done_date__range=(d_from, d_to))
+        | Q(planned_date__range=(d_from, d_to)) & ~Q(status=Task.DONE),
+        project=report.project,
     ).exclude(id__in=added)
 
     groups = []
@@ -146,7 +176,8 @@ def pull_tasks(request, pk):
         rows = [{
             'id': t.id, 'title': t.title, 'type_label': t.type_label,
             'color': t.color_rgb, 'assignee': t.assignee.full_name if t.assignee else '',
-            'done_date_fa': _fa(t.done_date),
+            'done_date_fa': _fa(t.done_date), 'done': t.status == Task.DONE,
+            'status_label': t.get_status_display(),
         } for t in qs if t.task_type in types]
         if rows:
             groups.append({'key': key, 'label': label, 'tasks': rows})
@@ -235,6 +266,8 @@ def report_update(request, pk):
         report.is_public = bool(d['is_public'])
     if 'status' in d:
         report.status = d['status']
+    if 'invoice' in d:
+        report.invoice_id = d['invoice'] or None
     report.save()
     return JsonResponse({'ok': True, 'public_url': report.public_url(), 'is_public': report.is_public})
 

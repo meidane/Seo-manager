@@ -6,16 +6,49 @@
 - **Organization** (شرکت) — بالاترین سطحِ tenant؛ `name, slug(auto), is_active`.
 - **Team** — `organization` + `parent`(self) برای زیرمجموعه (چند سطح).
 - **User** — `avatar, phone` + `team`(deprecated). `default_membership()`.
-- **Membership** (user↔org) — `role`(کلید Role)، `is_active`. `.perms` / `.can(perm)` /
-  `.role_label`. مالک همیشه `'*'` (همه).
+- **Membership** (user↔org) — `role`(کلید Role، `CharField(max_length=32)`)، `is_active`.
+  `.perms` / `.can(perm)` / `.role_label`. مالک همیشه `'*'` (همه).
+  **باگِ رفع‌شده:** `role` قبلاً `max_length=12` بود ولی `Role.key` می‌تواند تا ۳۲ کاراکتر
+  باشد (`role_create` تا ۲۴ کاراکتر می‌سازد) — روی SQLite طولش اجرا نمی‌شود (بی‌صدا کارِ
+  «درستی» می‌کرد چون SQLite طولِ varchar را چک نمی‌کند)، ولی روی Postgres/MySQL نقشِ
+  سفارشی با کلیدِ بلند (مثلاً از اسمِ انگلیسیِ طولانی) truncate می‌شد و دیگر با
+  `Role.key` مچ نمی‌کرد → `Membership.perms` خالی می‌شد → همه‌ی پرمیشن‌ها بی‌اثر
+  می‌شدند، بدونِ هیچ خطای قابل‌مشاهده. الان هر دو `max_length=32` هستند.
 - **TeamMembership** (user↔team).
 - **Role** (per org) — `key, name, perms(JSON), is_builtin`. `seed_roles(org)` ۵ نقشِ
   پیش‌فرض می‌سازد؛ سازمان می‌تواند نقشِ سفارشی هم بسازد.
+- **Invite** — دعوت‌نامه‌ی **در انتظار** (نه عضویتِ فوری، فقط برای مسیرِ `mode=invite`
+  — پایین). `organization, user(اختیاری)، phone، role، colleague(اختیاری، FK به
+  `colleagues.Colleague`)، status(pending/accepted/rejected)، invited_by`:
+  - شماره از قبل حساب دارد → `user` بلافاصله ست می‌شود.
+  - شماره حساب ندارد → `user=None`، فقط `phone` ذخیره می‌شود؛ وقتی همان شماره در
+    `/signup/` ثبت‌نام کند، `views.signup` به‌جای ساختِ سازمانِ تازه فقط حساب می‌سازد و
+    آن را به همین دعوت وصل می‌کند («claim» — بدونِ این مسیر، سازمانِ تازه ساخته می‌شود).
+  `accept()` عضویت می‌سازد (+ `colleague.user` را هم وصل می‌کند)؛ `reject()` فقط وضعیت
+  را عوض می‌کند (می‌شود دوباره دعوت کرد).
+- **دو راهِ دادنِ دسترسی** (هر دو در `colleagues.views._grant_access`، جزئیات در
+  `colleagues/CLAUDE.md`): `mode=invite` (بالا، فقط شماره، خودش رمز می‌سازد) یا
+  `mode=password` (مدیر خودش نام‌کاربری/رمز می‌سازد → دسترسیِ فوری، بدونِ Invite —
+  نسخه‌ی اولیه‌ای که مدیر خودش دسترسی‌ها را می‌سازد، طبق درخواستِ کاربر).
+
+## دستور `seed_demo`
+`accounts/management/commands/seed_demo.py` — سازمانِ دمو + نقش‌ها (built-in + یک نقشِ
+سفارشیِ محدود، بدونِ `edit_project`/`view_all_projects`) + ۶ کاربرِ تست با یوزر/پسوردِ ثابت، پروژه/تسکِ
+نمونه (شاملِ یک تسکِ دلیگیت‌شده‌ی بیرون از عضویتِ پروژه، برای تستِ همان سناریوهایی که
+چند بار باگ داده‌اند). جزئیات/جدولِ یوزرها در `CLAUDE.md` ریشه. اجرای مکرر ایمن است —
+بعدِ هر بار پاک‌کردنِ DB اول همین را بزن: `python manage.py seed_demo`.
+**تله‌ای که موقعِ نوشتنش پیدا شد:** `Colleague.user` یک `OneToOneField` است — یک
+کاربرِ Django فقط می‌تواند **یک** Colleague در کلِ دیتابیس داشته باشد (نه یکی per سازمان)؛
+اگر کاربری از سازمانِ دیگری قبلاً Colleague دارد، `update_or_create` روی سازمانِ جدید با
+`IntegrityError` شکست می‌خورد — طبیعیِ این مدل است، نه باگ.
 
 ## چندشرکتی (`tenancy.py`) — مهم
 - **سازمانِ جاری** در thread-local؛ `CurrentOrgMiddleware` آن را از session
   (`active_org_id`) یا اولین عضویت resolve و روی `request.organization/membership` می‌گذارد.
   مسیرهای `/admin/` اسکوپ نمی‌شوند.
+- **`OrgRequiredMiddleware`** (بعد از `CurrentOrgMiddleware`): کاربرِ لاگین‌شده‌ای که هنوز
+  عضوِ هیچ سازمانی نیست (دعوتی تازه، هنوز قبول نکرده) را به `/invites/` می‌فرستد — جز
+  مسیرهای `_ORG_LESS_ALLOWED` (لاگین/خروج/ثبت‌نام/ادمین/استاتیک/خودِ `/invites/`).
 - **`TenantManager`**: مدل‌های tenant `objects` را به سازمانِ جاری فیلتر می‌کنند.
   **قانون:** خواندنِ اسکوپ‌شده = `Model.objects`؛ خواندنِ بدون فیلتر (migration/command/عمومی)
   = `Model.all_objects`. در `save()` سازمان از سازمانِ جاری استمپ می‌شود (`stamp_org`).
@@ -24,16 +57,91 @@
 - **تله:** management commandها سازمانِ جاری ندارند → `objects` بدون فیلتر برمی‌گرداند؛
   seedهای per-org باید سازمان را صریح بدهند یا `set_current_org` کنند.
 
-## صفحه/API (`/settings/people/`)
-مدیریتِ تیم‌ها/زیرمجموعه‌ها، افراد+نقش، **دعوت با شماره‌ی تماس** (فردِ ثبت‌نام‌کرده)،
-و **نقش‌های سفارشی**. محافظت با `_require(request, perm)`.
-API: `team_create/edit`, `person_create/edit`, `person_invite`, `role_create/edit`, `switch_org`.
+## دسترسی‌ها (`permissions.py`) — کاتالوگِ سه‌گروهی
+پرمیشن‌های سازمانی در **سه گروه** تعریف می‌شوند (`PERM_GROUPS`، برای نمایشِ گروه‌بندی‌شده
+در ویرایشگرِ نقش — `templates/accounts/roles.html`):
+- **تنظیمات**: `manage_org, manage_teams, manage_people, manage_api_tokens,
+  manage_columns, manage_task_types, manage_holidays`
+- **پروژه‌ها**: `view_all_projects`(=دیدنِ همه مثلِ مالک، بدونِ نیازِ عضویتِ تک‌تکِ پروژه؛
+  `projects/access.py`), `add_project, edit_project, project_files,
+  project_colleagues_access, project_credentials, project_reports, manage_finance`
+- **تسک‌ها**: `edit_task, delete_task, view_other_tasks`(مثبت‌قطبی — نبودش یعنی فقط
+  تسکِ خودش، `tasks/CLAUDE.md`), `edit_time, review, view_reports`
+
+هر پرمیشنِ جدید باید هم به `PERMS`/`PERM_LABELS` هم به گروهِ درستش در `PERM_GROUPS`
+اضافه شود، وگرنه در ویرایشگرِ نقش دیده نمی‌شود. `SETTINGS_PERMS` = کلیدهای گروهِ اول
+(برای گیتِ لینکِ سایدبار/صفحه‌ی هاب). `Membership.can(perm)` = `'*' in p or perm in p`
+(ساده، بدونِ استثنای ویلدکارد برای پرمیشن‌های محدودکننده — چون همه‌ی پرمیشن‌ها الان
+مثبت‌قطبی‌اند: داشتنش قابلیت می‌دهد، نداشتنش هرگز خودش قابلیتِ اضافه نمی‌سازد).
+
+## هابِ تنظیمات (`/settings/`) — نوارِ تب جدا از تنظیمات
+تکِ لینکِ سایدبار زیرِ «تنظیمات» (`SettingsHomeView`، تمپلیت `accounts/settings_home.html`)
+— کارت‌های راهنما به هر صفحه‌ی تنظیمات (هرکدام فقط اگر پرمیشنش را داشته باشی) + فرمِ
+ویرایشِ **نامِ سازمان** (`organization_edit`، PATCH، `manage_org`). دسترسیِ خودِ صفحه: هر
+پرمیشنی از `permissions.SETTINGS_PERMS`. سایدبار هم با همین لیست گیت می‌شود
+(`has_settings_access` در context processor) — لینکِ واحد، نه چند لینکِ جدا.
+`settings/_nav.html` نوارِ تبِ صفحاتِ تنظیمات است: سازمان · **تیم‌ها** · **نقش‌ها** ·
+انواعِ تسک · ستون‌ها · تعطیلات · توکن‌های API — هر تب فقط اگر پرمیشنش را داشته باشی
+دیده می‌شود؛ تبِ اول («سازمان») همیشه به همین هاب برمی‌گردد.
+
+## صفحاتِ «تیم‌ها» و «نقش‌ها» — از هم جدا شدند
+قبلاً یک صفحه‌ی واحد (`/settings/people/`) بود؛ حالا دو ویو/تمپلیتِ مستقل با پرمیشنِ
+جداگانه (چون یک تیم ممکن است بخواهد فقط یکی را به کسی بدهد — مثلاً یک سرپرست که
+زیرمجموعه اضافه می‌کند ولی نباید نقش‌های سازمانی را ویرایش کند):
+- **`/settings/teams/`** (`TeamsView`، پرمیشنِ `manage_teams`، تمپلیت
+  `accounts/teams.html`) — فقط تیم‌ها/زیرمجموعه‌ها. API: `team_create/edit`.
+- **`/settings/roles/`** (`RolesView`، پرمیشنِ `manage_people`، تمپلیت
+  `accounts/roles.html`) — نقش‌های built-in/سفارشی، ویرایشگرِ چک‌باکسیِ گروه‌بندی‌شده
+  (`PERM_GROUPS` بالا). API: `role_create/edit`.
+- «افراد» (فهرست/دسترسیِ تک‌تکِ افراد) هیچ‌کدام از این دو نیست — همچنان در
+  `colleagues:list` («افراد و دسترسی‌ها»، `colleagues/CLAUDE.md`)، پرمیشنِ `manage_people`
+  هم اونجا رعایت می‌شود (نه `manage_colleagues` — این پرمیشن حذف/تغییرِنام شد). API:
+  `person_edit`(ویرایشِ نقش/فعال‌بودن/تیمِ کسی که دعوت را پذیرفته)، `switch_org` (این دو
+  در `accounts/views.py` مانده‌اند، مستقل از تیم/نقش).
+**تله‌ی محدودسازیِ خود:** `person_edit` نمی‌گذارد کاربر نقش/فعال‌بودنِ **خودش** را عوض
+کند یا عضویتِ خودش را حذف کند (`is_self` چک) — وگرنه کسی به‌راحتی می‌تواند خودش را قفل
+کند بیرون؛ باید یک مدیرِ دیگر این کار را بکند. جدا از محافظتِ «حداقل یک مالک» که از قبل بود.
 
 ## ثبت‌نام و سوییچر
-- **`/signup/`** — ثبت‌نامِ آزاد: کاربرِ مالک + سازمان + `seed_roles`. (`registration/signup.html`)
+- **`/signup/`** — دو مسیر: (۱) عادی → کاربرِ مالک + سازمانِ تازه + `seed_roles`؛
+  (۲) اگر شماره‌ی واردشده دعوت‌نامه‌ی در انتظارِ بدونِ‌کاربر دارد → فقط حساب ساخته و به
+  همان دعوت وصل می‌شود (سازمانِ تازه ساخته نمی‌شود) — نگاه کن `Invite` بالا.
+  (`registration/signup.html`)
 - **سوییچرِ سازمان** در هدر (اگر کاربر در چند سازمان باشد) → `switch_org` (session).
 
+## دعوت‌نامه‌ها (`/invites/`)
+- کاربرِ بدونِ سازمان با `OrgRequiredMiddleware` به اینجا می‌افتد (`InvitesLandingView`،
+  تمپلیتِ مستقل `accounts/invites.html`، بدونِ سایدبار).
+- **تله‌ای که رفع شد:** کاربرِ لاگین‌شده‌ی بدونِ عضویت (مثلاً سوپریوزرِ ساخته‌شده با
+  `createsuperuser`، نه از `/signup/`) قبلاً در همین صفحه گیر می‌کرد — چون `/signup/`
+  کاربرِ لاگین‌شده را مستقیم به داشبورد ریدایرکت می‌کند (نه صفحه‌ی ثبت‌نام)، و داشبورد هم
+  چون سازمان ندارد دوباره به `/invites/` برمی‌گشت (بن‌بست). برای همین همین صفحه یک فرمِ
+  «ساختِ سازمان» هم دارد: `create_own_org` (POST، لاگین‌شده) دقیقاً همان کاری را می‌کند
+  که `/signup/` برای کاربرِ لاگین‌نشده می‌کند (Organization + `seed_roles` + Membership
+  owner + `active_org_id`).
+- کاربرِ **با** سازمان که دعوتِ اضافه هم دارد (مثلاً به سازمانِ دوم دعوت شده) آن را در
+  **بنرِ بالای هر صفحه** می‌بیند (`templates/base.html`، از `pending_invites` که
+  context processor روی هر ریکوئستِ لاگین‌شده می‌گذارد).
+- قبول/رد با دکمه‌های `.invite-accept`/`.invite-reject` (کلاسِ CSS، نه ID) — دلیگیتِ
+  کلیکِ سراسری در `app.js` روی `data-url` اجرا می‌کند؛ همان الگو در بنر و در صفحه‌ی
+  `/invites/` هر دو کار می‌کند بدون تکرارِ JS.
+
+## پروفایلِ خود (بالا-راستِ هدر)
+`views.profile_edit` (POST چندبخشی/multipart، فقط login_required — نه پرمیشن، چون فقط
+پروفایلِ خودِ کاربر است) نام/ایمیل/آواتار/رنگ را روی `User` می‌گذارد و اگر `user.colleague`
+وصل بود، همان‌ها را روی Colleague هم sync می‌کند (چون آواتار/نام/ایمیل در جاهای مختلفِ
+اپ از کدام مدل نمایش داده می‌شود فرق دارد — هدر از `User.avatar`، لیست/سینگلِ افراد از
+`Colleague.avatar`). فیلدهایی مثل مدیر/توضیحات/نقش **از اینجا قابل‌تغییر نیستند** — عمداً،
+چون مالِ مدیر/مدیرِ سازمان است، نه خودِ فرد (تبِ «دسترسی به سیستم» در `colleagues`).
+
 ## context_processor
-`accounts.context_processors.org` → `current_org, current_membership, org_perms, my_orgs`.
+`accounts.context_processors.org` → `current_org, current_membership, org_perms, my_orgs,
+pending_invites, has_settings_access, can_create_task`. **تله:** `Membership.perms` برای مالک `{'*'}` است ولی
+چک‌های تمپلیت (`{% if 'x' in org_perms %}`) رشته‌ی دقیق می‌خواهند — این‌جا `'*'` به
+`set(PERMS)` باز می‌شود تا لینک‌های گیت‌شده برای مالک هم دیده شوند.
+**`can_create_task`** (`bool(colleague) or 'edit_task' in perms`) جدا از `org_perms` است:
+دکمه‌ی «＋ تسک جدید» را گیت می‌کند، چون هرکسی با پروفایلِ همکار می‌تواند برای **خودش**
+تسک بسازد حتی بدونِ پرمیشنِ سازمانیِ `edit_task` (که یعنی «ویرایش/دلیگیت به همه» —
+`tasks/CLAUDE.md`، بخشِ «تعریفِ تسک برای خود»).
 
 > اگر فیلد به User اضافه کردی، مراقب migration و `createsuperuser` باش.

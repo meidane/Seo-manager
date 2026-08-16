@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Task, TaskComment, TaskTypeDef, TaskTypeField
+from .models import Task, TaskComment, TaskHistory, TaskTypeDef, TaskTypeField
 
 
 class FieldInline(admin.TabularInline):
@@ -23,3 +23,9 @@ class TaskAdmin(admin.ModelAdmin):
 
 
 admin.site.register(TaskComment)
+
+
+@admin.register(TaskHistory)
+class TaskHistoryAdmin(admin.ModelAdmin):
+    list_display = ('task', 'action', 'user', 'created_at')
+    list_filter = ('action',)

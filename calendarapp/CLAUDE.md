@@ -6,7 +6,8 @@
 - `calendar_logic.py` — منطق ماتریس ماه در **پایتون** (نه JS). `build_month(jyear, jmonth,
   tasks_by_date, holiday_map)`. **weekday شمسی: شنبه=۰، جمعه=۶.** هر سلول `jdate` (شمسی لاتین)
   برای پرکردن فیلد تاریخ دارد.
-- `views.py` — `CalendarView` (SSR اول)، `calendar_api` (ناوبری AJAX + فیلتر project/assignee/type)،
+- `views.py` — `CalendarView` (SSR اول)، `calendar_api` (ناوبری AJAX + فیلتر project/assignee/type_def —
+  فیلترِ نوع دیگر با `task_type` خام نیست، با `type_def`(id)؛ `?type=` قدیمی فقط fallback است)،
   `picker_api` (فقط پرچم تعطیلی/امروز برای دیت‌پیکر)، `workload_api` (بار کاری همکار برای مودال).
   `_tasks_by_date` تسک‌های انجام‌شده را ته سلول مرتب می‌کند (طوسی).
   **`_virtual_recurrence`/`_merge_virtual`**: رخدادهای آینده‌ی قواعدِ تکرار را به‌صورت
@@ -20,6 +21,27 @@
 ## استایل
 همه‌ی کلاس‌های تقویم (`.grid7 .cell .tk .tk-av .cell-add .dp-*` …) در `static/css/style.css`
 هستند. (یک‌بار نبودند و تقویم خراب دیده شد — هرگز فقط در mockups نگذار.)
+**تله‌ی رفع‌شده:** عنوانِ خیلی طولانِ یک تسک می‌توانست عرضِ ستونِ گرید را بیشتر از
+سهمِ واقعی‌اش (`1fr`) بکشد — چون `grid-template-columns:repeat(7,1fr)` بدونِ `minmax(0,…)`
+اندازه‌ی حداقلیِ محتوا را نادیده نمی‌گیرد، دقیقاً مثلِ همین مشکل در فلکس‌باکس. نتیجه:
+همه‌ی ستون‌ها کوچک‌وبزرگِ نامنظم می‌شدند و متن از سلول بیرون می‌زد. رفع شد با
+`minmax(0,1fr)` روی `.grid7` + `min-width:0` روی `.cell`/`.tk`/`.tk-tx`/`.hol`/`.cell-h`.
+اگر کلاسِ متنیِ جدیدی به سلول اضافه کردی که `white-space:nowrap` دارد، همین الگو
+(`min-width:0` روی خودش و اجدادِ فلکسش) را رعایت کن، وگرنه دوباره همین باگ برمی‌گردد.
+فقط ارتفاعِ سلول (`.cell{min-height:120px}`، بدونِ `max-height`) آزاد است رشد کند —
+عرض همیشه ثابت می‌ماند.
+
+## دسترسی در UI (دکمه‌ی ＋)
+دکمه‌ی «＋» هر سلول فقط با `can_create_task` نشان داده می‌شود (context var سراسری —
+هرکسی با پروفایلِ همکار می‌تواند تسکِ جدید برای خودش بسازد، نه فقط دارنده‌ی `edit_task`؛
+`tasks/CLAUDE.md`، بخشِ «تعریفِ تسک برای خود»)، اما دو مسیرِ رندرِ جدا دارد که هر دو باید
+گیت شوند:
+- **SSR اول** (`templates/calendarapp/_cells.html`): `{% if not c.dim and can_create_task %}`.
+- **ناوبریِ AJAX** (تعویضِ ماه، `calendar_api` + `calendar-page.js: cellHtml`): سلول‌ها با JS
+  دوباره ساخته می‌شوند، نه رندرِ تمپلیت — پس پرچم از `window.CAL_INIT.canCreateTask`
+  (ست‌شده در `templates/calendarapp/index.html`، از `can_create_task`) می‌آید، نه از
+  `{% if %}`. اگر گیتِ مشابهی به سلول‌ها اضافه کردی، آن را هم به `CAL_INIT` اضافه کن،
+  وگرنه فقط بارِ اولِ صفحه درست است و بعد از تعویضِ ماه دوباره نمایان می‌شود.
 
 ## URLها
 `/calendar/` · `/calendar/api/` · `/calendar/api/picker/` · `/calendar/api/workload/`

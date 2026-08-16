@@ -18,6 +18,21 @@
 
   {% if unassigned %}<div class="alerts"><a href="{% url 'finance:transactions' %}?unassigned=1" class="alert a-yel"><b>{{ unassigned|fa_digits }} تراکنش</b> بدون پروژه/بابت <span class="arw">←</span></a></div>{% endif %}
 
+  {% if fin_alerts %}
+  <section class="card glass" style="margin-bottom:16px">
+    <div class="card-h"><h3>⚠ هشدارهای حسابداری <span style="color:var(--text-faint);font-size:11px;font-weight:400">({{ fin_alerts|length|fa_digits }})</span></h3></div>
+    <div style="padding:10px 14px;display:flex;flex-direction:column;gap:8px">
+      {% for a in fin_alerts %}
+        <a href="{{ a.url }}" class="alert {% if a.level == 'danger' %}a-red{% else %}a-yel{% endif %}" style="border-radius:var(--r-sm);justify-content:flex-start">
+          <span style="font-size:15px">{{ a.icon }}</span>
+          <span><b>{{ a.title }}</b> — <span style="opacity:.85">{{ a.detail }}</span></span>
+          <span class="arw" style="margin-inline-start:auto">←</span>
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
   <div class="duo">
     <section class="card glass">
       <div class="card-h"><h3>تفکیک بر اساس بابت</h3></div>

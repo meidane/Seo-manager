@@ -39,22 +39,15 @@
 
   {# ── ردیف ۳: وضعیت پروژه‌ها ── #}
   <section class="card glass">
-    <div class="card-h"><h3>وضعیت پروژه‌ها</h3><div class="side-c"><span class="chip on">بدترین وضعیت بالا</span></div></div>
+    <div class="card-h"><h3>وضعیت پروژه‌ها</h3><div class="side-c"><span class="chip on">بدترین وضعیت بالا</span><a href="{% url 'core:columns' %}" class="mini" title="سفارشی‌سازی ستون‌ها">⚙ ستون‌ها</a></div></div>
     {% if projects %}
       <table>
-        <thead><tr><th>پروژه</th><th>برنامه</th><th>انجام</th><th>مانده</th><th>عقب</th><th>جمع ساعت</th><th>پیشرفت</th><th>آخرین فعالیت</th><th>وضعیت</th></tr></thead>
+        <thead><tr><th>پروژه</th>{% for c in project_columns %}<th>{{ c.label }}</th>{% endfor %}</tr></thead>
         <tbody>
           {% for p in projects %}
             <tr onclick="location.href='{{ p.get_absolute_url }}'">
               <td><div class="proj"><i class="pdot" style="background:{{ p.color }}"></i><span><b>{{ p.name }}</b><span>{{ p.domain }}</span></span></div></td>
-              <td class="num-c">{{ p.planned|fa_digits }}</td>
-              <td class="num-c {% if not p.done %}zero{% endif %}">{{ p.done|fa_digits }}</td>
-              <td class="num-c {% if not p.remaining %}zero{% endif %}">{{ p.remaining|fa_digits }}</td>
-              <td class="num-c {% if p.overdue %}red-n{% else %}zero{% endif %}">{{ p.overdue|fa_digits }}</td>
-              <td class="num-c {% if not p.minutes %}zero{% endif %}">{{ p.minutes|hours }}</td>
-              <td><div class="bar {% if p.state.0 == 'ok' or p.state.0 == 'info' %}ok{% elif p.state.0 == 'bad' %}bad{% endif %}"><i style="width:{{ p.progress }}%"></i></div></td>
-              <td>{% if p.last_activity %}{{ p.last_activity|timeago }}{% else %}<span class="zero">—</span>{% endif %}</td>
-              <td><span class="tag t-{{ p.state.0 }}">● {{ p.state.1 }}</span></td>
+              {% for c in project_columns %}<td>{% column_cell p c %}</td>{% endfor %}
             </tr>
           {% endfor %}
         </tbody>
@@ -67,18 +60,15 @@
   {# ── ردیف ۴: دو ستون ── #}
   <div class="duo">
     <section class="card glass">
-      <div class="card-h"><h3>عملکرد همکاران</h3><div class="side-c"><span class="chip on">بازه‌ی انتخابی</span></div></div>
+      <div class="card-h"><h3>عملکرد همکاران</h3><div class="side-c"><span class="chip on">بازه‌ی انتخابی</span><a href="{% url 'core:columns' %}" class="mini" title="سفارشی‌سازی ستون‌ها">⚙</a></div></div>
       {% if colleagues %}
         <table>
-          <thead><tr><th>همکار</th><th>برنامه</th><th>انجام</th><th>جمع ساعت</th><th>عقب</th></tr></thead>
+          <thead><tr><th>همکار</th>{% for c in colleague_columns %}<th>{{ c.label }}</th>{% endfor %}</tr></thead>
           <tbody>
             {% for c in colleagues %}
               <tr onclick="location.href='{% url 'colleagues:detail' c.pk %}'">
                 <td><div class="who">{% if c.avatar %}<img src="{{ c.avatar.url }}">{% else %}<span class="fb" style="background:color-mix(in srgb,{{ c.color }} 22%,transparent);color:{{ c.color }}">{{ c.initials }}</span>{% endif %}<span><b>{{ c.full_name }}</b><span>{{ c.roles_display }}</span></span></div></td>
-                <td class="num-c">{{ c.planned|fa_digits }}</td>
-                <td class="num-c">{{ c.done|fa_digits }}</td>
-                <td class="num-c {% if not c.minutes %}zero{% endif %}">{{ c.minutes|hours }}</td>
-                <td class="num-c {% if c.overdue %}red-n{% else %}zero{% endif %}">{{ c.overdue|fa_digits }}</td>
+                {% for col in colleague_columns %}<td>{% column_cell c col %}</td>{% endfor %}
               </tr>
             {% endfor %}
           </tbody>
@@ -101,16 +91,31 @@
     </section>
   </div>
 
-  {# ── ردیف ۵: نمودار میله‌ای روزانه (SVG ساده) ── #}
+  {# ── ردیف ۵: تسک‌های انجام‌شده به تفکیک روز — جدول، ۷ روز اخیر ── #}
   <section class="card glass" style="margin-top:14px">
-    <div class="card-h"><h3>تسک‌های انجام‌شده به تفکیک روز</h3></div>
-    <div class="chart-wrap">
-      {% if daily_bars %}
-        <div class="spark" style="height:90px;gap:3px;align-items:flex-end">
-          {% for b in daily_bars %}<i style="height:{{ b.h }}%;flex:1;min-width:5px" title="{{ b.n }}"></i>{% endfor %}
+    <div class="card-h"><h3>تسک‌های انجام‌شده به تفکیک روز</h3><div class="side-c"><span class="chip on">۷ روز اخیر</span><a href="{% url 'tasks:list' %}?group=day" class="chip">همه</a></div></div>
+    {% if daily_groups %}
+      {% for grp in daily_groups %}
+        <div style="margin-top:{% if not forloop.first %}16px{% else %}4px{% endif %}">
+          <div style="font-size:12.5px;color:var(--text-dim);margin-bottom:6px;display:flex;align-items:center;gap:8px"><b style="color:var(--text)">{{ grp.date_fa }}</b><span class="chip">{{ grp.count|fa_digits }} تسک</span></div>
+          <table>
+            <thead><tr><th>عنوان</th><th>پروژه</th><th>مسئول</th><th>نوع</th></tr></thead>
+            <tbody>
+              {% for t in grp.tasks %}
+                <tr data-open-task="{{ t.id }}" style="cursor:pointer">
+                  <td><span title="{{ t.title }}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px;display:inline-block;vertical-align:middle">{{ t.title }}</span></td>
+                  <td>{{ t.project.name }}</td>
+                  <td>{{ t.assignee.full_name|default:"—" }}</td>
+                  <td><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
-      {% else %}<div class="empty" style="padding:20px">داده‌ای برای نمودار نیست</div>{% endif %}
-    </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty" style="padding:20px"><div class="ico">📅</div><h4>در ۷ روز اخیر تسکِ انجام‌شده‌ای نیست</h4></div>
+    {% endif %}
   </section>
 
 {% endblock %}

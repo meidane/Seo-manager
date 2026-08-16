@@ -7,8 +7,8 @@
 - تب‌های امروز/دیروز/۷روز جدول همکاران فعلاً بازه‌ی جاری را نشان می‌دهند؛
   برای AJAX سبک یک endpoint در dashboard/urls اضافه کن که period بگیرد.
 - کشوی جزئیات همکار (کلیک روی ردیف) هنوز نیست — یک API «تسک‌های همکار در روز X».
-- نمودار دونات، هیت‌مپ ۱۲ هفته و اسپارک‌لاین همکاران: داده‌شان اینجا آماده
-  نشده؛ متد _daily_series نمونه‌ی الگوست. کارت مالی به FinanceEntry (گام ۸) وصل شود.
+- نمودار دونات و هیت‌مپ ۱۲ هفته: داده‌شان اینجا آماده نشده؛ `tasks.queries.group_done_by_day`
+  نمونه‌ی الگوی گروه‌بندیِ روزانه است. کارت مالی به FinanceEntry (گام ۸) وصل شود.
 """
 from datetime import date, timedelta
 
@@ -17,9 +17,13 @@ from django.db.models import Count, Max, Q, Sum
 from django.views.generic import TemplateView
 
 from colleagues.models import Colleague
+from core.columns import get_columns
 from core.daterange import DateRangeMixin
+from core.models import ColumnConfig
+from projects.access import accessible_project_ids
 from projects.models import Project
 from tasks.models import Task
+from tasks.queries import group_done_by_day, reviewable_q
 
 
 def _pct(cur, prev):
@@ -39,17 +43,24 @@ class DashboardView(LoginRequiredMixin, DateRangeMixin, TemplateView):
         today = date.today()
         ctx.update(self.range_context())
 
+        # دسترسیِ پروژه‌محور: فقط مالکِ سازمان همه را می‌بیند؛ بقیه فقط پروژه‌هایی که
+        # عضوشان هستند — همه‌جای داشبورد یکسان اعمال می‌شود (کارت‌ها/هشدار/جدول‌ها).
+        ids = accessible_project_ids(self.request)
+        task_qs = Task.objects.filter(project_id__in=ids) if ids is not None else Task.objects.all()
+        project_qs = Project.objects.filter(id__in=ids) if ids is not None else Project.objects.all()
+        colleague_task_q = Q(tasks__project_id__in=ids) if ids is not None else Q()
+
         done_q = Q(status=Task.DONE, done_date__range=(start, end))
         prev_done_q = Q(status=Task.DONE, done_date__range=(pstart, pend))
         open_q = Q(status__in=[Task.TODO, Task.DOING])
 
         # ── ردیف ۱: کارت‌های وضعیت ──
-        done_count = Task.objects.filter(done_q).count()
-        prev_done = Task.objects.filter(prev_done_q).count()
-        remaining = Task.objects.filter(open_q, planned_date__range=(start, end)).count()
-        overdue = Task.objects.filter(open_q, planned_date__lt=today).count()
-        minutes = Task.objects.filter(done_q).aggregate(s=Sum('spent_minutes'))['s'] or 0
-        prev_minutes = Task.objects.filter(prev_done_q).aggregate(s=Sum('spent_minutes'))['s'] or 0
+        done_count = task_qs.filter(done_q).count()
+        prev_done = task_qs.filter(prev_done_q).count()
+        remaining = task_qs.filter(open_q, planned_date__range=(start, end)).count()
+        overdue = task_qs.filter(open_q, planned_date__lt=today).count()
+        minutes = task_qs.filter(done_q).aggregate(s=Sum('spent_minutes'))['s'] or 0
+        prev_minutes = task_qs.filter(prev_done_q).aggregate(s=Sum('spent_minutes'))['s'] or 0
 
         ctx['cards'] = {
             'done': done_count, 'done_pct': _pct(done_count, prev_done),
@@ -60,24 +71,28 @@ class DashboardView(LoginRequiredMixin, DateRangeMixin, TemplateView):
 
         # ── ردیف ۲: نوار هشدارها ──
         projects_with_plan = set(
-            Task.objects.filter(planned_date__range=(start, end))
+            task_qs.filter(planned_date__range=(start, end))
             .values_list('project_id', flat=True)
         )
-        active_ids = set(Project.objects.filter(status=Project.ACTIVE).values_list('id', flat=True))
+        active_ids = set(project_qs.filter(status=Project.ACTIVE).values_list('id', flat=True))
         no_plan = len(active_ids - projects_with_plan)
-        done_no_link = Task.objects.filter(done_q, published_url='').count()
-        unreviewed = Task.objects.filter(status=Task.DONE, review_status=Task.UNREVIEWED).exclude(published_url='').count()
+        done_no_link = task_qs.filter(done_q, published_url='').count()
+        unreviewed = task_qs.filter(
+            status__in=[Task.DONE, Task.PENDING], review_status=Task.UNREVIEWED
+        ).filter(reviewable_q(self.request)).count()
 
         ctx['alerts'] = {'overdue': overdue, 'no_plan': no_plan,
                          'done_no_link': done_no_link, 'unreviewed': unreviewed}
 
         # ── ردیف ۳: جدول وضعیت پروژه‌ها (یک کوئری با annotate شرطی) ──
-        projects = list(Project.objects.filter(status=Project.ACTIVE).annotate(
+        projects = list(project_qs.filter(status=Project.ACTIVE).annotate(
             planned=Count('tasks', filter=Q(tasks__planned_date__range=(start, end))),
             done=Count('tasks', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
+            words=Sum('tasks__word_count', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
             minutes=Sum('tasks__spent_minutes', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
             overdue=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING], tasks__planned_date__lt=today)),
             last_activity=Max('tasks__updated_at'),
+            last_report=Max('reports__date_to'),
         ))
         for p in projects:
             p.remaining = max(p.planned - p.done, 0)
@@ -97,40 +112,26 @@ class DashboardView(LoginRequiredMixin, DateRangeMixin, TemplateView):
         order = {'bad': 0, 'warn': 1, 'ok': 2, 'info': 3}
         projects.sort(key=lambda p: (order[p.state[0]], -p.overdue))
         ctx['projects'] = projects
+        ctx['project_columns'] = get_columns(ColumnConfig.PROJECTS, ColumnConfig.DASHBOARD)
 
         # ── ردیف ۴ (راست): عملکرد همکاران در بازه ──
         colleagues = list(Colleague.objects.filter(status=Colleague.ACTIVE).annotate(
-            planned=Count('tasks', filter=Q(tasks__planned_date__range=(start, end))),
-            done=Count('tasks', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
-            minutes=Sum('tasks__spent_minutes', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
-            overdue=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING], tasks__planned_date__lt=today)),
+            planned=Count('tasks', filter=Q(tasks__planned_date__range=(start, end)) & colleague_task_q),
+            done=Count('tasks', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end)) & colleague_task_q),
+            words=Sum('tasks__word_count', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end)) & colleague_task_q),
+            minutes=Sum('tasks__spent_minutes', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end)) & colleague_task_q),
+            overdue=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING], tasks__planned_date__lt=today) & colleague_task_q),
         ))
         ctx['colleagues'] = colleagues
+        ctx['colleague_columns'] = get_columns(ColumnConfig.COLLEAGUES, ColumnConfig.DASHBOARD)
 
         # ── ردیف ۴ (چپ): فید بازبینی ──
-        ctx['review_feed'] = Task.objects.select_related('project', 'assignee').filter(
-            status=Task.DONE, review_status=Task.UNREVIEWED).exclude(published_url='').order_by('-done_date')[:8]
+        ctx['review_feed'] = task_qs.select_related('project', 'assignee').filter(
+            status__in=[Task.DONE, Task.PENDING], review_status=Task.UNREVIEWED
+        ).filter(reviewable_q(self.request)).order_by('-updated_at')[:8]
 
-        # ── ردیف ۵: نمودار میله‌ای تسک‌های انجام‌شده به تفکیک روز ──
-        ctx['daily_bars'] = self._daily_series(start, end)
+        # ── ردیف ۵: تسک‌های انجام‌شده به تفکیک روز — جدول (نه نمودار)، ۷ روز اخیر
+        ctx['daily_groups'] = group_done_by_day(task_qs, today - timedelta(days=6), today)
 
         ctx['page_title'] = 'داشبورد'
         return ctx
-
-    @staticmethod
-    def _daily_series(start, end):
-        """تعداد تسک انجام‌شده در هر روز بازه — برای نمودار میله‌ای SVG.
-        الگو برای هیت‌مپ/اسپارک‌لاین هم همین است (گروه‌بندی در پایتون)."""
-        rows = (Task.objects.filter(status=Task.DONE, done_date__range=(start, end))
-                .values_list('done_date', flat=True))
-        counts = {}
-        for d in rows:
-            counts[d] = counts.get(d, 0) + 1
-        span = min((end - start).days + 1, 31)
-        series = []
-        mx = max(counts.values()) if counts else 1
-        for i in range(span):
-            d = start + timedelta(days=i)
-            n = counts.get(d, 0)
-            series.append({'h': round(n / mx * 100) if mx else 0, 'n': n})
-        return series

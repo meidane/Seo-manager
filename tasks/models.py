@@ -20,10 +20,14 @@ class TaskManager(TenantManager):
     تقویم برای دیدنِ پیش‌نماها از `with_placeholders()` استفاده می‌کند."""
 
     def get_queryset(self):
-        return super().get_queryset().filter(is_placeholder=False)
+        return super().get_queryset().filter(is_placeholder=False, deleted_at__isnull=True)
 
     def with_placeholders(self):
-        return super().get_queryset()
+        return super().get_queryset().filter(deleted_at__isnull=True)
+
+    def deleted(self):
+        """تسک‌های سافت‌دیلیت‌شده (برای تبِ «حذف‌شده‌ها»)."""
+        return super().get_queryset().filter(is_placeholder=False, deleted_at__isnull=False)
 
 # رنگ هر نوع تسک (RGB) — با پالت بخش ۲.۳ هم‌خوان؛ در فرانت هم در task-schema.js هست
 TYPE_COLORS = {
@@ -55,9 +59,11 @@ class Task(TimeStampedModel):
 
     TODO = 'todo'
     DOING = 'doing'
+    PENDING = 'pending'
     DONE = 'done'
     STATUS_CHOICES = [
-        (TODO, 'در انتظار'), (DOING, 'در حال انجام'), (DONE, 'انجام شده'),
+        (TODO, 'در انتظار'), (DOING, 'در حال انجام'),
+        (PENDING, 'تکمیل — در انتظار بازبینی'), (DONE, 'انجام شده'),
     ]
 
     LOW = 'low'
@@ -89,6 +95,12 @@ class Task(TimeStampedModel):
     description = models.TextField('توضیحات', blank=True)
     planned_date = models.DateField('تاریخ برنامه')
     planned_time = models.TimeField('ساعت', default=time(8, 0))
+    # ماهِ گزارش (شخصی‌سازیِ سئو) — ۱=فروردین … ۱۲=اسفند. اختیاری؛ روی هستهٔ سیستم رفتاری ندارد.
+    REPORT_MONTH_CHOICES = [
+        (1, 'فروردین'), (2, 'اردیبهشت'), (3, 'خرداد'), (4, 'تیر'), (5, 'مرداد'), (6, 'شهریور'),
+        (7, 'مهر'), (8, 'آبان'), (9, 'آذر'), (10, 'دی'), (11, 'بهمن'), (12, 'اسفند'),
+    ]
+    report_month = models.PositiveSmallIntegerField('ماه گزارش', null=True, blank=True, choices=REPORT_MONTH_CHOICES, db_index=True)
     status = models.CharField('وضعیت', max_length=12, choices=STATUS_CHOICES, default=TODO)
     done_date = models.DateField('تاریخ انجام', null=True, blank=True)
     priority = models.CharField('اولویت', max_length=6, choices=PRIORITY_CHOICES, default=MED)
@@ -117,8 +129,15 @@ class Task(TimeStampedModel):
     link_count = models.PositiveIntegerField('تعداد لینک', null=True, blank=True)
 
     # ── بازبینی (آماده‌سازی فاز ۳) ──
+    # آیا این تسکِ مشخص نیاز به بازبینیِ مدیر دارد؟ پیش‌فرض از assignee.needs_review
+    # می‌آید (تسکِ جدید)، ولی هربار قابلِ‌تغییرِ دستی است (تیک/عدمِ‌تیک روی خودِ تسک).
+    # اگر True بود: مسئول نمی‌تواند وضعیت را مستقیم «انجام‌شده» کند، فقط «تکمیل — در
+    # انتظار بازبینی» (PENDING)؛ فقط تاییدِ مدیر (`task_review`) آن را DONE می‌کند.
+    needs_review = models.BooleanField('نیاز به بازبینی', default=False)
     review_status = models.CharField('وضعیت بازبینی', max_length=12, choices=REVIEW_CHOICES, default=UNREVIEWED)
     review_note = models.TextField('یادداشت بازبینی', blank=True)
+    # وقتی نوعِ تسک هیچ TaskTypeKPIای ندارد، جایگزینِ سادهٔ ۱ تا ۱۰ (نه سیستمِ KPI کامل)
+    quality_score = models.PositiveSmallIntegerField('امتیاز کیفیت (بدون KPI)', null=True, blank=True)
     reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name='بازبین', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     reviewed_at = models.DateTimeField('زمان بازبینی', null=True, blank=True)
     ai_checked_at = models.DateTimeField('بررسی هوش مصنوعی', null=True, blank=True)  # فاز ۳
@@ -128,6 +147,10 @@ class Task(TimeStampedModel):
     # ── تکرارشونده ──
     recurrence = models.ForeignKey('tasks.RecurrenceRule', verbose_name='قاعده تکرار', on_delete=models.SET_NULL, null=True, blank=True, related_name='tasks')
     is_placeholder = models.BooleanField('پیش‌نمای تکرار', default=False)  # در تقویم کم‌رنگ؛ خارج از آمار/بازبینی
+
+    # ── حذفِ نرم (سطلِ زباله) ──
+    deleted_at = models.DateTimeField('زمان حذف', null=True, blank=True, db_index=True)
+    deleted_by = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name='حذف‌کننده', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
 
     organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
     objects = TaskManager()
@@ -195,6 +218,7 @@ class Task(TimeStampedModel):
             'color': self.color_rgb,
             'time': self.planned_time.strftime('%H:%M') if hasattr(self.planned_time, 'strftime') else str(self.planned_time or ''),
             'status': self.status,
+            'needs_review': self.needs_review,
             'done': self.is_done,
             'overdue': self.is_overdue,
             'project': self.project.name,
@@ -269,9 +293,11 @@ class TaskTypeField(models.Model):
     SELECT = 'select'
     URL = 'url'
     DATE = 'date'
+    TAGS = 'tags'
     KIND_CHOICES = [
         (TEXT, 'متن کوتاه'), (TEXTAREA, 'متن بلند'), (NUMBER, 'عدد'),
         (CHECKBOX, 'چک‌باکس'), (SELECT, 'انتخابی'), (URL, 'لینک'), (DATE, 'تاریخ'),
+        (TAGS, 'چندتایی (کلمه + اینتر)'),
     ]
 
     type_def = models.ForeignKey(TaskTypeDef, verbose_name='نوع', on_delete=models.CASCADE, related_name='fields')
@@ -280,10 +306,17 @@ class TaskTypeField(models.Model):
     kind = models.CharField('نوع فیلد', max_length=12, choices=KIND_CHOICES, default=TEXT)
     options = models.CharField('گزینه‌ها (با ویرگول)', max_length=500, blank=True)  # فقط select
     placeholder = models.CharField('راهنما', max_length=120, blank=True)
-    required = models.BooleanField('اجباری', default=False)
+    required = models.BooleanField('اجباری (همیشه)', default=False)
+    # مثلِ «لینکِ انتشار» که فقط موقعِ تمام‌کردنِ کار الزامی است، نه موقعِ ساختِ تسک
+    required_on_done = models.BooleanField('اجباری فقط برای تکمیل', default=False)
     show_to_client = models.BooleanField('نمایش به مشتری', default=True)
     # این فیلد به‌عنوان «تعداد کلمه» شناخته شود تا در آمار (همکار/داشبورد) حساب شود
     is_word_source = models.BooleanField('منبعِ تعداد کلمه', default=False)
+    # فیلدهای وصل‌شونده به بستهٔ سئو (`seo/`) — منبعِ واحدِ این چهارتا در seo/CLAUDE.md
+    is_keyword_source = models.BooleanField('حاویِ کلمهٔ کلیدیِ قابل‌جستجو', default=False)
+    track_keyword_rank = models.BooleanField('رتبهٔ این کلمه ردیابی شود', default=False)
+    is_link_source = models.BooleanField('حاویِ لینکِ هدفِ قابل‌جستجو', default=False)
+    is_page_link = models.BooleanField('لینکِ صفحهٔ خودِ همین تسک', default=False)
     order = models.PositiveIntegerField('ترتیب', default=0)
 
     class Meta:
@@ -308,7 +341,8 @@ class TaskTypeField(models.Model):
         return {
             'key': self.key, 'label': self.label, 'kind': self.kind,
             'options': self.options_list, 'placeholder': self.placeholder,
-            'required': self.required, 'show_to_client': self.show_to_client,
+            'required': self.required, 'required_on_done': self.required_on_done,
+            'show_to_client': self.show_to_client,
         }
 
 
@@ -510,3 +544,32 @@ class TaskComment(models.Model):
 
     def __str__(self):
         return f'کامنت روی {self.task_id}'
+
+
+class TaskHistory(models.Model):
+    """تاریخچهٔ تسک: ساخت/ویرایش/حذف/بازیابی + اینکه چه فیلدهایی تغییر کرده‌اند.
+
+    `changes` = {نامِ نمایشیِ فیلد: [قدیم, جدید]} — برای دیدنِ «نسخهٔ قبلی چه بود».
+    """
+    CREATED = 'created'
+    UPDATED = 'updated'
+    DELETED = 'deleted'
+    RESTORED = 'restored'
+    ACTION_CHOICES = [
+        (CREATED, 'ساخته شد'), (UPDATED, 'ویرایش شد'),
+        (DELETED, 'حذف شد'), (RESTORED, 'بازیابی شد'),
+    ]
+
+    task = models.ForeignKey(Task, verbose_name='تسک', on_delete=models.CASCADE, related_name='history')
+    action = models.CharField('عمل', max_length=10, choices=ACTION_CHOICES)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name='کاربر', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    changes = models.JSONField('تغییرات', default=dict, blank=True)
+    created_at = models.DateTimeField('زمان', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'تاریخچهٔ تسک'
+        verbose_name_plural = 'تاریخچهٔ تسک‌ها'
+        ordering = ['-created_at', '-id']
+
+    def __str__(self):
+        return f'{self.get_action_display()} — {self.task_id}'

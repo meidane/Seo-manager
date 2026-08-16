@@ -1,0 +1,32 @@
+{% load seo_extras %}
+{% for t in tasks %}
+  <tr data-id="{{ t.id }}" {% if t.is_overdue %}class="overdue-l"{% endif %}>
+    <td><i class="row-open" data-open-task="{{ t.id }}" title="باز کردن مودال">⤢</i></td>
+    {% if can_edit_task %}
+    <td class="tcell"><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span><input class="tx-inline" data-f="title" value="{{ t.title }}" title="{{ t.title }}">{% if t.review_status == 'needs_fix' %} <span class="tag t-warn" data-fix-note="{{ t.id }}" style="cursor:pointer">⚠</span>{% endif %}</td>
+    <td><select class="tx-inline rich-select" data-f="project">{% for p in all_projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if t.project_id == p.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></td>
+    <td><select class="tx-inline rich-select" data-f="assignee"><option value="">—</option>{% for c in all_colleagues %}<option value="{{ c.id }}" data-color="{{ c.color }}"{% if c.avatar %} data-img="{{ c.avatar.url }}"{% endif %} {% if t.assignee_id == c.id %}selected{% endif %}>{{ c.full_name }}</option>{% endfor %}</select></td>
+    <td><input class="tx-inline jdate" data-f="planned_date" dir="ltr" readonly value="{{ t.planned_date|jalali }}"></td>
+    <td>{% if t.done_date %}{{ t.done_date|jalali }}{% else %}<span class="zero">—</span>{% endif %}</td>
+    <td>{% include "tasks/_status_select.html" %}</td>
+    {% else %}
+    <td class="tcell"><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span> <span title="{{ t.title }}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px;display:inline-block;vertical-align:middle">{{ t.title }}</span>{% if t.review_status == 'needs_fix' %} <span class="tag t-warn" data-fix-note="{{ t.id }}" style="cursor:pointer">⚠</span>{% endif %}</td>
+    <td><div class="assignee-cell">{% include "projects/_logo.html" with project=t.project %}<span>{{ t.project.name }}</span></div></td>
+    <td><div class="assignee-cell">{% include "tasks/_avatar.html" with colleague=t.assignee %}<span>{{ t.assignee.full_name|default:"—" }}</span></div></td>
+    <td>{{ t.planned_date|jalali }}</td>
+    <td>{% if t.done_date %}{{ t.done_date|jalali }}{% else %}<span class="zero">—</span>{% endif %}</td>
+    {% if t.assignee_id == my_colleague_id %}
+    <td>{% include "tasks/_status_select.html" %}</td>
+    {% else %}
+    <td><span class="tag t-{% if t.status == 'done' %}ok{% elif t.status == 'pending' %}warn{% elif t.is_overdue %}bad{% else %}mute{% endif %}">{{ t.get_status_display }}</span></td>
+    {% endif %}
+    {% endif %}
+    <td class="timer-cell{% if t.is_done %} done{% endif %}" data-id="{{ t.id }}" data-spent="{{ t.spent_minutes }}" data-running="{% if t.timer_started_at %}1{% else %}0{% endif %}" data-started="{% if t.timer_started_at %}{{ t.timer_started_at|date:'c' }}{% endif %}">
+      {% if not t.is_done and t.assignee_id == my_colleague_id or not t.is_done and can_manage_any_timer %}<button class="tbtn" title="شروع/توقف تایمر">▶</button>{% endif %}
+      <span class="tval">{{ t.spent_minutes|hours }}</span>
+      {% if can_edit_time %}<i class="tedit" title="ویرایش زمان (مدیر)">✏️</i>{% endif %}
+    </td>
+    {% for c in extra_columns %}<td>{% column_cell t c %}</td>{% endfor %}
+    <td class="chk-col">{% if can_edit_task %}<input type="checkbox" class="row-check" data-id="{{ t.id }}">{% endif %}</td>
+  </tr>
+{% endfor %}

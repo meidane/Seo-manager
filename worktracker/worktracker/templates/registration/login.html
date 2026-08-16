@@ -1,0 +1,56 @@
+<html lang="fa-ir" dir="rtl">
+
+<head>
+    <title>ورود به سامانه</title>
+    <link rel="stylesheet" type="text/css" href="/static/admin/css/base.css">
+    <link rel="stylesheet" type="text/css" href="/static/admin/css/login.css">
+    <link rel="stylesheet" type="text/css" href="/static/admin/css/rtl.css">
+    <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="/static/admin/css/responsive.css">
+    <link rel="stylesheet" type="text/css" href="/static/admin/css/responsive_rtl.css">
+    <meta name="robots" content="NONE,NOARCHIVE">
+</head>
+
+
+<body class=" login" data-admin-utc-offset="16200">
+    <!-- Container -->
+    <div id="container">
+        <!-- Header -->
+        <div id="header">
+            <div id="branding">
+                <h1 id="site-name"><a href="/majazi/get-excel/">ورود به سامانه </a></h1>
+            </div>
+        </div>
+        <!-- END Header -->
+        <div class="main shifted" id="main">
+            <div class="content">
+                <!-- Content -->
+                <div id="content" class="colM">
+                    <div id="content-main">
+                        <form action="/login/?next=/" method="post" id="login-form">{% csrf_token %}
+                            <div class="form-row">
+                                <label class="required" for="id_username">نام کاربری:</label> <input type="text"
+                                    name="username" autofocus autocapitalize="none" autocomplete="username"
+                                    maxlength="150" required id="id_username">
+                            </div>
+                            <div class="form-row">
+                                <label class="required" for="id_password">گذرواژه:</label> <input type="password"
+                                    name="password" autocomplete="current-password" required id="id_password">
+                                <input type="hidden" name="next" value="/">
+                            </div>
+                            <div class="submit-row">
+                                <input type="submit" value="ورود">
+                            </div>
+                        </form>
+                    </div>
+                    <br class="clear">
+                </div>
+                <!-- END Content -->
+                <div id="footer"></div>
+            </div>
+        </div>
+    </div>
+    <!-- END Container -->
+</body>
+
+</html>

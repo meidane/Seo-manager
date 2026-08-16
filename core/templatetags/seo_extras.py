@@ -3,8 +3,10 @@ from datetime import date, datetime
 
 from django import template
 from django.utils import timezone
+from django.utils.html import escape, format_html
 
 from core import jalali as j
+from core.columns import cell_value
 
 register = template.Library()
 
@@ -67,6 +69,52 @@ def repfield(item, key):
     return item.field_value(key)
 
 
+_STATUS_BADGE = {'todo': ('mute', 'در انتظار'), 'doing': ('warn', 'در حال انجام'), 'done': ('ok', 'انجام شده')}
+_PRIORITY_BADGE = {'low': ('mute', 'کم'), 'med': ('info', 'متوسط'), 'high': ('bad', 'زیاد')}
+
+
+@register.simple_tag(name='column_cell')
+def column_cell(obj, col):
+    """رندرِ یک سلولِ جدولِ سفارشی‌سازی‌شده طبق `col['display']` (از core/columns.py).
+    منبعِ واحدِ رندرِ ستون‌ها برای تسک/پروژه/همکار — همه‌جا از همین تگ استفاده کن."""
+    value = cell_value(obj, col)
+    display = col.get('display', 'text')
+
+    if value in (None, ''):
+        if display == 'link_icon':
+            return format_html('<span class="lnk" style="opacity:.3">↗</span>')
+        return format_html('<span class="zero">—</span>')
+
+    if display == 'number':
+        return fa_digits(value)
+    if display == 'time':
+        return hours(value)
+    if display == 'date':
+        return jalali(value) if hasattr(value, 'strftime') else escape(value)
+    if display == 'timeago':
+        return timeago(value)
+    if display == 'bool':
+        return format_html('✓') if value else format_html('<span class="zero">—</span>')
+    if display == 'link_icon':
+        return format_html('<a class="lnk" href="{}" target="_blank" rel="noopener">↗</a>', value)
+    if display == 'progress':
+        cls = 'ok' if value >= 100 else ('bad' if value < 40 else '')
+        return format_html('<div class="bar {}"><i style="width:{}%"></i></div>', cls, value)
+    if display == 'badge':
+        key = col['key']
+        if key == 'status':
+            cls, label = _STATUS_BADGE.get(value, ('mute', value))
+        elif key == 'priority':
+            cls, label = _PRIORITY_BADGE.get(value, ('mute', value))
+        elif key == 'state' and isinstance(value, (list, tuple)):
+            cls, label = value
+            return format_html('<span class="tag t-{}">● {}</span>', cls, label)
+        else:
+            cls, label = 'mute', value
+        return format_html('<span class="tag t-{}">{}</span>', cls, label)
+    return escape(value)
+
+
 @register.filter(name='timeago')
 def timeago(value):
     """فاصله‌ی زمانی نسبی به فارسی: «۳ روز پیش»."""
@@ -103,3 +151,23 @@ def timeago(value):
         return f'{j.to_fa_digits(months)} ماه پیش'
     years = days // 365
     return f'{j.to_fa_digits(years)} سال پیش'
+
+
+@register.filter(name='min_hm')
+def min_hm(value):
+    """دقیقه → «HH:MM» با ارقامِ فارسی (برای ساعتِ کاریِ حضورغیاب)."""
+    try:
+        m = int(value or 0)
+    except (ValueError, TypeError):
+        return '۰۰:۰۰'
+    return j.to_fa_digits(f'{m // 60:02d}:{m % 60:02d}')
+
+
+@register.filter(name='sec_hm')
+def sec_hm(value):
+    """ثانیه → «HH:MM» با ارقامِ فارسی (زمانِ برنامه‌ها در حضورغیاب)."""
+    try:
+        m = int(value or 0) // 60
+    except (ValueError, TypeError):
+        return '۰۰:۰۰'
+    return j.to_fa_digits(f'{m // 60:02d}:{m % 60:02d}')

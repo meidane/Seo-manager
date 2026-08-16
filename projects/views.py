@@ -1,18 +1,80 @@
 """ویوهای پروژه‌ها — CRUD + سینگل با تب‌ها + API دسترسی‌های رمزنگاری‌شده."""
 import json
 
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.http import require_http_methods
 from django.views.generic import CreateView, DetailView, ListView, UpdateView, View
 
+from accounts.access import has_perm, require_perm
+from core.columns import get_columns
 from core.daterange import DateRangeMixin
-from core.models import ActivityLog
+from core.models import ActivityLog, ColumnConfig
 
+from .access import accessible_project_ids
 from .forms import ProjectForm
 from .models import Credential, Project
+
+
+def _current_jalali_month():
+    from datetime import date
+
+    from core.jalali import g2j
+    return g2j(date.today()).month
+
+
+def _report_month_rows(project_ids, months):
+    """{project_id: {month: ستون‌های آماریِ همان ماهِ گزارش}} — برای ردیف‌های ماهانهٔ
+    صفحهٔ پروژه‌ها (شخصی‌سازیِ سئو). همان ستون‌های جدول، ولی فیلترشده روی report_month."""
+    from datetime import date
+    from types import SimpleNamespace
+
+    from django.db.models import Count, Max, Q, Sum
+
+    from tasks.models import Task
+
+    if not project_ids:
+        return {}
+    today = date.today()
+    agg = (Task.objects.filter(project_id__in=project_ids, report_month__in=months)
+           .values('project_id', 'report_month')
+           .annotate(
+               planned=Count('id'),
+               done=Count('id', filter=Q(status=Task.DONE)),
+               words=Sum('word_count', filter=Q(status=Task.DONE)),
+               minutes=Sum('spent_minutes', filter=Q(status=Task.DONE)),
+               overdue=Count('id', filter=Q(status__in=[Task.TODO, Task.DOING], planned_date__lt=today)),
+               last_activity=Max('updated_at')))
+    by = {(r['project_id'], r['report_month']): r for r in agg}
+    out = {}
+    for pid in project_ids:
+        out[pid] = {}
+        for mo in months:
+            r = by.get((pid, mo), {})
+            planned = r.get('planned') or 0
+            done = r.get('done') or 0
+            progress = round(done / planned * 100) if planned else 0
+            overdue = r.get('overdue') or 0
+            if planned == 0:
+                state = ('mute', 'بدون کار')
+            elif overdue:
+                state = ('bad', 'عقب‌افتاده')
+            elif progress < 60:
+                state = ('warn', 'عقب')
+            elif progress < 100:
+                state = ('ok', 'روی روال')
+            else:
+                state = ('info', 'کامل')
+            out[pid][mo] = SimpleNamespace(
+                planned=planned, done=done, remaining=max(planned - done, 0),
+                overdue=overdue, words=r.get('words') or 0, minutes=r.get('minutes') or 0,
+                progress=progress, state=state,
+                last_report=None, last_payment=None, last_activity=r.get('last_activity'))
+    return out
 
 
 class ProjectListView(LoginRequiredMixin, DateRangeMixin, ListView):
@@ -33,9 +95,13 @@ class ProjectListView(LoginRequiredMixin, DateRangeMixin, ListView):
         start, end = self.get_range(self.request)
         self._start, self._end = start, end
         qs = super().get_queryset()
+        ids = accessible_project_ids(self.request)
+        if ids is not None:
+            qs = qs.filter(id__in=ids)
         query = self.request.GET.get('q', '').strip()
         if query:
             qs = qs.filter(Q(name__icontains=query) | Q(domain__icontains=query))
+        from django.db.models import Case, IntegerField, Value, When
         return qs.annotate(
             planned=Count('tasks', filter=Q(tasks__planned_date__range=(start, end))),
             done=Count('tasks', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
@@ -43,7 +109,11 @@ class ProjectListView(LoginRequiredMixin, DateRangeMixin, ListView):
             minutes=Sum('tasks__spent_minutes', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
             overdue=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING], tasks__planned_date__lt=date.today())),
             last_report=Max('reports__date_to'),
-        ).order_by('status', 'name')  # ترتیب صریح برای صفحه‌بندیِ پایدار
+            last_activity=Max('tasks__updated_at'),
+            # پروژه‌ی شخصی همیشه اولِ لیست (فقط پروژه‌ی شخصیِ خودِ کاربر اینجا هست)
+            _personal=Case(When(personal_owner__isnull=False, then=Value(0)),
+                           default=Value(1), output_field=IntegerField()),
+        ).order_by('_personal', 'status', 'name')  # شخصی اول، سپس ترتیبِ پایدار
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -63,6 +133,15 @@ class ProjectListView(LoginRequiredMixin, DateRangeMixin, ListView):
                 p.state = ('ok', 'روی روال')
             else:
                 p.state = ('info', 'جلوتر')
+        ctx['columns'] = get_columns(ColumnConfig.PROJECTS, ColumnConfig.PAGE)
+        # ── ماه‌های گزارش (شخصی‌سازیِ سئو): ماهِ قبل/جاری/بعد ──
+        from tasks.models import Task
+        cur = _current_jalali_month()
+        prev = 12 if cur == 1 else cur - 1
+        nxt = 1 if cur == 12 else cur + 1
+        month_labels = dict(Task.REPORT_MONTH_CHOICES)
+        ctx['month_meta'] = [(prev, month_labels[prev], 'قبل'), (cur, month_labels[cur], 'جاری'), (nxt, month_labels[nxt], 'بعد')]
+        ctx['month_rows'] = _report_month_rows([p.id for p in ctx['projects']], [prev, cur, nxt])
         ctx['page_title'] = 'پروژه‌ها'
         ctx['q'] = self.request.GET.get('q', '')
         return ctx
@@ -72,6 +151,13 @@ class ProjectDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
     model = Project
     template_name = 'projects/detail.html'
     context_object_name = 'project'
+
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset)
+        ids = accessible_project_ids(self.request)
+        if ids is not None and obj.id not in ids:
+            raise PermissionDenied('به این پروژه دسترسی نداری')
+        return obj
 
     def get_context_data(self, **kwargs):
         from datetime import date
@@ -93,11 +179,35 @@ class ProjectDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
             'overdue': p.tasks.filter(status__in=[Task.TODO, Task.DOING], planned_date__lt=date.today()).count(),
             'words': done_qs.aggregate(s=Sum('word_count'))['s'] or 0,
         }
+        if p.track_keyword_rank:
+            from seo import rank as seo_rank
+            period = seo_rank.resolve_period(self.request)
+            ctx['kw_period'] = period
+            ctx['kw_period_choices'] = seo_rank.PERIOD_CHOICES
+            ctx['keyword_rows'] = seo_rank.keyword_rows(p, period)
+            ctx['page_rows'] = seo_rank.page_rows(p, period)
+            ctx['scheduled_rows'] = seo_rank.scheduled_rows(p)
+
         ctx['task_rows'] = p.tasks.select_related('assignee','type_def').filter(
             Q(planned_date__range=(start, end)) | Q(status=Task.DONE, done_date__range=(start, end))
         ).order_by('-planned_date')[:40]
+
+        # ── تفکیکِ ماهِ گزارش (شخصی‌سازیِ سئو) — آخرِ تبِ «نمای کلی» ──
+        from django.db.models import Count
+        labels = dict(Task.REPORT_MONTH_CHOICES)
+        mb = {r['report_month']: r for r in p.tasks.filter(report_month__isnull=False)
+              .values('report_month')
+              .annotate(total=Count('id'), done=Count('id', filter=Q(status=Task.DONE)))}
+        ctx['month_breakdown'] = [
+            {'num': mo, 'label': labels[mo], 'total': mb[mo]['total'], 'done': mb[mo]['done']}
+            for mo in sorted(mb)]
+
         ctx['page_title'] = p.name
         ctx['credentials'] = p.credentials.all()
+        from colleagues.models import Colleague
+        ctx['all_colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)
+        ctx['member_ids'] = set(p.members.values_list('id', flat=True))
+        ctx['can_manage_members'] = has_perm(self.request, 'project_colleagues_access')
         return ctx
 
 
@@ -105,6 +215,10 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
     model = Project
     form_class = ProjectForm
     template_name = 'projects/form.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        require_perm(request, 'add_project')
+        return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
         form.instance.created_by = self.request.user
@@ -122,6 +236,16 @@ class ProjectUpdateView(LoginRequiredMixin, UpdateView):
     form_class = ProjectForm
     template_name = 'projects/form.html'
 
+    def dispatch(self, request, *args, **kwargs):
+        require_perm(request, 'edit_project')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset)
+        if not _project_access_ok(self.request, obj.id):
+            raise PermissionDenied('به این پروژه دسترسی نداری')
+        return obj
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['page_title'] = f'ویرایش {self.object.name}'
@@ -131,16 +255,42 @@ class ProjectUpdateView(LoginRequiredMixin, UpdateView):
 
 class ProjectArchiveView(LoginRequiredMixin, View):
     def post(self, request, pk):
+        require_perm(request, 'edit_project')
         project = get_object_or_404(Project, pk=pk)
+        if not _project_access_ok(request, project.id):
+            raise PermissionDenied('به این پروژه دسترسی نداری')
         project.archive()
         return redirect(project.get_absolute_url())
 
 
 class ProjectRestoreView(LoginRequiredMixin, View):
     def post(self, request, pk):
+        require_perm(request, 'edit_project')
         project = get_object_or_404(Project, pk=pk)
+        if not _project_access_ok(request, project.id):
+            raise PermissionDenied('به این پروژه دسترسی نداری')
         project.restore()
         return redirect(project.get_absolute_url())
+
+
+@login_required
+@require_http_methods(['PATCH'])
+def project_members(request, pk):
+    """تبِ «دسترسی به همکاران»: فهرستِ کاملِ اعضای مجاز را یک‌جا ست می‌کند.
+    فقط مالکِ سازمان همیشه دسترسی دارد؛ بقیه (حتی مدیرِ خودِ پروژه) باید همین‌جا
+    اضافه شوند تا پروژه/تسک‌هایش را ببینند (`projects/access.py`)."""
+    require_perm(request, 'project_colleagues_access')
+    if not _project_access_ok(request, pk):
+        return JsonResponse({'detail': 'به این پروژه دسترسی نداری'}, status=403)
+    project = get_object_or_404(Project, pk=pk)
+    data = json.loads(request.body or '{}')
+    ids = data.get('members')
+    if not isinstance(ids, list):
+        return JsonResponse({'detail': 'فهرستِ اعضا لازم است'}, status=400)
+    from colleagues.models import Colleague
+    valid = Colleague.objects.filter(id__in=ids)
+    project.members.set(valid)
+    return JsonResponse({'ok': True, 'members': list(valid.values_list('id', flat=True))})
 
 
 # ── API دسترسی‌ها (JSON) ────────────────────────────────────────────────
@@ -152,10 +302,16 @@ def _cred_json(cred):
     }
 
 
+def _project_access_ok(request, project_id):
+    ids = accessible_project_ids(request)
+    return ids is None or project_id in ids
+
+
 @require_http_methods(['POST'])
 def credential_create(request, pk):
-    if not request.user.is_authenticated:
-        return JsonResponse({'detail': 'نیاز به ورود'}, status=403)
+    require_perm(request, 'project_credentials')
+    if not _project_access_ok(request, pk):
+        return JsonResponse({'detail': 'به این پروژه دسترسی نداری'}, status=403)
     project = get_object_or_404(Project, pk=pk)
     data = json.loads(request.body or '{}')
     if not data.get('title'):
@@ -172,9 +328,10 @@ def credential_create(request, pk):
 @require_http_methods(['GET'])
 def credential_reveal(request, pk):
     """بازگشایی پسورد + ثبت رویداد در ActivityLog."""
-    if not request.user.is_authenticated:
-        return JsonResponse({'detail': 'نیاز به ورود'}, status=403)
+    require_perm(request, 'project_credentials')
     cred = get_object_or_404(Credential, pk=pk)
+    if not _project_access_ok(request, cred.project_id):
+        return JsonResponse({'detail': 'به این پروژه دسترسی نداری'}, status=403)
     ActivityLog.objects.create(
         actor=request.user, verb='reveal_credential', content_object=cred,
         changes={'credential': cred.title, 'project': cred.project.name},
@@ -184,9 +341,10 @@ def credential_reveal(request, pk):
 
 @require_http_methods(['DELETE'])
 def credential_delete(request, pk):
-    if not request.user.is_authenticated:
-        return JsonResponse({'detail': 'نیاز به ورود'}, status=403)
+    require_perm(request, 'project_credentials')
     cred = get_object_or_404(Credential, pk=pk)
+    if not _project_access_ok(request, cred.project_id):
+        return JsonResponse({'detail': 'به این پروژه دسترسی نداری'}, status=403)
     cred.delete()
     return JsonResponse({'ok': True})
 
@@ -200,8 +358,9 @@ def _file_json(a):
 
 @require_http_methods(['GET', 'POST'])
 def project_files(request, pk):
-    if not request.user.is_authenticated:
-        return JsonResponse({'detail': 'نیاز به ورود'}, status=403)
+    require_perm(request, 'project_files')
+    if not _project_access_ok(request, pk):
+        return JsonResponse({'detail': 'به این پروژه دسترسی نداری'}, status=403)
     from django.contrib.contenttypes.models import ContentType
 
     from core.models import Attachment
@@ -226,8 +385,10 @@ def project_files(request, pk):
 
 @require_http_methods(['DELETE'])
 def project_file_delete(request, pk):
-    if not request.user.is_authenticated:
-        return JsonResponse({'detail': 'نیاز به ورود'}, status=403)
+    require_perm(request, 'project_files')
     from core.models import Attachment
-    get_object_or_404(Attachment, pk=pk).delete()
+    a = get_object_or_404(Attachment, pk=pk)
+    if not _project_access_ok(request, a.object_id):
+        return JsonResponse({'detail': 'به این پروژه دسترسی نداری'}, status=403)
+    a.delete()
     return JsonResponse({'ok': True})

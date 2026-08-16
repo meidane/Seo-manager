@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Rank Tracker - سایت‌های من در گوگل",
+  "version": "2.0.0",
+  "description": "ردیابی جایگاه سایت‌های ردیابی‌شده در پلتفرم، در نتایج جستجوی گوگل — با اتصالِ مستقیم به بک‌اند.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://www.google.com/*",
+    "https://google.com/*",
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.google.com/search*",
+        "https://google.com/search*"
+      ],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Rank Tracker"
+  }
+}

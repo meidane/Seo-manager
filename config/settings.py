@@ -17,6 +17,9 @@ SECRET_KEY = config(
 )
 DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*', cast=Csv())
+# در تولید (HTTPS + دامنه‌ی واقعی) باید مبدأها اینجا اعلام شوند وگرنه همه‌ی فرم‌های
+# POST خطای CSRF می‌گیرند. مثال: CSRF_TRUSTED_ORIGINS=https://teams.example.com
+CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='', cast=Csv())
 
 # ── اپلیکیشن‌ها ────────────────────────────────────────────────────────
 DJANGO_APPS = [
@@ -39,7 +42,7 @@ LOCAL_APPS = [
     'calendarapp',
     'reports',
     'finance',
-    'seo',  # بستهٔ عمودیِ سئو (فقط seed/پیش‌فرض؛ بدون مدل)
+    'seo',  # بستهٔ عمودیِ سئو (seed پیش‌فرض + ردیابیِ رتبهٔ کلمات کلیدی)
 ]
 
 THIRD_PARTY_APPS = [
@@ -50,11 +53,13 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # سرو استاتیک در تولید (بدون nginx)
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'accounts.tenancy.CurrentOrgMiddleware',
+    'accounts.tenancy.OrgRequiredMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -75,6 +80,7 @@ TEMPLATES = [
                 'core.context_processors.date_range',
                 'accounts.context_processors.org',
                 'tasks.context_processors.running_timers',
+                'colleagues.context_processors.sidebar_attendance',
             ],
         },
     },
@@ -126,6 +132,13 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+# WhiteNoise: فشرده + هش‌دار برای کشِ طولانی در تولید
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
 
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -149,3 +162,9 @@ CACHES = {
 THURSDAY_IS_WORKDAY = config('THURSDAY_IS_WORKDAY', default=True, cast=bool)
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ── اتصال به سامانه‌ی حضورغیاب (worktracker، پروژه‌ی مجزا) ──────────────
+# برای نمایشِ ساعتِ کاری/آنلاین‌بودنِ همکاران. اگر خالی بماند، بخشِ حضورغیاب نمایش
+# داده نمی‌شود (بدونِ خطا). جزئیاتِ API در `colleagues/worktracker.py`.
+WORKTRACKER_BASE_URL = config('WORKTRACKER_BASE_URL', default='')
+WORKTRACKER_API_TOKEN = config('WORKTRACKER_API_TOKEN', default='')
