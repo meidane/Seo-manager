@@ -10,9 +10,12 @@ User=www-data
 Group=www-data
 WorkingDirectory=/var/www/teams
 EnvironmentFile=/var/www/teams/.env
+# systemd پوشه‌ی /run/teams را با مالکیتِ www-data می‌سازد (و موقعِ stop پاک می‌کند)
+# تا سوکت آنجا ساخته شود؛ ساختنِ مستقیمِ فایل در /run برای www-data ممنوع است.
+RuntimeDirectory=teams
 ExecStart=/var/www/teams/.venv/bin/gunicorn config.wsgi:application \
     --workers 3 \
-    --bind unix:/run/teams.sock
+    --bind unix:/run/teams/teams.sock
 Restart=always
 RestartSec=3
 
