@@ -168,3 +168,22 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # داده نمی‌شود (بدونِ خطا). جزئیاتِ API در `colleagues/worktracker.py`.
 WORKTRACKER_BASE_URL = config('WORKTRACKER_BASE_URL', default='')
 WORKTRACKER_API_TOKEN = config('WORKTRACKER_API_TOKEN', default='')
+
+# ── لاگ ────────────────────────────────────────────────────────────────
+# تِرِیس‌بکِ خطاهای ۵۰۰ حتی با DEBUG=False به stderr می‌رود (در سرور با
+# `journalctl -u teams` دیده می‌شود) — تا برای دیباگ لازم نباشد DEBUG را عمومی کنیم.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'v': {'format': '[{asctime}] {levelname} {name}: {message}', 'style': '{'},
+    },
+    'handlers': {
+        'console': {'class': 'logging.StreamHandler', 'formatter': 'v'},
+    },
+    'loggers': {
+        'django': {'handlers': ['console'], 'level': 'INFO'},
+        # خطاهای درخواست (۵۰۰ها) با تریس‌بکِ کامل
+        'django.request': {'handlers': ['console'], 'level': 'ERROR', 'propagate': False},
+    },
+}
