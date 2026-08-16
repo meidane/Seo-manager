@@ -48,9 +48,9 @@
       <div class="card-h"><h3>حساب‌های بانکی</h3><div class="side-c"><a href="{% url 'finance:banks' %}" class="chip">مدیریت</a></div></div>
       <div style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
         {% for b in banks %}
-          <div class="bank-card glass"><div class="bname"><span class="blogo" style="background:{{ b.color }}">{{ b.name|first }}</span> {{ b.name }}</div>
+          <a href="{% url 'finance:transactions' %}?bank={{ b.id }}" class="bank-card glass" title="مشاهده‌ی تراکنش‌های این حساب" style="cursor:pointer;text-decoration:none;color:inherit;display:block"><div class="bname"><span class="blogo" style="background:{{ b.color }}">{{ b.name|first }}</span> {{ b.name }}</div>
             {% if b.card_number %}<div class="bnum">{{ b.card_number }}</div>{% endif %}
-            <div class="bbal">{{ b.balance|money }}<small> تومان</small></div></div>
+            <div class="bbal">{{ b.balance|money }}<small> ریال</small></div></a>
         {% empty %}<div class="empty" style="padding:20px;grid-column:1/-1">حسابی تعریف نشده — <a href="{% url 'finance:banks' %}" style="color:var(--primary-400)">افزودن</a></div>{% endfor %}
       </div>
     </section>

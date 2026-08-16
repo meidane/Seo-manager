@@ -45,7 +45,10 @@
     </div>
 
     <p class="sub" style="margin-top:14px;text-align:center">
-      <a href="{% url 'accounts:logout' %}">خروج از حساب</a>
+      <form method="post" action="{% url 'accounts:logout' %}" style="display:inline">
+        {% csrf_token %}
+        <button type="submit" class="linklike" style="background:none;border:0;color:var(--accent);cursor:pointer;font:inherit;padding:0">خروج از حساب</button>
+      </form>
     </p>
   </div>
 </div>

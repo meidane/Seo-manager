@@ -11,7 +11,7 @@
   <form method="get" class="glass filters" id="ledger-filters">
     <select name="bank"><option value="">همه‌ی بانک‌ها</option>{% for b in banks %}<option value="{{ b.id }}" {% if filters.bank == b.id|stringformat:'s' %}selected{% endif %}>{{ b.name }}</option>{% endfor %}</select>
 
-    <select name="project" id="lg-project"><option value="">— پروژه —</option>{% for p in projects %}<option value="{{ p.id }}" {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
+    <select name="project" id="lg-project" class="rich-select"><option value="">— پروژه —</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
 
     <span style="color:var(--text-faint);font-size:12px">یا</span>
 

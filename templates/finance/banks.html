@@ -10,10 +10,14 @@
     <div class="card-h"><h3>حساب‌های بانکی</h3><div class="side-c"><button class="btn btn-sm btn-p" id="add-bank">＋ حساب جدید</button></div></div>
     <div class="cards-grid" style="padding:14px" id="bank-grid">
       {% for b in banks %}
-        <div class="bank-card glass" data-id="{{ b.id }}"><div class="bname"><span class="blogo" style="background:{{ b.color }}">{{ b.name|first }}</span> {{ b.name }}</div>
+        <div class="bank-card glass" data-id="{{ b.id }}" data-name="{{ b.name }}" data-bank="{{ b.bank }}" data-color="{{ b.color }}" data-card="{{ b.card_number }}" data-init="{{ b.initial_balance }}" title="مشاهده‌ی تراکنش‌های این حساب" style="cursor:pointer">
+          <div class="bname"><span class="blogo" style="background:{{ b.color }}">{{ b.name|first }}</span> {{ b.name }}</div>
           {% if b.card_number %}<div class="bnum">{{ b.card_number }}</div>{% endif %}
-          <div class="bbal">{{ b.balance|money }}<small> تومان</small></div>
-          <div style="margin-top:10px"><button class="mini bank-del" data-id="{{ b.id }}">حذف</button></div></div>
+          <div class="bbal">{{ b.balance|money }}<small> ریال</small></div>
+          <div style="margin-top:10px;display:flex;gap:6px">
+            <button class="mini bank-edit" data-id="{{ b.id }}">ویرایش</button>
+            <button class="mini bank-del" data-id="{{ b.id }}">حذف</button>
+          </div></div>
       {% empty %}<div class="empty" style="grid-column:1/-1">حسابی تعریف نشده</div>{% endfor %}
     </div>
   </section>
@@ -30,25 +34,45 @@
 
 {% block scripts %}
 <script>
-document.getElementById('add-bank').onclick=()=>{
-  App.openModal(`<div class="modal-h"><h3>حساب بانکی جدید</h3><button class="x" onclick="App.closeModal()">×</button></div>
+const TX_URL="{% url 'finance:transactions' %}";
+// مودالِ مشترکِ ساخت/ویرایشِ حساب بانکی — data=null یعنی ساختِ جدید
+function bankModal(data){
+  const d=data||{};
+  const esc=s=>(s||'').replace(/"/g,'&quot;');
+  App.openModal(`<div class="modal-h"><h3>${data?'ویرایش حساب بانکی':'حساب بانکی جدید'}</h3><button class="x" onclick="App.closeModal()">×</button></div>
     <div class="modal-b">
-      <div class="field"><label>نام حساب</label><input class="input" id="b-name" placeholder="ملت — اصلی"></div>
-      <div class="grid2"><div class="field"><label>بانک</label><input class="input" id="b-bank" placeholder="ملت"></div>
-      <div class="field"><label>رنگ</label><input type="color" id="b-color" value="#4183F2" style="width:100%;height:40px;padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--stroke-soft);border-radius:var(--r-sm)"></div></div>
-      <div class="field"><label>شماره کارت/حساب</label><input class="input" id="b-card" dir="ltr"></div>
-      <div class="field"><label>مانده‌ی اولیه (تومان)</label><input class="input" id="b-init" dir="ltr" placeholder="0"></div></div>
+      <div class="field"><label>نام حساب</label><input class="input" id="b-name" placeholder="ملت — اصلی" value="${esc(d.name)}"></div>
+      <div class="grid2"><div class="field"><label>بانک</label><input class="input" id="b-bank" placeholder="ملت" value="${esc(d.bank)}"></div>
+      <div class="field"><label>رنگ</label><input type="color" id="b-color" value="${d.color||'#4183F2'}" style="width:100%;height:40px;padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--stroke-soft);border-radius:var(--r-sm)"></div></div>
+      <div class="field"><label>شماره کارت/حساب</label><input class="input" id="b-card" dir="ltr" value="${esc(d.card)}"></div>
+      <div class="field"><label>مانده‌ی اولیه (ریال)</label><input class="input" id="b-init" dir="ltr" placeholder="0" value="${d.init||''}"></div></div>
     <div class="modal-f"><button class="btn btn-p" id="b-save">ذخیره</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
   document.getElementById('b-save').onclick=async()=>{
     const name=document.getElementById('b-name').value.trim(); if(!name){App.toast('نام لازم است','warn');return;}
-    try{ await App.fetchJSON("{% url 'finance:bank_create' %}",{method:'POST',body:{name,bank:document.getElementById('b-bank').value,color:document.getElementById('b-color').value,card_number:document.getElementById('b-card').value,initial_balance:document.getElementById('b-init').value}});
-      location.reload(); }catch(_){}
+    const body={name,bank:document.getElementById('b-bank').value,color:document.getElementById('b-color').value,
+                card_number:document.getElementById('b-card').value,initial_balance:document.getElementById('b-init').value};
+    try{
+      if(data){ await App.fetchJSON(`/finance/api/banks/${d.id}/`,{method:'PATCH',body}); }
+      else{ await App.fetchJSON("{% url 'finance:bank_create' %}",{method:'POST',body}); }
+      location.reload();
+    }catch(_){}
   };
-};
+}
+document.getElementById('add-bank').onclick=()=>bankModal(null);
+
 document.addEventListener('click',async e=>{
-  const b=e.target.closest('.bank-del'); if(b){ if(await App.confirm('این حساب و تراکنش‌هایش حذف شوند؟')){ await App.fetchJSON(`/finance/api/banks/${b.dataset.id}/`,{method:'DELETE'}); location.reload(); } }
-  const c=e.target.closest('.cat-del'); if(c){ if(await App.confirm('این بابت حذف شود؟')){ await App.fetchJSON(`/finance/api/categories/${c.dataset.id}/`,{method:'DELETE'}); location.reload(); } }
+  const ed=e.target.closest('.bank-edit');
+  if(ed){ e.stopPropagation(); const c=ed.closest('.bank-card');
+    bankModal({id:c.dataset.id,name:c.dataset.name,bank:c.dataset.bank,color:c.dataset.color,card:c.dataset.card,init:c.dataset.init}); return; }
+  const b=e.target.closest('.bank-del');
+  if(b){ e.stopPropagation(); if(await App.confirm('این حساب و تراکنش‌هایش حذف شوند؟')){ await App.fetchJSON(`/finance/api/banks/${b.dataset.id}/`,{method:'DELETE'}); location.reload(); } return; }
+  const cd=e.target.closest('.cat-del');
+  if(cd){ e.stopPropagation(); if(await App.confirm('این بابت حذف شود؟')){ await App.fetchJSON(`/finance/api/categories/${cd.dataset.id}/`,{method:'DELETE'}); location.reload(); } return; }
+  // کلیک روی خودِ کارتِ بانک (نه دکمه‌ها) → تراکنش‌های همان بانک
+  const card=e.target.closest('.bank-card');
+  if(card){ location.href=TX_URL+'?bank='+card.dataset.id; }
 });
+
 document.getElementById('add-cat').onclick=()=>{
   App.openModal(`<div class="modal-h"><h3>بابت جدید</h3><button class="x" onclick="App.closeModal()">×</button></div>
     <div class="modal-b"><div class="field"><label>عنوان</label><input class="input" id="c-name" placeholder="مثلاً تبلیغات"></div>

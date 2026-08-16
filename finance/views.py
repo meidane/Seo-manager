@@ -136,6 +136,9 @@ class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
         ctx['qs_params'] = params.urlencode()
 
         ctx['page_obj'] = page_obj
+        # بازه‌ی صفحات با «…» (۱ ۲ ۳ … ۲۰) — منبعِ واحدِ شماره‌گذاری
+        ctx['page_range'] = paginator.get_elided_page_range(
+            page_obj.number, on_each_side=2, on_ends=1)
         ctx['transactions'] = page_obj.object_list
         ctx['total_count'] = paginator.count
         ctx['banks'] = BankAccount.objects.filter(is_active=True)
@@ -482,31 +485,137 @@ def tx_bulk(request):
 
 # ── API: ورود اکسل (پیش‌نمایش + تایید) ────────────────────────────────────
 
-def _parse_workbook(f):
-    """ردیف‌های اکسل را می‌خواند. ستون‌ها بر اساس ساختار توافق‌شده:
-    ردیف | تاریخ | شرح سند | واریز | برداشت | مانده | توضیحات کاربر.
-    ردیف هدر (اولین ردیف غیرعددی) رد می‌شود."""
+def _cell(r, i):
+    return r[i] if i < len(r) else None
+
+
+def _num(v):
+    """عددِ خامِ اکسل (float) یا رشته‌ی فارسی → int با حفظِ علامت."""
+    if isinstance(v, (int, float)):
+        return int(round(v))
+    return parse_amount(v)
+
+
+def _row_text(r):
+    return ' '.join('' if c is None else str(c) for c in r)
+
+
+# امضای هدرِ هر قالب — برای تشخیصِ خودکار و برای یافتنِ ردیفِ هدر وقتی قالب دستی انتخاب شده
+_FMT_SIGNATURE = {
+    'mehr': lambda t: 'زمان تراکنش' in t and 'مبلغ' in t,
+    'tejarat': lambda t: 'موجودی حساب' in t and ('شرح تراکنش' in t or 'RRN' in t),
+    'saman': lambda t: 'شرح سند' in t and 'واریز' in t,
+}
+
+
+def _detect_format(rows):
+    """(format, header_index) با اسکنِ ۲۵ ردیفِ اول. ترتیب مهم است: هدرِ تجارت هم
+    «شرح سند/واریز» دارد، پس مهر (با «زمان تراکنش») و تجارت (با «موجودی حساب») که
+    یکتا هستند اول چک می‌شوند؛ سامان/موبایلت (قالبِ کلاسیک) fallback است."""
+    for i, r in enumerate(rows[:25]):
+        t = _row_text(r)
+        if _FMT_SIGNATURE['mehr'](t):
+            return 'mehr', i
+        if _FMT_SIGNATURE['tejarat'](t):
+            return 'tejarat', i
+        if _FMT_SIGNATURE['saman'](t):
+            return 'saman', i
+    return 'saman', -1  # قالبِ کلاسیک بدونِ هدرِ شناخته‌شده (هدر با تاریخِ نامعتبر رد می‌شود)
+
+
+def _find_header(rows, fmt):
+    """ردیفِ هدرِ همان قالبِ **دستی‌انتخاب‌شده** را پیدا می‌کند؛ اگر نبود ‎-1‎ (از ابتدا)."""
+    sig = _FMT_SIGNATURE.get(fmt)
+    if sig:
+        for i, r in enumerate(rows[:40]):
+            if sig(_row_text(r)):
+                return i
+    return -1
+
+
+def _parse_saman(rows, h):
+    """سامان/موبایلت (+ قالبِ کلاسیکِ قبلی):
+    0=ردیف 1=تاریخ(+ساعت، چندخطی) 2=شرح 3=واریز 4=برداشت 5=مانده 6=توضیحات."""
+    out = []
+    for r in rows[h + 1:]:
+        d, tm = parse_excel_date(_cell(r, 1))
+        if d is None:
+            continue
+        bal = _cell(r, 5)
+        out.append({
+            'date': d.isoformat(), 'time': tm,
+            'description': str(_cell(r, 2) or '').strip(),
+            'deposit': parse_amount(_cell(r, 3)),
+            'withdrawal': parse_amount(_cell(r, 4)),
+            'balance': parse_amount(bal) if bal not in (None, '') else None,
+            'user_note': str(_cell(r, 6) or '').strip(),
+        })
+    return out
+
+
+def _parse_mehr(rows, h):
+    """بانک مهر: 0=ردیف 1=شرح 6=مبلغ(علامت‌دار: +واریز/−برداشت) 8=نوع 9=زمان تراکنش
+    11=مانده. ردیف‌های خالیِ بینابین خودبه‌خود رد می‌شوند (زمانِ نامعتبر)."""
+    out = []
+    for r in rows[h + 1:]:
+        d, tm = parse_excel_date(_cell(r, 9))
+        if d is None:
+            continue
+        amount = _num(_cell(r, 6))
+        typ = str(_cell(r, 8) or '')
+        if amount < 0 or 'برداشت' in typ:
+            deposit, withdrawal = 0, abs(amount)
+        else:
+            deposit, withdrawal = abs(amount), 0
+        bal = _cell(r, 11)
+        out.append({
+            'date': d.isoformat(), 'time': tm,
+            'description': str(_cell(r, 1) or '').strip(),
+            'deposit': deposit, 'withdrawal': withdrawal,
+            'balance': _num(bal) if bal not in (None, '') else None,
+            'user_note': '',
+        })
+    return out
+
+
+def _parse_tejarat(rows, h):
+    """بانک تجارت: 6=شرح سند 7=شرح تراکنش 10=واریز 11=برداشت 12=موجودی 13=زمان 14=تاریخ."""
+    out = []
+    for r in rows[h + 1:]:
+        d, tm = parse_excel_date(f"{_cell(r, 14)} {_cell(r, 13)}")
+        if d is None:
+            continue
+        desc = str(_cell(r, 6) or '').strip() or str(_cell(r, 7) or '').strip()
+        bal = _cell(r, 12)
+        out.append({
+            'date': d.isoformat(), 'time': tm,
+            'description': desc,
+            'deposit': parse_amount(_cell(r, 10)),
+            'withdrawal': parse_amount(_cell(r, 11)),
+            'balance': parse_amount(bal) if bal not in (None, '') else None,
+            'user_note': '',
+        })
+    return out
+
+
+# «سایر» = قالبِ استانداردِ فعلی (همان پارسرِ سامان/کلاسیک)
+_PARSERS = {'saman': _parse_saman, 'mehr': _parse_mehr,
+            'tejarat': _parse_tejarat, 'other': _parse_saman}
+_FORMAT_LABEL = {'saman': 'سامان / موبایلت', 'mehr': 'مهر',
+                 'tejarat': 'تجارت', 'other': 'قالبِ استاندارد'}
+
+
+def _parse_workbook(f, fmt=None):
+    """اکسلِ بانک را می‌خواند. اگر `fmt` (مهر/سامان/تجارت/سایر) داده شود همان قالب
+    استفاده می‌شود؛ وگرنه از روی ساختار **خودکار تشخیص** می‌دهد. خروجی: (format_key, rows)."""
     from openpyxl import load_workbook
     wb = load_workbook(f, read_only=True, data_only=True)
     ws = wb.active
-    rows = []
-    for r in ws.iter_rows(values_only=True):
-        if r is None or all(c is None for c in r):
-            continue
-        cells = list(r) + [None] * (7 - len(r))  # حداقل ۷ ستون
-        # ستون‌ها: 0=ردیف 1=تاریخ 2=شرح 3=واریز 4=برداشت 5=مانده 6=توضیحات
-        d, tm = parse_excel_date(cells[1])
-        if d is None:  # ردیف هدر یا نامعتبر
-            continue
-        rows.append({
-            'date': d.isoformat(), 'time': tm,
-            'description': str(cells[2] or '').strip(),
-            'deposit': parse_amount(cells[3]),
-            'withdrawal': parse_amount(cells[4]),
-            'balance': parse_amount(cells[5]) if cells[5] not in (None, '') else None,
-            'user_note': str(cells[6] or '').strip(),
-        })
-    return rows
+    rows = [list(r) for r in ws.iter_rows(values_only=True)]
+    if fmt in _PARSERS:
+        return fmt, _PARSERS[fmt](rows, _find_header(rows, fmt))
+    fmt, h = _detect_format(rows)
+    return fmt, _PARSERS[fmt](rows, h)
 
 
 @login_required
@@ -515,13 +624,17 @@ def _parse_workbook(f):
 def import_preview(request):
     import datetime as _dt
     bank_id = request.POST.get('bank')
+    fmt_sel = (request.POST.get('format') or '').strip() or None  # مهر/سامان/تجارت/سایر یا None=خودکار
     f = request.FILES.get('file')
     if not bank_id or not f:
         return JsonResponse({'detail': 'حساب و فایل لازم است'}, status=400)
     try:
-        rows = _parse_workbook(f)
+        fmt, rows = _parse_workbook(f, fmt_sel)
     except Exception as e:  # noqa: BLE001
         return JsonResponse({'detail': f'خطا در خواندن فایل: {e}'}, status=400)
+    if not rows:
+        return JsonResponse({'detail': 'ردیفِ معتبری در فایل پیدا نشد — شاید قالبِ انتخابی '
+                                       'با فایل نمی‌خواند.'}, status=400)
     existing = set(Transaction.objects.filter(bank_account_id=bank_id).values_list('import_hash', flat=True))
     new, dup = 0, 0
     for row in rows:
@@ -532,7 +645,8 @@ def import_preview(request):
         row['date_fa'] = _fa_date(row['date'])
         dup += row['dup']
         new += not row['dup']
-    return JsonResponse({'rows': rows, 'new': new, 'dup': dup})
+    return JsonResponse({'rows': rows, 'new': new, 'dup': dup,
+                         'format': _FORMAT_LABEL.get(fmt, fmt)})
 
 
 def _fa_date(iso):
