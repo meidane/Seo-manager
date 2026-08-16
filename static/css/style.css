@@ -940,3 +940,10 @@ select.tx-inline{cursor:pointer;max-width:150px}
   border:2px solid rgba(255,255,255,.45);border-top-color:#fff;border-radius:50%;animation:btnspin .6s linear infinite}
 button:disabled, .btn:disabled{opacity:.6;cursor:not-allowed}
 @keyframes btnspin{to{transform:rotate(360deg)}}
+
+/* دراپ‌داونِ غنیِ باز باید بالای سکشن/کارت‌های بعدی بیفتد (z-index در stacking contextِ .glass) */
+.rs.rs-open{z-index:90}
+.card:has(.rs-open), section:has(.rs-open){position:relative;z-index:50}
+/* نوارِ اکشنِ چسبانِ پایین (ذخیره/ذخیره‌وجدید) */
+.form-actions{position:sticky;bottom:0;display:flex;gap:8px;justify-content:flex-end;align-items:center;
+  padding:12px 14px;margin-top:14px;border-radius:var(--r-sm);background:var(--glass);border:1px solid var(--stroke-soft);backdrop-filter:blur(8px);z-index:45}

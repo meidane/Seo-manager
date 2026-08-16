@@ -75,8 +75,11 @@ function openPay(data){
 
   function addRow(){ const r=itemRow('',''); items.appendChild(r); r.querySelector('.pi-t').focus(); }
   document.getElementById('p-add-item').onclick=addRow;
+  // Enter: عنوان → مبلغ (ستونِ بعد)؛ روی مبلغ (آخرین ستون) → ردیفِ جدید
   items.addEventListener('keydown', e=>{
-    if(e.key==='Enter' && e.target.matches('.pi-t,.pi-a')){ e.preventDefault(); addRow(); }
+    if(e.key!=='Enter') return;
+    if(e.target.matches('.pi-t')){ e.preventDefault(); e.target.closest('.pi-row').querySelector('.pi-a').focus(); }
+    else if(e.target.matches('.pi-a')){ e.preventDefault(); addRow(); }
   });
   items.addEventListener('click', e=>{ const d=e.target.closest('.pi-del'); if(d){ if(items.children.length>1) d.closest('.pi-row').remove(); } });
 

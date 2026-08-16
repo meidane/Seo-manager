@@ -659,14 +659,22 @@ def _parse_workbook(f, fmt=None):
     """اکسلِ بانک را می‌خواند. اگر `fmt` (مهر/سامان/تجارت/سایر) داده شود همان قالب
     استفاده می‌شود؛ وگرنه از روی ساختار **خودکار تشخیص** می‌دهد. خروجی: (format_key, rows)."""
     from openpyxl import load_workbook
+
+    from core.jalali import to_en_digits
     wb = load_workbook(f, read_only=True, data_only=True)
     ws = wb.active
     rows = [list(r) for r in ws.iter_rows(values_only=True)]
     if fmt in _PARSERS:
         real = 'saman' if fmt == 'other' else fmt
-        return fmt, _PARSERS[fmt](rows, _find_header(rows, real))
-    fmt, h = _detect_format(rows)
-    return fmt, _PARSERS[fmt](rows, h)
+        parsed = _PARSERS[fmt](rows, _find_header(rows, real))
+    else:
+        fmt, h = _detect_format(rows)
+        parsed = _PARSERS[fmt](rows, h)
+    # اعداد را همیشه لاتین ذخیره کن (شرحِ بانکی معمولاً ارقامِ فارسی دارد)
+    for r in parsed:
+        r['description'] = to_en_digits(r.get('description', ''))
+        r['user_note'] = to_en_digits(r.get('user_note', ''))
+    return fmt, parsed
 
 
 @login_required
@@ -841,6 +849,8 @@ def invoice_create(request):
     issue = _pj(d.get('issue_date'))
     if not issue:
         return JsonResponse({'detail': 'تاریخ ثبت لازم است'}, status=400)
+    if not (d.get('project') or None):
+        return JsonResponse({'detail': 'پروژه لازم است'}, status=400)
     inv = Invoice.objects.create(
         issue_date=issue, project_id=d.get('project') or None,
         description=(d.get('description') or '').strip(),
@@ -863,7 +873,9 @@ def invoice_edit(request, pk):
         if issue:
             inv.issue_date = issue
     if 'project' in d:
-        inv.project_id = d['project'] or None
+        if not d['project']:
+            return JsonResponse({'detail': 'پروژه لازم است'}, status=400)
+        inv.project_id = d['project']
     if 'description' in d:
         inv.description = (d['description'] or '').strip()
     if 'due_date' in d:

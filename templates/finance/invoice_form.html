@@ -7,7 +7,6 @@
     <h1>{% if invoice %}فاکتور #{{ invoice.number|fa_digits }}{% else %}فاکتور جدید{% endif %}</h1>
     <div class="side-c">
       <a href="{% url 'finance:invoices' %}" class="btn">بازگشت</a>
-      <button class="btn btn-p" id="inv-save">ذخیره فاکتور</button>
     </div>
   </div>
   {% include "finance/_nav.html" %}
@@ -78,6 +77,13 @@
       </div>
     </div>
   </section>
+
+  {# ── نوارِ اکشنِ پایینِ صفحه ── #}
+  <div class="form-actions">
+    <a href="{% url 'finance:invoices' %}" class="btn">بازگشت</a>
+    <button class="btn" id="inv-save-new">ذخیره و جدید</button>
+    <button class="btn btn-p" id="inv-save">ذخیره فاکتور</button>
+  </div>
 {% endblock %}
 
 {% block scripts %}
@@ -134,8 +140,37 @@
   body.addEventListener('input', e=>{ if(e.target.matches('.li-qty,.li-unit,.li-tax,.li-disc')) recalc(); });
   body.addEventListener('click', e=>{ const d=e.target.closest('.li-del'); if(d){ d.closest('tr').remove(); recalc(); } });
 
+  // ── جابه‌جایی با Enter بینِ ستون‌های ردیف؛ روی آخرین ستون (تخفیف) سطرِ جدید ──
+  const ORDER=['.li-cat','.li-desc','.li-qty','.li-unit','.li-tax','.li-disc'];
+  body.addEventListener('keydown', e=>{
+    if(e.key!=='Enter') return;
+    const idx=ORDER.findIndex(s=>e.target.matches && e.target.matches(s));
+    if(idx<0) return;
+    e.preventDefault();
+    const row=e.target.closest('tr');
+    if(idx<ORDER.length-1){ const nx=row.querySelector(ORDER[idx+1]); if(nx) nx.focus(); }
+    else { addRow(); const last=body.querySelector('.inv-row:last-child'); const f=last&&last.querySelector('.li-cat'); if(f) f.focus(); }
+  });
+
   // شروع: اگر خالی است یک ردیف بگذار، سپس محاسبه
   if(!body.querySelector('.inv-row')) addRow(); else recalc();
+
+  // ── تاریخ‌ها: تبدیلِ فشرده‌ی جالی↔میلادی برای «تاریخ پرداخت = ثبت + ۱۰ روز» ──
+  function jToG(jy,jm,jd){var gy=jy<=979?621:1600;jy-=jy<=979?0:979;var days=365*jy+Math.floor(jy/33)*8+Math.floor(((jy%33)+3)/4)+78+jd+(jm<7?(jm-1)*31:(jm-7)*30+186);gy+=400*Math.floor(days/146097);days%=146097;if(days>36524){gy+=100*Math.floor(--days/36524);days%=36524;if(days>=365)days++;}gy+=4*Math.floor(days/1461);days%=1461;if(days>365){gy+=Math.floor((days-1)/365);days=(days-1)%365;}var gd=days+1;var sal=[0,31,((gy%4===0&&gy%100!==0)||gy%400===0)?29:28,31,30,31,30,31,31,30,31,30,31];var gm;for(gm=1;gm<=12;gm++){if(gd<=sal[gm])break;gd-=sal[gm];}return[gy,gm,gd];}
+  function gToJ(gy,gm,gd){var gdm=[0,31,59,90,120,151,181,212,243,273,304,334];var gy2=gm>2?gy+1:gy;var days=355666+365*gy+Math.floor((gy2+3)/4)-Math.floor((gy2+99)/100)+Math.floor((gy2+399)/400)+gd+gdm[gm-1];var jy=-1595+33*Math.floor(days/12053);days%=12053;jy+=4*Math.floor(days/1461);days%=1461;if(days>365){jy+=Math.floor((days-1)/365);days=(days-1)%365;}var jm,jd;if(days<186){jm=1+Math.floor(days/31);jd=1+(days%31);}else{jm=7+Math.floor((days-186)/30);jd=1+((days-186)%30);}return[jy,jm,jd];}
+  const faD=x=>String(x).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);
+  const enD=s=>String(s).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+  function jFmt(a){return faD(a[0])+'/'+faD(String(a[1]).padStart(2,'0'))+'/'+faD(String(a[2]).padStart(2,'0'));}
+  function addDaysJ(jstr,n){const p=enD(jstr).split('/').map(Number);if(p.length!==3||!p[0])return '';const g=jToG(p[0],p[1],p[2]);const dt=new Date(g[0],g[1]-1,g[2]);dt.setDate(dt.getDate()+n);return jFmt(gToJ(dt.getFullYear(),dt.getMonth()+1,dt.getDate()));}
+  const issueEl=document.getElementById('inv-issue'), dueEl=document.getElementById('inv-due');
+  let dueManual = !!dueEl.value;  // اگر از قبل مقدار داشت، دستی فرض کن (ویرایشِ فاکتورِ موجود)
+  dueEl.addEventListener('input', ()=>{ dueManual=true; });
+  function syncDue(){ if(!dueManual && issueEl.value.trim()){ dueEl.value=addDaysJ(issueEl.value,10); } }
+  issueEl.addEventListener('change', syncDue);
+  if(!INV_ID){ // فاکتورِ جدید: پیش‌فرض تاریخِ ثبت=امروز، پرداخت=+۱۰ روز
+    if(!issueEl.value){ const t=new Date(); issueEl.value=jFmt(gToJ(t.getFullYear(),t.getMonth()+1,t.getDate())); }
+    syncDue();
+  }
 
   function collect(){
     return [...body.querySelectorAll('.inv-row')].map(r=>({
@@ -148,7 +183,7 @@
     }));
   }
 
-  document.getElementById('inv-save').onclick=async()=>{
+  async function save(andNew){
     const payload={
       issue_date: document.getElementById('inv-issue').value.trim(),
       project: document.getElementById('inv-project').value,
@@ -157,17 +192,22 @@
       lines: collect(),
     };
     if(!payload.issue_date){ App.toast('تاریخ ثبت را وارد کن','warn'); return; }
+    if(!payload.project){ App.toast('پروژه را انتخاب کن','warn'); return; }
+    const newUrl="{% url 'finance:invoice_new' %}";
     try{
       if(INV_ID){
         await App.fetchJSON(`/finance/api/invoices/${INV_ID}/`,{method:'PATCH',body:payload});
         App.toast('ذخیره شد','ok');
+        if(andNew){ location.href=newUrl; }
       }else{
         const d=await App.fetchJSON("{% url 'finance:invoice_create' %}",{method:'POST',body:payload});
         App.toast('فاکتور ثبت شد','ok');
-        location.href=`/finance/invoices/${d.id}/`;
+        location.href = andNew ? newUrl : `/finance/invoices/${d.id}/`;
       }
     }catch(_){}
-  };
+  }
+  document.getElementById('inv-save').onclick=()=>save(false);
+  document.getElementById('inv-save-new').onclick=()=>save(true);
 })();
 </script>
 {% endblock %}
