@@ -35,9 +35,11 @@
         </tbody>
       </table>
     {% else %}
-      <div class="empty"><div class="ico">🧾</div><h4>فاکتوری در این بازه نیست</h4><a href="{% url 'finance:invoice_new' %}" class="btn btn-p" style="margin-top:12px">＋ افزودن فاکتور</a></div>
+      <div class="empty"><div class="ico">🧾</div><h4>فاکتوری نیست</h4><a href="{% url 'finance:invoice_new' %}" class="btn btn-p" style="margin-top:12px">＋ افزودن فاکتور</a></div>
     {% endif %}
   </section>
+
+  {% include "components/_pagination.html" %}
 {% endblock %}
 
 {% block scripts %}

@@ -242,20 +242,28 @@ class InvoiceListView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, Temp
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        start, end = self.get_range(self.request)
+        g = self.request.GET
         ctx.update(self.range_context())
-        qs = (Invoice.objects.select_related('project')
-              .prefetch_related('lines')
-              .filter(issue_date__range=(start, end)))
-        if self.request.GET.get('project'):
-            qs = qs.filter(project_id=self.request.GET['project'])
-        invoices = list(qs)
+        qs = (Invoice.objects.select_related('project').prefetch_related('lines'))
+        # پیش‌فرض: همه‌ی فاکتورها (بدونِ فیلترِ تاریخ)؛ فقط اگر کاربر صریح بازه بدهد
+        start, end, range_label = _optional_range(g)
+        if start and end:
+            qs = qs.filter(issue_date__range=(start, end))
+        if g.get('project'):
+            qs = qs.filter(project_id=g['project'])
+        paginator = Paginator(qs, 100)
+        page_obj = paginator.get_page(g.get('page'))
+        invoices = list(page_obj.object_list)
+        params = g.copy(); params.pop('page', None)
+        ctx['qs_params'] = params.urlencode()
+        ctx['page_obj'] = page_obj
         # مانده‌ی «گردش حساب» هر پروژه (کلِ تاریخ) برای ستونِ مانده — منبع واحد balances
         from .balances import project_balances
         ctx['project_bal'] = project_balances({inv.project_id for inv in invoices})
         ctx['invoices'] = invoices
+        ctx['range_label'] = range_label
         ctx['projects'] = Project.objects.filter(status=Project.ACTIVE, personal_owner__isnull=True)
-        ctx['filters'] = self.request.GET
+        ctx['filters'] = g
         ctx['page_title'] = 'فاکتورها'
         return ctx
 

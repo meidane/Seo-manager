@@ -958,3 +958,24 @@ button:disabled, .btn:disabled{opacity:.6;cursor:not-allowed}
 .txcat-x{cursor:pointer;opacity:.55;font-style:normal;font-size:11px}
 .txcat-x:hover{opacity:1;color:var(--danger)}
 .txcat-add{border:0;background:transparent;color:var(--text-dim);font-size:11px;width:54px;outline:none;font-family:inherit}
+
+/* ═══ فاز ۱ (جزئی): جدولِ متراکم‌تر شبیه گوگل‌شیت + اسکرولِ واضح‌تر ═══ */
+/* جدول‌های معمولی: پدینگِ کمتر */
+tbody td{padding:7px 12px}
+thead th{padding:8px 12px}
+/* جدولِ شیت: اینپوت تمام‌عرضِ سلول (پدینگ داخلِ اینپوت، نه سلول) */
+table.sheet td.edit{padding:0}
+table.sheet td.edit select,table.sheet td.edit input,table.sheet td.edit .rs,table.sheet td.edit .txcat-wrap{width:100%;height:100%}
+table.sheet td.edit select,table.sheet td.edit input{padding:7px 9px;font-size:12.5px}
+table.sheet td:not(.edit){padding:6px 9px}
+/* نشانگرِ اسکرولِ افقی: محوشدگیِ لبه + اسکرول‌بارِ دیده‌شونده */
+.sheet-wrap{position:relative;scrollbar-width:thin}
+.sheet-wrap::after{content:"";position:absolute;top:0;bottom:0;left:0;width:28px;pointer-events:none;
+  background:linear-gradient(to right,color-mix(in srgb,var(--bg) 78%,transparent),transparent)}
+.sheet-wrap::-webkit-scrollbar{height:11px}
+.sheet-wrap::-webkit-scrollbar-thumb{background:var(--stroke);border-radius:99px;border:2px solid transparent;background-clip:padding-box}
+.sheet-wrap::-webkit-scrollbar-thumb:hover{background:var(--text-faint)}
+/* نوارِ تب/حسابداری: همیشه اسکرولِ افقی، هیچ‌وقت شکستِ صفحه */
+.fin-nav,.settings-nav{flex-wrap:nowrap;overflow-x:auto;max-width:100%;scrollbar-width:thin}
+.fin-nav a,.settings-nav a{white-space:nowrap;flex:none}
+.fin-nav::-webkit-scrollbar,.settings-nav::-webkit-scrollbar{height:0}
