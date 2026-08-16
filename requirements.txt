@@ -9,3 +9,4 @@ cryptography
 python-decouple
 django-cleanup
 openpyxl
+requests
