@@ -45,7 +45,7 @@ function bankModal(data){
       <div class="grid2"><div class="field"><label>بانک</label><input class="input" id="b-bank" placeholder="ملت" value="${esc(d.bank)}"></div>
       <div class="field"><label>رنگ</label><input type="color" id="b-color" value="${d.color||'#4183F2'}" style="width:100%;height:40px;padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--stroke-soft);border-radius:var(--r-sm)"></div></div>
       <div class="field"><label>شماره کارت/حساب</label><input class="input" id="b-card" dir="ltr" value="${esc(d.card)}"></div>
-      <div class="field"><label>مانده‌ی اولیه (ریال)</label><input class="input" id="b-init" dir="ltr" placeholder="0" value="${d.init||''}"></div></div>
+      <div class="field"><label>مانده‌ی اولیه (ریال)</label><input class="input money" id="b-init" dir="ltr" placeholder="0" value="${d.init||''}"></div></div>
     <div class="modal-f"><button class="btn btn-p" id="b-save">ذخیره</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
   document.getElementById('b-save').onclick=async()=>{
     const name=document.getElementById('b-name').value.trim(); if(!name){App.toast('نام لازم است','warn');return;}

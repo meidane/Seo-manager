@@ -57,9 +57,9 @@
             <td class="edit"><select class="li-cat"><option value="">—</option>{% for c in categories %}<option value="{{ c.id }}" {% if li.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></td>
             <td class="edit"><input class="li-desc" value="{{ li.description }}" placeholder="شرح"></td>
             <td class="edit"><input class="li-qty num" dir="ltr" value="{{ li.qty|floatformat:'-2' }}"></td>
-            <td class="edit"><input class="li-unit num" dir="ltr" value="{{ li.unit_price|floatformat:0 }}"></td>
-            <td class="edit"><input class="li-tax num" dir="ltr" value="{{ li.tax|floatformat:0 }}"></td>
-            <td class="edit"><input class="li-disc num" dir="ltr" value="{{ li.discount|floatformat:0 }}"></td>
+            <td class="edit"><input class="li-unit num money" dir="ltr" value="{{ li.unit_price|floatformat:0 }}"></td>
+            <td class="edit"><input class="li-tax num money" dir="ltr" value="{{ li.tax|floatformat:0 }}"></td>
+            <td class="edit"><input class="li-disc num money" dir="ltr" value="{{ li.discount|floatformat:0 }}"></td>
             <td class="li-total num-c">۰</td>
             <td><button class="mini li-del" type="button">×</button></td>
           </tr>
@@ -104,9 +104,9 @@
       <td class="edit"><select class="li-cat"><option value="">—</option>${CATS}</select></td>
       <td class="edit"><input class="li-desc" placeholder="شرح"></td>
       <td class="edit"><input class="li-qty num" dir="ltr" value="1"></td>
-      <td class="edit"><input class="li-unit num" dir="ltr" value=""></td>
-      <td class="edit"><input class="li-tax num" dir="ltr" value=""></td>
-      <td class="edit"><input class="li-disc num" dir="ltr" value=""></td>
+      <td class="edit"><input class="li-unit num money" dir="ltr" value=""></td>
+      <td class="edit"><input class="li-tax num money" dir="ltr" value=""></td>
+      <td class="edit"><input class="li-disc num money" dir="ltr" value=""></td>
       <td class="li-total num-c">۰</td>
       <td><button class="mini li-del" type="button">×</button></td></tr>`;
   }

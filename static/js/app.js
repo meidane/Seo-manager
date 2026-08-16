@@ -12,40 +12,61 @@
   }
   const CSRF = getCookie('csrftoken');
 
+  /* ── جلوگیری از دابل‌کلیک ── دکمه‌ای که fetchJSON را آغاز می‌کند تا پایانِ درخواست
+     غیرفعال + لودینگ می‌شود. چون disable هم‌زمان (sync) در ابتدای fetchJSON انجام
+     می‌شود (پیش از اولین await، درونِ همان onclick)، کلیک‌های سریعِ بعدی روی همان دکمه
+     اصلاً شلیک نمی‌شوند و رکوردِ تکراری ساخته نمی‌شود. ── */
+  let _lastBtn = null, _lastBtnAt = 0;
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest && e.target.closest('button, .btn');
+    if (b) { _lastBtn = b; _lastBtnAt = Date.now(); }
+  }, true);
+  function claimButton() {
+    const b = _lastBtn;
+    _lastBtn = null;
+    return (b && !b.disabled && Date.now() - _lastBtnAt < 2500) ? b : null;
+  }
+
   /* ── fetchJSON ── لایه‌ی نازک روی fetch با مدیریت خطا و CSRF ── */
   async function fetchJSON(url, options = {}) {
-    const opts = Object.assign(
-      {
-        method: 'GET',
-        headers: {},
-        credentials: 'same-origin',
-      },
-      options
-    );
-    opts.headers = Object.assign(
-      {
-        'X-Requested-With': 'XMLHttpRequest',
-        'X-CSRFToken': CSRF,
-      },
-      opts.headers
-    );
+    const btn = claimButton();
+    if (btn) { btn.disabled = true; btn.classList.add('is-loading'); }
+    try {
+      const opts = Object.assign(
+        {
+          method: 'GET',
+          headers: {},
+          credentials: 'same-origin',
+        },
+        options
+      );
+      opts.headers = Object.assign(
+        {
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': CSRF,
+        },
+        opts.headers
+      );
 
-    // بدنه‌ی آبجکت را به JSON تبدیل کن مگر FormData باشد
-    if (opts.body && !(opts.body instanceof FormData) && typeof opts.body === 'object') {
-      opts.headers['Content-Type'] = 'application/json';
-      opts.body = JSON.stringify(opts.body);
+      // بدنه‌ی آبجکت را به JSON تبدیل کن مگر FormData باشد
+      if (opts.body && !(opts.body instanceof FormData) && typeof opts.body === 'object') {
+        opts.headers['Content-Type'] = 'application/json';
+        opts.body = JSON.stringify(opts.body);
+      }
+
+      const res = await fetch(url, opts);
+      const ct = res.headers.get('content-type') || '';
+      const data = ct.includes('application/json') ? await res.json() : await res.text();
+
+      if (!res.ok) {
+        const msg = (data && data.detail) || 'خطا در ارتباط با سرور';
+        toast(msg, 'err');
+        throw { status: res.status, data };
+      }
+      return data;
+    } finally {
+      if (btn) { btn.disabled = false; btn.classList.remove('is-loading'); }
     }
-
-    const res = await fetch(url, opts);
-    const ct = res.headers.get('content-type') || '';
-    const data = ct.includes('application/json') ? await res.json() : await res.text();
-
-    if (!res.ok) {
-      const msg = (data && data.detail) || 'خطا در ارتباط با سرور';
-      toast(msg, 'err');
-      throw { status: res.status, data };
-    }
-    return data;
   }
 
   /* ── توست ── اعلان گوشه‌ی پایین-چپ ── */
@@ -96,6 +117,7 @@
     root.querySelector('.modal').innerHTML = html;
     root.dataset.dirty = '';
     root.classList.add('open');
+    initMoney(root);  // ویرگول‌دارکردنِ مقادیرِ اولیه‌ی اینپوت‌های مبلغ درونِ مودال
     return root;
   }
   function closeModal() {
@@ -125,6 +147,45 @@
       };
     });
   }
+
+  /* ── اینپوت مبالغ ── نمایشِ سه‌تاسه‌تا با ویرگول موقعِ تایپ (کلاسِ `money`) ──
+     گروه‌بندی مستقل از خط (لاتین/فارسی). بک‌اند (`parse_amount`) و فرمِ فاکتور
+     (`toNum`) ویرگول را پاک می‌کنند؛ برای فرمِ نیتیوِ Django هم روی submit پاک می‌شود. */
+  function groupDigits(s) {
+    const d = (String(s).match(/[\d۰-۹]/g) || []).join('');
+    let out = '';
+    for (let i = 0; i < d.length; i++) {
+      if (i > 0 && (d.length - i) % 3 === 0) out += ',';
+      out += d[i];
+    }
+    return out;
+  }
+  function formatMoneyInput(el) {
+    const before = (el.value.slice(0, el.selectionStart).match(/[\d۰-۹]/g) || []).length;
+    el.value = groupDigits(el.value);
+    let pos = 0, seen = 0;
+    while (pos < el.value.length && seen < before) {
+      if (/[\d۰-۹]/.test(el.value[pos])) seen++;
+      pos++;
+    }
+    try { el.setSelectionRange(pos, pos); } catch (_) { /* اینپوت‌های بدونِ selection */ }
+  }
+  function initMoney(root) {
+    (root || document).querySelectorAll('input.money').forEach((el) => {
+      if (el.value) el.value = groupDigits(el.value);
+    });
+  }
+  document.addEventListener('input', (e) => {
+    if (e.target.matches && e.target.matches('input.money')) formatMoneyInput(e.target);
+  });
+  // فرمِ نیتیو (submit واقعی مثلِ فرمِ پروژه): ویرگول پاک و ارقام لاتین شود تا Django بخواند
+  document.addEventListener('submit', (e) => {
+    if (!e.target || !e.target.querySelectorAll) return;
+    e.target.querySelectorAll('input.money').forEach((el) => {
+      el.value = el.value.replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[^\d]/g, '');
+    });
+  }, true);
+  document.addEventListener('DOMContentLoaded', () => initMoney(document));
 
   /* ── دعوت‌نامه‌ها ── بنرِ سراسری + صفحه‌ی /invites/ هر دو از این دلیگیت استفاده می‌کنند ── */
   document.addEventListener('click', (e) => {

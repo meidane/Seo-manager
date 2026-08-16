@@ -45,7 +45,7 @@ const PAYROLLS = { {% for p in payrolls %}"{{ p.id }}":{colleague:"{{ p.colleagu
 function itemRow(t,a){ const d=document.createElement('div'); d.className='pi-row';
   d.style.cssText='display:flex;gap:8px;margin-bottom:6px;align-items:center';
   d.innerHTML=`<input class="input pi-t" placeholder="عنوان (حقوق پایه)" value="${(t||'').replace(/"/g,'&quot;')}" style="flex:1">
-    <input class="input pi-a" dir="ltr" placeholder="مبلغ" value="${a||''}" style="max-width:150px">
+    <input class="input pi-a money" dir="ltr" placeholder="مبلغ" value="${a||''}" style="max-width:150px">
     <button type="button" class="mini pi-del" tabindex="-1">×</button>`;
   return d;
 }

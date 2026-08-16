@@ -933,3 +933,10 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .pagi .pg.is-on{background:var(--primary-soft);border-color:var(--primary-ring);color:#BBD4FF;font-weight:700}
 .pagi .pg.is-dots{border-color:transparent;background:transparent;color:var(--text-faint);pointer-events:none}
 .pagi .pg.is-off{opacity:.4;pointer-events:none}
+
+/* دکمه‌ی درحالِ ارسال (جلوگیری از دابل‌کلیک) — app.js کلاسِ is-loading می‌گذارد */
+.btn.is-loading, button.is-loading{color:transparent!important;pointer-events:none;position:relative}
+.btn.is-loading::after, button.is-loading::after{content:"";position:absolute;top:50%;left:50%;width:15px;height:15px;margin:-8px 0 0 -8px;
+  border:2px solid rgba(255,255,255,.45);border-top-color:#fff;border-radius:50%;animation:btnspin .6s linear infinite}
+button:disabled, .btn:disabled{opacity:.6;cursor:not-allowed}
+@keyframes btnspin{to{transform:rotate(360deg)}}

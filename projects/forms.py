@@ -38,6 +38,8 @@ class ProjectForm(forms.ModelForm):
             if self.instance.contract_end:
                 self.fields['contract_end'].initial = format_jalali(self.instance.contract_end, fa_digits=False)
         self.fields['description'].widget.attrs.update({'class': 'rich-editor'})
+        # مبلغِ قرارداد: ویرگولِ زنده (app.js کلاسِ money؛ روی submit ویرگول‌ها پاک می‌شوند)
+        self.fields['amount'].widget.attrs.update({'class': 'input money', 'dir': 'ltr'})
 
     def clean_description(self):
         from core.htmlsan import clean_html
