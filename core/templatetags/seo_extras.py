@@ -29,6 +29,17 @@ def fa_digits(value):
     return j.to_fa_digits(value)
 
 
+@register.filter(name='elided_pages')
+def elided_pages(page_obj, on_each_side=2):
+    """بازه‌ی صفحات با «…» (۱ ۲ ۳ … ۲۰) — منبعِ واحدِ شماره‌گذاریِ صفحه‌بندی.
+    خروجی شامل اعداد و ثابتِ Paginator.ELLIPSIS ('…') است."""
+    try:
+        p = page_obj.paginator
+        return p.get_elided_page_range(page_obj.number, on_each_side=on_each_side, on_ends=1)
+    except Exception:  # noqa: BLE001
+        return []
+
+
 @register.filter(name='hours')
 def hours(minutes):
     """دقیقه → ساعت (عددِ فارسی، مثلاً «۲.۵»). صفر/خالی → «۰»."""

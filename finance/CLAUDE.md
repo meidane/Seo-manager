@@ -90,8 +90,10 @@ payroll_create/edit, invoice_create/edit). فاکتور با فرمِ صفحه�
 
 ## تراکنش‌ها (فیلتر/صفحه‌بندی)
 - پیش‌فرض: همه، **۱۰۰تایی صفحه‌بندی** (`Paginator`؛ `?page=`؛ `qs_params` سایرِ فیلترها را در لینکِ صفحه نگه می‌دارد).
-- **صفحه‌بندیِ شماره‌دار** (۱ ۲ ۳ … ۲۰): پارشالِ `finance/_pagination.html` (منبعِ واحد) با
-  `page_range = paginator.get_elided_page_range(...)` از ویو؛ CSS: `.pagi/.pg` در `style.css`.
+- **صفحه‌بندیِ شماره‌دار** (۱ ۲ ۳ … ۲۰): کامپوننتِ **مشترکِ** `templates/components/_pagination.html`
+  (فقط به `page_obj` نیاز دارد؛ بقیه‌ی پارامترها با `{% querystring %}` حفظ می‌شوند؛ بازه از
+  فیلترِ `seo_extras: elided_pages`). CSS: `.pagi/.pg` در `style.css`. همین کامپوننت در
+  پروژه‌ها/همکاران/گزارش‌ها هم استفاده می‌شود.
 - **دراپ‌داونِ پروژه/بابت = `rich-select`** (کلاسِ `rich-select` + `data-color`/`data-img`،
   همان ویجتِ تسک‌ها، `static/js/richselect.js`) — در فیلتر/inline/گروهی/گزارش/فاکتور. فیلترِ
   «بابت» عمداً چندانتخابیِ چک‌باکسی (`.ms`) مانده، نه rich-select (تک‌انتخابی). واحدِ پول: **ریال**.

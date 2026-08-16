@@ -66,7 +66,7 @@
   </div>
 
   {# ── صفحه‌بندی (۱ ۲ ۳ … ۲۰) ── #}
-  {% include "finance/_pagination.html" %}
+  {% include "components/_pagination.html" %}
 
   {% else %}
     <section class="card glass"><div class="empty"><div class="ico">▦</div><h4>تراکنشی مطابق فیلتر نیست</h4><a href="{% url 'finance:transactions' %}" class="btn" style="margin-top:12px">پاک‌کردن فیلترها</a></div></section>

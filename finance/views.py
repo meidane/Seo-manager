@@ -136,9 +136,6 @@ class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
         ctx['qs_params'] = params.urlencode()
 
         ctx['page_obj'] = page_obj
-        # بازه‌ی صفحات با «…» (۱ ۲ ۳ … ۲۰) — منبعِ واحدِ شماره‌گذاری
-        ctx['page_range'] = paginator.get_elided_page_range(
-            page_obj.number, on_each_side=2, on_ends=1)
         ctx['transactions'] = page_obj.object_list
         ctx['total_count'] = paginator.count
         ctx['banks'] = BankAccount.objects.filter(is_active=True)
