@@ -9,6 +9,9 @@ After=network.target postgresql.service
 User=www-data
 Group=www-data
 WorkingDirectory=/var/www/teams
+# هومِ www-data روی اوبونتو /var/www است (غیرقابلِ‌نوشتن)؛ gunicorn فایلِ کنترلش را
+# در $HOME/.gunicorn می‌سازد. HOME را به پوشه‌ی پروژه (مالکِ www-data) بده.
+Environment=HOME=/var/www/teams
 EnvironmentFile=/var/www/teams/.env
 # systemd پوشه‌ی /run/teams را با مالکیتِ www-data می‌سازد (و موقعِ stop پاک می‌کند)
 # تا سوکت آنجا ساخته شود؛ ساختنِ مستقیمِ فایل در /run برای www-data ممنوع است.
