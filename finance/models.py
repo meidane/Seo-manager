@@ -99,7 +99,9 @@ class Transaction(TimeStampedModel):
     class Meta:
         verbose_name = 'تراکنش'
         verbose_name_plural = 'تراکنش‌ها'
-        ordering = ['-date', '-id']
+        # تاریخ جدید-به-قدیم؛ در هر تاریخ به ترتیبِ id صعودی = دقیقاً ترتیبِ ردیفِ اکسل
+        # (import_confirm ردیف‌ها را به ترتیبِ فایل می‌سازد، پس id صعودی = ترتیبِ اکسل).
+        ordering = ['-date', 'id']
         base_manager_name = 'all_objects'
         indexes = [
             models.Index(fields=['bank_account', 'date']),
