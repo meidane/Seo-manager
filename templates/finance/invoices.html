@@ -10,7 +10,7 @@
   {% include "finance/_nav.html" %}
 
   <form method="get" class="glass filters">
-    <select name="project" onchange="this.form.submit()"><option value="">همه‌ی پروژه‌ها</option>{% for p in projects %}<option value="{{ p.id }}" {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
+    <select name="project" class="rich-select" onchange="this.form.submit()"><option value="">همه‌ی پروژه‌ها</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
   </form>
 
   <section class="card glass">

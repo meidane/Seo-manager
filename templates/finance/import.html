@@ -12,11 +12,22 @@
   </div>
 
   <section class="card glass" data-step="1" style="padding:20px">
-    <div class="field" style="max-width:340px"><label>حساب بانکی مقصد</label>
-      <select id="imp-bank">{% for b in banks %}<option value="{{ b.id }}">{{ b.name }}</option>{% empty %}<option value="">ابتدا یک حساب بساز</option>{% endfor %}</select></div>
+    <div class="grid2" style="max-width:640px">
+      <div class="field"><label>حساب بانکی مقصد <span style="color:var(--danger)">*</span></label>
+        <select id="imp-bank"><option value="">— انتخابِ بانک —</option>{% for b in banks %}<option value="{{ b.id }}">{{ b.name }}</option>{% empty %}{% endfor %}</select>
+        {% if not banks %}<div style="font-size:12px;margin-top:4px;color:var(--danger)">ابتدا یک حساب بانکی بساز</div>{% endif %}</div>
+      <div class="field"><label>قالبِ اکسل</label>
+        <select id="imp-format">
+          <option value="">تشخیص خودکار</option>
+          <option value="saman">بانک سامان / موبایلت</option>
+          <option value="mehr">بانک مهر</option>
+          <option value="tejarat">بانک تجارت</option>
+          <option value="other">سایر (قالبِ استاندارد)</option>
+        </select></div>
+    </div>
     <div class="drop" id="imp-drop"><input type="file" id="imp-file" accept=".xlsx,.xls" hidden>
       <div class="ico">📄</div><b>فایل اکسل بانک را اینجا رها کن یا کلیک کن</b>
-      <div style="font-size:12px;margin-top:4px;color:var(--text-faint)">ساختار: ردیف | تاریخ | شرح سند | واریز | برداشت | مانده | توضیحات</div></div>
+      <div id="imp-hint" style="font-size:12px;margin-top:6px;color:var(--text-faint)">قالب از روی ساختارِ فایل خودکار تشخیص داده می‌شود.</div></div>
   </section>
 
   <section class="card glass" data-step="2" style="display:none">
@@ -30,6 +41,16 @@
 <script>
 let PREVIEW=null;
 const drop=document.getElementById('imp-drop'), input=document.getElementById('imp-file');
+// راهنمای ساختارِ هر قالب (زیرِ باکسِ آپلود)
+const FMT_HINTS={
+  '':'قالب از روی ساختارِ فایل خودکار تشخیص داده می‌شود.',
+  'saman':'سامان / موبایلت: ردیف | تاریخ | شرح سند | واریز | برداشت | مانده | توضیحات',
+  'mehr':'مهر: ستون‌های شرح، مبلغ (علامت‌دار)، نوع، زمان تراکنش و مانده — ردیف‌های خالیِ بین تراکنش‌ها نادیده گرفته می‌شوند.',
+  'tejarat':'تجارت: شرح سند/تراکنش، واریز، برداشت، موجودی حساب، زمان و تاریخ (هدر پایینِ خلاصه‌ی دوره).',
+  'other':'سایر: فایل باید دقیقاً این قالب را داشته باشد → ردیف | تاریخ | شرح سند | واریز | برداشت | مانده | توضیحات',
+};
+const fmtSel=document.getElementById('imp-format');
+fmtSel.onchange=()=>{ document.getElementById('imp-hint').textContent=FMT_HINTS[fmtSel.value]||FMT_HINTS['']; };
 function step(n){ document.querySelectorAll('[data-step]').forEach(el=>el.style.display=+el.dataset.step===n?'':'none');
   document.querySelectorAll('.stepper .st').forEach(el=>{el.classList.toggle('on',+el.dataset.st===n);el.classList.toggle('done',+el.dataset.st<n);}); }
 drop.onclick=()=>input.click();
@@ -38,10 +59,11 @@ drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
 drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over'); if(e.dataTransfer.files[0]) upload(e.dataTransfer.files[0]);});
 input.onchange=e=>{ if(e.target.files[0]) upload(e.target.files[0]); };
 async function upload(file){
-  const bank=document.getElementById('imp-bank').value; if(!bank){App.toast('حساب را انتخاب کن','warn');return;}
-  const fd=new FormData(); fd.append('file',file); fd.append('bank',bank);
+  const bank=document.getElementById('imp-bank').value; if(!bank){App.toast('اول بانکِ مقصد را انتخاب کن','warn');return;}
+  const fd=new FormData(); fd.append('file',file); fd.append('bank',bank); fd.append('format',fmtSel.value);
   try{ const d=await App.fetchJSON("{% url 'finance:import_preview' %}",{method:'POST',body:fd});
     PREVIEW={bank, rows:d.rows};
+    if(d.format) App.toast('قالب: '+d.format,'ok');
     document.getElementById('cnt-new').textContent=d.new.toLocaleString('fa-IR')+' جدید';
     document.getElementById('cnt-dup').textContent=d.dup.toLocaleString('fa-IR')+' تکراری';
     document.getElementById('prev-body').innerHTML=d.rows.map(r=>`<tr class="${r.dup?'dup-row':''}">

@@ -22,7 +22,8 @@
         <div class="field"><label>تاریخ ثبت فاکتور</label>
           <input class="input jdate" id="inv-issue" dir="ltr" value="{% if invoice %}{{ invoice.issue_date|jalali }}{% endif %}" placeholder="۱۴۰۵/۰۵/۰۱"></div>
         <div class="field"><label>پروژه</label>
-          <select id="inv-project"><option value="">—</option>{% for p in projects %}<option value="{{ p.id }}" {% if invoice.project_id == p.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></div>
+          <select id="inv-project" class="rich-select"><option value="">—</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if invoice.project_id == p.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></div>
+
         <div class="field"><label>تاریخ پرداخت</label>
           <input class="input jdate" id="inv-due" dir="ltr" value="{% if invoice.due_date %}{{ invoice.due_date|jalali }}{% endif %}" placeholder="۱۴۰۵/۰۶/۰۱"></div>
       </div>

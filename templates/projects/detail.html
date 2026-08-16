@@ -60,7 +60,7 @@
   <section class="card glass">
     <div class="card-h"><h3>اطلاعات قرارداد و کارفرما</h3></div>
     <table><tbody>
-      <tr><td style="color:var(--text-dim);width:150px">مبلغ قرارداد</td><td>{% if project.amount %}{{ project.amount|money }} تومان{% else %}—{% endif %}</td></tr>
+      <tr><td style="color:var(--text-dim);width:150px">مبلغ قرارداد</td><td>{% if project.amount %}{{ project.amount|money }} ریال{% else %}—{% endif %}</td></tr>
       <tr><td style="color:var(--text-dim)">بازه‌ی قرارداد</td><td>{{ project.contract_start|jalali|default:"—" }} تا {{ project.contract_end|jalali|default:"—" }}</td></tr>
       <tr><td style="color:var(--text-dim)">کارفرما</td><td>{{ project.client_name|default:"—" }}</td></tr>
       <tr><td style="color:var(--text-dim)">تلفن کارفرما</td><td dir="ltr" style="text-align:right">{{ project.client_phone|default:"—" }}</td></tr>

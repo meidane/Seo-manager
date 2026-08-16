@@ -97,7 +97,7 @@ td a{color:var(--primary);text-decoration:none}
       <span>جمع: <b>{{ invoice_ctx.invoice.subtotal|money }}</b></span>
       <span>مالیات: <b>{{ invoice_ctx.invoice.tax_total|money }}</b></span>
       <span>تخفیف: <b>{{ invoice_ctx.invoice.discount_total|money }}</b></span>
-      <span>جمعِ کل: <b>{{ invoice_ctx.invoice.grand_total|money }} تومان</b></span>
+      <span>جمعِ کل: <b>{{ invoice_ctx.invoice.grand_total|money }} ریال</b></span>
     </div>
   {% endif %}
 
