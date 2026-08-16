@@ -4,7 +4,8 @@
 (function () {
   'use strict';
   const FA = '۰۱۲۳۴۵۶۷۸۹';
-  const toFa = (s) => String(s).replace(/\d/g, (d) => FA[d]);
+  // اعداد لاتین (طبق درخواست: نمایشِ همه‌ی اعداد انگلیسی) — تاریخِ ورودی هم لاتین می‌شود
+  const toFa = (s) => String(s).replace(/[۰-۹]/g, (d) => FA.indexOf(d));
   const toEn = (s) => String(s).replace(/[۰-۹]/g, (d) => FA.indexOf(d));
 
   let pop = null, target = null, y = 0, m = 0;

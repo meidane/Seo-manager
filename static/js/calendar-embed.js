@@ -13,9 +13,9 @@
     let h = `<div class="cell${c.is_holiday && !c.dim ? ' off' : ''}${c.dim ? ' dim' : ''}${c.is_today ? ' today' : ''}">` +
       `<div class="cell-h"><span class="dnum">${c.jday_fa}</span>` +
       `${c.holiday_title && !c.dim ? `<span class="hol">${c.holiday_title}</span>` : ''}` +
-      `${c.tasks.length ? `<span class="cnt">${c.tasks.length.toLocaleString('fa-IR')}</span>` : ''}</div>`;
+      `${c.tasks.length ? `<span class="cnt">${c.tasks.length.toLocaleString('en-US')}</span>` : ''}</div>`;
     c.tasks.slice(0, 4).forEach((t) => (h += chip(t)));
-    if (c.tasks.length > 4) h += `<span class="more">+${(c.tasks.length - 4).toLocaleString('fa-IR')} مورد دیگر</span>`;
+    if (c.tasks.length > 4) h += `<span class="more">+${(c.tasks.length - 4).toLocaleString('en-US')} مورد دیگر</span>`;
     return h + '</div>';
   }
 

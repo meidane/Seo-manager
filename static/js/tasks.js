@@ -196,7 +196,7 @@
       return `<div class="hist-item"><div class="hist-meta"><span class="hist-badge hist-${h.action}">${esc(h.action_label)}</span> · ${esc(h.user)} · ${esc(h.when)}</div>${ch}</div>`;
     };
     const body = hs.length ? hs.map(item).join('') : '<div class="zero" style="padding:8px">تاریخچه‌ای نیست</div>';
-    const faNum = String(hs.length).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]);
+    const faNum = String(hs.length);
     return `<div class="hist-box"><button type="button" class="hist-toggle" id="hist-toggle">🕐 تاریخچهٔ تسک (${faNum})</button><div class="hist-list" id="hist-list" style="display:none">${body}</div></div>`;
   }
 

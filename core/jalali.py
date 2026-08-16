@@ -39,7 +39,7 @@ def j2g(year: int, month: int, day: int) -> date:
     return jdatetime.date(year, month, day).togregorian()
 
 
-def format_jalali(gregorian, fmt: str = '%Y/%m/%d', fa_digits: bool = True) -> str:
+def format_jalali(gregorian, fmt: str = '%Y/%m/%d', fa_digits: bool = False) -> str:
     """قالب‌بندی یک تاریخ میلادی به رشته‌ی شمسی."""
     if gregorian is None:
         return ''
@@ -50,7 +50,7 @@ def format_jalali(gregorian, fmt: str = '%Y/%m/%d', fa_digits: bool = True) -> s
     return to_fa_digits(out) if fa_digits else out
 
 
-def jalali_long(gregorian, fa_digits: bool = True) -> str:
+def jalali_long(gregorian, fa_digits: bool = False) -> str:
     """قالب طولانی: «۱۵ مرداد ۱۴۰۵»."""
     if gregorian is None:
         return ''

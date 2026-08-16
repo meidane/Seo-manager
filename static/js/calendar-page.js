@@ -30,10 +30,10 @@
     let h = `<div class="cell${c.is_holiday && !c.dim ? ' off' : ''}${c.dim ? ' dim' : ''}${c.is_today ? ' today' : ''}" data-date="${c.gdate}" data-jdate="${c.jdate}">` +
       `<div class="cell-h"><span class="dnum">${c.jday_fa}</span>` +
       `${c.holiday_title && !c.dim ? `<span class="hol">${c.holiday_title}</span>` : ''}` +
-      `${c.tasks.length ? `<span class="cnt">${c.tasks.length.toLocaleString('fa-IR')}</span>` : ''}</div>`;
+      `${c.tasks.length ? `<span class="cnt">${c.tasks.length.toLocaleString('en-US')}</span>` : ''}</div>`;
     if (!c.dim && canCreateTask) h += `<button class="cell-add" data-jdate="${c.jdate}" title="تسک جدید در این روز">＋</button>`;
     c.tasks.slice(0, 5).forEach((t) => (h += chip(t)));
-    if (c.tasks.length > 5) h += `<span class="more">+${(c.tasks.length - 5).toLocaleString('fa-IR')} مورد دیگر</span>`;
+    if (c.tasks.length > 5) h += `<span class="more">+${(c.tasks.length - 5).toLocaleString('en-US')} مورد دیگر</span>`;
     return h + '</div>';
   }
 
