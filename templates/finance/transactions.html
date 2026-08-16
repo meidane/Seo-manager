@@ -35,6 +35,17 @@
       </div>
     </div>
 
+    {# نوع: واریز/برداشت #}
+    <select name="flow" onchange="this.form.submit()">
+      <option value="">واریز و برداشت</option>
+      <option value="deposit" {% if filters.flow == 'deposit' %}selected{% endif %}>فقط واریز</option>
+      <option value="withdrawal" {% if filters.flow == 'withdrawal' %}selected{% endif %}>فقط برداشت</option>
+    </select>
+    {# بازه‌ی مبلغ #}
+    <input type="text" name="amt_min" value="{{ filters.amt_min }}" placeholder="از مبلغ" class="input money" dir="ltr" style="max-width:120px">
+    <input type="text" name="amt_max" value="{{ filters.amt_max }}" placeholder="تا مبلغ" class="input money" dir="ltr" style="max-width:120px">
+    <button type="submit" class="btn btn-sm">اعمال</button>
+
     <a href="?unassigned=1" class="chip {% if filters.unassigned == '1' %}on{% endif %}">فقط بدون پروژه/بابت</a>
   </form>
 
@@ -147,6 +158,19 @@
   sheet.addEventListener('change', e=>{
     if(e.target.id==='check-all'){ sheet.querySelectorAll('.row-check').forEach(c=>c.checked=e.target.checked); refresh(); }
     else if(e.target.classList.contains('row-check')) refresh();
+  });
+  // شیفت-کلیک: انتخابِ همه‌ی چک‌باکس‌های بینِ آخرین کلیک و کلیکِ فعلی
+  let lastIdx=null;
+  sheet.addEventListener('click', e=>{
+    const cb=e.target.closest('.row-check'); if(!cb) return;
+    const boxes=[...sheet.querySelectorAll('.row-check')];
+    const idx=boxes.indexOf(cb);
+    if(e.shiftKey && lastIdx!==null && lastIdx!==idx){
+      const a=Math.min(lastIdx,idx), b=Math.max(lastIdx,idx);
+      for(let i=a;i<=b;i++) boxes[i].checked=cb.checked;
+      refresh();
+    }
+    lastIdx=idx;
   });
   async function bulk(action, extra){ const ids=selected(); if(!ids.length)return;
     try{ await App.fetchJSON('/finance/api/tx/bulk/',{method:'POST',body:Object.assign({ids,action},extra)}); App.toast('انجام شد','ok'); setTimeout(()=>location.reload(),300); }catch(_){} }

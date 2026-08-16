@@ -127,6 +127,23 @@ class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
         if q:
             qs = qs.filter(Q(description__icontains=q) | Q(note__icontains=q))
 
+        # نوع: فقط واریز / فقط برداشت
+        flow = g.get('flow') or ''
+        if flow == 'deposit':
+            qs = qs.filter(deposit__gt=0)
+        elif flow == 'withdrawal':
+            qs = qs.filter(withdrawal__gt=0)
+        # بازه‌ی مبلغ روی مبلغِ مؤثر (هر تراکنش یا واریز دارد یا برداشت، نه هردو)
+        amt_min = parse_amount(g.get('amt_min')) if (g.get('amt_min') or '').strip() else None
+        amt_max = parse_amount(g.get('amt_max')) if (g.get('amt_max') or '').strip() else None
+        if amt_min or amt_max:
+            from django.db.models import F
+            qs = qs.annotate(_amt=F('deposit') + F('withdrawal'))
+            if amt_min:
+                qs = qs.filter(_amt__gte=amt_min)
+            if amt_max:
+                qs = qs.filter(_amt__lte=amt_max)
+
         paginator = Paginator(qs, 100)
         page_obj = paginator.get_page(g.get('page'))
 
@@ -139,7 +156,7 @@ class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
         ctx['transactions'] = page_obj.object_list
         ctx['total_count'] = paginator.count
         ctx['banks'] = BankAccount.objects.filter(is_active=True)
-        ctx['projects'] = Project.objects.filter(status=Project.ACTIVE)
+        ctx['projects'] = Project.objects.filter(status=Project.ACTIVE, personal_owner__isnull=True)
         ctx['categories'] = Category.objects.all()
         ctx['selected_categories'] = cat_ids
         ctx['range_label'] = range_label
@@ -213,7 +230,7 @@ class InvoiceListView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, Temp
         from .balances import project_balances
         ctx['project_bal'] = project_balances({inv.project_id for inv in invoices})
         ctx['invoices'] = invoices
-        ctx['projects'] = Project.objects.filter(status=Project.ACTIVE)
+        ctx['projects'] = Project.objects.filter(status=Project.ACTIVE, personal_owner__isnull=True)
         ctx['filters'] = self.request.GET
         ctx['page_title'] = 'فاکتورها'
         return ctx
@@ -237,7 +254,7 @@ class InvoiceFormView(LoginRequiredMixin, FinancePermMixin, TemplateView):
         if not invoice:
             last = Invoice.objects.aggregate(m=Max('number'))['m']
             ctx['next_number'] = (last or 0) + 1
-        ctx['projects'] = Project.objects.filter(status=Project.ACTIVE)
+        ctx['projects'] = Project.objects.filter(status=Project.ACTIVE, personal_owner__isnull=True)
         ctx['categories'] = Category.objects.all()
         ctx['page_title'] = f'فاکتور #{invoice.number}' if invoice else 'فاکتور جدید'
         return ctx
@@ -266,7 +283,7 @@ class LedgerView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateV
         bank_id = g.get('bank') or ''
 
         ctx['banks'] = BankAccount.objects.filter(is_active=True)
-        ctx['projects'] = Project.objects.filter(status=Project.ACTIVE)
+        ctx['projects'] = Project.objects.filter(status=Project.ACTIVE, personal_owner__isnull=True)
         ctx['categories'] = Category.objects.all()
         ctx['filters'] = g
         ctx['page_title'] = 'گزارش (گردش حساب)'
