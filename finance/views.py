@@ -56,26 +56,50 @@ class FinanceDashboardView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin,
         banks = list(BankAccount.objects.filter(is_active=True))
         bank_total = sum(b.balance for b in banks)
 
-        # تفکیک بابت: درآمد/هزینه در هر دسته
+        # ── تفکیک بر اساس بابت (غیرحقوقی) ──
+        # هزینه: همیشه از تراکنش‌ها (برداشت). درآمد: طبقِ income_sourceِ بابت
+        # (از تراکنش=واریز، یا از فاکتور=Σ ردیف‌های فاکتورِ آن بابت در بازه).
+        # نکته: یک تراکنش می‌تواند چند بابت داشته باشد → در چند ردیف نمایش داده می‌شود
+        # ولی جمعِ کلِ بالا (income/expense) از خودِ تراکنش‌ها یک‌بار شمرده می‌شود.
+        from .models import InvoiceLine
+        inv_income = {}
+        for li in (InvoiceLine.objects.filter(category__isnull=False,
+                   invoice__issue_date__range=(start, end)).select_related('category')):
+            inv_income[li.category_id] = inv_income.get(li.category_id, 0) + int(li.total)
         cats = []
-        for c in Category.objects.all():
-            ct = tx.filter(category=c)
+        for c in Category.objects.filter(is_salary=False):
+            ct = tx.filter(categories=c)
+            expense = ct.aggregate(s=Sum('withdrawal'))['s'] or 0
+            if c.income_source == Category.INCOME_INVOICE:
+                income_c = inv_income.get(c.id, 0)
+            else:
+                income_c = ct.aggregate(s=Sum('deposit'))['s'] or 0
             cats.append({
                 'name': c.name, 'color': c.color,
-                'income': ct.aggregate(s=Sum('deposit'))['s'] or 0,
-                'expense': ct.aggregate(s=Sum('withdrawal'))['s'] or 0,
+                'income': income_c, 'expense': expense,
+                'source': 'فاکتور' if c.income_source == Category.INCOME_INVOICE else 'تراکنش',
             })
 
-        # حقوق: تعهد کل و پرداختی (کل، مستقل از بازه)
-        pay_total = sum(p.total for p in Payroll.objects.all())
-        pay_paid = Payroll.objects.aggregate(s=Sum('paid_amount'))['s'] or 0
+        # ── حقوق: هزینه از بخشِ حقوق (تعهد)، «پرداخت‌شده» از تراکنش‌ها ──
+        salary_rows = []
+        owed_by_col = {r['payroll__colleague_id']: r['s'] or 0 for r in PayrollItem.objects
+                       .values('payroll__colleague_id').annotate(s=Sum('amount'))}
+        for c in Category.objects.filter(is_salary=True, colleague__isnull=False):
+            paid = tx.filter(categories=c).aggregate(s=Sum('withdrawal'))['s'] or 0
+            owed = owed_by_col.get(c.colleague_id, 0)
+            salary_rows.append({'name': c.name, 'color': c.color,
+                                'expense': int(owed), 'paid': int(paid)})
+        salary_total = {
+            'expense': sum(r['expense'] for r in salary_rows),
+            'paid': sum(r['paid'] for r in salary_rows),
+        }
 
         from .alerts import compute_alerts
         ctx.update({
             'income': income, 'expense': expense, 'net': income - expense,
             'banks': banks, 'bank_total': bank_total, 'cats': cats,
-            'pay_total': pay_total, 'pay_paid': pay_paid, 'pay_remaining': pay_total - pay_paid,
-            'unassigned': tx.filter(project__isnull=True, category__isnull=True).count(),
+            'salary_rows': salary_rows, 'salary_total': salary_total,
+            'unassigned': tx.filter(project__isnull=True, categories__isnull=True).count(),
             'fin_alerts': compute_alerts(),
             'page_title': 'حسابداری',
         })
@@ -105,7 +129,7 @@ class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         g = self.request.GET
-        qs = Transaction.objects.select_related('bank_account', 'project', 'category')
+        qs = Transaction.objects.select_related('bank_account', 'project').prefetch_related('categories')
 
         # بازه‌ی تاریخ اختیاری (پیش‌فرض: همه‌ی تراکنش‌ها)
         start, end, range_label = _optional_range(g)
@@ -119,9 +143,9 @@ class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
         # بابت: چندانتخابی
         cat_ids = [c for c in g.getlist('category') if c]
         if cat_ids:
-            qs = qs.filter(category_id__in=cat_ids)
+            qs = qs.filter(categories__in=cat_ids).distinct()
         if g.get('unassigned') == '1':
-            qs = qs.filter(project__isnull=True, category__isnull=True)
+            qs = qs.filter(project__isnull=True, categories__isnull=True)
         # جستجو روی شرح سند + توضیحات
         q = (g.get('q') or '').strip()
         if q:
@@ -326,7 +350,7 @@ class LedgerView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateV
             ctx['selected_category'] = cat
             # تراکنش‌های این بابت → واریز/برداشت
             tx = Transaction.objects.select_related('bank_account').filter(
-                category_id=category_id, date__range=(start, end))
+                categories__id=category_id, date__range=(start, end))
             if bank_id:
                 tx = tx.filter(bank_account_id=bank_id)
             for t in tx:
@@ -428,16 +452,33 @@ def category_create(request):
         return JsonResponse({'detail': 'عنوان لازم است'}, status=400)
     if Category.objects.filter(name=name).exists():
         return JsonResponse({'detail': 'تکراری است'}, status=400)
-    c = Category.objects.create(name=name, color=d.get('color', '#8FA0B8'),
-                                is_salary=bool(d.get('is_salary')), order=Category.objects.count())
+    src = d.get('income_source')
+    c = Category.objects.create(
+        name=name, color=d.get('color', '#8FA0B8'),
+        is_salary=bool(d.get('is_salary')),
+        income_source=src if src in (Category.INCOME_TX, Category.INCOME_INVOICE) else Category.INCOME_TX,
+        order=Category.objects.count())
     return JsonResponse({'id': c.id, 'name': c.name}, status=201)
 
 
 @login_required
 @require_finance
-@require_http_methods(['DELETE'])
-def category_delete(request, pk):
-    get_object_or_404(Category, pk=pk).delete()
+@require_http_methods(['PATCH', 'DELETE'])
+def category_edit(request, pk):
+    c = get_object_or_404(Category, pk=pk)
+    if request.method == 'DELETE':
+        c.delete()
+        return JsonResponse({'ok': True})
+    d = _body(request)
+    if d.get('name'):
+        c.name = d['name'].strip()
+    if 'color' in d:
+        c.color = d['color'] or c.color
+    if 'is_salary' in d:
+        c.is_salary = bool(d['is_salary'])
+    if d.get('income_source') in (Category.INCOME_TX, Category.INCOME_INVOICE):
+        c.income_source = d['income_source']
+    c.save()
     return JsonResponse({'ok': True})
 
 
@@ -451,11 +492,15 @@ def tx_edit(request, pk):
     d = _body(request)
     if 'project' in d:
         t.project_id = d['project'] or None
-    if 'category' in d:
-        t.category_id = d['category'] or None
     if 'note' in d:
         t.note = d['note']
-    t.save(update_fields=['project', 'category', 'note', 'updated_at'])
+    t.save(update_fields=['project', 'note', 'updated_at'])
+    # بابتِ چندانتخابی (لیستِ id)؛ سازگاری با کلیدِ قدیمیِ تکیِ `category`
+    if 'categories' in d:
+        ids = [int(x) for x in (d.get('categories') or []) if x]
+        t.categories.set(Category.objects.filter(id__in=ids))
+    elif 'category' in d:
+        t.categories.set([int(d['category'])] if d['category'] else [])
 
     # هشدارِ نرم (بدونِ بلاک) اگر این نسبت‌دهی ناسازگاریِ حسابداری ساخت
     warning = _tx_anomaly_warning(t)
@@ -468,8 +513,8 @@ def _tx_anomaly_warning(t):
     if t.project_id:
         if project_balance(t.project_id) > 0:
             return 'مانده‌ی این پروژه مثبت شد (واریزی بیش از فاکتورها) — شاید فاکتوری ثبت نشده باشد.'
-    if t.category_id and getattr(t.category, 'colleague_id', None):
-        if salary_balance(t.category.colleague_id) < 0:
+    for col_id in t.categories.filter(colleague__isnull=False).values_list('colleague_id', flat=True):
+        if salary_balance(col_id) < 0:
             return 'پرداختِ حقوق این همکار از تعهدش بیشتر شد (اضافه‌پرداخت).'
     if t.bank_account_id and t.bank_account.balance < 0:
         return f'مانده‌ی بانکِ «{t.bank_account.name}» منفی شد.'
@@ -487,7 +532,14 @@ def tx_bulk(request):
     if action == 'set_project':
         qs.update(project_id=d.get('project') or None)
     elif action == 'set_category':
-        qs.update(category_id=d.get('category') or None)
+        # بابتِ چندانتخابی: به همه‌ی انتخاب‌شده‌ها بابت را **اضافه** می‌کند (نه جایگزین)
+        cat = d.get('category')
+        if cat:
+            for t in qs:
+                t.categories.add(int(cat))
+    elif action == 'clear_categories':
+        for t in qs:
+            t.categories.clear()
     elif action == 'set_note':
         qs.update(note=d.get('note', ''))
     elif action == 'delete':

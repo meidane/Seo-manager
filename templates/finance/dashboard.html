@@ -13,7 +13,7 @@
     <div class="stat glass"><div class="lab"><i class="dot" style="background:var(--danger)"></i> هزینه (برداشت)</div><div class="num">{{ expense|money }}</div></div>
     <div class="stat glass"><div class="lab"><i class="dot" style="background:var(--info)"></i> خالص</div><div class="num">{{ net|money }}</div></div>
     <div class="stat glass"><div class="lab"><i class="dot" style="background:var(--violet)"></i> مانده‌ی بانک‌ها</div><div class="num">{{ bank_total|money }}</div></div>
-    <div class="stat glass"><div class="lab"><i class="dot" style="background:var(--warning)"></i> حقوق پرداختی</div><div class="num">{{ pay_paid|money }}</div><div class="sub">از {{ pay_total|money }} تعهد</div></div>
+    <div class="stat glass"><div class="lab"><i class="dot" style="background:var(--warning)"></i> حقوق پرداخت‌شده</div><div class="num">{{ salary_total.paid|money }}</div><div class="sub">از {{ salary_total.expense|money }} تعهد</div></div>
   </div>
 
   {% if unassigned %}<div class="alerts"><a href="{% url 'finance:transactions' %}?unassigned=1" class="alert a-yel"><b>{{ unassigned|fa_digits }} تراکنش</b> بدون پروژه/بابت <span class="arw">←</span></a></div>{% endif %}
@@ -38,7 +38,7 @@
       <div class="card-h"><h3>تفکیک بر اساس بابت</h3></div>
       <div style="padding:8px 16px 14px">
         {% for c in cats %}
-          <div class="sect"><div class="name"><i class="pdot" style="background:{{ c.color }};display:inline-block;margin-inline-end:6px"></i>{{ c.name }}</div>
+          <div class="sect"><div class="name"><i class="pdot" style="background:{{ c.color }};display:inline-block;margin-inline-end:6px"></i>{{ c.name }} <span style="font-size:10px;color:var(--text-faint)">· درآمد از {{ c.source }}</span></div>
             <div class="tris"><span>درآمد<b class="dep">{{ c.income|money }}</b></span><span>هزینه<b class="wd">{{ c.expense|money }}</b></span></div></div>
         {% empty %}<div class="empty" style="padding:20px">بابتی تعریف نشده</div>{% endfor %}
       </div>
@@ -57,10 +57,16 @@
   </div>
 
   <section class="card glass" style="margin-top:14px">
-    <div class="card-h"><h3>حقوق: پرداخت‌شده / مانده</h3><div class="side-c"><a href="{% url 'finance:payroll' %}" class="chip">صورت‌حساب‌ها</a></div></div>
-    <div style="padding:18px">
-      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px"><span>پرداخت‌شده: <b class="dep">{{ pay_paid|money }}</b></span><span>مانده: <b class="wd">{{ pay_remaining|money }}</b></span></div>
-      <div class="bar" style="height:10px"><i style="width:{% if pay_total %}{% widthratio pay_paid pay_total 100 %}{% else %}0{% endif %}%"></i></div>
-    </div>
+    <div class="card-h"><h3>حقوق — هزینه (تعهد) و پرداخت‌شده (از تراکنش)</h3><div class="side-c"><a href="{% url 'finance:payroll' %}" class="chip">صورت‌حساب‌ها</a></div></div>
+    <table>
+      <thead><tr><th>همکار</th><th>هزینه (تعهد)</th><th>پرداخت‌شده</th></tr></thead>
+      <tbody>
+        {% for r in salary_rows %}
+          <tr><td><i class="pdot" style="background:{{ r.color }};display:inline-block;margin-inline-end:6px"></i>{{ r.name }}</td>
+            <td class="num-c wd">{{ r.expense|money }}</td><td class="num-c dep">{{ r.paid|money }}</td></tr>
+        {% empty %}<tr><td colspan="3"><div class="empty" style="padding:16px">بابتِ حقوقی تعریف نشده</div></td></tr>{% endfor %}
+        {% if salary_rows %}<tr style="font-weight:700;border-top:2px solid var(--stroke)"><td>جمعِ کل حقوق</td><td class="num-c wd">{{ salary_total.expense|money }}</td><td class="num-c dep">{{ salary_total.paid|money }}</td></tr>{% endif %}
+      </tbody>
+    </table>
   </section>
 {% endblock %}

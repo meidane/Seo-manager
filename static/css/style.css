@@ -951,3 +951,10 @@ button:disabled, .btn:disabled{opacity:.6;cursor:not-allowed}
 /* دراپ‌داونِ غنی در نوارِ ویرایشِ گروهیِ تراکنش‌ها (چسبانِ پایین) → به‌جای پایین، بالا باز شود */
 #bulkbar{z-index:60}
 #bulkbar .rs-menu{top:auto;bottom:calc(100% + 6px)}
+
+/* بابتِ چندانتخابیِ درون‌جدولِ تراکنش‌ها */
+.txcat-wrap{display:flex;flex-wrap:wrap;gap:3px;align-items:center;min-width:130px}
+.txcat-chip{font-size:10px;padding:1px 6px;gap:3px;display:inline-flex;align-items:center;line-height:1.6}
+.txcat-x{cursor:pointer;opacity:.55;font-style:normal;font-size:11px}
+.txcat-x:hover{opacity:1;color:var(--danger)}
+.txcat-add{border:0;background:transparent;color:var(--text-dim);font-size:11px;width:54px;outline:none;font-family:inherit}
