@@ -243,6 +243,7 @@ class InvoiceListView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, Temp
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         g = self.request.GET
+        self.get_range(self.request)  # فقط برای پیکرِ بازه‌ی سراسری (فیلتر نمی‌کنیم)
         ctx.update(self.range_context())
         qs = (Invoice.objects.select_related('project').prefetch_related('lines'))
         # پیش‌فرض: همه‌ی فاکتورها (بدونِ فیلترِ تاریخ)؛ فقط اگر کاربر صریح بازه بدهد
