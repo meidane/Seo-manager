@@ -91,6 +91,16 @@ def get_columns(table, scope):
     return [by_key[k] for k in keys if k in by_key]
 
 
+def visible_task_columns(active_type_def_id=None):
+    """ستون‌های اضافیِ جدولِ تسک‌ها با قاعدهٔ «عمومی همیشه، سفارشیِ نوع فقط وقتی همان
+    نوع فیلتر شده». وگرنه اگر کاربر همهٔ فیلدهای سفارشیِ همهٔ انواع را در تنظیمات فعال کند،
+    جدول از ده‌ها ستونِ بی‌ربط شلوغ می‌شود (باگِ گزارش‌شده). `active_type_def_id` = نوعِ
+    فیلترشدهٔ جاری (یا None). منبعِ واحد — لیستِ تسک‌ها، لودِ تنبل و بردِ سئو از همین می‌خوانند."""
+    cols = get_columns(ColumnConfig.TASKS, ColumnConfig.PAGE)
+    tid = str(active_type_def_id) if active_type_def_id else ''
+    return [c for c in cols if (not c['key'].startswith('cf:')) or c['key'].split(':')[1] == tid]
+
+
 def cell_value(obj, col):
     """مقدارِ خامِ یک ستون برای یک ردیف (Task/Project/Colleague)."""
     key = col['key']

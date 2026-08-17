@@ -3,7 +3,7 @@
   <tr data-id="{{ t.id }}" {% if t.is_overdue %}class="overdue-l"{% endif %}>
     <td><i class="row-open" data-open-task="{{ t.id }}" title="باز کردن مودال">⤢</i></td>
     {% if can_edit_task %}
-    <td class="tcell"><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span><input class="tx-inline" data-f="title" value="{{ t.title }}" title="{{ t.title }}">{% if t.review_status == 'needs_fix' %} <span class="tag t-warn" data-fix-note="{{ t.id }}" style="cursor:pointer">⚠</span>{% endif %}</td>
+    <td class="tcell">{% if all_types %}<select class="tx-inline ttype-sel" data-f="type_def" title="نوع تسک" style="color:rgb({{ t.color_rgb }})">{% for td in all_types %}<option value="{{ td.id }}"{% if t.type_def_id == td.id %} selected{% endif %}>{{ td.name }}</option>{% endfor %}</select>{% else %}<span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span>{% endif %}<input class="tx-inline" data-f="title" value="{{ t.title }}" title="{{ t.title }}">{% if t.review_status == 'needs_fix' %} <span class="tag t-warn" data-fix-note="{{ t.id }}" style="cursor:pointer">⚠</span>{% endif %}</td>
     <td><select class="tx-inline rich-select" data-f="project">{% for p in all_projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if t.project_id == p.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></td>
     <td><select class="tx-inline rich-select" data-f="assignee"><option value="">—</option>{% for c in all_colleagues %}<option value="{{ c.id }}" data-color="{{ c.color }}"{% if c.avatar %} data-img="{{ c.avatar.url }}"{% endif %} {% if t.assignee_id == c.id %}selected{% endif %}>{{ c.full_name }}</option>{% endfor %}</select></td>
     <td><input class="tx-inline jdate" data-f="planned_date" dir="ltr" readonly value="{{ t.planned_date|jalali }}"></td>
@@ -26,7 +26,7 @@
       <span class="tval">{{ t.spent_minutes|hours }}</span>
       {% if can_edit_time %}<i class="tedit" title="ویرایش زمان (مدیر)">✏️</i>{% endif %}
     </td>
-    {% for c in extra_columns %}<td>{% column_cell t c %}</td>{% endfor %}
+    {% for c in extra_columns %}<td class="dcell" data-open-task="{{ t.id }}" title="کلیک برای باز کردن/ویرایش">{% column_cell t c %}</td>{% endfor %}
     <td class="chk-col">{% if can_edit_task %}<input type="checkbox" class="row-check" data-id="{{ t.id }}">{% endif %}</td>
   </tr>
 {% endfor %}

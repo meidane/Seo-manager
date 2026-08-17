@@ -71,12 +71,15 @@ class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
         # همهٔ پروژه‌ها/همکاران برای دراپ‌داون‌های ویرایشِ زندهٔ جدول (نه فقط فعال)
         ctx['all_projects'] = visible_projects.order_by('status', 'name')
         ctx['all_colleagues'] = Colleague.objects.order_by('status', 'full_name')
-        # انواعِ فعال (built-in عمومی + سفارشی) برای دراپ‌داونِ فیلتر «نوع»
+        # انواعِ فعال (built-in عمومی + سفارشی) برای دراپ‌داونِ فیلتر «نوع» + ویرایشِ زندهٔ نوع در ردیف
         ctx['task_types'] = TaskTypeDef.objects.filter(is_active=True)
+        ctx['all_types'] = ctx['task_types']
         ctx['status_choices'] = Task.STATUS_CHOICES
         ctx['report_months'] = Task.REPORT_MONTH_CHOICES
-        # ستون‌های اضافیِ قابل‌سفارشی‌سازی (بعد از ستون‌های ثابت جدول) — /settings/columns/
-        ctx['extra_columns'] = get_columns(ColumnConfig.TASKS, ColumnConfig.PAGE)
+        # ستون‌های اضافیِ قابل‌سفارشی‌سازی (بعد از ستون‌های ثابت جدول) — /settings/columns/.
+        # عمومی همیشه؛ فیلدهای سفارشیِ نوع فقط وقتی همان نوع فیلتر شده (وگرنه جدول شلوغ می‌شود).
+        from core.columns import visible_task_columns
+        ctx['extra_columns'] = visible_task_columns(filters.get('type_def'))
         ctx['page_title'] = 'تسک‌ها'
         ctx['filters'] = filters
         # ویرایشِ دستیِ عددِ زمانِ دیگران: پرمیشنِ edit_time (تنظیم‌شدنی در نقش‌ها)

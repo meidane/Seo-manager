@@ -180,17 +180,7 @@
             {% for c in seo_cols %}<th>{{ c.label }}</th>{% endfor %}
           </tr></thead>
           <tbody data-year="{{ s.year }}" data-month="{{ s.month }}">
-            {% for t in s.tasks %}
-            <tr data-id="{{ t.id }}" class="seo-row" {% if can_edit_task %}draggable="true"{% endif %}>
-              <td class="seo-drag" title="جابه‌جایی">⠿</td>
-              <td><i class="row-open" data-open-task="{{ t.id }}" title="باز کردن">⤢</i></td>
-              <td class="edit tcell"><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span>{% if can_edit_task %}<input class="tx-inline" data-f="title" value="{{ t.title }}">{% else %}{{ t.title }}{% endif %}</td>
-              <td class="edit">{% if can_edit_task %}<select class="tx-inline rich-select" data-f="assignee"><option value="">—</option>{% for c in all_colleagues %}<option value="{{ c.id }}" data-color="{{ c.color }}"{% if c.avatar %} data-img="{{ c.avatar.url }}"{% endif %} {% if t.assignee_id == c.id %}selected{% endif %}>{{ c.full_name }}</option>{% endfor %}</select>{% else %}{{ t.assignee.full_name|default:"—" }}{% endif %}</td>
-              <td class="edit"><input class="tx-inline jdate" data-f="planned_date" dir="ltr" readonly value="{{ t.planned_date|jalali }}" placeholder="ایده"></td>
-              <td class="edit">{% include "tasks/_status_select.html" %}</td>
-              {% for c in seo_cols %}<td>{% column_cell t c %}</td>{% endfor %}
-            </tr>
-            {% endfor %}
+            {% for t in s.tasks %}{% include "projects/_seo_row.html" %}{% endfor %}
             {% if can_edit_task %}
             <tr class="seo-addrow">
               <td></td><td class="zero">＋</td>
@@ -592,16 +582,21 @@
     try{ await App.fetchJSON(`/projects/api/${pid}/seo/section/`, {method:'POST', body:{year, month}}); reloadTasks(); }catch(_){}
   });
 
-  // افزودنِ ردیف (Enter روی input) — «ایده»، فقط عنوان
+  // افزودنِ ردیف (Enter روی input) — «ایده»، فقط عنوان — بدونِ رفرش، درجِ زندهٔ ردیف
   board.addEventListener('keydown', async e=>{
     const inp = e.target.closest('.seo-newtask'); if(!inp || e.key!=='Enter') return;
     e.preventDefault();
     const title = inp.value.trim(); if(!title) return;
     const type = new URLSearchParams(location.search).get('seo_type') || '';
     try{
-      await App.fetchJSON(`/projects/api/${pid}/seo/task/`, {method:'POST',
+      const r = await App.fetchJSON(`/projects/api/${pid}/seo/task/`, {method:'POST',
         body:{title, year:+inp.dataset.year, month:+inp.dataset.month, type}});
-      reloadTasks();
+      const addRow = inp.closest('tr');                    // ردیفِ «افزودن»
+      addRow.insertAdjacentHTML('beforebegin', r.html);    // ردیفِ جدید قبلِ آن
+      const newRow = addRow.previousElementSibling;
+      if(window.RichSelect) RichSelect.init(newRow);       // دراپ‌داونِ غنیِ ردیفِ تازه (دیت‌پیکر delegated است)
+      inp.value=''; inp.focus();
+      App.toast('اضافه شد','ok');
     }catch(_){}
   });
 
