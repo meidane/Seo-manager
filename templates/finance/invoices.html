@@ -15,6 +15,7 @@
 
   <section class="card glass">
     {% if invoices %}
+      <div class="tscroll">
       <table>
         <thead><tr><th>شماره</th><th>تاریخ ثبت</th><th>پروژه</th><th>توضیحات</th><th>تاریخ پرداخت</th><th>جمع کل</th><th>مانده‌ی پروژه</th><th></th></tr></thead>
         <tbody>
@@ -34,10 +35,13 @@
           {% endfor %}
         </tbody>
       </table>
+      </div>
     {% else %}
-      <div class="empty"><div class="ico">🧾</div><h4>فاکتوری در این بازه نیست</h4><a href="{% url 'finance:invoice_new' %}" class="btn btn-p" style="margin-top:12px">＋ افزودن فاکتور</a></div>
+      <div class="empty"><div class="ico">🧾</div><h4>فاکتوری نیست</h4><a href="{% url 'finance:invoice_new' %}" class="btn btn-p" style="margin-top:12px">＋ افزودن فاکتور</a></div>
     {% endif %}
   </section>
+
+  {% include "components/_pagination.html" %}
 {% endblock %}
 
 {% block scripts %}

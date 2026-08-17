@@ -49,9 +49,16 @@ class BankAccount(TimeStampedModel):
 class Category(models.Model):
     """«بابت» — قابل‌گسترش توسط کاربر. مثلاً سئو، طراحی سایت، فنی، تولید محتوا، حقوق."""
 
+    INCOME_TX = 'transaction'
+    INCOME_INVOICE = 'invoice'
+    INCOME_CHOICES = [(INCOME_TX, 'از تراکنش‌ها'), (INCOME_INVOICE, 'از فاکتورها')]
+
     name = models.CharField('عنوان بابت', max_length=80)
     color = models.CharField('رنگ', max_length=7, default='#8FA0B8')
     is_salary = models.BooleanField('مربوط به حقوق', default=False)
+    # درآمدِ این بابت در داشبورد از کجا خوانده شود (هزینه همیشه از تراکنش‌هاست)
+    income_source = models.CharField('منبعِ درآمد', max_length=12,
+                                     choices=INCOME_CHOICES, default=INCOME_TX)
     # بابتِ حقوقِ یک همکارِ مشخص (خودکار ساخته می‌شود؛ برای محاسبه‌ی مانده‌ی حساب با او)
     colleague = models.ForeignKey('colleagues.Colleague', verbose_name='همکار (حقوق)', on_delete=models.SET_NULL, null=True, blank=True, related_name='salary_categories')
     order = models.PositiveIntegerField('ترتیب', default=0)
@@ -87,7 +94,9 @@ class Transaction(TimeStampedModel):
 
     # سه ستونی که خودمان پر می‌کنیم
     project = models.ForeignKey('projects.Project', verbose_name='پروژه', on_delete=models.SET_NULL, null=True, blank=True, related_name='transactions')
-    category = models.ForeignKey(Category, verbose_name='بابت', on_delete=models.SET_NULL, null=True, blank=True, related_name='transactions')
+    # بابتِ چندانتخابی: یک تراکنش می‌تواند به چند بابت بخورد (مثلاً «حقوق امیر» + «سئو»)؛
+    # مبلغ یک‌بار ثبت است، فقط در چند بابت نمایش داده می‌شود (جمعِ کل دوبار نمی‌شمارد).
+    categories = models.ManyToManyField(Category, verbose_name='بابت‌ها', blank=True, related_name='transactions')
     note = models.CharField('توضیحات', max_length=255, blank=True)
 
     import_hash = models.CharField('هش تشخیص تکراری', max_length=64, db_index=True, blank=True)
@@ -105,7 +114,7 @@ class Transaction(TimeStampedModel):
         base_manager_name = 'all_objects'
         indexes = [
             models.Index(fields=['bank_account', 'date']),
-            models.Index(fields=['project', 'category']),
+            models.Index(fields=['project', 'date']),
         ]
 
     def save(self, *args, **kwargs):

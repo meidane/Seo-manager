@@ -26,7 +26,9 @@
     <div class="card-h"><h3>بابت‌ها (قابل‌گسترش)</h3><div class="side-c"><button class="btn btn-sm btn-p" id="add-cat">＋ بابت جدید</button></div></div>
     <div style="padding:14px;display:flex;flex-wrap:wrap;gap:8px" id="cat-list">
       {% for c in categories %}
-        <span class="tag" data-id="{{ c.id }}" style="background:color-mix(in srgb,{{ c.color }} 18%,transparent);color:{{ c.color }};padding:6px 12px">{{ c.name }}{% if c.is_salary %} 💰{% endif %} <b class="cat-del" data-id="{{ c.id }}" style="cursor:pointer;opacity:.6">×</b></span>
+        <span class="tag cat-chip" data-id="{{ c.id }}" data-name="{{ c.name }}" data-color="{{ c.color }}" data-salary="{{ c.is_salary|yesno:'1,0' }}" data-income="{{ c.income_source }}"
+              style="background:color-mix(in srgb,{{ c.color }} 18%,transparent);color:{{ c.color }};padding:6px 12px;cursor:pointer" title="{% if c.is_salary %}حقوق · {% endif %}درآمد {% if c.income_source == 'invoice' %}از فاکتور{% else %}از تراکنش{% endif %} — کلیک برای ویرایش">
+          {{ c.name }}{% if c.is_salary %} 💰{% endif %}{% if c.income_source == 'invoice' %} 🧾{% endif %} <b class="cat-del" data-id="{{ c.id }}" style="cursor:pointer;opacity:.6">×</b></span>
       {% empty %}<span class="zero">بابتی نیست</span>{% endfor %}
     </div>
   </section>
@@ -73,15 +75,39 @@ document.addEventListener('click',async e=>{
   if(card){ location.href=TX_URL+'?bank='+card.dataset.id; }
 });
 
-document.getElementById('add-cat').onclick=()=>{
-  App.openModal(`<div class="modal-h"><h3>بابت جدید</h3><button class="x" onclick="App.closeModal()">×</button></div>
-    <div class="modal-b"><div class="field"><label>عنوان</label><input class="input" id="c-name" placeholder="مثلاً تبلیغات"></div>
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="c-sal" style="width:auto"> مربوط به حقوق است</label></div>
+// مودالِ مشترکِ ساخت/ویرایشِ بابت
+function catModal(data){
+  const d=data||{}; const esc=s=>(s||'').replace(/"/g,'&quot;');
+  App.openModal(`<div class="modal-h"><h3>${data?'ویرایش بابت':'بابت جدید'}</h3><button class="x" onclick="App.closeModal()">×</button></div>
+    <div class="modal-b">
+      <div class="grid2">
+        <div class="field"><label>عنوان</label><input class="input" id="c-name" placeholder="مثلاً تبلیغات" value="${esc(d.name)}"></div>
+        <div class="field"><label>رنگ</label><input type="color" id="c-color" value="${d.color||'#8FA0B8'}" style="width:100%;height:40px;padding:3px;background:rgba(255,255,255,.04);border:1px solid var(--stroke-soft);border-radius:var(--r-sm)"></div>
+      </div>
+      <div class="field"><label>منبعِ درآمد در داشبورد <span style="color:var(--text-faint);font-size:11px">(هزینه همیشه از تراکنش‌هاست)</span></label>
+        <select id="c-income">
+          <option value="transaction" ${d.income==='invoice'?'':'selected'}>از تراکنش‌ها (واریزی‌ها)</option>
+          <option value="invoice" ${d.income==='invoice'?'selected':''}>از فاکتورها</option>
+        </select></div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px"><input type="checkbox" id="c-sal" ${d.salary==='1'?'checked':''} style="width:auto"> مربوط به حقوق است</label>
+    </div>
     <div class="modal-f"><button class="btn btn-p" id="c-save">ذخیره</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
   document.getElementById('c-save').onclick=async()=>{
     const name=document.getElementById('c-name').value.trim(); if(!name){App.toast('عنوان لازم است','warn');return;}
-    try{ await App.fetchJSON("{% url 'finance:category_create' %}",{method:'POST',body:{name,is_salary:document.getElementById('c-sal').checked}}); location.reload(); }catch(_){}
+    const body={name, color:document.getElementById('c-color').value, income_source:document.getElementById('c-income').value, is_salary:document.getElementById('c-sal').checked};
+    try{
+      if(data){ await App.fetchJSON(`/finance/api/categories/${d.id}/`,{method:'PATCH',body}); }
+      else{ await App.fetchJSON("{% url 'finance:category_create' %}",{method:'POST',body}); }
+      location.reload();
+    }catch(_){}
   };
-};
+}
+document.getElementById('add-cat').onclick=()=>catModal(null);
+// کلیک روی چیپِ بابت (نه ×) → ویرایش
+document.getElementById('cat-list').addEventListener('click', e=>{
+  if(e.target.closest('.cat-del')) return;   // × جداگانه هندل می‌شود
+  const chip=e.target.closest('.cat-chip'); if(!chip) return;
+  catModal({id:chip.dataset.id, name:chip.dataset.name, color:chip.dataset.color, salary:chip.dataset.salary, income:chip.dataset.income});
+});
 </script>
 {% endblock %}

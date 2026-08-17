@@ -17,6 +17,7 @@
   <section class="card glass">
     <div class="card-h"><h3>افراد و عملکردشان در بازه</h3><a href="{% url 'core:columns' %}" class="mini" title="سفارشی‌سازی ستون‌ها">⚙ ستون‌ها</a></div>
     {% if colleagues %}
+      <div class="tscroll">
       <table>
         <thead><tr><th>فرد</th>{% for c in columns %}<th>{{ c.label }}</th>{% endfor %}<th>روند 14 روز</th><th>دسترسی</th><th>وضعیت</th></tr></thead>
         <tbody>
@@ -38,6 +39,7 @@
           {% endfor %}
         </tbody>
       </table>
+      </div>
     {% else %}
       <div class="empty"><div class="ico">◉</div><h4>فردی یافت نشد</h4>
         {% if can_manage_colleagues %}<button type="button" class="btn btn-p" id="new-user-btn-empty" style="margin-top:12px">＋ کاربر جدید</button>{% endif %}

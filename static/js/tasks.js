@@ -83,7 +83,10 @@
         ${field('status', 'وضعیت', `<select id="f-status">${statusOptions(t.status, needsReviewDefault)}</select>`)}
         ${field('estimate_minutes', 'تخمین زمان (دقیقه)', `<input id="f-estimate_minutes" class="input" type="number" dir="ltr" placeholder="۶۰" value="${t.estimate_minutes || ''}">`)}
       </div>
-      ${field('report_month', 'ماه گزارش', `<select id="f-report_month"><option value="">— بدون ماه —</option>${(cfg.reportMonths || []).map(([v, l]) => opt(v, l, t.report_month)).join('')}</select>`)}
+      <div class="grid2">
+        ${field('report_month', 'ماه گزارش', `<select id="f-report_month"><option value="">— بدون ماه —</option>${(cfg.reportMonths || []).map(([v, l]) => opt(v, l, t.report_month)).join('')}</select>`)}
+        ${field('report_year', 'سالِ گزارش', `<input id="f-report_year" class="input" type="number" dir="ltr" placeholder="${cfg.reportYear || ''}" value="${t.report_year || ''}">`)}
+      </div>
 
       ${recurBarHtml(t)}
       ${t.id ? '<div id="kpi-box" style="display:none;margin-top:8px"></div>' : ''}
@@ -202,7 +205,10 @@
 
   // ── چیپ‌های کلمه/برچسب (Enter یا دکمه‌ی + اضافه می‌کند؛ ویرگول خودکار جدا می‌شود) ──
   function tagChip(word) {
-    return `<span class="tag t-mute tagbox-chip">${esc(word)}<i class="tagbox-x" data-w="${esc(word)}">×</i></span>`;
+    // data-w روی خودِ چیپ (span) — چون collect()/dedup از `.tagbox-chip`.dataset.w می‌خوانند،
+    // نه از آیکنِ ×. (باگِ قبلی: data-w روی <i> بود → collect همیشه undefined→[None] ذخیره می‌کرد
+    // و بعدِ ذخیره چیپِ خالی فقط با × می‌ماند.)
+    return `<span class="tag t-mute tagbox-chip" data-w="${esc(word)}">${esc(word)}<i class="tagbox-x">×</i></span>`;
   }
   function tagboxHtml(key, words, placeholder) {
     const chips = (words || []).map(tagChip).join('');
@@ -282,6 +288,7 @@
       needs_review: document.getElementById('f-needs-review').checked,
       estimate_minutes: g('f-estimate_minutes'), description: g('f-description'),
       report_month: g('f-report_month'),
+      report_year: g('f-report_year'),
     };
     if (ty && ty.fields && ty.fields.length) {
       const custom = {};

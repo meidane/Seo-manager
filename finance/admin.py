@@ -16,8 +16,9 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Transaction)
 class TxAdmin(admin.ModelAdmin):
-    list_display = ('date', 'description', 'deposit', 'withdrawal', 'bank_account', 'project', 'category')
-    list_filter = ('bank_account', 'category')
+    list_display = ('date', 'description', 'deposit', 'withdrawal', 'bank_account', 'project')
+    list_filter = ('bank_account', 'categories')
+    filter_horizontal = ('categories',)
     date_hierarchy = 'date'
 
 

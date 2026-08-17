@@ -35,6 +35,17 @@
       </div>
     </div>
 
+    {# نوع: واریز/برداشت #}
+    <select name="flow" onchange="this.form.submit()">
+      <option value="">واریز و برداشت</option>
+      <option value="deposit" {% if filters.flow == 'deposit' %}selected{% endif %}>فقط واریز</option>
+      <option value="withdrawal" {% if filters.flow == 'withdrawal' %}selected{% endif %}>فقط برداشت</option>
+    </select>
+    {# بازه‌ی مبلغ #}
+    <input type="text" name="amt_min" value="{{ filters.amt_min }}" placeholder="از مبلغ" class="input money" dir="ltr" style="max-width:120px">
+    <input type="text" name="amt_max" value="{{ filters.amt_max }}" placeholder="تا مبلغ" class="input money" dir="ltr" style="max-width:120px">
+    <button type="submit" class="btn btn-sm">اعمال</button>
+
     <a href="?unassigned=1" class="chip {% if filters.unassigned == '1' %}on{% endif %}">فقط بدون پروژه/بابت</a>
   </form>
 
@@ -57,7 +68,7 @@
             <td class="num {% if t.withdrawal %}wd{% endif %}">{% if t.withdrawal %}{{ t.withdrawal|money }}{% else %}—{% endif %}</td>
             <td class="num">{% if t.balance != None %}{{ t.balance|money }}{% else %}—{% endif %}</td>
             <td class="edit"><select class="tx-f rich-select" data-f="project"><option value="">—</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if t.project_id == p.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></td>
-            <td class="edit"><input class="tx-cat" list="tx-cats-dl" value="{{ t.category.name|default:'' }}" placeholder="—" autocomplete="off"></td>
+            <td class="edit txcat-cell" data-id="{{ t.id }}"><div class="txcat-wrap">{% for c in t.categories.all %}<span class="tag txcat-chip" data-cid="{{ c.id }}" style="background:color-mix(in srgb,{{ c.color }} 18%,transparent);color:{{ c.color }}">{{ c.name }}<i class="txcat-x">×</i></span>{% endfor %}<input class="txcat-add" list="tx-cats-dl" placeholder="＋بابت" autocomplete="off"></div></td>
             <td class="edit"><input class="tx-f" data-f="note" value="{{ t.note }}" placeholder="—"></td>
           </tr>
         {% endfor %}
@@ -78,7 +89,7 @@
   <div class="glass" id="bulkbar" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);gap:8px;align-items:center;padding:10px 16px;z-index:30">
     <span style="font-size:12.5px;color:var(--text-dim)"><b id="bulk-count">0</b> انتخاب شده</span><span style="width:1px;height:20px;background:var(--stroke-soft)"></span>
     <select id="bulk-project" class="rich-select"><option value="">تعیین پروژه…</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %}>{{ p.name }}</option>{% endfor %}</select>
-    <select id="bulk-category" class="rich-select"><option value="">تعیین بابت…</option>{% for c in categories %}<option value="{{ c.id }}" data-color="{{ c.color }}">{{ c.name }}</option>{% endfor %}</select>
+    <select id="bulk-category" class="rich-select"><option value="">＋ افزودن بابت…</option>{% for c in categories %}<option value="{{ c.id }}" data-color="{{ c.color }}">{{ c.name }}</option>{% endfor %}</select>
     <button class="btn btn-sm" style="color:var(--danger)" id="bulk-del">حذف</button>
   </div>
 {% endblock %}
@@ -99,8 +110,9 @@
     document.addEventListener('click',e=>{ if(!e.target.closest('.ms')) cBox.classList.remove('open'); });
   }
 
-  // نگاشتِ نامِ بابت → id (برای جستجوی درون‌جدولی)
-  const CAT_MAP = { {% for c in categories %}"{{ c.name|escapejs }}":"{{ c.id }}"{% if not forloop.last %},{% endif %}{% endfor %} };
+  // اطلاعاتِ بابت‌ها (id → {name,color}) + نگاشتِ نام→id برای datalist
+  const CATS = { {% for c in categories %}"{{ c.id }}":{name:"{{ c.name|escapejs }}",color:"{{ c.color }}"}{% if not forloop.last %},{% endif %}{% endfor %} };
+  const CAT_BY_NAME = {}; Object.keys(CATS).forEach(id=>{ CAT_BY_NAME[CATS[id].name]=id; });
 
   // ذخیره + نمایشِ هشدارِ نرمِ حسابداری (بدونِ بلاک)
   async function txSave(id, body){
@@ -110,16 +122,36 @@
   }
 
   const sheet=document.getElementById('tx-sheet'); if(!sheet) return;
+
+  // ── بابتِ چندانتخابی (چیپ‌ها) ──
+  const chipIds = cell => [...cell.querySelectorAll('.txcat-chip')].map(c=>c.dataset.cid);
+  async function saveCats(cell){ try{ await txSave(cell.dataset.id,{categories:chipIds(cell)}); }catch(_){} }
+  function addChip(cell, cid){
+    if(!CATS[cid] || chipIds(cell).includes(cid)) return false;
+    const info=CATS[cid];
+    const s=document.createElement('span'); s.className='tag txcat-chip'; s.dataset.cid=cid;
+    s.style.cssText=`background:color-mix(in srgb,${info.color} 18%,transparent);color:${info.color}`;
+    s.innerHTML=`${info.name}<i class="txcat-x">×</i>`;
+    cell.querySelector('.txcat-add').insertAdjacentElement('beforebegin', s);
+    return true;
+  }
+  sheet.addEventListener('keydown', e=>{
+    if(e.key!=='Enter' || !e.target.matches('.txcat-add')) return;
+    e.preventDefault();
+    const inp=e.target, cell=inp.closest('.txcat-cell'), val=inp.value.trim();
+    if(!val){ const note=cell.closest('tr').querySelector('.tx-f[data-f="note"]'); if(note)note.focus(); return; }
+    const cid=CAT_BY_NAME[val];
+    if(!cid){ App.toast('بابت پیدا نشد','warn'); return; }
+    if(addChip(cell, cid)) saveCats(cell);
+    inp.value='';
+  });
+  sheet.addEventListener('click', e=>{
+    const x=e.target.closest('.txcat-x'); if(!x) return;
+    const cell=x.closest('.txcat-cell'); x.closest('.txcat-chip').remove(); saveCats(cell);
+  });
+
   // ویرایش inline: پروژه (select) و توضیحات (input)
   sheet.addEventListener('change', async e=>{
-    // بابتِ قابلِ‌جستجو (datalist) — نام را به id تبدیل کن
-    const cat=e.target.closest('.tx-cat');
-    if(cat){ const id=e.target.closest('tr').dataset.id; const val=cat.value.trim();
-      const cid = val==='' ? '' : (CAT_MAP[val]||null);
-      if(cid===null){ App.toast('بابت پیدا نشد','warn'); return; }
-      try{ await txSave(id,{category:cid}); }catch(_){}
-      return;
-    }
     const el=e.target.closest('.tx-f'); if(!el) return;
     const id=el.closest('tr').dataset.id;
     try{ await txSave(id,{[el.dataset.f]:el.value}); }catch(_){}
@@ -129,16 +161,12 @@
     const id=el.closest('tr').dataset.id;
     try{ await App.fetchJSON(`/finance/api/tx/${id}/`,{method:'PATCH',body:{note:el.value}}); }catch(_){}
   }, true);
-  // Enter = ستونِ بعد (بابت → توضیحات)؛ روی آخرین ستون → ردیفِ بعد
-  const TX_EDIT=['.tx-cat','.tx-f[data-f="note"]'];
+  // Enter روی «توضیحات» → بابتِ ردیفِ بعد (بابت→توضیحات را هندلرِ .txcat-add بالا مدیریت می‌کند)
   sheet.addEventListener('keydown', e=>{
-    if(e.key!=='Enter') return;
-    const idx=TX_EDIT.findIndex(s=>e.target.matches && e.target.matches(s));
-    if(idx<0) return;
+    if(e.key!=='Enter' || !e.target.matches('.tx-f[data-f="note"]')) return;
     e.preventDefault();
-    const tr=e.target.closest('tr');
-    if(idx<TX_EDIT.length-1){ const nx=tr.querySelector(TX_EDIT[idx+1]); if(nx){nx.focus(); nx.select&&nx.select();} }
-    else { const ntr=tr.nextElementSibling; if(ntr){ const f=ntr.querySelector(TX_EDIT[0]); if(f){f.focus(); f.select&&f.select();} } }
+    const ntr=e.target.closest('tr').nextElementSibling;
+    if(ntr){ const f=ntr.querySelector('.txcat-add'); if(f) f.focus(); }
   });
   // انتخاب و گروهی
   const bar=document.getElementById('bulkbar');
@@ -147,6 +175,19 @@
   sheet.addEventListener('change', e=>{
     if(e.target.id==='check-all'){ sheet.querySelectorAll('.row-check').forEach(c=>c.checked=e.target.checked); refresh(); }
     else if(e.target.classList.contains('row-check')) refresh();
+  });
+  // شیفت-کلیک: انتخابِ همه‌ی چک‌باکس‌های بینِ آخرین کلیک و کلیکِ فعلی
+  let lastIdx=null;
+  sheet.addEventListener('click', e=>{
+    const cb=e.target.closest('.row-check'); if(!cb) return;
+    const boxes=[...sheet.querySelectorAll('.row-check')];
+    const idx=boxes.indexOf(cb);
+    if(e.shiftKey && lastIdx!==null && lastIdx!==idx){
+      const a=Math.min(lastIdx,idx), b=Math.max(lastIdx,idx);
+      for(let i=a;i<=b;i++) boxes[i].checked=cb.checked;
+      refresh();
+    }
+    lastIdx=idx;
   });
   async function bulk(action, extra){ const ids=selected(); if(!ids.length)return;
     try{ await App.fetchJSON('/finance/api/tx/bulk/',{method:'POST',body:Object.assign({ids,action},extra)}); App.toast('انجام شد','ok'); setTimeout(()=>location.reload(),300); }catch(_){} }

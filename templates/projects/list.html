@@ -20,7 +20,7 @@
       </div>
     </div>
     {% if projects %}
-      <div style="overflow-x:auto">
+      <div class="tscroll">
       <table style="min-width:920px" id="proj-table" class="rm-on">
         <thead><tr>
           <th>پروژه</th>{% for c in columns %}<th>{{ c.label }}</th>{% endfor %}
@@ -32,9 +32,9 @@
               {% for c in columns %}<td>{% column_cell p c %}</td>{% endfor %}
             </tr>
             {% if not p.is_personal %}{% with pr=month_rows|dictkey:p.id %}
-            {% for m in month_meta %}{% with mr=pr|dictkey:m.0 %}
-              <tr class="rmonth-row" onclick="location.href='{% url 'tasks:list' %}?project={{ p.id }}&report_month={{ m.0 }}&assignee='" title="مشاهده‌ی تسک‌های {{ m.1 }} در صفحه‌ی تسک‌ها">
-                <td><span class="rm-label">↳ {{ m.1 }} <span class="rm-tag">{{ m.2 }}</span></span></td>
+            {% for m in month_meta %}{% with mr=pr|dictkey:m.key %}
+              <tr class="rmonth-row" onclick="location.href='{% url 'tasks:list' %}?project={{ p.id }}&report_month={{ m.month }}&report_year={{ m.year }}&assignee='" title="مشاهده‌ی تسک‌های {{ m.label }} در صفحه‌ی تسک‌ها">
+                <td><span class="rm-label">↳ {{ m.label }} <span class="rm-tag">{{ m.tag }}</span></span></td>
                 {% for c in columns %}<td>{% column_cell mr c %}</td>{% endfor %}
               </tr>
             {% endwith %}{% endfor %}

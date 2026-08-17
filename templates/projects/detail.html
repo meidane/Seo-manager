@@ -76,7 +76,7 @@
     <div class="card-h"><h3>به تفکیک ماهِ گزارش</h3></div>
     <div style="padding:12px 14px;display:flex;flex-wrap:wrap;gap:10px">
       {% for m in month_breakdown %}
-        <a href="{% url 'tasks:list' %}?project={{ project.pk }}&report_month={{ m.num }}&assignee=" class="month-card" title="مشاهده‌ی تسک‌های {{ m.label }}">
+        <a href="{% url 'tasks:list' %}?project={{ project.pk }}&report_month={{ m.num }}{% if m.year %}&report_year={{ m.year }}{% endif %}&assignee=" class="month-card" title="مشاهده‌ی تسک‌های {{ m.label }}">
           <div class="mc-name">{{ m.label }}</div>
           <div class="mc-stat"><b>{{ m.done|fa_digits }}</b> / {{ m.total|fa_digits }} انجام‌شده</div>
         </a>
@@ -114,6 +114,7 @@
     <div class="card-h"><h3>دسترسی‌ها</h3>
       <div class="side-c"><button class="btn btn-sm btn-p" id="add-cred">＋ افزودن دسترسی</button></div>
     </div>
+    <div class="tscroll">
     <table id="cred-table">
       <thead><tr><th>عنوان</th><th>آدرس</th><th>نام کاربری</th><th>پسورد</th><th></th></tr></thead>
       <tbody>
@@ -132,6 +133,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
     {% if not credentials %}<div class="empty" id="cred-empty"><div class="ico">🔑</div><h4>دسترسی‌ای ثبت نشده</h4></div>{% endif %}
   </section>
   {% endif %}
@@ -139,6 +141,7 @@
   {# تسک‌ها #}
   <section class="card glass tab-panel" data-panel="tasks">
     <div class="card-h"><h3>تسک‌های پروژه در بازه</h3><div class="side-c"><a href="{% url 'tasks:list' %}?project={{ project.pk }}&assignee=" class="btn btn-sm">مدیریت کامل ↗</a></div></div>
+    <div class="tscroll">
     <table>
       <thead><tr><th>عنوان</th><th>مسئول</th><th>تاریخ برنامه</th><th>وضعیت</th><th>🔗</th></tr></thead>
       <tbody>{% for t in task_rows %}<tr>
@@ -148,6 +151,7 @@
         <td>{% if t.published_url %}<a class="lnk" href="{{ t.published_url }}" target="_blank" rel="noopener">↗</a>{% endif %}</td>
       </tr>{% empty %}<tr><td colspan="5" class="zero" style="padding:24px;text-align:center">تسکی در این بازه نیست</td></tr>{% endfor %}</tbody>
     </table>
+    </div>
   </section>
   {# کلمات کلیدی — ردیابیِ رتبه (فقط اگر پروژه فعالش کرده) #}
   {% if project.track_keyword_rank %}

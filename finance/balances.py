@@ -56,8 +56,8 @@ def salary_balances(colleague_ids):
     owed = {r['payroll__colleague_id']: r['s'] or 0 for r in PayrollItem.objects
             .filter(payroll__colleague_id__in=ids).values('payroll__colleague_id')
             .annotate(s=Sum('amount'))}
-    paid = {r['category__colleague_id']: r['s'] or 0 for r in Transaction.objects
-            .filter(category__colleague_id__in=ids).values('category__colleague_id')
+    paid = {r['categories__colleague_id']: r['s'] or 0 for r in Transaction.objects
+            .filter(categories__colleague_id__in=ids).values('categories__colleague_id')
             .annotate(s=Sum('withdrawal'))}
     return {cid: int(owed.get(cid, 0)) - int(paid.get(cid, 0)) for cid in ids}
 

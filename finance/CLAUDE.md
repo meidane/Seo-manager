@@ -6,14 +6,22 @@
 ## مدل‌ها
 - **BankAccount** — `name, bank, color, card_number, initial_balance, is_active`.
   `balance` = اولیه + Σواریز − Σبرداشت (property).
-- **Category** («بابت») — قابل‌گسترش: `name, color, is_salary, order, colleague(FK اختیاری)`. `seed_categories`.
+- **Category** («بابت») — قابل‌گسترش: `name, color, is_salary, order, colleague(FK اختیاری),
+  income_source`(`transaction`/`invoice` — درآمدِ داشبورد از کجا؛ هزینه همیشه از تراکنش). `seed_categories`.
+  ساخت/ویرایش/حذف از `/finance/banks/` (کلیک روی چیپِ بابت = ویرایش؛ `category_create`/`category_edit`).
   **بابتِ حقوقِ هر همکار خودکار است:** با ساختِ هر Colleague یک بابتِ «حقوق <نام>»
   (`is_salary=True`, `colleague=آن همکار`) ساخته می‌شود — `finance/signals.py`
   (`post_save` روی Colleague؛ نامش با تغییرِ نامِ همکار هم‌گام می‌شود). همکارانِ موجود با
   data-migration `0005` backfill شدند. منطق را جای دیگر تکرار نکن.
 - **Transaction** — `bank_account, date(میلادی), time, description, deposit, withdrawal,
-  balance, user_note` (از اکسل) + سه ستونِ ما: `project, category, note` + `import_hash` (dedup).
+  balance, user_note` (از اکسل) + ستون‌های ما: `project, categories(M2M), note` + `import_hash` (dedup).
   `make_hash(...)` برای تشخیص تکراری.
+  - **`categories` چندانتخابی است** (یک تراکنش می‌تواند چند بابت داشته باشد، مثلاً «حقوق امیر»+«سئو»).
+    **مبلغ یک‌بار ثبت است**: در تفکیکِ بابت در **چند ردیف نمایش** داده می‌شود، ولی جمعِ کل (Σ deposit/
+    withdrawal از خودِ تراکنش‌ها) **یک‌بار** می‌شمارد. فیلتر/گزارش با `categories__in` (+`.distinct()`).
+    ذخیره: `tx_edit` با کلیدِ `categories`(لیست id)؛ گروهی `set_category` بابت را **اضافه** می‌کند (نه جایگزین).
+    ویرایشِ درون‌جدولی = چیپ‌ها (`.txcat-*` در `transactions.html`؛ Enter=افزودن، ×=حذف).
+    مانده‌ی حقوق: `balances.py` با `categories__colleague_id`.
 - **Payroll / PayrollItem** — صورت‌حساب حقوق ماهانه؛ `total/remaining/status/month_name` (property).
   تبِ حقوق ستون‌ها: همکار · ماه(نام، `month_name`) · اجزا · جمع · **مانده‌ی «کل حساب با همکار»**
   (وضعیت حذف شد). مانده = Σ تعهدِ همه‌ی حقوق‌های همکار − Σ برداشتِ تراکنش‌های بابتِ حقوقِ او

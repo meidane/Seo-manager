@@ -189,8 +189,9 @@ label{font-size:12px;color:var(--text-dim);display:block;margin-bottom:6px}
 .field{margin-bottom:14px}
 
 /* ── کارت آمار ── */
-.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px}
-.stat{padding:15px 16px}
+.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.stat{padding:15px 16px;min-width:0}
+.stat .num{overflow:hidden;text-overflow:ellipsis}
 .stat .lab{font-size:12px;color:var(--text-dim);display:flex;align-items:center;gap:6px;margin-bottom:9px}
 .stat .dot{width:7px;height:7px;border-radius:50%;flex:none}
 .stat .num{font-size:29px;font-weight:700;line-height:1.15;letter-spacing:-.01em}
@@ -493,6 +494,8 @@ table.sheet tr:hover td{background:rgba(255,255,255,.02)}
   color:var(--text-dim);cursor:pointer;transition:var(--ease);font-size:14px}
 .nav-b:hover{background:var(--glass-hover);color:var(--text)}
 .grid7{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){.grid2{grid-template-columns:1fr}}
 .dow{padding:9px 4px;text-align:center;font-size:11.5px;color:var(--text-dim);border-bottom:1px solid var(--stroke-soft)}
 .dow.off{color:#FF9AAB;background:rgba(251,87,115,.045)}
 .cell{min-height:120px;min-width:0;padding:5px;border-inline-start:1px solid var(--stroke-soft);border-bottom:1px solid var(--stroke-soft);
@@ -623,7 +626,7 @@ body.nav-open .nav-backdrop{opacity:1;visibility:visible}
     transform:translateX(100%);transition:transform .3s cubic-bezier(.22,1,.36,1);
     box-shadow:-14px 0 44px rgba(0,0,0,.45)}
   body.nav-open .side{transform:translateX(0)}
-  .stats{grid-template-columns:repeat(2,1fr)}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .duo{grid-template-columns:1fr}
   .topbar{flex-wrap:wrap}
 }
@@ -631,7 +634,7 @@ body.nav-open .nav-backdrop{opacity:1;visibility:visible}
   .main{padding:12px 12px 40px}
   .topbar{padding:8px;gap:8px}
   .search{max-width:none;order:5;flex-basis:100%}
-  .stats{grid-template-columns:1fr 1fr;gap:8px}
+  .stats{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
   .stat .num{font-size:18px}
   .page-h{flex-wrap:wrap;gap:8px}
   .page-h h1{font-size:17px}
@@ -947,3 +950,90 @@ button:disabled, .btn:disabled{opacity:.6;cursor:not-allowed}
 /* نوارِ اکشنِ چسبانِ پایین (ذخیره/ذخیره‌وجدید) */
 .form-actions{position:sticky;bottom:0;display:flex;gap:8px;justify-content:flex-end;align-items:center;
   padding:12px 14px;margin-top:14px;border-radius:var(--r-sm);background:var(--glass);border:1px solid var(--stroke-soft);backdrop-filter:blur(8px);z-index:45}
+
+/* دراپ‌داونِ غنی در نوارِ ویرایشِ گروهیِ تراکنش‌ها (چسبانِ پایین) → به‌جای پایین، بالا باز شود */
+#bulkbar{z-index:60}
+#bulkbar .rs-menu{top:auto;bottom:calc(100% + 6px)}
+
+/* بابتِ چندانتخابیِ درون‌جدولِ تراکنش‌ها */
+.txcat-wrap{display:flex;flex-wrap:wrap;gap:3px;align-items:center;min-width:130px}
+.txcat-chip{font-size:10px;padding:1px 6px;gap:3px;display:inline-flex;align-items:center;line-height:1.6}
+.txcat-x{cursor:pointer;opacity:.55;font-style:normal;font-size:11px}
+.txcat-x:hover{opacity:1;color:var(--danger)}
+.txcat-add{border:0;background:transparent;color:var(--text-dim);font-size:11px;width:54px;outline:none;font-family:inherit}
+
+/* ═══ فاز ۱ (جزئی): جدولِ متراکم‌تر شبیه گوگل‌شیت + اسکرولِ واضح‌تر ═══ */
+/* جدول‌های معمولی: پدینگِ کمتر */
+tbody td{padding:7px 12px}
+thead th{padding:8px 12px}
+/* جدولِ شیت: اینپوت تمام‌عرضِ سلول (پدینگ داخلِ اینپوت، نه سلول) */
+table.sheet td.edit{padding:0}
+table.sheet td.edit select,table.sheet td.edit input,table.sheet td.edit .rs,table.sheet td.edit .txcat-wrap{width:100%;height:100%}
+table.sheet td.edit select,table.sheet td.edit input{padding:7px 9px;font-size:12.5px}
+table.sheet td:not(.edit){padding:6px 9px}
+/* نشانگرِ اسکرولِ افقی: محوشدگیِ لبه + اسکرول‌بارِ دیده‌شونده */
+.sheet-wrap{position:relative;scrollbar-width:thin}
+.sheet-wrap::after{content:"";position:absolute;top:0;bottom:0;left:0;width:28px;pointer-events:none;
+  background:linear-gradient(to right,color-mix(in srgb,var(--bg) 78%,transparent),transparent)}
+.sheet-wrap::-webkit-scrollbar{height:11px}
+.sheet-wrap::-webkit-scrollbar-thumb{background:var(--stroke);border-radius:99px;border:2px solid transparent;background-clip:padding-box}
+.sheet-wrap::-webkit-scrollbar-thumb:hover{background:var(--text-faint)}
+/* نوارِ تب/حسابداری: همیشه اسکرولِ افقی، هیچ‌وقت شکستِ صفحه */
+.fin-nav,.settings-nav{flex-wrap:nowrap;overflow-x:auto;max-width:100%;scrollbar-width:thin}
+.fin-nav a,.settings-nav a{white-space:nowrap;flex:none}
+.fin-nav::-webkit-scrollbar,.settings-nav::-webkit-scrollbar{height:0}
+
+/* ═══ فاز ۲: منوی جمع‌شونده (پیش‌فرض بسته/آیکنی) + بازشدن با هاور ═══ */
+@media(min-width:1101px){
+  .shell{grid-template-columns:64px 1fr}          /* فضای بیشتر برای جدول‌ها */
+  /* .side که position:fixed می‌شود از گریدِ فلو خارج است؛ پس .main باید صریح در ستونِ
+     دومِ (1fr) گرید بنشیند، وگرنه به‌اشتباه به ستونِ اولِ ۶۴px می‌افتد و له می‌شود. */
+  .main{grid-column:2}
+  .side{
+    position:fixed;top:0;right:0;height:100vh;width:64px;z-index:130;
+    overflow:hidden;padding:16px 10px;
+    transition:width .22s cubic-bezier(.22,1,.36,1),box-shadow .22s;
+  }
+  .side:hover{width:250px;overflow-y:auto;box-shadow:-12px 0 42px rgba(0,0,0,.42)}
+  /* حالتِ بسته: فقط آیکن‌های وسط‌چین (برچسبِ متنِ خالص با font-size:0 مخفی) */
+  .side .nav a,.side .nav-logout-form button{justify-content:center;gap:0;font-size:0;padding:12px 0}
+  .side .nav .ico{font-size:18px;width:auto;opacity:1}
+  .side .nav-label{font-size:0;padding:8px 0 2px}
+  .side .brand{justify-content:center;padding:4px 0 14px}
+  .side .brand>div{display:none}
+  .side .side-att{display:none}
+  .side .nav a.on::after{display:none}
+  /* حالتِ باز (هاور): همه‌چیز برمی‌گردد */
+  .side:hover .nav a,.side:hover .nav-logout-form button{justify-content:flex-start;gap:10px;font-size:13.5px;padding:9px 11px}
+  .side:hover .nav-label{font-size:10px;padding:14px 10px 6px}
+  .side:hover .brand{justify-content:flex-start;padding:6px 8px 22px}
+  .side:hover .brand>div{display:block}
+  .side:hover .side-att{display:flex}
+  .side:hover .nav a.on::after{display:block}
+}
+
+/* ═══ فاز ۳: نمای گوگل‌شیتِ سراسری + ریسپانسیوِ جدول‌ها ═══ */
+/* هر جدولِ سادهٔ داخلِ کارت (نه .sheet/.tsheet که خودشان خط‌کشی دارند) خط‌کشیِ
+   عمودیِ ملایمِ سلولی می‌گیرد تا کلِ سایت یکدست شبیهِ صفحه‌گسترده شود. */
+.card.glass table:not(.sheet):not(.tsheet) thead th,
+.card.glass table:not(.sheet):not(.tsheet) tbody td{border-inline:1px solid var(--stroke-soft)}
+.card.glass table:not(.sheet):not(.tsheet) tr>*:first-child{border-inline-start:0}
+.card.glass table:not(.sheet):not(.tsheet) tr>*:last-child{border-inline-end:0}
+.card.glass table:not(.sheet):not(.tsheet) tbody td{vertical-align:middle}
+.card.glass td.num-c,.card.glass td.num{font-variant-numeric:tabular-nums}
+/* wrapperِ اسکرولِ افقیِ داخلِ کارت — چون .card خودش overflow:hidden است، جدولِ
+   عریض روی موبایل بریده می‌شد و صفحه افقی می‌شد؛ این wrapper اسکرول را داخلِ خودش
+   نگه می‌دارد (قاعدهٔ طلایی: بدنهٔ صفحه هیچ‌وقت افقی اسکرول نشود). */
+.tscroll{overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+.tscroll::-webkit-scrollbar{height:11px}
+.tscroll::-webkit-scrollbar-track{background:transparent}
+.tscroll::-webkit-scrollbar-thumb{background:var(--stroke);border-radius:99px;border:2px solid transparent;background-clip:padding-box}
+.tscroll::-webkit-scrollbar-thumb:hover{background:var(--text-faint)}
+/* فیلترها/نوارها روی صفحهٔ کوچک بشکنند، نه سرریز کنند */
+.filters{flex-wrap:wrap}
+/* زیرتب‌های سینگلِ پروژه (جدول‌های رتبهٔ کلمه/لینک) خودشان اسکرولِ افقی بگیرند */
+.subtab-panel{overflow-x:auto;scrollbar-width:thin}
+@media(max-width:640px){
+  .card.glass table:not(.sheet):not(.tsheet){min-width:640px}  /* اسکرول به‌جای فشرده‌شدنِ ناخوانا */
+  .stats{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+}

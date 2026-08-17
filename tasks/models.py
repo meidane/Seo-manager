@@ -101,6 +101,7 @@ class Task(TimeStampedModel):
         (7, 'مهر'), (8, 'آبان'), (9, 'آذر'), (10, 'دی'), (11, 'بهمن'), (12, 'اسفند'),
     ]
     report_month = models.PositiveSmallIntegerField('ماه گزارش', null=True, blank=True, choices=REPORT_MONTH_CHOICES, db_index=True)
+    report_year = models.PositiveSmallIntegerField('سالِ گزارش', null=True, blank=True, db_index=True)
     status = models.CharField('وضعیت', max_length=12, choices=STATUS_CHOICES, default=TODO)
     done_date = models.DateField('تاریخ انجام', null=True, blank=True)
     priority = models.CharField('اولویت', max_length=6, choices=PRIORITY_CHOICES, default=MED)
