@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}ماه‌های گزارش{% endblock %}
+
+{% block content %}
+  {% include "settings/_nav.html" %}
+  <div class="page-h">
+    <h1>ماه‌های گزارش</h1>
+    <span class="range-note">منبعِ واحدِ ماه‌های گزارش — مودالِ تسک و بردِ سئوِ پروژه از همین می‌خوانند</span>
+  </div>
+
+  <section class="card glass" style="padding:16px 18px">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
+      <span style="color:var(--text-dim);font-size:12.5px">افزودنِ ماهِ گزارش:</span>
+      <select id="rm-month" class="input" style="width:auto;padding:7px 10px">{% for n,l in months %}<option value="{{ n }}">{{ l }}</option>{% endfor %}</select>
+      <input id="rm-year" class="input" type="number" dir="ltr" style="width:100px;padding:7px 10px" value="{{ cur_year }}">
+      <button class="btn btn-p" id="rm-add">＋ افزودن</button>
+    </div>
+
+    <div id="rm-list" style="display:flex;flex-wrap:wrap;gap:8px">
+      {% for p in periods %}
+        <span class="chip on" data-id="{{ p.id }}" style="display:inline-flex;align-items:center;gap:7px;padding:6px 12px;font-size:12.5px">
+          {{ p.label }} <i class="rm-del" data-id="{{ p.id }}" style="cursor:pointer;opacity:.6;font-style:normal">×</i>
+        </span>
+      {% empty %}
+        <span id="rm-empty" class="zero" style="font-size:12.5px">هنوز ماهی تعریف نشده — یکی اضافه کن تا در مودالِ تسک و بردِ سئو ظاهر شود.</span>
+      {% endfor %}
+    </div>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  const list = document.getElementById('rm-list');
+  document.getElementById('rm-add').addEventListener('click', async ()=>{
+    const month = +document.getElementById('rm-month').value;
+    const year = +document.getElementById('rm-year').value;
+    if(!year){ App.toast('سال لازم است','warn'); return; }
+    try{
+      const r = await App.fetchJSON("{% url 'core:report_month_add' %}", {method:'POST', body:{year, month}});
+      if(!r.created){ App.toast('این ماه از قبل هست','warn'); return; }
+      const em = document.getElementById('rm-empty'); if(em) em.remove();
+      const s = document.createElement('span');
+      s.className='chip on'; s.dataset.id=r.id;
+      s.style.cssText='display:inline-flex;align-items:center;gap:7px;padding:6px 12px;font-size:12.5px';
+      s.innerHTML = `${r.label} <i class="rm-del" data-id="${r.id}" style="cursor:pointer;opacity:.6;font-style:normal">×</i>`;
+      list.appendChild(s);
+      App.toast('اضافه شد','ok');
+    }catch(_){}
+  });
+  list.addEventListener('click', async e=>{
+    const x = e.target.closest('.rm-del'); if(!x) return;
+    if(!await App.confirm('این ماهِ گزارش حذف شود؟')) return;
+    try{
+      await App.fetchJSON(`/settings/report-months/api/${x.dataset.id}/`, {method:'DELETE'});
+      x.closest('.chip').remove(); App.toast('حذف شد','ok');
+    }catch(_){}
+  });
+})();
+</script>
+{% endblock %}

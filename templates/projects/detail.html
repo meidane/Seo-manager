@@ -155,10 +155,13 @@
     </div>
     <div style="padding:12px 14px">
       <div style="margin-bottom:14px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        <span style="color:var(--text-dim);font-size:12px">افزودنِ ماهِ گزارش:</span>
-        <select id="seo-new-month" class="input" style="width:auto;padding:5px 9px;font-size:12px">{% for n,l in seo_months %}<option value="{{ n }}">{{ l }}</option>{% endfor %}</select>
-        <input id="seo-new-year" class="input" type="number" dir="ltr" style="width:82px;padding:5px 9px;font-size:12px" value="{{ seo_add_year }}">
-        <button class="btn btn-sm btn-p" id="seo-add-section">＋ سکشن</button>
+        <span style="color:var(--text-dim);font-size:12px">افزودنِ سکشنِ ماهِ گزارش:</span>
+        {% if seo_periods %}
+          <select id="seo-new-period" class="input" style="width:auto;padding:5px 9px;font-size:12px">{% for rp in seo_periods %}<option value="{{ rp.value }}">{{ rp.label }}</option>{% endfor %}</select>
+          <button class="btn btn-sm btn-p" id="seo-add-section">＋ سکشن</button>
+        {% else %}
+          <span class="zero" style="font-size:12px">ماهِ گزارشی برای افزودن نمانده — از <a href="{% url 'core:report_months' %}" class="lnk">تنظیمات ← ماه‌های گزارش</a> تعریف کن.</span>
+        {% endif %}
       </div>
 
       {% for s in seo_sections %}
@@ -583,9 +586,9 @@
 
   const addBtn = document.getElementById('seo-add-section');
   if(addBtn) addBtn.addEventListener('click', async ()=>{
-    const month = +document.getElementById('seo-new-month').value;
-    const year = +document.getElementById('seo-new-year').value;
-    if(!year){ App.toast('سال لازم است','warn'); return; }
+    const sel = document.getElementById('seo-new-period');
+    if(!sel || !sel.value){ App.toast('ماهِ گزارش را انتخاب کن','warn'); return; }
+    const [year, month] = sel.value.split('-').map(Number);
     try{ await App.fetchJSON(`/projects/api/${pid}/seo/section/`, {method:'POST', body:{year, month}}); reloadTasks(); }catch(_){}
   });
 

@@ -49,6 +49,7 @@
 | پیشرفتِ رتبه نسبت به تاریخِ برنامه‌ریزی («+۲ بعدِ ۴ روز») | `seo/rank.py: rank_progress` |
 | بردِ سئوِ پروژه (سکشنِ ماهِ گزارش + استراتژی + شیتِ ویرایشی) | تبِ «تسک‌ها»ی `projects/detail.html` + `projects/views.py: seo_*` + `tasks.models.ReportMonthStrategy`/`Task.board_order` (`tasks/CLAUDE.md`) |
 | استراتژیِ ماهانهٔ هر پروژه | `tasks.models.ReportMonthStrategy(project,year,month,description)` |
+| ماه‌های گزارش (تعریفِ واحد در تنظیمات؛ مودالِ تسک/بردِ سئو از آن می‌خوانند) | `tasks.models.ReportPeriod` + `/settings/report-months/` (`core.views.ReportMonthsView`) |
 | داده‌ی مودال تسک (پروژه/همکار/انواع) | `tasks/api.py: form_data` → `/tasks/api/formdata/` |
 | بازه‌ی سراسری | `core/daterange.py: DateRangeMixin` |
 | کاتالوگِ ستون‌های قابل‌سفارشی‌سازی (تسک/پروژه/همکار) | `core/columns.py: get_catalog/get_columns/cell_value` + `core/models.py: ColumnConfig` + تگ `{% column_cell %}` |

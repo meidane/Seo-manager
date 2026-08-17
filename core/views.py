@@ -119,3 +119,47 @@ def columns_reset(request):
         return JsonResponse({'detail': 'بدنه نامعتبر'}, status=400)
     ColumnConfig.objects.filter(table=data.get('table'), scope=data.get('scope')).delete()
     return JsonResponse({'ok': True})
+
+
+# ── ماه‌های گزارش `/settings/report-months/` (منبعِ واحدِ ماه‌های گزارش) ────────
+class ReportMonthsView(LoginRequiredMixin, TemplateView):
+    """تعریفِ ماه‌های گزارش (سطحِ سازمان) — «مرداد ۱۴۰۵». مودالِ تسک و بردِ سئو از همین می‌خوانند."""
+    template_name = 'settings/report_months.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        require_perm(request, 'manage_task_types')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        from tasks.models import ReportPeriod, Task
+        from core.jalali import today_jalali
+        ctx = super().get_context_data(**kwargs)
+        ctx['periods'] = ReportPeriod.objects.all()
+        ctx['months'] = Task.REPORT_MONTH_CHOICES
+        ctx['cur_year'] = today_jalali().year
+        return ctx
+
+
+@login_required
+@require_http_methods(['POST'])
+def report_month_add(request):
+    from tasks.models import ReportPeriod
+    require_perm(request, 'manage_task_types')
+    d = json.loads(request.body or '{}')
+    try:
+        year, month = int(d.get('year')), int(d.get('month'))
+    except (TypeError, ValueError):
+        return JsonResponse({'detail': 'سال و ماه لازم است'}, status=400)
+    if not (1 <= month <= 12) or not (1300 <= year <= 1500):
+        return JsonResponse({'detail': 'مقدارِ سال/ماه نامعتبر است'}, status=400)
+    p, created = ReportPeriod.objects.get_or_create(year=year, month=month)
+    return JsonResponse({'ok': True, 'id': p.id, 'label': p.label, 'value': p.value, 'created': created})
+
+
+@login_required
+@require_http_methods(['DELETE'])
+def report_month_delete(request, pk):
+    from tasks.models import ReportPeriod
+    require_perm(request, 'manage_task_types')
+    ReportPeriod.objects.filter(pk=pk).delete()
+    return JsonResponse({'ok': True})

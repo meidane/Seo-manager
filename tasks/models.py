@@ -612,3 +612,39 @@ class ReportMonthStrategy(TimeStampedModel):
 
     def __str__(self):
         return f'{self.project_id} — {self.label}'
+
+
+class ReportPeriod(TimeStampedModel):
+    """ماهِ گزارشِ تعریف‌شده در تنظیمات (سطحِ سازمان) — «مرداد ۱۴۰۵».
+
+    منبعِ واحدِ ماه‌های گزارش: مودالِ تسک، بردِ سئوِ پروژه و فیلترها همه از همین می‌خوانند
+    تا ساختارِ همهٔ پروژه‌ها یکسان بماند و ماهِ گزارش دستی/اشتباه وارد نشود.
+    """
+    organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
+    year = models.PositiveSmallIntegerField('سال')
+    month = models.PositiveSmallIntegerField('ماه', choices=Task.REPORT_MONTH_CHOICES)
+
+    objects = TenantManager()
+    all_objects = models.Manager()
+
+    class Meta:
+        verbose_name = 'ماهِ گزارش'
+        verbose_name_plural = 'ماه‌های گزارش'
+        base_manager_name = 'all_objects'
+        unique_together = ('organization', 'year', 'month')
+        ordering = ['-year', '-month']
+
+    def save(self, *args, **kwargs):
+        stamp_org(self)
+        super().save(*args, **kwargs)
+
+    @property
+    def label(self):
+        return f'{dict(Task.REPORT_MONTH_CHOICES).get(self.month, self.month)} {self.year}'
+
+    @property
+    def value(self):
+        return f'{self.year}-{self.month}'
+
+    def __str__(self):
+        return self.label

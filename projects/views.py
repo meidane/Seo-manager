@@ -227,7 +227,7 @@ class ProjectDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
         ctx['can_manage_members'] = has_perm(self.request, 'project_colleagues_access')
 
         # ── بردِ سئو: سکشن‌های ماهِ گزارش (شخصی‌سازیِ سئو) ──
-        from tasks.models import ReportMonthStrategy, TaskTypeDef
+        from tasks.models import ReportMonthStrategy, ReportPeriod, TaskTypeDef
         seo_type = self.request.GET.get('seo_type') or ''
         bt = p.tasks.select_related('assignee', 'type_def').filter(report_month__isnull=False)
         if seo_type:
@@ -252,10 +252,9 @@ class ProjectDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
         cols = get_columns(ColumnConfig.TASKS, ColumnConfig.PAGE)
         ctx['seo_cols'] = [c for c in cols if (not c['key'].startswith('cf:')) or c['key'].split(':')[1] == seo_type]
         ctx['can_edit_task'] = bool(getattr(self.request, 'membership', None) and self.request.membership.can('edit_task'))
-        from core.jalali import today_jalali
-        tj = today_jalali()
-        ctx['seo_add_year'] = tj.year
-        ctx['seo_months'] = Task.REPORT_MONTH_CHOICES
+        # ماه‌های گزارشِ تعریف‌شده در تنظیمات (منبعِ واحدِ افزودنِ سکشن) — منهای سکشن‌های موجود
+        existing = {(s['year'], s['month']) for s in sections}
+        ctx['seo_periods'] = [rp for rp in ReportPeriod.objects.all() if (rp.year, rp.month) not in existing]
         return ctx
 
 

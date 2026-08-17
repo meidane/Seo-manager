@@ -170,7 +170,7 @@ def form_data(request):
     from colleagues.models import Colleague, ensure_colleague_for_user
     from projects.models import Project
 
-    from .models import TaskTypeDef
+    from .models import ReportPeriod, TaskTypeDef
 
     if getattr(request, 'organization', None):
         ensure_colleague_for_user(request.user, request.organization)
@@ -195,6 +195,8 @@ def form_data(request):
         'typeChoices': list(Task.TYPE_CHOICES),
         'reportMonths': list(Task.REPORT_MONTH_CHOICES),  # [[1,'فروردین'],…] برای دراپ‌داونِ «ماه گزارش»
         'reportYear': today_jalali().year,  # پیش‌فرضِ سالِ گزارش (جالیِ جاری)
+        # ماه‌های گزارشِ تعریف‌شده در تنظیمات (منبعِ واحد) — [[value,label],…] value='سال-ماه'
+        'reportPeriods': [[p.value, p.label] for p in ReportPeriod.objects.all()],
         'customTypes': [
             {'id': t.id, 'name': t.name, 'color': t.color, 'icon': t.icon,
              'builtin_key': t.builtin_key, 'fields': t.schema(),

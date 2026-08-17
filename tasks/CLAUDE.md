@@ -363,11 +363,16 @@ processor + `api.running_timers`، منبعِ واحد) پر می‌شود — �
 `Task.report_month` (۱=فروردین…۱۲=اسفند، اختیاری، `db_index`) + **`Task.report_year`**
 (سالِ جالی، اختیاری، `db_index`، migration `0018` + backfillِ سالِ `planned_date` برای
 دادهٔ قدیمی) — **روی هستهٔ سیستم رفتاری ندارند**، فقط دادهٔ گزارش‌دهیِ سئو. نمایش همیشه
-«ماه سال» است («مرداد ۱۴۰۵»). جاها:
-- مودال: دراپ‌داونِ «ماه گزارش» + اینپوتِ «سالِ گزارش» کنارش (`.grid2`؛ `cfg.reportMonths`/
-  `cfg.reportYear`(=سالِ جالیِ جاری، پیش‌فرض) از `form_data`؛ هر دو در `INT_FIELDS`).
-  **اگر ماه ست شد ولی سال خالی ماند، `apply_fields` سالِ جالیِ جاری را می‌گذارد** (نمایش
-  همیشه سال دارد).
+«ماه سال» است («مرداد ۱۴۰۵»).
+**منبعِ واحدِ ماه‌های گزارش = `ReportPeriod`** (مدلِ سطحِ سازمان: `year, month`، تعریف در
+`/settings/report-months/`، `core.views.ReportMonthsView`/`report_month_add`/`_delete`،
+گیت `manage_task_types`). مودالِ تسک و بردِ سئوِ پروژه هر دو از همین می‌خوانند تا ماهِ
+گزارش دستی/اشتباه وارد نشود و ساختارِ همهٔ پروژه‌ها یکسان بماند. جاها:
+- مودال: **یک دراپ‌داونِ «ماه گزارش»** (`f-report_period`، value=`«سال-ماه»`) از
+  `cfg.reportPeriods` (`form_data`، از `ReportPeriod`). `collect()` مقدار را به
+  `report_month`+`report_year` تفکیک می‌کند (`tasks.js: reportPeriodSelect`). اگر مقدارِ
+  فعلیِ تسک در فهرستِ تعریف‌شده نبود (دادهٔ قدیمی) خودش هم به‌عنوان گزینه اضافه می‌شود تا
+  گم نشود. **اگر ماه ست شد ولی سال خالی ماند، `apply_fields` سالِ جالیِ جاری را می‌گذارد.**
 - فیلترِ لیستِ تسک‌ها: `?report_month=`(+`?report_year=`) (`build_task_queryset`).
 - صفحهٔ پروژه‌ها: دکمهٔ on/off (پیش‌فرض فعال، localStorage `rm-show`) که زیرِ هر پروژه
   سه ردیفِ ماهِ قبل/جاری/بعد نشان می‌دهد — فیلترشده روی **(`report_year`, `report_month`)**
@@ -396,7 +401,8 @@ processor + `api.running_timers`، منبعِ واحد) پر می‌شود — �
   برنامه‌ریزی (ویرایشِ زنده) با `_custom_fields_error` اعتبارسنجی می‌شوند.
 - **جابه‌جاییِ ردیف** با drag&drop (داخلِ همان سکشن) → `Task.board_order` (API `seo_reorder`).
   ترتیبِ برد = `order_by('board_order','id')`.
-- **افزودنِ سکشن** (بالای برد، ماه+سال) → `seo_section_add`. «＋ ستون‌ها» به `/settings/columns/`.
+- **افزودنِ سکشن** (بالای برد، دراپ‌داونِ ماه‌های تعریف‌شده در `ReportPeriod` منهای سکشن‌های
+  موجود — `ctx['seo_periods']`) → `seo_section_add`. «＋ ستون‌ها» به `/settings/columns/`.
 - بعدِ افزودن، صفحه با `#tasks` رفرش می‌شود تا همان تب باز بماند (تبِ سینگل با هش/پارامِ
   `seo_type` فعال می‌ماند — `detail.html`).
 - **تغییرِ مدل (مهم):** `Task.planned_date` حالا `null=True` است (تا «ایده»ها بدونِ تاریخ

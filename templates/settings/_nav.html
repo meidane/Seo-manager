@@ -8,6 +8,7 @@
   {% endif %}
   {% if 'manage_task_types' in org_perms %}
     <a href="{% url 'task_types:list' %}" class="{% if request.resolver_match.app_name == 'task_types' %}on{% endif %}">انواع تسک</a>
+    <a href="{% url 'core:report_months' %}" class="{% if request.resolver_match.url_name == 'report_months' %}on{% endif %}">ماه‌های گزارش</a>
   {% endif %}
   {% if 'manage_columns' in org_perms %}
     <a href="{% url 'core:columns' %}" class="{% if request.resolver_match.url_name == 'columns' %}on{% endif %}">ستون‌ها</a>
