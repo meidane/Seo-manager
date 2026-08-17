@@ -4,24 +4,28 @@
    بدون تغییر یک خط HTML. هیچ رنگ hard-code شده در CSS ننویس.
    ═══════════════════════════════════════════════════════════ */
 :root{
-  /* پس‌زمینه */
-  --bg:#070C18;
+  /* پس‌زمینه — نیلیِ عمیق با ته‌مایهٔ بنفش (زنده‌تر از مشکیِ خالص) */
+  --bg:#090A1B;
 
-  /* شیشه */
-  --glass:rgba(255,255,255,.045);
-  --glass-2:rgba(255,255,255,.075);
-  --glass-hover:rgba(255,255,255,.10);
+  /* شیشه — کمی مرئی‌تر تا کارت‌ها «شناور» و زنده به‌نظر برسند */
+  --glass:rgba(255,255,255,.05);
+  --glass-2:rgba(255,255,255,.08);
+  --glass-hover:rgba(146,140,255,.10);
   --stroke:rgba(255,255,255,.10);
   --stroke-soft:rgba(255,255,255,.055);
   --blur:18px;
 
-  /* رنگ اصلی */
-  --primary:#4183F2;
-  --primary-700:#2559C4;
-  --primary-600:#2E6BD9;
-  --primary-400:#6BA1FF;
-  --primary-soft:rgba(65,131,242,.14);
-  --primary-ring:rgba(65,131,242,.38);
+  /* رنگ اصلی — آبیِ بنفش‌گرا (نزدیک به مرجعِ کلیک‌اپ/ایندیگو) */
+  --primary:#6366F1;
+  --primary-700:#4338CA;
+  --primary-600:#4F46E5;
+  --primary-400:#8B8CF7;
+  --primary-soft:rgba(99,102,241,.16);
+  --primary-ring:rgba(99,102,241,.42);
+  /* گرادیانِ لهجه‌ایِ سراسری (آبی‌بنفش→بنفش) — برند/دکمه/حالتِ فعال */
+  --accent-grad:linear-gradient(135deg,var(--primary),var(--violet));
+  /* رنگِ تقریبیِ سطحِ کارت — برای ماسکِ هاله‌های اسکرول (scroll-shadows) */
+  --card-solid:#12142a;
 
   /* وضعیت */
   --success:#2DD4A7;
@@ -50,9 +54,11 @@
 html{-webkit-font-smoothing:antialiased}
 body{
   font-family:Vazirmatn,system-ui,sans-serif;
+  /* هاله‌های رنگیِ زنده: ایندیگو (بالا-راست)، بنفش (چپ)، صورتیِ کم‌رنگ (پایین) */
   background:
-    radial-gradient(1200px 620px at 82% -12%,rgba(65,131,242,.20),transparent 62%),
-    radial-gradient(900px 520px at 8% 108%,rgba(167,139,250,.13),transparent 60%),
+    radial-gradient(1100px 640px at 86% -15%,rgba(99,102,241,.28),transparent 60%),
+    radial-gradient(820px 560px at -4% 6%,rgba(139,92,246,.18),transparent 58%),
+    radial-gradient(760px 640px at 14% 112%,rgba(236,72,153,.11),transparent 60%),
     var(--bg);
   background-attachment:fixed;
   color:var(--text);
@@ -214,6 +220,9 @@ label{font-size:12px;color:var(--text-dim);display:block;margin-bottom:6px}
 
 /* ── کارت ── */
 .card{padding:0;overflow:hidden}
+/* لهجهٔ رنگیِ کارتِ آمار: هالهٔ ملایمِ ایندیگو در گوشه تا کارت‌ها زنده‌تر به‌نظر برسند */
+.stat{background-image:radial-gradient(120% 120% at 100% 0,rgba(99,102,241,.10),transparent 55%)}
+.stat:hover{transform:translateY(-2px);transition:transform var(--ease)}
 .card-h{display:flex;align-items:center;gap:10px;padding:14px 17px;border-bottom:1px solid var(--stroke-soft)}
 .card-h h3{font-size:14.5px;font-weight:500}
 .card-h .side-c{margin-inline-start:auto;display:flex;gap:6px;align-items:center}
@@ -686,11 +695,14 @@ body.nav-open .nav-backdrop{opacity:1;visibility:visible}
 
 /* جدول تسک‌ها: اسکرول افقی تمیز + ویرایشِ زندهٔ سلول‌ها + آیکن باز کردن مودال */
 .tsheet-wrap{overflow-x:auto;overflow-y:visible}
-.tsheet-wrap::-webkit-scrollbar{height:9px}
-.tsheet-wrap::-webkit-scrollbar-track{background:transparent}
-.tsheet-wrap::-webkit-scrollbar-thumb{background:var(--stroke-soft);border-radius:6px}
-.tsheet-wrap::-webkit-scrollbar-thumb:hover{background:var(--stroke)}
-.tsheet{min-width:940px}
+/* اسکرول‌بارِ .tsheet-wrap از بلوکِ یکپارچهٔ «نشانگرِ اسکرولِ افقی» می‌آید */
+.tsheet{min-width:940px;border-collapse:collapse}
+/* نمای گوگل‌شیت برای جدولِ تسک‌ها: خط‌کشیِ سلولی + هدرِ چسبان + راه‌راهِ ملایم */
+.tsheet thead th{background:rgba(255,255,255,.035);position:sticky;top:0;z-index:4;
+  border:1px solid var(--stroke-soft);padding:8px 10px}
+.tsheet tbody td{border:1px solid var(--stroke-soft);height:38px}
+.tsheet tbody tr:nth-child(even) td{background:rgba(255,255,255,.014)}
+.tsheet tbody tr:hover td{background:var(--glass-hover)}
 .tcell{display:flex;align-items:center;gap:6px}
 .tx-inline{max-width:100%;background:transparent;border:1px solid transparent;border-radius:6px;color:inherit;font:inherit;font-size:12.5px;padding:4px 6px}
 .tcell .tx-inline{flex:1;min-width:120px}
@@ -955,12 +967,15 @@ button:disabled, .btn:disabled{opacity:.6;cursor:not-allowed}
 #bulkbar{z-index:60}
 #bulkbar .rs-menu{top:auto;bottom:calc(100% + 6px)}
 
-/* بابتِ چندانتخابیِ درون‌جدولِ تراکنش‌ها */
-.txcat-wrap{display:flex;flex-wrap:wrap;gap:3px;align-items:center;min-width:130px}
-.txcat-chip{font-size:10px;padding:1px 6px;gap:3px;display:inline-flex;align-items:center;line-height:1.6}
-.txcat-x{cursor:pointer;opacity:.55;font-style:normal;font-size:11px}
+/* بابتِ چندانتخابیِ درون‌جدولِ تراکنش‌ها — تک‌خطیِ فشرده، ردیف را بلند نمی‌کند */
+.txcat-wrap{display:flex;flex-wrap:nowrap;gap:4px;align-items:center;min-width:120px;max-width:100%;overflow:hidden}
+.txcat-chip{flex:none;max-width:104px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:10.5px;padding:2px 8px;gap:4px;display:inline-flex;align-items:center;line-height:1.5;border-radius:var(--r-full)}
+.txcat-x{cursor:pointer;opacity:.5;font-style:normal;font-size:11px;flex:none}
 .txcat-x:hover{opacity:1;color:var(--danger)}
-.txcat-add{border:0;background:transparent;color:var(--text-dim);font-size:11px;width:54px;outline:none;font-family:inherit}
+.txcat-add{flex:1;min-width:30px;width:auto;border:0;background:transparent;color:var(--text-faint);
+  font-size:11px;outline:none;font-family:inherit;padding:2px 0}
+.txcat-add::placeholder{color:var(--text-faint);opacity:.7}
 
 /* ═══ فاز ۱ (جزئی): جدولِ متراکم‌تر شبیه گوگل‌شیت + اسکرولِ واضح‌تر ═══ */
 /* جدول‌های معمولی: پدینگِ کمتر */
@@ -971,45 +986,56 @@ table.sheet td.edit{padding:0}
 table.sheet td.edit select,table.sheet td.edit input,table.sheet td.edit .rs,table.sheet td.edit .txcat-wrap{width:100%;height:100%}
 table.sheet td.edit select,table.sheet td.edit input{padding:7px 9px;font-size:12.5px}
 table.sheet td:not(.edit){padding:6px 9px}
-/* نشانگرِ اسکرولِ افقی: محوشدگیِ لبه + اسکرول‌بارِ دیده‌شونده */
-.sheet-wrap{position:relative;scrollbar-width:thin}
-.sheet-wrap::after{content:"";position:absolute;top:0;bottom:0;left:0;width:28px;pointer-events:none;
-  background:linear-gradient(to right,color-mix(in srgb,var(--bg) 78%,transparent),transparent)}
-.sheet-wrap::-webkit-scrollbar{height:11px}
-.sheet-wrap::-webkit-scrollbar-thumb{background:var(--stroke);border-radius:99px;border:2px solid transparent;background-clip:padding-box}
-.sheet-wrap::-webkit-scrollbar-thumb:hover{background:var(--text-faint)}
+/* نشانگرِ اسکرولِ افقی: اسکرول‌بارِ همیشه‌دیده با ترَکِ مشخص (نه محوشدگیِ لبه که
+   قبلاً روی محتوا می‌افتاد — چون position:absolute داخلِ خودِ کانتینرِ اسکرولی بود
+   و با اسکرول جابه‌جا می‌شد). ترَکِ روشن یعنی «این‌جا اسکرول می‌شود». */
+.sheet-wrap,.tscroll,.tsheet-wrap{scrollbar-width:thin;scrollbar-color:var(--stroke) transparent}
+.sheet-wrap::-webkit-scrollbar,.tscroll::-webkit-scrollbar,.tsheet-wrap::-webkit-scrollbar{height:12px}
+.sheet-wrap::-webkit-scrollbar-track,.tscroll::-webkit-scrollbar-track,.tsheet-wrap::-webkit-scrollbar-track{
+  background:rgba(255,255,255,.05);border-radius:99px;margin:0 2px}
+.sheet-wrap::-webkit-scrollbar-thumb,.tscroll::-webkit-scrollbar-thumb,.tsheet-wrap::-webkit-scrollbar-thumb{
+  background:var(--stroke);border-radius:99px;border:3px solid transparent;background-clip:padding-box;min-width:44px}
+.sheet-wrap::-webkit-scrollbar-thumb:hover,.tscroll::-webkit-scrollbar-thumb:hover,.tsheet-wrap::-webkit-scrollbar-thumb:hover{
+  background:var(--primary)}
+/* هاله‌های لبه‌ای «بیشتر هست، اسکرول کن» — به لبهٔ دیدهٔ کانتینر می‌چسبند (لایه‌های
+   scroll)، نه وسطِ جدول، و با ماسکِ هم‌رنگِ کارت (لایه‌های local) در دو انتهای مسیر
+   محو می‌شوند. جایگزینِ فِیدِ باگ‌دارِ قبلی که position:absolute داشت و با اسکرول
+   روی محتوا می‌افتاد. */
+.sheet-wrap,.tscroll,.tsheet-wrap{
+  background:
+    linear-gradient(to right,var(--card-solid),transparent) 0 0/34px 100% no-repeat local,
+    linear-gradient(to left,var(--card-solid),transparent) 100% 0/34px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%,rgba(99,102,241,.35),transparent) 0 0/20px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%,rgba(99,102,241,.35),transparent) 100% 0/20px 100% no-repeat scroll;
+}
 /* نوارِ تب/حسابداری: همیشه اسکرولِ افقی، هیچ‌وقت شکستِ صفحه */
 .fin-nav,.settings-nav{flex-wrap:nowrap;overflow-x:auto;max-width:100%;scrollbar-width:thin}
 .fin-nav a,.settings-nav a{white-space:nowrap;flex:none}
 .fin-nav::-webkit-scrollbar,.settings-nav::-webkit-scrollbar{height:0}
 
-/* ═══ فاز ۲: منوی جمع‌شونده (پیش‌فرض بسته/آیکنی) + بازشدن با هاور ═══ */
+/* ═══ فاز ۲ (بازطراحی): منوی ثابتِ باریک شبیهِ کلیک‌اپ — آیکن + برچسبِ کوچکِ زیرش،
+   بدونِ هاور/بازشدن. سایدبار در فلوِ گرید می‌ماند (sticky)، نه fixed. ═══ */
 @media(min-width:1101px){
-  .shell{grid-template-columns:64px 1fr}          /* فضای بیشتر برای جدول‌ها */
-  /* .side که position:fixed می‌شود از گریدِ فلو خارج است؛ پس .main باید صریح در ستونِ
-     دومِ (1fr) گرید بنشیند، وگرنه به‌اشتباه به ستونِ اولِ ۶۴px می‌افتد و له می‌شود. */
-  .main{grid-column:2}
-  .side{
-    position:fixed;top:0;right:0;height:100vh;width:64px;z-index:130;
-    overflow:hidden;padding:16px 10px;
-    transition:width .22s cubic-bezier(.22,1,.36,1),box-shadow .22s;
+  .shell{grid-template-columns:82px 1fr}
+  .side{width:82px;padding:12px 6px}
+  .brand{justify-content:center;padding:2px 0 12px}
+  .brand>div{display:none}                       /* فقط نشانِ برند، بدونِ متن */
+  /* آیتم‌ها: آیکن بالا، برچسبِ ریزِ وسط‌چینِ زیرش */
+  .side .nav a,.side .nav-logout-form button{
+    flex-direction:column;gap:5px;padding:9px 2px;font-size:9.5px;
+    text-align:center;line-height:1.15;border-radius:12px;margin-bottom:3px;
   }
-  .side:hover{width:250px;overflow-y:auto;box-shadow:-12px 0 42px rgba(0,0,0,.42)}
-  /* حالتِ بسته: فقط آیکن‌های وسط‌چین (برچسبِ متنِ خالص با font-size:0 مخفی) */
-  .side .nav a,.side .nav-logout-form button{justify-content:center;gap:0;font-size:0;padding:12px 0}
-  .side .nav .ico{font-size:18px;width:auto;opacity:1}
-  .side .nav-label{font-size:0;padding:8px 0 2px}
-  .side .brand{justify-content:center;padding:4px 0 14px}
-  .side .brand>div{display:none}
-  .side .side-att{display:none}
-  .side .nav a.on::after{display:none}
-  /* حالتِ باز (هاور): همه‌چیز برمی‌گردد */
-  .side:hover .nav a,.side:hover .nav-logout-form button{justify-content:flex-start;gap:10px;font-size:13.5px;padding:9px 11px}
-  .side:hover .nav-label{font-size:10px;padding:14px 10px 6px}
-  .side:hover .brand{justify-content:flex-start;padding:6px 8px 22px}
-  .side:hover .brand>div{display:block}
-  .side:hover .side-att{display:flex}
-  .side:hover .nav a.on::after{display:block}
+  .side .nav .ico{font-size:20px;width:auto;opacity:.9}
+  .side .nav a.on{background:var(--primary-soft)}
+  .side .nav a.on .ico{opacity:1}
+  .side .nav a.on::after{display:none}           /* نوارِ کنارهٔ حالتِ فعال حذف */
+  /* برچسبِ بخش‌ها → جداکنندهٔ نازک (بدونِ متن) */
+  .side .nav-label{font-size:0;height:1px;margin:8px 12px;padding:0;background:var(--stroke-soft)}
+  /* همکاران: فقط آواتار + وضعیتِ آنلاین */
+  .side .side-att{gap:8px;padding:6px 0;align-items:center;max-height:none;overflow:visible}
+  .side .satt{justify-content:center;padding:2px 0;gap:0}
+  .side .satt-main,.side .satt-sum,.side .satt-task,.side .satt-tl{display:none!important}
+  .side .satt .wt-avwrap{width:32px;height:32px}
 }
 
 /* ═══ فاز ۳: نمای گوگل‌شیتِ سراسری + ریسپانسیوِ جدول‌ها ═══ */
@@ -1024,11 +1050,8 @@ table.sheet td:not(.edit){padding:6px 9px}
 /* wrapperِ اسکرولِ افقیِ داخلِ کارت — چون .card خودش overflow:hidden است، جدولِ
    عریض روی موبایل بریده می‌شد و صفحه افقی می‌شد؛ این wrapper اسکرول را داخلِ خودش
    نگه می‌دارد (قاعدهٔ طلایی: بدنهٔ صفحه هیچ‌وقت افقی اسکرول نشود). */
-.tscroll{overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
-.tscroll::-webkit-scrollbar{height:11px}
-.tscroll::-webkit-scrollbar-track{background:transparent}
-.tscroll::-webkit-scrollbar-thumb{background:var(--stroke);border-radius:99px;border:2px solid transparent;background-clip:padding-box}
-.tscroll::-webkit-scrollbar-thumb:hover{background:var(--text-faint)}
+.tscroll{overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch}
+/* اسکرول‌بارِ .tscroll از بلوکِ یکپارچهٔ بالا می‌آید (ترَکِ دیده‌شونده) */
 /* فیلترها/نوارها روی صفحهٔ کوچک بشکنند، نه سرریز کنند */
 .filters{flex-wrap:wrap}
 /* زیرتب‌های سینگلِ پروژه (جدول‌های رتبهٔ کلمه/لینک) خودشان اسکرولِ افقی بگیرند */
