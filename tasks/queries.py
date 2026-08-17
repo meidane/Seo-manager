@@ -88,6 +88,8 @@ def build_task_queryset(request):
         base = base.filter(status=filters['status'])
     if filters.get('report_month'):
         base = base.filter(report_month=filters['report_month'])
+    if filters.get('report_year'):
+        base = base.filter(report_year=filters['report_year'])
     if filters.get('priority'):
         base = base.filter(priority=filters['priority'])
     if filters.get('review'):

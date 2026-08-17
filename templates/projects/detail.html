@@ -76,7 +76,7 @@
     <div class="card-h"><h3>به تفکیک ماهِ گزارش</h3></div>
     <div style="padding:12px 14px;display:flex;flex-wrap:wrap;gap:10px">
       {% for m in month_breakdown %}
-        <a href="{% url 'tasks:list' %}?project={{ project.pk }}&report_month={{ m.num }}&assignee=" class="month-card" title="مشاهده‌ی تسک‌های {{ m.label }}">
+        <a href="{% url 'tasks:list' %}?project={{ project.pk }}&report_month={{ m.num }}{% if m.year %}&report_year={{ m.year }}{% endif %}&assignee=" class="month-card" title="مشاهده‌ی تسک‌های {{ m.label }}">
           <div class="mc-name">{{ m.label }}</div>
           <div class="mc-stat"><b>{{ m.done|fa_digits }}</b> / {{ m.total|fa_digits }} انجام‌شده</div>
         </a>

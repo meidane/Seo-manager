@@ -12,7 +12,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
-from core.jalali import parse_jalali
+from core.jalali import parse_jalali, today_jalali
 from core.models import Holiday
 from projects.access import accessible_project_ids
 
@@ -75,7 +75,7 @@ TEXT_FIELDS = [
     'update_type', 'link_type', 'review_note',
 ]
 CHOICE_FIELDS = ['task_type', 'status', 'priority']
-INT_FIELDS = ['word_count', 'current_rank', 'link_count', 'estimate_minutes', 'report_month']
+INT_FIELDS = ['word_count', 'current_rank', 'link_count', 'estimate_minutes', 'report_month', 'report_year']
 DECIMAL_FIELDS = ['media_cost']
 BOOL_FIELDS = ['needs_review']
 FK_FIELDS = {'project': 'project_id', 'assignee': 'assignee_id'}
@@ -109,6 +109,9 @@ def apply_fields(task: Task, data: dict):
     for f in INT_FIELDS:
         if f in data:
             setattr(task, f, data[f] or None)
+    # ماهِ گزارش بدونِ سال → پیش‌فرض سالِ جالیِ جاری (نمایشِ «مرداد ۱۴۰۵» همیشه سال دارد)
+    if task.report_month and not task.report_year:
+        task.report_year = today_jalali().year
     for f in DECIMAL_FIELDS:
         if f in data:
             setattr(task, f, data[f] or None)
@@ -191,6 +194,7 @@ def form_data(request):
                         for c in Colleague.objects.filter(status=Colleague.ACTIVE)],
         'typeChoices': list(Task.TYPE_CHOICES),
         'reportMonths': list(Task.REPORT_MONTH_CHOICES),  # [[1,'فروردین'],…] برای دراپ‌داونِ «ماه گزارش»
+        'reportYear': today_jalali().year,  # پیش‌فرضِ سالِ گزارش (جالیِ جاری)
         'customTypes': [
             {'id': t.id, 'name': t.name, 'color': t.color, 'icon': t.icon,
              'builtin_key': t.builtin_key, 'fields': t.schema(),
@@ -383,6 +387,7 @@ def task_detail(request, pk):
             'review_notes': _review_notes(task),
             'type_def': task.type_def_id, 'custom': task.custom or {},
             'recurrence': task.recurrence_id, 'report_month': task.report_month,
+            'report_year': task.report_year,
             'history': _history_payload(task),
         })
         return JsonResponse(d)

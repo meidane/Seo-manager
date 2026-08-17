@@ -20,16 +20,18 @@ from .forms import ProjectForm
 from .models import Credential, Project
 
 
-def _current_jalali_month():
+def _current_jalali_ym():
     from datetime import date
 
     from core.jalali import g2j
-    return g2j(date.today()).month
+    j = g2j(date.today())
+    return j.year, j.month
 
 
-def _report_month_rows(project_ids, months):
-    """{project_id: {month: ستون‌های آماریِ همان ماهِ گزارش}} — برای ردیف‌های ماهانهٔ
-    صفحهٔ پروژه‌ها (شخصی‌سازیِ سئو). همان ستون‌های جدول، ولی فیلترشده روی report_month."""
+def _report_month_rows(project_ids, periods):
+    """{project_id: {(year, month): ستون‌های آماریِ همان ماهِ گزارش}} — برای ردیف‌های
+    ماهانهٔ صفحهٔ پروژه‌ها (شخصی‌سازیِ سئو). فیلترشده روی (report_year, report_month).
+    `periods` = لیستِ tupleهای (year, month)."""
     from datetime import date
     from types import SimpleNamespace
 
@@ -37,11 +39,14 @@ def _report_month_rows(project_ids, months):
 
     from tasks.models import Task
 
-    if not project_ids:
+    if not project_ids or not periods:
         return {}
     today = date.today()
-    agg = (Task.objects.filter(project_id__in=project_ids, report_month__in=months)
-           .values('project_id', 'report_month')
+    year_q = Q()
+    for yr, mo in periods:
+        year_q |= Q(report_year=yr, report_month=mo)
+    agg = (Task.objects.filter(project_id__in=project_ids).filter(year_q)
+           .values('project_id', 'report_year', 'report_month')
            .annotate(
                planned=Count('id'),
                done=Count('id', filter=Q(status=Task.DONE)),
@@ -49,12 +54,13 @@ def _report_month_rows(project_ids, months):
                minutes=Sum('spent_minutes', filter=Q(status=Task.DONE)),
                overdue=Count('id', filter=Q(status__in=[Task.TODO, Task.DOING], planned_date__lt=today)),
                last_activity=Max('updated_at')))
-    by = {(r['project_id'], r['report_month']): r for r in agg}
+    by = {(r['project_id'], r['report_year'], r['report_month']): r for r in agg}
     out = {}
     for pid in project_ids:
         out[pid] = {}
-        for mo in months:
-            r = by.get((pid, mo), {})
+        for yr, mo in periods:
+            r = by.get((pid, yr, mo), {})
+            key = f'{yr}-{mo}'
             planned = r.get('planned') or 0
             done = r.get('done') or 0
             progress = round(done / planned * 100) if planned else 0
@@ -69,7 +75,7 @@ def _report_month_rows(project_ids, months):
                 state = ('ok', 'روی روال')
             else:
                 state = ('info', 'کامل')
-            out[pid][mo] = SimpleNamespace(
+            out[pid][key] = SimpleNamespace(
                 planned=planned, done=done, remaining=max(planned - done, 0),
                 overdue=overdue, words=r.get('words') or 0, minutes=r.get('minutes') or 0,
                 progress=progress, state=state,
@@ -136,12 +142,19 @@ class ProjectListView(LoginRequiredMixin, DateRangeMixin, ListView):
         ctx['columns'] = get_columns(ColumnConfig.PROJECTS, ColumnConfig.PAGE)
         # ── ماه‌های گزارش (شخصی‌سازیِ سئو): ماهِ قبل/جاری/بعد ──
         from tasks.models import Task
-        cur = _current_jalali_month()
-        prev = 12 if cur == 1 else cur - 1
-        nxt = 1 if cur == 12 else cur + 1
+        cur_y, cur_m = _current_jalali_ym()
+        prev_y, prev_m = (cur_y - 1, 12) if cur_m == 1 else (cur_y, cur_m - 1)
+        nxt_y, nxt_m = (cur_y + 1, 1) if cur_m == 12 else (cur_y, cur_m + 1)
+        from types import SimpleNamespace
         month_labels = dict(Task.REPORT_MONTH_CHOICES)
-        ctx['month_meta'] = [(prev, month_labels[prev], 'قبل'), (cur, month_labels[cur], 'جاری'), (nxt, month_labels[nxt], 'بعد')]
-        ctx['month_rows'] = _report_month_rows([p.id for p in ctx['projects']], [prev, cur, nxt])
+        # برچسبِ ماه با سال: «مرداد ۱۴۰۵». key = «سال-ماه» برای نگاشت به month_rows.
+        ctx['month_meta'] = [
+            SimpleNamespace(key=f'{yr}-{mo}', year=yr, month=mo,
+                            label=f'{month_labels[mo]} {yr}', tag=tag)
+            for yr, mo, tag in [(prev_y, prev_m, 'قبل'), (cur_y, cur_m, 'جاری'), (nxt_y, nxt_m, 'بعد')]
+        ]
+        ctx['month_rows'] = _report_month_rows(
+            [p.id for p in ctx['projects']], [(prev_y, prev_m), (cur_y, cur_m), (nxt_y, nxt_m)])
         ctx['page_title'] = 'پروژه‌ها'
         ctx['q'] = self.request.GET.get('q', '')
         return ctx
@@ -195,12 +208,16 @@ class ProjectDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
         # ── تفکیکِ ماهِ گزارش (شخصی‌سازیِ سئو) — آخرِ تبِ «نمای کلی» ──
         from django.db.models import Count
         labels = dict(Task.REPORT_MONTH_CHOICES)
-        mb = {r['report_month']: r for r in p.tasks.filter(report_month__isnull=False)
-              .values('report_month')
-              .annotate(total=Count('id'), done=Count('id', filter=Q(status=Task.DONE)))}
+        mb = (p.tasks.filter(report_month__isnull=False)
+              .values('report_year', 'report_month')
+              .annotate(total=Count('id'), done=Count('id', filter=Q(status=Task.DONE))))
+        # مرتب‌سازی: جدیدترین سال/ماه اول (سالِ نامشخص انتها)
+        rows = sorted(mb, key=lambda r: (r['report_year'] or 0, r['report_month']), reverse=True)
         ctx['month_breakdown'] = [
-            {'num': mo, 'label': labels[mo], 'total': mb[mo]['total'], 'done': mb[mo]['done']}
-            for mo in sorted(mb)]
+            {'num': r['report_month'], 'year': r['report_year'],
+             'label': f"{labels[r['report_month']]} {r['report_year']}" if r['report_year'] else labels[r['report_month']],
+             'total': r['total'], 'done': r['done']}
+            for r in rows]
 
         ctx['page_title'] = p.name
         ctx['credentials'] = p.credentials.all()

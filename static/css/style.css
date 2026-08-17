@@ -493,6 +493,8 @@ table.sheet tr:hover td{background:rgba(255,255,255,.02)}
   color:var(--text-dim);cursor:pointer;transition:var(--ease);font-size:14px}
 .nav-b:hover{background:var(--glass-hover);color:var(--text)}
 .grid7{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){.grid2{grid-template-columns:1fr}}
 .dow{padding:9px 4px;text-align:center;font-size:11.5px;color:var(--text-dim);border-bottom:1px solid var(--stroke-soft)}
 .dow.off{color:#FF9AAB;background:rgba(251,87,115,.045)}
 .cell{min-height:120px;min-width:0;padding:5px;border-inline-start:1px solid var(--stroke-soft);border-bottom:1px solid var(--stroke-soft);
@@ -979,3 +981,32 @@ table.sheet td:not(.edit){padding:6px 9px}
 .fin-nav,.settings-nav{flex-wrap:nowrap;overflow-x:auto;max-width:100%;scrollbar-width:thin}
 .fin-nav a,.settings-nav a{white-space:nowrap;flex:none}
 .fin-nav::-webkit-scrollbar,.settings-nav::-webkit-scrollbar{height:0}
+
+/* ═══ فاز ۲: منوی جمع‌شونده (پیش‌فرض بسته/آیکنی) + بازشدن با هاور ═══ */
+@media(min-width:1101px){
+  .shell{grid-template-columns:64px 1fr}          /* فضای بیشتر برای جدول‌ها */
+  /* .side که position:fixed می‌شود از گریدِ فلو خارج است؛ پس .main باید صریح در ستونِ
+     دومِ (1fr) گرید بنشیند، وگرنه به‌اشتباه به ستونِ اولِ ۶۴px می‌افتد و له می‌شود. */
+  .main{grid-column:2}
+  .side{
+    position:fixed;top:0;right:0;height:100vh;width:64px;z-index:130;
+    overflow:hidden;padding:16px 10px;
+    transition:width .22s cubic-bezier(.22,1,.36,1),box-shadow .22s;
+  }
+  .side:hover{width:250px;overflow-y:auto;box-shadow:-12px 0 42px rgba(0,0,0,.42)}
+  /* حالتِ بسته: فقط آیکن‌های وسط‌چین (برچسبِ متنِ خالص با font-size:0 مخفی) */
+  .side .nav a,.side .nav-logout-form button{justify-content:center;gap:0;font-size:0;padding:12px 0}
+  .side .nav .ico{font-size:18px;width:auto;opacity:1}
+  .side .nav-label{font-size:0;padding:8px 0 2px}
+  .side .brand{justify-content:center;padding:4px 0 14px}
+  .side .brand>div{display:none}
+  .side .side-att{display:none}
+  .side .nav a.on::after{display:none}
+  /* حالتِ باز (هاور): همه‌چیز برمی‌گردد */
+  .side:hover .nav a,.side:hover .nav-logout-form button{justify-content:flex-start;gap:10px;font-size:13.5px;padding:9px 11px}
+  .side:hover .nav-label{font-size:10px;padding:14px 10px 6px}
+  .side:hover .brand{justify-content:flex-start;padding:6px 8px 22px}
+  .side:hover .brand>div{display:block}
+  .side:hover .side-att{display:flex}
+  .side:hover .nav a.on::after{display:block}
+}
