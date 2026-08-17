@@ -4,28 +4,28 @@
    بدون تغییر یک خط HTML. هیچ رنگ hard-code شده در CSS ننویس.
    ═══════════════════════════════════════════════════════════ */
 :root{
-  /* پس‌زمینه — نیلیِ عمیق با ته‌مایهٔ بنفش (زنده‌تر از مشکیِ خالص) */
-  --bg:#090A1B;
+  /* پس‌زمینه — نیلیِ عمیق (آبی‌گرا، نه بنفشِ خالص) */
+  --bg:#080B1A;
 
   /* شیشه — کمی مرئی‌تر تا کارت‌ها «شناور» و زنده به‌نظر برسند */
   --glass:rgba(255,255,255,.05);
   --glass-2:rgba(255,255,255,.08);
-  --glass-hover:rgba(146,140,255,.10);
+  --glass-hover:rgba(110,140,250,.10);
   --stroke:rgba(255,255,255,.10);
   --stroke-soft:rgba(255,255,255,.055);
   --blur:18px;
 
-  /* رنگ اصلی — آبیِ بنفش‌گرا (نزدیک به مرجعِ کلیک‌اپ/ایندیگو) */
-  --primary:#6366F1;
-  --primary-700:#4338CA;
-  --primary-600:#4F46E5;
-  --primary-400:#8B8CF7;
-  --primary-soft:rgba(99,102,241,.16);
-  --primary-ring:rgba(99,102,241,.42);
-  /* گرادیانِ لهجه‌ایِ سراسری (آبی‌بنفش→بنفش) — برند/دکمه/حالتِ فعال */
-  --accent-grad:linear-gradient(135deg,var(--primary),var(--violet));
+  /* رنگ اصلی — آبیِ ایندیگویی (ترکیبِ آبی‌بنفش، متمایل به آبی) */
+  --primary:#4F76F6;
+  --primary-700:#2F4FBF;
+  --primary-600:#3B5EE0;
+  --primary-400:#7C9CFA;
+  --primary-soft:rgba(79,118,246,.15);
+  --primary-ring:rgba(79,118,246,.40);
+  /* گرادیانِ لهجه‌ایِ سراسری (آبی→ایندیگو) — برند/دکمه/حالتِ فعال */
+  --accent-grad:linear-gradient(135deg,var(--primary),#6E8BFA);
   /* رنگِ تقریبیِ سطحِ کارت — برای ماسکِ هاله‌های اسکرول (scroll-shadows) */
-  --card-solid:#12142a;
+  --card-solid:#0F1426;
 
   /* وضعیت */
   --success:#2DD4A7;
@@ -56,9 +56,9 @@ body{
   font-family:Vazirmatn,system-ui,sans-serif;
   /* هاله‌های رنگیِ زنده: ایندیگو (بالا-راست)، بنفش (چپ)، صورتیِ کم‌رنگ (پایین) */
   background:
-    radial-gradient(1100px 640px at 86% -15%,rgba(99,102,241,.28),transparent 60%),
-    radial-gradient(820px 560px at -4% 6%,rgba(139,92,246,.18),transparent 58%),
-    radial-gradient(760px 640px at 14% 112%,rgba(236,72,153,.11),transparent 60%),
+    radial-gradient(1100px 640px at 86% -15%,rgba(64,110,240,.28),transparent 60%),
+    radial-gradient(820px 560px at -4% 6%,rgba(110,105,235,.15),transparent 58%),
+    radial-gradient(760px 640px at 14% 112%,rgba(56,120,235,.12),transparent 60%),
     var(--bg);
   background-attachment:fixed;
   color:var(--text);
@@ -221,7 +221,7 @@ label{font-size:12px;color:var(--text-dim);display:block;margin-bottom:6px}
 /* ── کارت ── */
 .card{padding:0;overflow:hidden}
 /* لهجهٔ رنگیِ کارتِ آمار: هالهٔ ملایمِ ایندیگو در گوشه تا کارت‌ها زنده‌تر به‌نظر برسند */
-.stat{background-image:radial-gradient(120% 120% at 100% 0,rgba(99,102,241,.10),transparent 55%)}
+.stat{background-image:radial-gradient(120% 120% at 100% 0,rgba(79,118,246,.10),transparent 55%)}
 .stat:hover{transform:translateY(-2px);transition:transform var(--ease)}
 .card-h{display:flex;align-items:center;gap:10px;padding:14px 17px;border-bottom:1px solid var(--stroke-soft)}
 .card-h h3{font-size:14.5px;font-weight:500}
@@ -1005,8 +1005,8 @@ table.sheet td:not(.edit){padding:6px 9px}
   background:
     linear-gradient(to right,var(--card-solid),transparent) 0 0/34px 100% no-repeat local,
     linear-gradient(to left,var(--card-solid),transparent) 100% 0/34px 100% no-repeat local,
-    radial-gradient(farthest-side at 0 50%,rgba(99,102,241,.35),transparent) 0 0/20px 100% no-repeat scroll,
-    radial-gradient(farthest-side at 100% 50%,rgba(99,102,241,.35),transparent) 100% 0/20px 100% no-repeat scroll;
+    radial-gradient(farthest-side at 0 50%,rgba(79,118,246,.35),transparent) 0 0/20px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%,rgba(79,118,246,.35),transparent) 100% 0/20px 100% no-repeat scroll;
 }
 /* نوارِ تب/حسابداری: همیشه اسکرولِ افقی، هیچ‌وقت شکستِ صفحه */
 .fin-nav,.settings-nav{flex-wrap:nowrap;overflow-x:auto;max-width:100%;scrollbar-width:thin}
@@ -1068,6 +1068,6 @@ table.sheet td:not(.edit){padding:6px 9px}
 .seo-row[draggable=true]:hover .seo-drag{color:var(--primary-400)}
 .seo-sheet .seo-newtask{width:100%;background:transparent;border:0;color:var(--text);font-family:inherit;font-size:12.5px;padding:7px 9px;outline:none}
 .seo-sheet .seo-newtask::placeholder{color:var(--text-faint)}
-.seo-addrow td{background:rgba(99,102,241,.04)}
-.seo-addrow:hover td{background:rgba(99,102,241,.07)}
+.seo-addrow td{background:rgba(79,118,246,.04)}
+.seo-addrow:hover td{background:rgba(79,118,246,.07)}
 .seo-sheet td.edit .jdate{cursor:pointer}

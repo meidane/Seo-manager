@@ -51,7 +51,8 @@ class ReportListView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         from finance.models import Invoice
         ctx = super().get_context_data(**kwargs)
-        ctx['projects'] = Project.objects.filter(status=Project.ACTIVE)
+        # پروژه‌های شخصی هرگز در مودالِ گزارش نمی‌آیند (مثلِ بقیهٔ اپ)
+        ctx['projects'] = Project.objects.filter(status=Project.ACTIVE, personal_owner__isnull=True)
         ctx['invoices'] = Invoice.objects.select_related('project')
         ctx['page_title'] = 'گزارش‌ها'
         return ctx
@@ -74,6 +75,15 @@ class ReportCreateView(LoginRequiredMixin, View):
         except (KeyError, ValueError):
             return redirect('reports:list')
         return redirect(report.get_absolute_url())
+
+
+@login_required
+@require_http_methods(['DELETE'])
+def report_delete(request, pk):
+    """حذفِ گزارش (از لیست)."""
+    report = get_object_or_404(Report, pk=pk)
+    report.delete()
+    return JsonResponse({'ok': True})
 
 
 def _invoice_ctx(report):
@@ -165,11 +175,15 @@ def pull_tasks(request, pk):
         d_from, d_to = report.date_from, report.date_to
 
     added = set(report.items.exclude(task__isnull=True).values_list('task_id', flat=True))
-    qs = Task.objects.select_related('assignee', 'type_def').filter(
-        Q(status=Task.DONE, done_date__range=(d_from, d_to))
-        | Q(planned_date__range=(d_from, d_to)) & ~Q(status=Task.DONE),
-        project=report.project,
-    ).exclude(id__in=added)
+    # ایمپورتِ تسک‌ها: به‌صورتِ پیش‌فرض **همهٔ** تسک‌های پروژه (انجام‌شده و نشده) می‌آیند تا
+    # خودمان انتخاب کنیم؛ بازه فقط اگر صریح داده شود فیلتر می‌کند (اختیاری).
+    qs = Task.objects.select_related('assignee', 'type_def').filter(project=report.project).exclude(id__in=added)
+    if g.get('from') or g.get('to'):
+        qs = qs.filter(
+            Q(status=Task.DONE, done_date__range=(d_from, d_to))
+            | (Q(planned_date__range=(d_from, d_to)) & ~Q(status=Task.DONE))
+        )
+    qs = qs.order_by('-done_date', '-planned_date', '-id')
 
     groups = []
     for key, label, types in BUCKETS:

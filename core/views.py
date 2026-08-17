@@ -163,3 +163,19 @@ def report_month_delete(request, pk):
     require_perm(request, 'manage_task_types')
     ReportPeriod.objects.filter(pk=pk).delete()
     return JsonResponse({'ok': True})
+
+
+@login_required
+@require_http_methods(['POST'])
+def report_month_reorder(request):
+    """ترتیبِ نمایشِ ماه‌های گزارش (کدام اولِ دراپ‌داون) — فهرستِ id به ترتیبِ جدید."""
+    from tasks.models import ReportPeriod
+    require_perm(request, 'manage_task_types')
+    ids = json.loads(request.body or '{}').get('ids') or []
+    objs = {p.id: p for p in ReportPeriod.objects.filter(id__in=ids)}
+    for i, pid in enumerate(ids):
+        p = objs.get(int(pid))
+        if p and p.order != i:
+            p.order = i
+            p.save(update_fields=['order'])
+    return JsonResponse({'ok': True})

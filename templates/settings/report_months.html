@@ -17,10 +17,11 @@
       <button class="btn btn-p" id="rm-add">＋ افزودن</button>
     </div>
 
+    <p style="color:var(--text-faint);font-size:11.5px;margin-bottom:8px">با کشیدن، ترتیبِ نمایش در دراپ‌داون‌ها را تعیین کن (اولی بالای دراپ‌داون).</p>
     <div id="rm-list" style="display:flex;flex-wrap:wrap;gap:8px">
       {% for p in periods %}
-        <span class="chip on" data-id="{{ p.id }}" style="display:inline-flex;align-items:center;gap:7px;padding:6px 12px;font-size:12.5px">
-          {{ p.label }} <i class="rm-del" data-id="{{ p.id }}" style="cursor:pointer;opacity:.6;font-style:normal">×</i>
+        <span class="chip on rm-chip" draggable="true" data-id="{{ p.id }}" style="display:inline-flex;align-items:center;gap:7px;padding:6px 12px;font-size:12.5px;cursor:grab">
+          <i style="opacity:.4;font-style:normal">⠿</i>{{ p.label }} <i class="rm-del" data-id="{{ p.id }}" style="cursor:pointer;opacity:.6;font-style:normal">×</i>
         </span>
       {% empty %}
         <span id="rm-empty" class="zero" style="font-size:12.5px">هنوز ماهی تعریف نشده — یکی اضافه کن تا در مودالِ تسک و بردِ سئو ظاهر شود.</span>
@@ -42,9 +43,9 @@
       if(!r.created){ App.toast('این ماه از قبل هست','warn'); return; }
       const em = document.getElementById('rm-empty'); if(em) em.remove();
       const s = document.createElement('span');
-      s.className='chip on'; s.dataset.id=r.id;
-      s.style.cssText='display:inline-flex;align-items:center;gap:7px;padding:6px 12px;font-size:12.5px';
-      s.innerHTML = `${r.label} <i class="rm-del" data-id="${r.id}" style="cursor:pointer;opacity:.6;font-style:normal">×</i>`;
+      s.className='chip on rm-chip'; s.dataset.id=r.id; s.draggable=true;
+      s.style.cssText='display:inline-flex;align-items:center;gap:7px;padding:6px 12px;font-size:12.5px;cursor:grab';
+      s.innerHTML = `<i style="opacity:.4;font-style:normal">⠿</i>${r.label} <i class="rm-del" data-id="${r.id}" style="cursor:pointer;opacity:.6;font-style:normal">×</i>`;
       list.appendChild(s);
       App.toast('اضافه شد','ok');
     }catch(_){}
@@ -56,6 +57,20 @@
       await App.fetchJSON(`/settings/report-months/api/${x.dataset.id}/`, {method:'DELETE'});
       x.closest('.chip').remove(); App.toast('حذف شد','ok');
     }catch(_){}
+  });
+  // مرتب‌سازی با کشیدن
+  let drag=null;
+  list.addEventListener('dragstart', e=>{ const c=e.target.closest('.rm-chip'); if(c){ drag=c; c.style.opacity=.4; }});
+  list.addEventListener('dragend', ()=>{ if(drag){ drag.style.opacity=''; drag=null; }});
+  list.addEventListener('dragover', e=>{
+    const c=e.target.closest('.rm-chip'); if(!c||!drag||c===drag) return; e.preventDefault();
+    const r=c.getBoundingClientRect();
+    list.insertBefore(drag, (e.clientX-r.left)/r.width<0.5 ? c : c.nextSibling); // RTL: چپ=بعد
+  });
+  list.addEventListener('drop', async e=>{
+    if(!drag) return; e.preventDefault();
+    const ids=[...list.querySelectorAll('.rm-chip')].map(c=>c.dataset.id);
+    try{ await App.fetchJSON("{% url 'core:report_month_reorder' %}", {method:'POST', body:{ids}}); App.toast('ترتیب ذخیره شد','ok'); }catch(_){}
   });
 })();
 </script>

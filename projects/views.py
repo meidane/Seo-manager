@@ -48,7 +48,8 @@ def _report_month_rows(project_ids, periods):
     agg = (Task.objects.filter(project_id__in=project_ids).filter(year_q)
            .values('project_id', 'report_year', 'report_month')
            .annotate(
-               planned=Count('id'),
+               # «ایده» (بدونِ تاریخِ برنامه) جزوِ «برنامه» شمرده نمی‌شود
+               planned=Count('id', filter=Q(planned_date__isnull=False)),
                done=Count('id', filter=Q(status=Task.DONE)),
                words=Sum('word_count', filter=Q(status=Task.DONE)),
                minutes=Sum('spent_minutes', filter=Q(status=Task.DONE)),

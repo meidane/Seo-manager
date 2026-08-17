@@ -614,14 +614,19 @@
     const lbl = sec.querySelector('b').textContent.trim();
     App.openModal(`<div class="modal-h"><h3>استراتژیِ ${lbl}</h3><button class="x" onclick="App.closeModal()">×</button></div>
       <div class="modal-b"><div class="field"><label>توضیحاتِ استراتژیِ این ماه</label>
-        <textarea id="seo-strat-txt" class="input" rows="9" placeholder="استراتژیِ این ماه را بنویس…">${cur.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea></div></div>
+        <textarea id="seo-strat-txt" class="rich-editor"></textarea></div></div>
       <div class="modal-f"><button class="btn" onclick="App.closeModal()">انصراف</button><button class="btn btn-p" id="seo-strat-save">ذخیره</button></div>`);
+    const ta = document.getElementById('seo-strat-txt');
+    ta.value = cur;                                   // مقدار را مستقیم ست کن (بدونِ اینجکشن در تمپلیت)
+    if(window.RichText) RichText.init('#seo-strat-txt');
     document.getElementById('seo-strat-save').onclick = async ()=>{
-      const desc = document.getElementById('seo-strat-txt').value;
+      if(window.RichText) RichText.save();            // TinyMCE → textarea
+      const desc = ta.value;
       try{
         const r = await App.fetchJSON(`/projects/api/${pid}/seo/strategy/`, {method:'POST', body:{year:+year, month:+month, description:desc}});
         sec.querySelector('.seo-strat-data').value = r.description || '';
         b.classList.toggle('on', !!(r.description||'').trim());
+        if(window.RichText) RichText.remove('#seo-strat-txt');
         App.toast('ذخیره شد','ok'); App.closeModal();
       }catch(_){}
     };
