@@ -13,6 +13,7 @@
 
   <section class="card glass">
     {% if holidays %}
+      <div class="tscroll">
       <table>
         <thead>
           <tr><th>عنوان</th><th>تاریخ شمسی</th><th>نوع</th><th>تعطیل رسمی</th></tr>
@@ -34,6 +35,7 @@
           {% endfor %}
         </tbody>
       </table>
+      </div>
     {% else %}
       <div class="empty">
         <div class="ico">✦</div>

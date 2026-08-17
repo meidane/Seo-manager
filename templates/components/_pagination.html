@@ -1,6 +1,6 @@
 {% load seo_extras %}
-{# صفحه‌بندیِ شماره‌دارِ مشترک (۱ ۲ ۳ … ۲۰). فقط به page_obj نیاز دارد؛ پارامترهای
-   دیگرِ آدرس با {% querystring %} (جنگو ۵.۱+) خودکار حفظ می‌شوند. #}
+{% comment %}صفحه‌بندیِ شماره‌دارِ مشترک (۱ ۲ ۳ … ۲۰). فقط به page_obj نیاز دارد؛ پارامترهای
+   دیگرِ آدرس با querystring (جنگو ۵.۱+) خودکار حفظ می‌شوند.{% endcomment %}
 {% if page_obj.paginator.num_pages > 1 %}
 <nav class="pagi" aria-label="صفحه‌بندی">
   {% if page_obj.has_previous %}<a class="pg" href="{% querystring page=page_obj.previous_page_number %}" title="قبلی">‹</a>{% else %}<span class="pg is-off">‹</span>{% endif %}

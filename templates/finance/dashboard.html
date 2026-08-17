@@ -58,6 +58,7 @@
 
   <section class="card glass" style="margin-top:14px">
     <div class="card-h"><h3>حقوق — هزینه (تعهد) و پرداخت‌شده (از تراکنش)</h3><div class="side-c"><a href="{% url 'finance:payroll' %}" class="chip">صورت‌حساب‌ها</a></div></div>
+    <div class="tscroll">
     <table>
       <thead><tr><th>همکار</th><th>هزینه (تعهد)</th><th>پرداخت‌شده</th></tr></thead>
       <tbody>
@@ -68,5 +69,6 @@
         {% if salary_rows %}<tr style="font-weight:700;border-top:2px solid var(--stroke)"><td>جمعِ کل حقوق</td><td class="num-c wd">{{ salary_total.expense|money }}</td><td class="num-c dep">{{ salary_total.paid|money }}</td></tr>{% endif %}
       </tbody>
     </table>
+    </div>
   </section>
 {% endblock %}

@@ -8,6 +8,7 @@
 
   <section class="card glass">
     {% if payrolls %}
+      <div class="tscroll">
       <table>
         <thead><tr><th>همکار</th><th>ماه</th><th>اجزا</th><th>جمع</th><th>مانده (کل حساب)</th><th></th></tr></thead>
         <tbody>
@@ -30,6 +31,7 @@
           {% endfor %}
         </tbody>
       </table>
+      </div>
     {% else %}
       <div class="empty"><div class="ico">💰</div><h4>هنوز صورت‌حساب حقوقی نیست</h4><button class="btn btn-p" id="add-pay2" style="margin-top:12px">＋ صدور حقوق</button></div>
     {% endif %}
