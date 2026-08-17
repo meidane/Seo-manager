@@ -47,6 +47,9 @@
 | فیلدهای اختصاصیِ نوع در مودال (نه هسته‌ای) | `TaskTypeDef.fields` → `tasks.js: renderCustom` (هسته فقط ۱۰ فیلد عمومی دارد؛ `task-schema.js` فقط fallback برچسب/رنگِ tech/other) — فیلدِ `tags` با ویجتِ tagbox (`tasks.js: tagboxHtml/wireTagboxes`) |
 | اتصالِ کلمهٔ کلیدیِ تسک به ردیابیِ رتبهٔ سئو | `seo/signals.py: sync_tracked_keywords` |
 | پیشرفتِ رتبه نسبت به تاریخِ برنامه‌ریزی («+۲ بعدِ ۴ روز») | `seo/rank.py: rank_progress` |
+| بردِ سئوِ پروژه (سکشنِ ماهِ گزارش + استراتژی + شیتِ ویرایشی) | تبِ «تسک‌ها»ی `projects/detail.html` + `projects/views.py: seo_*` + `tasks.models.ReportMonthStrategy`/`Task.board_order` (`tasks/CLAUDE.md`) |
+| استراتژیِ ماهانهٔ هر پروژه | `tasks.models.ReportMonthStrategy(project,year,month,description)` |
+| ماه‌های گزارش (تعریفِ واحد در تنظیمات؛ مودالِ تسک/بردِ سئو از آن می‌خوانند) | `tasks.models.ReportPeriod` + `/settings/report-months/` (`core.views.ReportMonthsView`) |
 | داده‌ی مودال تسک (پروژه/همکار/انواع) | `tasks/api.py: form_data` → `/tasks/api/formdata/` |
 | بازه‌ی سراسری | `core/daterange.py: DateRangeMixin` |
 | کاتالوگِ ستون‌های قابل‌سفارشی‌سازی (تسک/پروژه/همکار) | `core/columns.py: get_catalog/get_columns/cell_value` + `core/models.py: ColumnConfig` + تگ `{% column_cell %}` |
@@ -232,6 +235,24 @@ DB پیش‌فرض SQLite (متغیرها در `.env`). **`seed_demo`** (`accoun
     باشد آن تگ **اجرا** می‌شود (مثلاً `_pagination.html` کامنتش را روی هر صفحهٔ صفحه‌بندی
     نمایش می‌داد + `querystring` را اجرا می‌کرد). برای توضیحِ چندخطی از
     `{% comment %}…{% endcomment %}` استفاده کن، نه `{# … #}`.
+27. **سایدبارِ ثابتِ باریک (شبیهِ کلیک‌اپ) — نه هاور، نه جمع‌شونده (بلاکِ «فاز ۲» در
+    `style.css`، فقط `@media(min-width:1101px)`).** رِیلِ ۸۲px که همیشه باز است:
+    آیکن بالا + برچسبِ ریزِ وسط‌چینِ زیرش (`.nav a{flex-direction:column}`)، برچسبِ
+    بخش‌ها (`.nav-label`) به جداکنندهٔ نازک تبدیل می‌شود، و «همکاران» (`.side-att`)
+    فقط آواتار + نقطهٔ آنلاین نشان می‌دهد (`.satt-main/.satt-sum/.satt-task/.satt-tl`
+    مخفی). سایدبار در فلوِ گرید می‌ماند (`position:sticky`)، **نه `fixed`** — نسخهٔ
+    قبلی fixed بود و `.main` را به ستونِ اشتباهِ گرید می‌انداخت (تلهٔ رفع‌شده). موبایل
+    (`≤1100px`) همان کشوی افقیِ برچسب‌دار می‌ماند.
+28. **تمِ سرزنده‌تر (ایندیگو/بنفش) + اسکرول‌شدوی صحیح.** `--primary` به ایندیگو
+    (`#6366F1`) و `--bg` به نیلیِ عمیق (`#090A1B`) رفت؛ هاله‌های رنگیِ `body` غنی‌تر شد
+    (ایندیگو/بنفش/صورتی). **نشانگرِ اسکرولِ افقی** دیگر فِیدِ `position:absolute` نیست
+    (که با اسکرول روی محتوا می‌افتاد) — به‌جایش (۱) اسکرول‌بارِ همیشه‌دیده با ترَکِ روشن،
+    (۲) تکنیکِ **scroll-shadows** (لایه‌های `background` با `attachment:local` برای ماسکِ
+    هم‌رنگِ کارت + `attachment:scroll` برای هالهٔ لبه) که به لبهٔ دیدهٔ کانتینر می‌چسبد و
+    در دو انتهای مسیر محو می‌شود. رنگِ ماسک = `--card-solid`. روی `.sheet-wrap/.tscroll/
+    .tsheet-wrap`. جدولِ تسک‌ها (`.tsheet`) هم حالا خط‌کشیِ سلولی + هدرِ چسبان + راه‌راه
+    گرفت (نمای گوگل‌شیت). بابتِ درون‌جدولِ تراکنش (`.txcat-wrap`) تک‌خطیِ فشرده شد
+    (`flex-wrap:nowrap`) تا ردیف را بلند نکند.
 
 ## انضباط نگه‌داری (مهم)
 **به‌روزرسانی هینت بخشی از همان تغییر است.** وقتی فیلد/الگو/تله/منبع‌واحدِ جدید اضافه شد،

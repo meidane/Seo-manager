@@ -34,7 +34,10 @@
 - `views.py`: `HolidayListView` (`/settings/holidays/`) + **`editor_upload`** (`/api/editor/upload/`
   در config/urls؛ آپلود عکس ادیتور، فقط تصویر، سقف ۲۰MB) + `ColumnsSettingsView`/`columns_save`
   (`/settings/columns/` — پنج بخش: تسک‌ها(صفحه)، پروژه‌ها(صفحه/داشبورد)، همکاران(صفحه/داشبورد)؛
-  تیک+ترتیبِ ▲▼ در `templates/settings/columns.html`، ذخیره با POST به `columns/api/save/`).
+  تیک+ترتیبِ ▲▼ در `templates/settings/columns.html`، ذخیره با POST به `columns/api/save/`)
+  + **`ReportMonthsView`** (`/settings/report-months/`، گیت `manage_task_types`) — تعریفِ
+  ماه‌های گزارش (`tasks.models.ReportPeriod`، «مرداد ۱۴۰۵»)؛ منبعِ واحدِ مودالِ تسک و بردِ
+  سئوِ پروژه (`tasks/CLAUDE.md`). `report_month_add`/`report_month_delete` (چیپ‌های افزودن/حذف).
 
 ## افزودنِ جدول/محلِ جدید به سفارشی‌سازیِ ستون‌ها
 ۱) آیتم‌های کاتالوگ در `core/columns.py` (`_BASE[table]`) ۲) `get_columns(table, scope)` در

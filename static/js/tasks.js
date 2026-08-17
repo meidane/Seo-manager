@@ -17,6 +17,20 @@
     return `<div class="field" data-f="${id}"><label>${label}</label>${inner}</div>`;
   }
 
+  // دراپ‌داونِ «ماه گزارش» — از ماه‌های تعریف‌شده در تنظیمات (cfg.reportPeriods، value='سال-ماه').
+  // مقدارِ فعلیِ تسک اگر در فهرست نبود (دادهٔ قدیمی) خودش هم اضافه می‌شود تا گم نشود.
+  function reportPeriodSelect(t) {
+    const cur = (t.report_month && t.report_year) ? `${t.report_year}-${t.report_month}` : '';
+    const periods = cfg.reportPeriods || [];
+    const vals = new Set(periods.map((p) => p[0]));
+    const mName = Object.fromEntries((cfg.reportMonths || []).map(([n, l]) => [n, l]));
+    let opts = '<option value="">— بدون ماه —</option>';
+    if (cur && !vals.has(cur)) opts += `<option value="${cur}" selected>${(mName[t.report_month] || '') + ' ' + t.report_year}</option>`;
+    opts += periods.map(([v, l]) => `<option value="${v}"${v === cur ? ' selected' : ''}>${l}</option>`).join('');
+    const hint = periods.length ? '' : ' <span style="font-size:10px;color:var(--text-faint)">— در تنظیمات ← ماه‌های گزارش تعریف کن</span>';
+    return `<select id="f-report_period">${opts}</select>${hint}`;
+  }
+
   // همه‌ی انواع از رکوردهای TaskTypeDef (built-in + سفارشی). اگر seed نشده باشد، از typeChoices می‌سازد.
   function typeList() {
     if (cfg.customTypes && cfg.customTypes.length) return cfg.customTypes;
@@ -83,10 +97,7 @@
         ${field('status', 'وضعیت', `<select id="f-status">${statusOptions(t.status, needsReviewDefault)}</select>`)}
         ${field('estimate_minutes', 'تخمین زمان (دقیقه)', `<input id="f-estimate_minutes" class="input" type="number" dir="ltr" placeholder="۶۰" value="${t.estimate_minutes || ''}">`)}
       </div>
-      <div class="grid2">
-        ${field('report_month', 'ماه گزارش', `<select id="f-report_month"><option value="">— بدون ماه —</option>${(cfg.reportMonths || []).map(([v, l]) => opt(v, l, t.report_month)).join('')}</select>`)}
-        ${field('report_year', 'سالِ گزارش', `<input id="f-report_year" class="input" type="number" dir="ltr" placeholder="${cfg.reportYear || ''}" value="${t.report_year || ''}">`)}
-      </div>
+      ${field('report_month', 'ماه گزارش', reportPeriodSelect(t))}
 
       ${recurBarHtml(t)}
       ${t.id ? '<div id="kpi-box" style="display:none;margin-top:8px"></div>' : ''}
@@ -287,9 +298,11 @@
       planned_date: g('f-planned_date'), status: g('f-status'),
       needs_review: document.getElementById('f-needs-review').checked,
       estimate_minutes: g('f-estimate_minutes'), description: g('f-description'),
-      report_month: g('f-report_month'),
-      report_year: g('f-report_year'),
     };
+    // ماه گزارش: تک‌دراپ‌داونِ «سال-ماه» → به report_month + report_year تفکیک می‌شود
+    const rp = g('f-report_period');
+    if (rp) { const [y, m] = rp.split('-'); p.report_year = +y; p.report_month = +m; }
+    else { p.report_year = null; p.report_month = null; }
     if (ty && ty.fields && ty.fields.length) {
       const custom = {};
       document.querySelectorAll('#custom-fields .cf').forEach((el) => {

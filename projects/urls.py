@@ -24,4 +24,10 @@ urlpatterns = [
 
     # دسترسی به همکاران
     path('api/<int:pk>/members/', views.project_members, name='members'),
+
+    # بردِ سئو (سکشن‌های ماهِ گزارش)
+    path('api/<int:pk>/seo/strategy/', views.seo_strategy, name='seo_strategy'),
+    path('api/<int:pk>/seo/section/', views.seo_section_add, name='seo_section_add'),
+    path('api/<int:pk>/seo/task/', views.seo_task_add, name='seo_task_add'),
+    path('api/<int:pk>/seo/reorder/', views.seo_reorder, name='seo_reorder'),
 ]

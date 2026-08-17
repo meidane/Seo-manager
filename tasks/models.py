@@ -93,7 +93,7 @@ class Task(TimeStampedModel):
     update_type = models.CharField('زیرنوع آپدیت', max_length=10, choices=UPDATE_TYPE_CHOICES, blank=True)
     title = models.CharField('عنوان', max_length=255)
     description = models.TextField('توضیحات', blank=True)
-    planned_date = models.DateField('تاریخ برنامه')
+    planned_date = models.DateField('تاریخ برنامه', null=True, blank=True)
     planned_time = models.TimeField('ساعت', default=time(8, 0))
     # ماهِ گزارش (شخصی‌سازیِ سئو) — ۱=فروردین … ۱۲=اسفند. اختیاری؛ روی هستهٔ سیستم رفتاری ندارد.
     REPORT_MONTH_CHOICES = [
@@ -102,6 +102,8 @@ class Task(TimeStampedModel):
     ]
     report_month = models.PositiveSmallIntegerField('ماه گزارش', null=True, blank=True, choices=REPORT_MONTH_CHOICES, db_index=True)
     report_year = models.PositiveSmallIntegerField('سالِ گزارش', null=True, blank=True, db_index=True)
+    # ترتیبِ دستیِ ردیف در بردِ سئوِ پروژه (جابه‌جاییِ ردیف‌ها)؛ کوچک‌تر = بالاتر
+    board_order = models.IntegerField('ترتیبِ برد', default=0, db_index=True)
     status = models.CharField('وضعیت', max_length=12, choices=STATUS_CHOICES, default=TODO)
     done_date = models.DateField('تاریخ انجام', null=True, blank=True)
     priority = models.CharField('اولویت', max_length=6, choices=PRIORITY_CHOICES, default=MED)
@@ -183,7 +185,7 @@ class Task(TimeStampedModel):
 
     @property
     def is_overdue(self):
-        return self.status in (self.TODO, self.DOING) and self.planned_date < date.today()
+        return bool(self.planned_date) and self.status in (self.TODO, self.DOING) and self.planned_date < date.today()
 
     @property
     def is_done(self):
@@ -574,3 +576,75 @@ class TaskHistory(models.Model):
 
     def __str__(self):
         return f'{self.get_action_display()} — {self.task_id}'
+
+
+class ReportMonthStrategy(TimeStampedModel):
+    """سکشنِ «ماهِ گزارش» در بردِ سئوِ پروژه + استراتژیِ همان ماه.
+
+    وجودِ رکورد یعنی آن (سال، ماه) به‌عنوان یک سکشن برای پروژه ساخته شده (حتی اگر
+    استراتژی خالی باشد یا هنوز تسکی نداشته باشد). `description` = متنِ استراتژیِ ماه.
+    """
+    organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
+    project = models.ForeignKey('projects.Project', verbose_name='پروژه', on_delete=models.CASCADE, related_name='report_strategies')
+    year = models.PositiveSmallIntegerField('سالِ گزارش')
+    month = models.PositiveSmallIntegerField('ماهِ گزارش', choices=Task.REPORT_MONTH_CHOICES)
+    description = models.TextField('استراتژی', blank=True)
+
+    objects = TenantManager()
+    all_objects = models.Manager()
+
+    class Meta:
+        verbose_name = 'استراتژیِ ماهِ گزارش'
+        verbose_name_plural = 'استراتژی‌های ماهِ گزارش'
+        base_manager_name = 'all_objects'
+        unique_together = ('project', 'year', 'month')
+        ordering = ['-year', '-month']
+
+    def save(self, *args, **kwargs):
+        if self.organization_id is None and self.project_id:
+            self.organization_id = self.project.organization_id
+        stamp_org(self)
+        super().save(*args, **kwargs)
+
+    @property
+    def label(self):
+        return f'{dict(Task.REPORT_MONTH_CHOICES).get(self.month, self.month)} {self.year}'
+
+    def __str__(self):
+        return f'{self.project_id} — {self.label}'
+
+
+class ReportPeriod(TimeStampedModel):
+    """ماهِ گزارشِ تعریف‌شده در تنظیمات (سطحِ سازمان) — «مرداد ۱۴۰۵».
+
+    منبعِ واحدِ ماه‌های گزارش: مودالِ تسک، بردِ سئوِ پروژه و فیلترها همه از همین می‌خوانند
+    تا ساختارِ همهٔ پروژه‌ها یکسان بماند و ماهِ گزارش دستی/اشتباه وارد نشود.
+    """
+    organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
+    year = models.PositiveSmallIntegerField('سال')
+    month = models.PositiveSmallIntegerField('ماه', choices=Task.REPORT_MONTH_CHOICES)
+
+    objects = TenantManager()
+    all_objects = models.Manager()
+
+    class Meta:
+        verbose_name = 'ماهِ گزارش'
+        verbose_name_plural = 'ماه‌های گزارش'
+        base_manager_name = 'all_objects'
+        unique_together = ('organization', 'year', 'month')
+        ordering = ['-year', '-month']
+
+    def save(self, *args, **kwargs):
+        stamp_org(self)
+        super().save(*args, **kwargs)
+
+    @property
+    def label(self):
+        return f'{dict(Task.REPORT_MONTH_CHOICES).get(self.month, self.month)} {self.year}'
+
+    @property
+    def value(self):
+        return f'{self.year}-{self.month}'
+
+    def __str__(self):
+        return self.label
