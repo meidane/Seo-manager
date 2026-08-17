@@ -138,19 +138,71 @@
   </section>
   {% endif %}
 
-  {# تسک‌ها #}
-  <section class="card glass tab-panel" data-panel="tasks">
-    <div class="card-h"><h3>تسک‌های پروژه در بازه</h3><div class="side-c"><a href="{% url 'tasks:list' %}?project={{ project.pk }}&assignee=" class="btn btn-sm">مدیریت کامل ↗</a></div></div>
-    <div class="tscroll">
-    <table>
-      <thead><tr><th>عنوان</th><th>مسئول</th><th>تاریخ برنامه</th><th>وضعیت</th><th>🔗</th></tr></thead>
-      <tbody>{% for t in task_rows %}<tr>
-        <td><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span> {{ t.title }}</td>
-        <td>{{ t.assignee.full_name|default:"—" }}</td><td>{{ t.planned_date|jalali }}</td>
-        <td><span class="tag t-{% if t.status == 'done' %}ok{% elif t.is_overdue %}bad{% else %}mute{% endif %}">{{ t.get_status_display }}</span></td>
-        <td>{% if t.published_url %}<a class="lnk" href="{{ t.published_url }}" target="_blank" rel="noopener">↗</a>{% endif %}</td>
-      </tr>{% empty %}<tr><td colspan="5" class="zero" style="padding:24px;text-align:center">تسکی در این بازه نیست</td></tr>{% endfor %}</tbody>
-    </table>
+  {# تسک‌ها — بردِ سئو (سکشن‌های ماهِ گزارش، حالتِ شیت) #}
+  <section class="card glass tab-panel" data-panel="tasks" id="seo-board" data-project="{{ project.pk }}">
+    <div class="card-h">
+      <h3>بردِ سئو — ماه‌های گزارش</h3>
+      <div class="side-c" style="gap:8px">
+        <form method="get" style="margin:0;display:flex;gap:6px;align-items:center">
+          <select name="seo_type" class="input" style="width:auto;padding:5px 10px;font-size:12px" onchange="this.form.submit()">
+            <option value="">همهٔ انواع</option>
+            {% for tid,tname in seo_types %}<option value="{{ tid }}" {% if seo_type == tid|stringformat:'s' %}selected{% endif %}>{{ tname }}</option>{% endfor %}
+          </select>
+        </form>
+        <a href="{% url 'core:columns' %}" class="mini" title="افزودن/سفارشی‌سازیِ ستون‌ها">＋ ستون‌ها</a>
+        <a href="{% url 'tasks:list' %}?project={{ project.pk }}&assignee=" class="btn btn-sm">مدیریت کامل ↗</a>
+      </div>
+    </div>
+    <div style="padding:12px 14px">
+      <div style="margin-bottom:14px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <span style="color:var(--text-dim);font-size:12px">افزودنِ ماهِ گزارش:</span>
+        <select id="seo-new-month" class="input" style="width:auto;padding:5px 9px;font-size:12px">{% for n,l in seo_months %}<option value="{{ n }}">{{ l }}</option>{% endfor %}</select>
+        <input id="seo-new-year" class="input" type="number" dir="ltr" style="width:82px;padding:5px 9px;font-size:12px" value="{{ seo_add_year }}">
+        <button class="btn btn-sm btn-p" id="seo-add-section">＋ سکشن</button>
+      </div>
+
+      {% for s in seo_sections %}
+      <div class="seo-section" data-year="{{ s.year }}" data-month="{{ s.month }}" style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:7px">
+          <b style="font-size:14.5px">{{ s.label }}</b>
+          <button class="chip seo-strategy{% if s.has_strategy %} on{% endif %}" data-year="{{ s.year }}" data-month="{{ s.month }}">📋 استراتژی</button>
+          <span style="color:var(--text-faint);font-size:11px">{{ s.tasks|length|fa_digits }} تسک</span>
+          <textarea class="seo-strat-data" hidden>{{ s.strategy }}</textarea>
+        </div>
+        <div class="tscroll">
+        <table class="sheet seo-sheet">
+          <thead><tr>
+            <th style="width:22px"></th><th style="width:22px"></th>
+            <th style="min-width:230px">عنوان</th><th>مسئول</th><th>تاریخ برنامه</th><th>وضعیت</th>
+            {% for c in seo_cols %}<th>{{ c.label }}</th>{% endfor %}
+          </tr></thead>
+          <tbody data-year="{{ s.year }}" data-month="{{ s.month }}">
+            {% for t in s.tasks %}
+            <tr data-id="{{ t.id }}" class="seo-row" {% if can_edit_task %}draggable="true"{% endif %}>
+              <td class="seo-drag" title="جابه‌جایی">⠿</td>
+              <td><i class="row-open" data-open-task="{{ t.id }}" title="باز کردن">⤢</i></td>
+              <td class="edit tcell"><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span>{% if can_edit_task %}<input class="tx-inline" data-f="title" value="{{ t.title }}">{% else %}{{ t.title }}{% endif %}</td>
+              <td class="edit">{% if can_edit_task %}<select class="tx-inline rich-select" data-f="assignee"><option value="">—</option>{% for c in all_colleagues %}<option value="{{ c.id }}" data-color="{{ c.color }}"{% if c.avatar %} data-img="{{ c.avatar.url }}"{% endif %} {% if t.assignee_id == c.id %}selected{% endif %}>{{ c.full_name }}</option>{% endfor %}</select>{% else %}{{ t.assignee.full_name|default:"—" }}{% endif %}</td>
+              <td class="edit"><input class="tx-inline jdate" data-f="planned_date" dir="ltr" readonly value="{{ t.planned_date|jalali }}" placeholder="ایده"></td>
+              <td class="edit">{% include "tasks/_status_select.html" %}</td>
+              {% for c in seo_cols %}<td>{% column_cell t c %}</td>{% endfor %}
+            </tr>
+            {% endfor %}
+            {% if can_edit_task %}
+            <tr class="seo-addrow">
+              <td></td><td class="zero">＋</td>
+              <td class="edit"><input class="seo-newtask" placeholder="افزودنِ ایده/تسک… (Enter)" data-year="{{ s.year }}" data-month="{{ s.month }}"></td>
+              <td colspan="{{ seo_cols|length|add:3 }}" class="zero" style="font-size:11px;text-align:start;padding-inline-start:10px">فقط عنوان لازم است؛ تاریخ را بعداً بگذار (ایده)</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+        </div>
+      </div>
+      {% empty %}
+      <div class="empty"><div class="ico">🗓️</div><h4>هنوز ماهِ گزارشی اضافه نشده</h4>
+        <p style="color:var(--text-faint);font-size:12px;margin-top:6px">از بالا یک ماه را انتخاب و «＋ سکشن» بزن تا شروع کنی.</p></div>
+      {% endfor %}
     </div>
   </section>
   {# کلمات کلیدی — ردیابیِ رتبه (فقط اگر پروژه فعالش کرده) #}
@@ -312,6 +364,8 @@
   });
   // بعد از تغییرِ بازهٔ کلمات کلیدی و رفرشِ صفحه، همان تب باز بماند
   if (new URLSearchParams(location.search).has('kw_period')) activate('keywords');
+  // بردِ سئو: با فیلترِ نوع یا رفرشِ افزودن، تبِ تسک‌ها باز بماند
+  if (new URLSearchParams(location.search).has('seo_type') || location.hash === '#tasks') activate('tasks');
 
   // ── دسترسی‌ها ──
   const CREATE_URL = "{% url 'projects:credential_create' project.pk %}";
@@ -519,5 +573,74 @@
   });
 })();
 {% endif %}
+
+// ── بردِ سئو: افزودنِ سکشن/ردیف، مودالِ استراتژی، جابه‌جاییِ ردیف ──
+(function(){
+  const board = document.getElementById('seo-board');
+  if(!board) return;
+  const pid = board.dataset.project;
+  const reloadTasks = () => { location.hash = '#tasks'; location.reload(); };
+
+  const addBtn = document.getElementById('seo-add-section');
+  if(addBtn) addBtn.addEventListener('click', async ()=>{
+    const month = +document.getElementById('seo-new-month').value;
+    const year = +document.getElementById('seo-new-year').value;
+    if(!year){ App.toast('سال لازم است','warn'); return; }
+    try{ await App.fetchJSON(`/projects/api/${pid}/seo/section/`, {method:'POST', body:{year, month}}); reloadTasks(); }catch(_){}
+  });
+
+  // افزودنِ ردیف (Enter روی input) — «ایده»، فقط عنوان
+  board.addEventListener('keydown', async e=>{
+    const inp = e.target.closest('.seo-newtask'); if(!inp || e.key!=='Enter') return;
+    e.preventDefault();
+    const title = inp.value.trim(); if(!title) return;
+    const type = new URLSearchParams(location.search).get('seo_type') || '';
+    try{
+      await App.fetchJSON(`/projects/api/${pid}/seo/task/`, {method:'POST',
+        body:{title, year:+inp.dataset.year, month:+inp.dataset.month, type}});
+      reloadTasks();
+    }catch(_){}
+  });
+
+  // مودالِ استراتژیِ ماه
+  board.addEventListener('click', e=>{
+    const b = e.target.closest('.seo-strategy'); if(!b) return;
+    const sec = b.closest('.seo-section');
+    const cur = sec.querySelector('.seo-strat-data').value;
+    const year = b.dataset.year, month = b.dataset.month;
+    const lbl = sec.querySelector('b').textContent.trim();
+    App.openModal(`<div class="modal-h"><h3>استراتژیِ ${lbl}</h3><button class="x" onclick="App.closeModal()">×</button></div>
+      <div class="modal-b"><div class="field"><label>توضیحاتِ استراتژیِ این ماه</label>
+        <textarea id="seo-strat-txt" class="input" rows="9" placeholder="استراتژیِ این ماه را بنویس…">${cur.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea></div></div>
+      <div class="modal-f"><button class="btn" onclick="App.closeModal()">انصراف</button><button class="btn btn-p" id="seo-strat-save">ذخیره</button></div>`);
+    document.getElementById('seo-strat-save').onclick = async ()=>{
+      const desc = document.getElementById('seo-strat-txt').value;
+      try{
+        const r = await App.fetchJSON(`/projects/api/${pid}/seo/strategy/`, {method:'POST', body:{year:+year, month:+month, description:desc}});
+        sec.querySelector('.seo-strat-data').value = r.description || '';
+        b.classList.toggle('on', !!(r.description||'').trim());
+        App.toast('ذخیره شد','ok'); App.closeModal();
+      }catch(_){}
+    };
+  });
+
+  // جابه‌جاییِ ردیف‌ها (drag&drop، فقط داخلِ همان سکشن)
+  let dragEl = null;
+  board.addEventListener('dragstart', e=>{ const r=e.target.closest('.seo-row'); if(r){ dragEl=r; r.style.opacity=.4; }});
+  board.addEventListener('dragend', ()=>{ if(dragEl){ dragEl.style.opacity=''; dragEl=null; }});
+  board.addEventListener('dragover', e=>{
+    const r=e.target.closest('.seo-row'); if(!r||!dragEl||r===dragEl) return;
+    if(r.parentNode!==dragEl.parentNode) return;
+    e.preventDefault();
+    const rect=r.getBoundingClientRect();
+    r.parentNode.insertBefore(dragEl, (e.clientY-rect.top)/rect.height>0.5 ? r.nextSibling : r);
+  });
+  board.addEventListener('drop', async e=>{
+    if(!dragEl) return; e.preventDefault();
+    const tbody=dragEl.closest('tbody');
+    const ids=[...tbody.querySelectorAll('.seo-row')].map(r=>r.dataset.id);
+    try{ await App.fetchJSON(`/projects/api/${pid}/seo/reorder/`, {method:'POST', body:{ids}}); App.toast('ترتیب ذخیره شد','ok'); }catch(_){}
+  });
+})();
 </script>
 {% endblock %}

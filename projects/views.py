@@ -225,6 +225,37 @@ class ProjectDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
         ctx['all_colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)
         ctx['member_ids'] = set(p.members.values_list('id', flat=True))
         ctx['can_manage_members'] = has_perm(self.request, 'project_colleagues_access')
+
+        # ── بردِ سئو: سکشن‌های ماهِ گزارش (شخصی‌سازیِ سئو) ──
+        from tasks.models import ReportMonthStrategy, TaskTypeDef
+        seo_type = self.request.GET.get('seo_type') or ''
+        bt = p.tasks.select_related('assignee', 'type_def').filter(report_month__isnull=False)
+        if seo_type:
+            bt = bt.filter(type_def_id=seo_type)
+        bt = bt.order_by('board_order', 'id')
+        strat = {(s.year, s.month): s for s in ReportMonthStrategy.objects.filter(project=p)}
+        periods, by = set(strat), {}
+        for t in bt:
+            k = (t.report_year, t.report_month)
+            periods.add(k); by.setdefault(k, []).append(t)
+        sections = []
+        for yr, mo in sorted(periods, key=lambda k: (k[0] or 0, k[1]), reverse=True):
+            s = strat.get((yr, mo))
+            sections.append({'year': yr, 'month': mo, 'label': f'{labels.get(mo, mo)} {yr}',
+                             'strategy': s.description if s else '', 'has_strategy': bool(s and s.description),
+                             'tasks': by.get((yr, mo), [])})
+        ctx['seo_sections'] = sections
+        ctx['seo_types'] = list(TaskTypeDef.objects.filter(is_active=True).values_list('id', 'name'))
+        ctx['seo_type'] = seo_type
+        ctx['status_choices'] = Task.STATUS_CHOICES
+        # ستون‌های سفارشی مطابقِ لیستِ تسک‌ها؛ فیلدهای سفارشی فقط وقتی نوعی انتخاب شده
+        cols = get_columns(ColumnConfig.TASKS, ColumnConfig.PAGE)
+        ctx['seo_cols'] = [c for c in cols if (not c['key'].startswith('cf:')) or c['key'].split(':')[1] == seo_type]
+        ctx['can_edit_task'] = bool(getattr(self.request, 'membership', None) and self.request.membership.can('edit_task'))
+        from core.jalali import today_jalali
+        tj = today_jalali()
+        ctx['seo_add_year'] = tj.year
+        ctx['seo_months'] = Task.REPORT_MONTH_CHOICES
         return ctx
 
 
@@ -408,4 +439,107 @@ def project_file_delete(request, pk):
     if not _project_access_ok(request, a.object_id):
         return JsonResponse({'detail': 'به این پروژه دسترسی نداری'}, status=403)
     a.delete()
+    return JsonResponse({'ok': True})
+
+
+# ── بردِ سئو: استراتژیِ ماه، افزودنِ سکشن/ردیف، ترتیب‌دهی ────────────────
+def _seo_gate(request, pk):
+    """گیتِ مشترکِ اندپوینت‌های برد: لاگین + دسترسی به پروژه. تغییرِ داده نیازمندِ
+    edit_task یا داشتنِ پروفایلِ همکار (مثلِ tasks.api.task_create)."""
+    if not _project_access_ok(request, pk):
+        return JsonResponse({'detail': 'به این پروژه دسترسی نداری'}, status=403)
+    return None
+
+
+@login_required
+@require_http_methods(['POST'])
+def seo_strategy(request, pk):
+    """ذخیره/به‌روزرسانیِ استراتژیِ یک ماهِ گزارش (مودالِ «استراتژی»)."""
+    from core.htmlsan import clean_html
+    from tasks.models import ReportMonthStrategy
+    err = _seo_gate(request, pk)
+    if err:
+        return err
+    project = get_object_or_404(Project, pk=pk)
+    d = json.loads(request.body or '{}')
+    try:
+        year, month = int(d.get('year')), int(d.get('month'))
+    except (TypeError, ValueError):
+        return JsonResponse({'detail': 'سال و ماه لازم است'}, status=400)
+    s, _ = ReportMonthStrategy.objects.get_or_create(project=project, year=year, month=month)
+    s.description = clean_html(d.get('description', ''))
+    s.save()
+    return JsonResponse({'ok': True, 'description': s.description})
+
+
+@login_required
+@require_http_methods(['POST'])
+def seo_section_add(request, pk):
+    """افزودنِ یک سکشنِ ماهِ گزارش (رکوردِ خالیِ استراتژی می‌سازد تا سکشن ظاهر شود)."""
+    from tasks.models import ReportMonthStrategy
+    err = _seo_gate(request, pk)
+    if err:
+        return err
+    project = get_object_or_404(Project, pk=pk)
+    d = json.loads(request.body or '{}')
+    try:
+        year, month = int(d.get('year')), int(d.get('month'))
+    except (TypeError, ValueError):
+        return JsonResponse({'detail': 'سال و ماه لازم است'}, status=400)
+    ReportMonthStrategy.objects.get_or_create(project=project, year=year, month=month)
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_http_methods(['POST'])
+def seo_task_add(request, pk):
+    """افزودنِ ردیفِ تسک به یک سکشن — «ایده» (بدونِ تاریخ، فقط عنوان). فیلدهای لازم
+    فقط موقعِ برنامه‌ریزی (ست‌کردنِ تاریخ/تکمیل) اعمال می‌شوند (tasks.api)."""
+    from tasks.models import Task, TaskTypeDef
+    err = _seo_gate(request, pk)
+    if err:
+        return err
+    project = get_object_or_404(Project, pk=pk)
+    d = json.loads(request.body or '{}')
+    title = (d.get('title') or '').strip()
+    if not title:
+        return JsonResponse({'detail': 'عنوان لازم است'}, status=400)
+    try:
+        year, month = int(d.get('year')), int(d.get('month'))
+    except (TypeError, ValueError):
+        return JsonResponse({'detail': 'سال و ماه لازم است'}, status=400)
+    my = getattr(request.user, 'colleague', None)
+    td = None
+    if d.get('type'):
+        td = TaskTypeDef.objects.filter(pk=d['type']).first()
+    # ردیفِ جدید ته سکشن
+    last = Task.objects.filter(project=project, report_year=year, report_month=month).order_by('-board_order').first()
+    task = Task(project=project, title=title, report_year=year, report_month=month,
+                planned_date=None, assignee=my, created_by=request.user,
+                board_order=(last.board_order + 1 if last else 0))
+    if td:
+        task.type_def = td
+        task.task_type = td.builtin_key or Task.OTHER
+    else:
+        task.task_type = Task.OTHER
+    task.save()
+    return JsonResponse({'ok': True, 'id': task.id})
+
+
+@login_required
+@require_http_methods(['POST'])
+def seo_reorder(request, pk):
+    """جابه‌جاییِ ردیف‌ها: فهرستِ id به ترتیبِ جدید → board_order را ست می‌کند."""
+    from tasks.models import Task
+    err = _seo_gate(request, pk)
+    if err:
+        return err
+    d = json.loads(request.body or '{}')
+    ids = d.get('ids') or []
+    tasks = {t.id: t for t in Task.objects.filter(project_id=pk, id__in=ids)}
+    for i, tid in enumerate(ids):
+        t = tasks.get(int(tid))
+        if t and t.board_order != i:
+            t.board_order = i
+            t.save(update_fields=['board_order'])
     return JsonResponse({'ok': True})

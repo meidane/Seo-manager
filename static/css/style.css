@@ -1060,3 +1060,14 @@ table.sheet td:not(.edit){padding:6px 9px}
   .card.glass table:not(.sheet):not(.tsheet){min-width:640px}  /* اسکرول به‌جای فشرده‌شدنِ ناخوانا */
   .stats{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 }
+
+/* ═══ بردِ سئوِ پروژه (سکشن‌های ماهِ گزارش، حالتِ شیت) ═══ */
+.seo-sheet{min-width:640px}
+.seo-drag{cursor:grab;color:var(--text-faint);text-align:center;user-select:none}
+.seo-drag:active{cursor:grabbing}
+.seo-row[draggable=true]:hover .seo-drag{color:var(--primary-400)}
+.seo-sheet .seo-newtask{width:100%;background:transparent;border:0;color:var(--text);font-family:inherit;font-size:12.5px;padding:7px 9px;outline:none}
+.seo-sheet .seo-newtask::placeholder{color:var(--text-faint)}
+.seo-addrow td{background:rgba(99,102,241,.04)}
+.seo-addrow:hover td{background:rgba(99,102,241,.07)}
+.seo-sheet td.edit .jdate{cursor:pointer}
