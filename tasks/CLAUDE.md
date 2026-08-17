@@ -1,5 +1,16 @@
 # tasks/ — قلب سیستم
 
+## جدولِ تسک — ساختارِ واحد در همه‌جا (لیست/تفکیکِ روزانه/بردِ سئو)
+- **ردیف = `templates/tasks/_rows.html`** (لیست + لودِ تنبل + تفکیکِ روزانه؛ همگی از
+  `_task_box.html` می‌آیند) و **`projects/_seo_row.html`** (بردِ سئو). هر جا تسک هست همین
+  ساختار: نوعِ **ویرایشیِ** inline (`.ttype-sel data-f="type_def"`)، عنوان/مسئول/تاریخ/
+  وضعیتِ زنده، و سلول‌های نمایشیِ `.dcell` (عرضِ محدود + ellipsis + کلیک=بازکردنِ مودال).
+- **ستون‌ها:** `core.columns.visible_task_columns(type_def_id)` منبعِ واحد — عمومی (غیر
+  `cf:`) همیشه؛ فیلدهای سفارشیِ نوع فقط وقتی همان نوع فیلتر شده (`?type_def=`/`?seo_type=`).
+  وگرنه با فعال‌کردنِ همهٔ ستون‌ها در تنظیمات، جدول شلوغ می‌شد (باگِ رفع‌شده).
+- تغییرِ نوع در ردیف → `apply_fields` علاوه بر `type_def`، `task_type`(builtin_key) را هم
+  هم‌گام می‌کند (رنگ/BUCKET/فیلتر از آن می‌آید).
+
 ## مدل‌ها (`models.py`)
 - **Task** — یک مدل واحد، فیلدهای `null=True`. **هسته‌ی عمومی همیشه در مودال دیده می‌شود:**
   `project, assignee, task_type, title, description, planned_date, planned_time(default
