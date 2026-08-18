@@ -61,6 +61,7 @@ def _cell(jd, dim_flag, tasks_by_date, holiday_map, today_g):
     g = jd.togregorian()
     is_friday = jd.weekday() == 6
     holiday_title = holiday_map.get(g)
+    day_tasks = tasks_by_date.get(g, [])
     return {
         'jday': jd.day,
         'jday_fa': to_fa_digits(jd.day),
@@ -71,7 +72,9 @@ def _cell(jd, dim_flag, tasks_by_date, holiday_map, today_g):
         'is_friday': is_friday,
         'is_holiday': is_friday or holiday_title is not None,
         'holiday_title': holiday_title or ('' if not is_friday else ''),
-        'tasks': tasks_by_date.get(g, []),
+        'tasks': day_tasks,
+        # جمعِ زمانِ تخمینیِ تسک‌های این روز (دقیقه) — با فیلترِ جاری (فرد/پروژه) خودکار سازگار است
+        'minutes': sum((t.get('estimate_minutes') or 0) for t in day_tasks),
     }
 
 

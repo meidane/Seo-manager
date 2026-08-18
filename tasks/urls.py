@@ -12,6 +12,7 @@ urlpatterns = [
     # API
     path('api/formdata/', api.form_data, name='api_formdata'),
     path('api/rows/', api.task_rows_page, name='api_rows'),
+    path('api/<int:pk>/row/', api.task_row, name='api_row'),
     path('api/', api.task_create, name='api_create'),
     path('api/<int:pk>/', api.task_detail, name='api_detail'),
     path('api/<int:pk>/status/', api.task_status, name='api_status'),

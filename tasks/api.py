@@ -280,6 +280,40 @@ def task_rows_page(request):
     return JsonResponse({'html': html, 'has_more': has_more, 'page': page})
 
 
+@login_required
+@require_http_methods(['GET'])
+def task_row(request, pk):
+    """رندرِ یک ردیفِ تنها (`_rows.html`) — برای درج/جایگزینیِ بدونِ رفرش بعد از ذخیرهٔ مودال."""
+    from django.template.loader import render_to_string
+
+    from colleagues.models import Colleague
+    from core.columns import visible_task_columns
+    from projects.models import Project
+
+    from .models import TaskTypeDef
+
+    task = get_object_or_404(Task, pk=pk)
+    if not _task_visible_ok(request, task):
+        return JsonResponse({'detail': 'دسترسی نداری'}, status=403)
+    m = getattr(request, 'membership', None)
+    my_colleague = getattr(request.user, 'colleague', None)
+    ids = accessible_project_ids(request)
+    visible_projects = Project.objects.filter(id__in=ids) if ids is not None else Project.objects.all()
+    html = render_to_string('tasks/_rows.html', {
+        'tasks': [task],
+        'can_edit_task': bool(m and m.can('edit_task')),
+        'can_edit_time': bool(m and m.can('edit_time')),
+        'can_manage_any_timer': can_manage_any_timer(m),
+        'my_colleague_id': my_colleague.id if my_colleague else None,
+        'extra_columns': visible_task_columns(request.GET.get('type_def')),
+        'status_choices': Task.STATUS_CHOICES,
+        'all_projects': visible_projects.order_by('status', 'name'),
+        'all_colleagues': Colleague.objects.order_by('status', 'full_name'),
+        'all_types': TaskTypeDef.objects.filter(is_active=True),
+    }, request=request)
+    return JsonResponse({'html': html})
+
+
 def _publish_url_error(task):
     """تسک انتشارِ «انجام‌شده» بدون لینک انتشار مجاز نیست (الزام لینک؛ فقط برای نوعِ
     built-inِ قدیمیِ publish — انواعِ سفارشیِ جدید از `_custom_fields_error` پایین

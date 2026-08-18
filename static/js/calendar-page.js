@@ -24,13 +24,14 @@
     const style = t.done ? '' : `style="background:rgba(${t.color},.15);border-right:3px solid rgb(${t.color});color:rgb(${t.color})"`;
     const attrs = t.virtual ? '' : ` draggable="true" data-id="${t.id}" data-open-task="${t.id}"`;
     return `<span class="tk${t.done ? ' done' : ''}${t.is_placeholder ? ' placeholder' : ''}${t.virtual ? ' virtual' : ''}"${attrs} ${style}>` +
-      `${av(t)}<span class="tk-tx">${t.type_label}: ${t.title}</span>${t.done ? '' : `<span class="tk-t">${t.time}</span>`}</span>`;
+      `${av(t)}<span class="tk-tx">${t.type_label}: ${t.title}</span></span>`;
   }
   function cellHtml(c) {
     let h = `<div class="cell${c.is_holiday && !c.dim ? ' off' : ''}${c.dim ? ' dim' : ''}${c.is_today ? ' today' : ''}" data-date="${c.gdate}" data-jdate="${c.jdate}">` +
       `<div class="cell-h"><span class="dnum">${c.jday_fa}</span>` +
       `${c.holiday_title && !c.dim ? `<span class="hol">${c.holiday_title}</span>` : ''}` +
-      `${c.tasks.length ? `<span class="cnt">${c.tasks.length.toLocaleString('en-US')}</span>` : ''}</div>`;
+      `${c.tasks.length ? `<span class="cnt">${c.tasks.length.toLocaleString('en-US')}</span>` : ''}` +
+      (() => { const mn = c.tasks.reduce((s, t) => s + (t.estimate_minutes || 0), 0); return mn ? `<span class="cnt-h" title="جمعِ زمانِ تخمینیِ این روز">${Math.round(mn / 60 * 10) / 10}h</span>` : ''; })() + `</div>`;
     if (!c.dim && canCreateTask) h += `<button class="cell-add" data-jdate="${c.jdate}" title="تسک جدید در این روز">＋</button>`;
     c.tasks.slice(0, 5).forEach((t) => (h += chip(t)));
     if (c.tasks.length > 5) h += `<span class="more">+${(c.tasks.length - 5).toLocaleString('en-US')} مورد دیگر</span>`;
