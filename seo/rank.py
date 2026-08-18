@@ -186,6 +186,22 @@ def tasks_for_keyword(project, keyword):
     return out
 
 
+def tasks_for_page(project, page_url):
+    """تسک‌هایی که این **صفحه** را ساخته/آپدیت کرده‌اند — فیلدِ `is_page_link` برابرِ همین
+    URL (کلیک روی ردیفِ تبِ «بر اساس لینک»؛ page_urlِ آن تب همین فیلد است)."""
+    from tasks.models import Task
+    out = []
+    tasks = (Task.objects.filter(project=project, type_def__isnull=False, status=Task.DONE)
+             .select_related('type_def', 'assignee').prefetch_related('type_def__fields')
+             .order_by('-done_date'))
+    for t in tasks:
+        for f in t.type_def.fields.all():
+            if f.is_page_link and ((t.custom or {}).get(f.key) or '').strip() == page_url:
+                out.append(t)
+                break
+    return out
+
+
 def tasks_for_link(project, link):
     """مشابهِ `tasks_for_keyword` ولی بر اساسِ فیلدِ «لینکِ هدف» (`is_link_source`)."""
     from tasks.models import Task

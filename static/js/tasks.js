@@ -307,7 +307,12 @@
       const custom = {};
       document.querySelectorAll('#custom-fields .cf').forEach((el) => {
         if (el.dataset.kind === 'tags') {
-          custom[el.dataset.key] = [...el.querySelectorAll('.tagbox-chip')].map((c) => c.dataset.w);
+          // متنِ تایپ‌شده که هنوز Enter/+ نخورده را هم قبلِ جمع‌آوری به چیپ تبدیل کن
+          // (وگرنه کلمهٔ آخر موقعِ ذخیره گم می‌شد → کاربر «none» می‌دید)
+          const pend = el.querySelector('.tagbox-input');
+          if (pend && pend.value.trim()) { tagboxAddWords(el, pend.value); pend.value = ''; }
+          custom[el.dataset.key] = [...el.querySelectorAll('.tagbox-chip')]
+            .map((c) => c.dataset.w).filter((w) => w && w.trim());  // بدونِ undefined/خالی
         } else {
           custom[el.dataset.key] = el.type === 'checkbox' ? el.checked : el.value;
         }

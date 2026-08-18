@@ -163,6 +163,26 @@ def keyword_tasks(request, pk):
 
 
 @login_required
+@require_http_methods(['GET'])
+def page_tasks(request, pk):
+    """تسک‌های انجام‌شده‌ای که این **صفحه/لینک** را ساخته/آپدیت کرده‌اند (کلیک روی
+    ردیفِ تبِ «بر اساس لینک»). `pk` = پروژه، `?url=` صفحه."""
+    from core.jalali import format_jalali
+    from projects.models import Project
+
+    from . import rank as seo_rank
+
+    project = get_object_or_404(Project, pk=pk)
+    url = request.GET.get('url', '')
+    tasks = seo_rank.tasks_for_page(project, url)
+    return JsonResponse({'tasks': [{
+        'id': t.id, 'title': t.title, 'assignee': t.assignee.full_name if t.assignee_id else '',
+        'done_date': format_jalali(t.done_date) if t.done_date else '',
+        'type_label': t.type_label,
+    } for t in tasks]})
+
+
+@login_required
 @require_http_methods(['GET', 'POST'])
 def keyword_history(request, pk):
     """تاریخچهٔ روزانهٔ یک کلمه (۹۰ روزِ اخیر) + امکانِ ثبتِ/اصلاحِ دستیِ یک روز.

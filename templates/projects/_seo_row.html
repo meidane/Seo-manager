@@ -1,5 +1,5 @@
 {% load seo_extras %}
-<tr data-id="{{ t.id }}" class="seo-row" {% if can_edit_task %}draggable="true"{% endif %}>
+<tr data-id="{{ t.id }}" class="seo-row">
   <td class="seo-drag" title="جابه‌جایی">⠿</td>
   <td><i class="row-open" data-open-task="{{ t.id }}" title="باز کردن">⤢</i></td>
   <td class="edit tcell">{% if can_edit_task and all_types %}<select class="tx-inline ttype-sel" data-f="type_def" title="نوع تسک" style="color:rgb({{ t.color_rgb }})">{% for td in all_types %}<option value="{{ td.id }}"{% if t.type_def_id == td.id %} selected{% endif %}>{{ td.name }}</option>{% endfor %}</select>{% else %}<span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span>{% endif %}{% if can_edit_task %}<input class="tx-inline" data-f="title" value="{{ t.title }}">{% else %}{{ t.title }}{% endif %}</td>
