@@ -623,6 +623,7 @@ class ReportPeriod(TimeStampedModel):
     organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
     year = models.PositiveSmallIntegerField('سال')
     month = models.PositiveSmallIntegerField('ماه', choices=Task.REPORT_MONTH_CHOICES)
+    order = models.IntegerField('ترتیب', default=0, db_index=True)
 
     objects = TenantManager()
     all_objects = models.Manager()
@@ -632,7 +633,7 @@ class ReportPeriod(TimeStampedModel):
         verbose_name_plural = 'ماه‌های گزارش'
         base_manager_name = 'all_objects'
         unique_together = ('organization', 'year', 'month')
-        ordering = ['-year', '-month']
+        ordering = ['order', '-year', '-month']
 
     def save(self, *args, **kwargs):
         stamp_org(self)

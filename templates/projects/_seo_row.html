@@ -1,0 +1,10 @@
+{% load seo_extras %}
+<tr data-id="{{ t.id }}" class="seo-row">
+  <td class="seo-drag" title="جابه‌جایی">⠿</td>
+  <td><i class="row-open" data-open-task="{{ t.id }}" title="باز کردن">⤢</i></td>
+  <td class="edit tcell">{% if can_edit_task and all_types %}<select class="tx-inline ttype-sel" data-f="type_def" title="نوع تسک" style="color:rgb({{ t.color_rgb }})">{% for td in all_types %}<option value="{{ td.id }}"{% if t.type_def_id == td.id %} selected{% endif %}>{{ td.name }}</option>{% endfor %}</select>{% else %}<span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span>{% endif %}{% if can_edit_task %}<input class="tx-inline" data-f="title" value="{{ t.title }}">{% else %}{{ t.title }}{% endif %}</td>
+  <td class="edit">{% if can_edit_task %}<select class="tx-inline rich-select" data-f="assignee"><option value="">—</option>{% for c in all_colleagues %}<option value="{{ c.id }}" data-color="{{ c.color }}"{% if c.avatar %} data-img="{{ c.avatar.url }}"{% endif %} {% if t.assignee_id == c.id %}selected{% endif %}>{{ c.full_name }}</option>{% endfor %}</select>{% else %}{{ t.assignee.full_name|default:"—" }}{% endif %}</td>
+  <td class="edit"><input class="tx-inline jdate" data-f="planned_date" dir="ltr" readonly value="{{ t.planned_date|jalali }}" placeholder="ایده"></td>
+  <td class="edit">{% include "tasks/_status_select.html" %}</td>
+  {% for c in seo_cols %}<td class="dcell" data-open-task="{{ t.id }}" title="کلیک برای باز کردن/ویرایش">{% column_cell t c %}</td>{% endfor %}
+</tr>

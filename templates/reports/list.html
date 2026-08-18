@@ -19,7 +19,8 @@
               <td class="num-c">{{ r.date_from|jalali }} تا {{ r.date_to|jalali }}</td>
               <td><span class="tag {% if r.status == 'final' %}t-ok{% else %}t-warn{% endif %}">{{ r.get_status_display }}</span></td>
               <td>{% if r.is_public %}<a class="lnk" href="{{ r.public_url }}" target="_blank" rel="noopener" onclick="event.stopPropagation()">↗</a>{% else %}<span class="zero">—</span>{% endif %}</td>
-              <td><a class="mini" href="{{ r.get_absolute_url }}" onclick="event.stopPropagation()">مشاهده</a></td>
+              <td><a class="mini" href="{{ r.get_absolute_url }}" onclick="event.stopPropagation()">مشاهده</a>
+                <button class="mini rep-del" data-id="{{ r.id }}" onclick="event.stopPropagation()">حذف</button></td>
             </tr>
           {% endfor %}
         </tbody>
@@ -51,6 +52,13 @@ document.addEventListener('click',e=>{
       </div>
       <div style="display:flex;gap:8px"><button class="btn btn-p" type="submit">ساخت و ادامه</button><button class="btn" type="button" onclick="App.closeModal()">انصراف</button></div>
     </form>`);
+});
+document.addEventListener('click', async e=>{
+  const b=e.target.closest('.rep-del'); if(!b) return;
+  if(await App.confirm('این گزارش حذف شود؟')){
+    await App.fetchJSON(`/reports/api/${b.dataset.id}/delete/`,{method:'DELETE'});
+    b.closest('tr').remove(); App.toast('حذف شد','ok');
+  }
 });
 </script>
 {% endblock %}

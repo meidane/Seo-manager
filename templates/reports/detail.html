@@ -82,13 +82,14 @@
     <div style="padding:12px 14px"><textarea id="r-desc" class="rich-editor" rows="6">{{ report.description }}</textarea></div>
   </section>
 
-  {# ── افزودن تسک از بازه ── #}
+  {# ── ایمپورتِ تسک از پروژه ── #}
   <section class="card glass">
-    <div class="card-h"><h3>افزودن تسک</h3>
+    <div class="card-h"><h3>ایمپورت تسک‌ها</h3>
       <div class="side-c" style="gap:8px">
-        <input class="input jdate" id="p-from" style="max-width:120px" dir="ltr" value="{{ report.date_from|jalali:'%Y/%m/%d' }}">
-        <input class="input jdate" id="p-to" style="max-width:120px" dir="ltr" value="{{ report.date_to|jalali:'%Y/%m/%d' }}">
-        <button class="btn btn-sm" id="p-fetch">واکشی تسک‌ها</button>
+        <span style="color:var(--text-faint);font-size:11px">بازه (اختیاری):</span>
+        <input class="input jdate" id="p-from" style="max-width:120px" dir="ltr" placeholder="از (اختیاری)">
+        <input class="input jdate" id="p-to" style="max-width:120px" dir="ltr" placeholder="تا (اختیاری)">
+        <button class="btn btn-sm btn-p" id="p-fetch">ایمپورت تسک‌ها</button>
         <button class="btn btn-sm" id="p-manual">＋ ردیف دستی</button>
       </div>
     </div>

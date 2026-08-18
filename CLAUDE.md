@@ -53,6 +53,7 @@
 | داده‌ی مودال تسک (پروژه/همکار/انواع) | `tasks/api.py: form_data` → `/tasks/api/formdata/` |
 | بازه‌ی سراسری | `core/daterange.py: DateRangeMixin` |
 | کاتالوگِ ستون‌های قابل‌سفارشی‌سازی (تسک/پروژه/همکار) | `core/columns.py: get_catalog/get_columns/cell_value` + `core/models.py: ColumnConfig` + تگ `{% column_cell %}` |
+| ستون‌های دیده‌شونده‌ی جدولِ تسک (عمومی همیشه، سفارشیِ نوع فقط با فیلترِ نوع) | `core/columns.py: visible_task_columns(type_def_id)` — لیست/لودِ تنبل/بردِ سئو |
 | اتصالِ اپ/افزونهٔ بیرونی/AI به API | **توکنِ API** (`accounts.APIToken`، هدرِ `Authorization: Token xxx`، از `/settings/api-tokens/`) — نه سشن+کوکی؛ SameSite=Lax کوکیِ سشن را در fetchِ کراس‌سایتِ افزونه نمی‌فرستد. الگو: `seo/api.py: token_required` / `token_or_login_required`. |
 | گروه‌بندی نوع در گزارش | `reports/models.py: BUCKETS` |
 | فیلدهای قابل‌نمایش به مشتری | `reports/models.py: CLIENT_FIELDS` + `Report.visible_fields` |

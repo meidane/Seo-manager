@@ -180,17 +180,7 @@
             {% for c in seo_cols %}<th>{{ c.label }}</th>{% endfor %}
           </tr></thead>
           <tbody data-year="{{ s.year }}" data-month="{{ s.month }}">
-            {% for t in s.tasks %}
-            <tr data-id="{{ t.id }}" class="seo-row" {% if can_edit_task %}draggable="true"{% endif %}>
-              <td class="seo-drag" title="جابه‌جایی">⠿</td>
-              <td><i class="row-open" data-open-task="{{ t.id }}" title="باز کردن">⤢</i></td>
-              <td class="edit tcell"><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span>{% if can_edit_task %}<input class="tx-inline" data-f="title" value="{{ t.title }}">{% else %}{{ t.title }}{% endif %}</td>
-              <td class="edit">{% if can_edit_task %}<select class="tx-inline rich-select" data-f="assignee"><option value="">—</option>{% for c in all_colleagues %}<option value="{{ c.id }}" data-color="{{ c.color }}"{% if c.avatar %} data-img="{{ c.avatar.url }}"{% endif %} {% if t.assignee_id == c.id %}selected{% endif %}>{{ c.full_name }}</option>{% endfor %}</select>{% else %}{{ t.assignee.full_name|default:"—" }}{% endif %}</td>
-              <td class="edit"><input class="tx-inline jdate" data-f="planned_date" dir="ltr" readonly value="{{ t.planned_date|jalali }}" placeholder="ایده"></td>
-              <td class="edit">{% include "tasks/_status_select.html" %}</td>
-              {% for c in seo_cols %}<td>{% column_cell t c %}</td>{% endfor %}
-            </tr>
-            {% endfor %}
+            {% for t in s.tasks %}{% include "projects/_seo_row.html" %}{% endfor %}
             {% if can_edit_task %}
             <tr class="seo-addrow">
               <td></td><td class="zero">＋</td>
@@ -276,7 +266,7 @@
         <thead><tr><th style="width:24px"></th><th>لینک صفحه</th><th>میانگین جایگاه</th><th>تعداد کلمات</th><th>روند ۳ ماه اخیر</th><th>تغییر ({{ kw_period|fa_digits }} روز)</th><th></th></tr></thead>
         <tbody>
           {% for r in page_rows %}
-            <tr data-url="{{ r.page_url }}">
+            <tr data-url="{{ r.page_url }}" class="pglink-row" style="cursor:pointer" title="کلیک: تسک‌های انجام‌شده برای این صفحه">
               <td><i class="star {% if r.is_starred %}on{% endif %}" data-star-page="{{ r.page_url }}">★</i></td>
               <td dir="ltr" style="text-align:right"><a href="{{ r.page_url }}" target="_blank" rel="noopener" style="color:var(--primary-400)">{{ r.page_url }}</a></td>
               <td class="num-c">{% if r.avg_position %}{{ r.avg_position|fa_digits }}{% else %}<span class="zero">—</span>{% endif %}</td>
@@ -465,6 +455,20 @@
       <div class="modal-f"><button class="btn" onclick="App.closeModal()">بستن</button></div>`);
   });
 
+  // ── کلیک روی ردیفِ «بر اساس لینک» → تسک‌های انجام‌شده‌ی همان صفحه ──
+  const bylinkTb = document.querySelector('[data-subpanel="bylink"] tbody');
+  if(bylinkTb) bylinkTb.addEventListener('click', async e=>{
+    if(e.target.closest('.star, .mini-edit, a')) return;   // ستاره/ویرایش/لینکِ خودِ صفحه
+    const tr = e.target.closest('.pglink-row'); if(!tr) return;
+    let d; try{ d = await App.fetchJSON(`/seo/api/projects/{{ project.pk }}/page-tasks/?url=${encodeURIComponent(tr.dataset.url)}`); }catch(_){ return; }
+    const rows = d.tasks.length ? d.tasks.map(t=>`<tr data-open-task="${t.id}" style="cursor:pointer">
+        <td><span class="ttype">${t.type_label}</span> ${t.title}</td><td>${t.assignee||'—'}</td><td>${t.done_date||'—'}</td></tr>`).join('')
+      : `<tr><td colspan="3" class="zero" style="padding:16px;text-align:center">هنوز تسکِ انجام‌شده‌ای برای این صفحه ثبت نشده</td></tr>`;
+    App.openModal(`<div class="modal-h"><h3>تسک‌های انجام‌شده برای این صفحه</h3><button class="x" onclick="App.closeModal()">×</button></div>
+      <div class="modal-b"><table><thead><tr><th>تسک</th><th>مسئول</th><th>تاریخ انجام</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="modal-f"><button class="btn" onclick="App.closeModal()">بستن</button></div>`);
+  });
+
   // ── ستاره (کلمه/صفحه) ──
   document.addEventListener('click', async e=>{
     const kwStar = e.target.closest('[data-star-kw]');
@@ -592,16 +596,21 @@
     try{ await App.fetchJSON(`/projects/api/${pid}/seo/section/`, {method:'POST', body:{year, month}}); reloadTasks(); }catch(_){}
   });
 
-  // افزودنِ ردیف (Enter روی input) — «ایده»، فقط عنوان
+  // افزودنِ ردیف (Enter روی input) — «ایده»، فقط عنوان — بدونِ رفرش، درجِ زندهٔ ردیف
   board.addEventListener('keydown', async e=>{
     const inp = e.target.closest('.seo-newtask'); if(!inp || e.key!=='Enter') return;
     e.preventDefault();
     const title = inp.value.trim(); if(!title) return;
     const type = new URLSearchParams(location.search).get('seo_type') || '';
     try{
-      await App.fetchJSON(`/projects/api/${pid}/seo/task/`, {method:'POST',
+      const r = await App.fetchJSON(`/projects/api/${pid}/seo/task/`, {method:'POST',
         body:{title, year:+inp.dataset.year, month:+inp.dataset.month, type}});
-      reloadTasks();
+      const addRow = inp.closest('tr');                    // ردیفِ «افزودن»
+      addRow.insertAdjacentHTML('beforebegin', r.html);    // ردیفِ جدید قبلِ آن
+      const newRow = addRow.previousElementSibling;
+      if(window.RichSelect) RichSelect.init(newRow);       // دراپ‌داونِ غنیِ ردیفِ تازه (دیت‌پیکر delegated است)
+      inp.value=''; inp.focus();
+      App.toast('اضافه شد','ok');
     }catch(_){}
   });
 
@@ -614,27 +623,46 @@
     const lbl = sec.querySelector('b').textContent.trim();
     App.openModal(`<div class="modal-h"><h3>استراتژیِ ${lbl}</h3><button class="x" onclick="App.closeModal()">×</button></div>
       <div class="modal-b"><div class="field"><label>توضیحاتِ استراتژیِ این ماه</label>
-        <textarea id="seo-strat-txt" class="input" rows="9" placeholder="استراتژیِ این ماه را بنویس…">${cur.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea></div></div>
+        <textarea id="seo-strat-txt" class="rich-editor"></textarea></div></div>
       <div class="modal-f"><button class="btn" onclick="App.closeModal()">انصراف</button><button class="btn btn-p" id="seo-strat-save">ذخیره</button></div>`);
+    const ta = document.getElementById('seo-strat-txt');
+    ta.value = cur;                                   // مقدار را مستقیم ست کن (بدونِ اینجکشن در تمپلیت)
+    if(window.RichText) RichText.init('#seo-strat-txt');
     document.getElementById('seo-strat-save').onclick = async ()=>{
-      const desc = document.getElementById('seo-strat-txt').value;
+      if(window.RichText) RichText.save();            // TinyMCE → textarea
+      const desc = ta.value;
       try{
         const r = await App.fetchJSON(`/projects/api/${pid}/seo/strategy/`, {method:'POST', body:{year:+year, month:+month, description:desc}});
         sec.querySelector('.seo-strat-data').value = r.description || '';
         b.classList.toggle('on', !!(r.description||'').trim());
+        if(window.RichText) RichText.remove('#seo-strat-txt');
         App.toast('ذخیره شد','ok'); App.closeModal();
       }catch(_){}
     };
   });
 
-  // جابه‌جاییِ ردیف‌ها (drag&drop، فقط داخلِ همان سکشن)
+  // جابه‌جاییِ ردیف‌ها (drag&drop، فقط داخلِ همان سکشن). فقط با گرفتنِ دستگیرهٔ ⠿ شروع
+  // می‌شود تا کشیدنِ متنِ داخلِ اینپوت‌ها با جابه‌جاییِ ردیف قاطی نشود.
   let dragEl = null;
-  board.addEventListener('dragstart', e=>{ const r=e.target.closest('.seo-row'); if(r){ dragEl=r; r.style.opacity=.4; }});
-  board.addEventListener('dragend', ()=>{ if(dragEl){ dragEl.style.opacity=''; dragEl=null; }});
+  // draggable را فقط وقتی روی دستگیره mousedown شد فعال کن (وگرنه کلِ ردیف draggable است و
+  // کشیدن از روی اینپوت‌ها اذیت می‌کند)
+  board.addEventListener('mousedown', e=>{
+    const h=e.target.closest('.seo-drag'), row=e.target.closest('.seo-row');
+    if(h && row) row.setAttribute('draggable','true');
+    else if(row) row.removeAttribute('draggable');
+  });
+  board.addEventListener('dragstart', e=>{
+    const r=e.target.closest('.seo-row'); if(!r){ return; }
+    dragEl=r; r.style.opacity=.4;
+    e.dataTransfer.effectAllowed='move';
+    e.dataTransfer.setData('text/plain', r.dataset.id||'');   // لازم برای شروعِ درگ در بعضی مرورگرها
+  });
+  board.addEventListener('dragend', ()=>{ if(dragEl){ dragEl.style.opacity=''; dragEl.removeAttribute('draggable'); dragEl=null; }});
   board.addEventListener('dragover', e=>{
-    const r=e.target.closest('.seo-row'); if(!r||!dragEl||r===dragEl) return;
-    if(r.parentNode!==dragEl.parentNode) return;
-    e.preventDefault();
+    if(!dragEl) return;
+    const r=e.target.closest('.seo-row');
+    e.preventDefault(); e.dataTransfer.dropEffect='move';
+    if(!r || r===dragEl || r.parentNode!==dragEl.parentNode) return;
     const rect=r.getBoundingClientRect();
     r.parentNode.insertBefore(dragEl, (e.clientY-rect.top)/rect.height>0.5 ? r.nextSibling : r);
   });

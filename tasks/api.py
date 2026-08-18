@@ -123,6 +123,12 @@ def apply_fields(task: Task, data: dict):
             setattr(task, attr, data[key] or None)
     if 'type_def' in data:
         task.type_def_id = data['type_def'] or None
+        # task_type (builtin_key) را با نوعِ انتخاب‌شده هم‌گام کن — رنگ/BUCKET/فیلترِ نوع از آن می‌آید
+        if task.type_def_id:
+            from .models import TaskTypeDef
+            td = TaskTypeDef.objects.filter(pk=task.type_def_id).first()
+            if td:
+                task.task_type = td.builtin_key or Task.OTHER
     if 'custom' in data and isinstance(data['custom'], dict):
         task.custom = data['custom']
     # اگر نوعِ سفارشی یک فیلد را «منبع تعداد کلمه» علامت زده باشد، word_count را از آن پر کن
@@ -238,10 +244,10 @@ def task_rows_page(request):
     from django.template.loader import render_to_string
 
     from colleagues.models import Colleague
-    from core.columns import get_columns
-    from core.models import ColumnConfig
+    from core.columns import visible_task_columns
     from projects.models import Project
 
+    from .models import TaskTypeDef
     from .queries import PAGE_SIZE, build_task_queryset
 
     base, filters = build_task_queryset(request)
@@ -265,10 +271,11 @@ def task_rows_page(request):
         'can_edit_time': bool(m and m.can('edit_time')),
         'can_manage_any_timer': can_manage_any_timer(m),
         'my_colleague_id': my_colleague.id if my_colleague else None,
-        'extra_columns': get_columns(ColumnConfig.TASKS, ColumnConfig.PAGE),
+        'extra_columns': visible_task_columns(filters.get('type_def')),
         'status_choices': Task.STATUS_CHOICES,
         'all_projects': visible_projects.order_by('status', 'name'),
         'all_colleagues': Colleague.objects.order_by('status', 'full_name'),
+        'all_types': TaskTypeDef.objects.filter(is_active=True),
     }, request=request)
     return JsonResponse({'html': html, 'has_more': has_more, 'page': page})
 

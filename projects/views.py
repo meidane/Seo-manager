@@ -48,7 +48,8 @@ def _report_month_rows(project_ids, periods):
     agg = (Task.objects.filter(project_id__in=project_ids).filter(year_q)
            .values('project_id', 'report_year', 'report_month')
            .annotate(
-               planned=Count('id'),
+               # «ایده» (بدونِ تاریخِ برنامه) جزوِ «برنامه» شمرده نمی‌شود
+               planned=Count('id', filter=Q(planned_date__isnull=False)),
                done=Count('id', filter=Q(status=Task.DONE)),
                words=Sum('word_count', filter=Q(status=Task.DONE)),
                minutes=Sum('spent_minutes', filter=Q(status=Task.DONE)),
@@ -245,12 +246,14 @@ class ProjectDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
                              'strategy': s.description if s else '', 'has_strategy': bool(s and s.description),
                              'tasks': by.get((yr, mo), [])})
         ctx['seo_sections'] = sections
-        ctx['seo_types'] = list(TaskTypeDef.objects.filter(is_active=True).values_list('id', 'name'))
+        active_types = TaskTypeDef.objects.filter(is_active=True)
+        ctx['seo_types'] = list(active_types.values_list('id', 'name'))
+        ctx['all_types'] = active_types
         ctx['seo_type'] = seo_type
         ctx['status_choices'] = Task.STATUS_CHOICES
-        # ستون‌های سفارشی مطابقِ لیستِ تسک‌ها؛ فیلدهای سفارشی فقط وقتی نوعی انتخاب شده
-        cols = get_columns(ColumnConfig.TASKS, ColumnConfig.PAGE)
-        ctx['seo_cols'] = [c for c in cols if (not c['key'].startswith('cf:')) or c['key'].split(':')[1] == seo_type]
+        # ستون‌های سفارشی مطابقِ لیستِ تسک‌ها (منبعِ واحد) — عمومی همیشه، سفارشیِ نوع فقط با فیلترِ نوع
+        from core.columns import visible_task_columns
+        ctx['seo_cols'] = visible_task_columns(seo_type)
         ctx['can_edit_task'] = bool(getattr(self.request, 'membership', None) and self.request.membership.can('edit_task'))
         # ماه‌های گزارشِ تعریف‌شده در تنظیمات (منبعِ واحدِ افزودنِ سکشن) — منهای سکشن‌های موجود
         existing = {(s['year'], s['month']) for s in sections}
@@ -516,13 +519,28 @@ def seo_task_add(request, pk):
     task = Task(project=project, title=title, report_year=year, report_month=month,
                 planned_date=None, assignee=my, created_by=request.user,
                 board_order=(last.board_order + 1 if last else 0))
+    if not td:
+        # پیش‌فرضِ «سایر» تا دراپ‌داونِ نوعِ ردیف درست انتخاب‌شده نشان دهد (نه اولین گزینه)
+        td = TaskTypeDef.objects.filter(builtin_key=Task.OTHER, is_active=True).first()
     if td:
         task.type_def = td
         task.task_type = td.builtin_key or Task.OTHER
     else:
         task.task_type = Task.OTHER
     task.save()
-    return JsonResponse({'ok': True, 'id': task.id})
+    # ردیف را همان‌جا رندر می‌کنیم تا فرانت بدونِ رفرش درج کند (ساختارِ یکسان با بقیه)
+    from django.template.loader import render_to_string
+    from colleagues.models import Colleague
+    from core.columns import visible_task_columns
+    from tasks.models import TaskTypeDef as _TTD
+    html = render_to_string('projects/_seo_row.html', {
+        't': task, 'can_edit_task': True,
+        'all_types': _TTD.objects.filter(is_active=True),
+        'all_colleagues': Colleague.objects.filter(status=Colleague.ACTIVE),
+        'seo_cols': visible_task_columns(d.get('type') or ''),
+        'status_choices': Task.STATUS_CHOICES,
+    }, request=request)
+    return JsonResponse({'ok': True, 'id': task.id, 'html': html})
 
 
 @login_required
