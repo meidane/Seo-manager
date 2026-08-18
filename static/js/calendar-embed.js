@@ -13,7 +13,8 @@
     let h = `<div class="cell${c.is_holiday && !c.dim ? ' off' : ''}${c.dim ? ' dim' : ''}${c.is_today ? ' today' : ''}">` +
       `<div class="cell-h"><span class="dnum">${c.jday_fa}</span>` +
       `${c.holiday_title && !c.dim ? `<span class="hol">${c.holiday_title}</span>` : ''}` +
-      `${c.tasks.length ? `<span class="cnt">${c.tasks.length.toLocaleString('en-US')}</span>` : ''}</div>`;
+      `${c.tasks.length ? `<span class="cnt">${c.tasks.length.toLocaleString('en-US')}</span>` : ''}` +
+      (() => { const mn = c.tasks.reduce((s, t) => s + (t.estimate_minutes || 0), 0); return mn ? `<span class="cnt-h">${Math.round(mn / 60 * 10) / 10}h</span>` : ''; })() + `</div>`;
     c.tasks.slice(0, 4).forEach((t) => (h += chip(t)));
     if (c.tasks.length > 4) h += `<span class="more">+${(c.tasks.length - 4).toLocaleString('en-US')} مورد دیگر</span>`;
     return h + '</div>';

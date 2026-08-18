@@ -3,6 +3,7 @@
     <span class="dnum">{{ c.jday_fa }}</span>
     {% if c.holiday_title and not c.dim %}<span class="hol">{{ c.holiday_title }}</span>{% endif %}
     {% if c.tasks %}<span class="cnt">{{ c.tasks|length|fa_digits }}</span>{% endif %}
+    {% if c.minutes %}<span class="cnt-h" title="جمعِ زمانِ تخمینیِ این روز">{{ c.minutes|hours }}h</span>{% endif %}
   </div>
   {% if not c.dim and can_create_task %}<button class="cell-add" data-jdate="{{ c.jdate }}" title="تسک جدید در این روز">＋</button>{% endif %}
   {% for t in c.tasks|slice:":5" %}

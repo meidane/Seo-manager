@@ -196,6 +196,39 @@
       .catch(() => {});
   });
 
+  /* ── تاریخِ نسبی (امروز/فردا/۳ روز بعد) — همسان با فیلترِ reldate در پایتون ── */
+  // jalaali-js toGregorian (فشرده، آزموده) — jy/jm/jd یک‌مبنا → {gy,gm,gd}
+  function jToG(jy, jm, jd) {
+    jy += 1595;
+    let days = -355668 + 365 * jy + ~~(jy / 33) * 8 + ~~(((jy % 33) + 3) / 4) + jd +
+      (jm < 7 ? (jm - 1) * 31 : (jm - 7) * 30 + 186);
+    let gy = 400 * ~~(days / 146097); days %= 146097;
+    if (days > 36524) { gy += 100 * ~~(--days / 36524); days %= 36524; if (days >= 365) days++; }
+    gy += 4 * ~~(days / 1461); days %= 1461;
+    if (days > 365) { gy += ~~((days - 1) / 365); days = (days - 1) % 365; }
+    let gd = days + 1;
+    const leap = (gy % 4 === 0 && gy % 100 !== 0) || gy % 400 === 0;
+    const sal = [0, 31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    let gm = 0;
+    for (gm = 1; gm <= 12 && gd > sal[gm]; gm++) gd -= sal[gm];
+    return { gy, gm, gd };
+  }
+  function relDate(jalaliStr) {
+    const s = String(jalaliStr || '').replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+    const m = s.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    if (!m) return '';
+    const g = jToG(+m[1], +m[2], +m[3]);
+    const d = new Date(g.gy, g.gm - 1, g.gd); d.setHours(0, 0, 0, 0);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const diff = Math.round((d - today) / 86400000);
+    if (diff === 0) return 'امروز';
+    if (diff === 1) return 'فردا';
+    if (diff === -1) return 'دیروز';
+    if (diff > 1 && diff <= 10) return diff + ' روز بعد';
+    if (diff < -1 && diff >= -10) return (-diff) + ' روز قبل';
+    return s;  // خارج از ±۱۰ روز → خودِ تاریخ
+  }
+
   /* ── نمای عمومی ── */
   window.App = {
     csrf: CSRF,
@@ -204,5 +237,6 @@
     openModal,
     closeModal,
     confirm: confirmDialog,
+    relDate,
   };
 })();

@@ -23,6 +23,28 @@ def jalali_long(value):
     return j.jalali_long(value)
 
 
+@register.filter(name='reldate')
+def reldate(value):
+    """تاریخ نسبی: «امروز/دیروز/فردا/N روز قبل/N روز بعد» تا ±۱۰ روز، وگرنه خودِ تاریخِ شمسی.
+    منطقِ همسان با `App.relDate` در جاوااسکریپت (نمایشِ خواناترِ جدولِ تسک‌ها)."""
+    if not value:
+        return '—'
+    if isinstance(value, datetime):
+        value = value.date()
+    diff = (value - date.today()).days
+    if diff == 0:
+        return 'امروز'
+    if diff == 1:
+        return 'فردا'
+    if diff == -1:
+        return 'دیروز'
+    if 1 < diff <= 10:
+        return f'{diff} روز بعد'
+    if -10 <= diff < -1:
+        return f'{-diff} روز قبل'
+    return j.format_jalali(value)
+
+
 @register.filter(name='fa_digits')
 def fa_digits(value):
     """اعداد را لاتین نگه می‌دارد (طبق درخواست: نمایشِ همه‌ی اعداد انگلیسی).

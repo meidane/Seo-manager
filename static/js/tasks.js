@@ -31,6 +31,25 @@
     return `<select id="f-report_period">${opts}</select>${hint}`;
   }
 
+  // بعد از ذخیرهٔ مودال، ردیفِ جدولِ لیستِ تسک‌ها (.tsheet) را بدونِ رفرش به‌روز/درج می‌کند.
+  // اگر روی صفحه‌ای هستیم که این جدول را ندارد (برد/تقویم)، false می‌دهد تا رفرشِ نرم شود.
+  async function refreshTaskRow(id, isNew) {
+    if (!id) return false;
+    const existing = document.querySelector(`.tsheet tr[data-id="${id}"]`);
+    if (!existing && !isNew) return false;
+    const tbody = existing ? existing.closest('tbody') : document.querySelector('.tsheet tbody');
+    if (!tbody) return false;
+    try {
+      const d = await App.fetchJSON(`/tasks/api/${id}/row/`);
+      if (existing) existing.outerHTML = d.html;
+      else tbody.insertAdjacentHTML('afterbegin', d.html);
+      const nw = tbody.querySelector(`tr[data-id="${id}"]`);
+      if (window.RichSelect && nw) RichSelect.init(nw);
+      if (nw && typeof renderAllTimerCells === 'function') renderAllTimerCells();
+      return true;
+    } catch (_) { return false; }
+  }
+
   // همه‌ی انواع از رکوردهای TaskTypeDef (built-in + سفارشی). اگر seed نشده باشد، از typeChoices می‌سازد.
   function typeList() {
     if (cfg.customTypes && cfg.customTypes.length) return cfg.customTypes;
@@ -79,46 +98,50 @@
     const needsReviewDefault = t.id ? !!t.needs_review : colleagueNeedsReview(assigneeSel);
     return `
     <div class="modal-h"><h3>${t.id ? 'ویرایش تسک' : 'تسک جدید'}</h3><button class="x" onclick="App.closeModal()">×</button></div>
-    <div class="modal-b" id="tform">
+    <div class="modal-b tmodal" id="tform">
       ${reviewNotesHtml(t)}
-      <div class="grid3">
-        ${field('project', 'پروژه', `<select id="f-project" class="rich-select"><option value="">— انتخاب پروژه —</option>${cfg.projects.map(([v, l, color, img]) => optRich(v, l, t.project_id, color, img)).join('')}</select>`)}
-        ${field('assignee', 'مسئول', assigneeSelect)}
-        ${field('task_type', 'نوع تسک', `<select id="f-task_type">${typeOptions(typeSel)}</select>`)}
-      </div>
-      ${field('priority', 'اولویت', `<select id="f-priority"><option value="low">کم</option><option value="med">متوسط</option><option value="high">زیاد</option></select>`)}
-      ${field('title', 'عنوان', `<input id="f-title" class="input" value="${esc(t.title)}">`)}
-      <label style="display:flex;align-items:center;gap:8px;margin:0 0 14px;cursor:pointer">
-        <input type="checkbox" id="f-needs-review" ${needsReviewDefault ? 'checked' : ''} style="width:auto">
-        نیاز به بازبینی (بدونِ تاییدِ مدیر، «انجام‌شده» نمی‌شود)
-      </label>
-      <div class="grid3">
-        ${field('planned_date', 'تاریخ برنامه (شمسی)', `<input id="f-planned_date" class="input jdate" dir="ltr" readonly placeholder="۱۴۰۵/۰۵/۱۵" value="${t.planned_date_fa || ''}">`)}
-        ${field('status', 'وضعیت', `<select id="f-status">${statusOptions(t.status, needsReviewDefault)}</select>`)}
-        ${field('estimate_minutes', 'تخمین زمان (دقیقه)', `<input id="f-estimate_minutes" class="input" type="number" dir="ltr" placeholder="۶۰" value="${t.estimate_minutes || ''}">`)}
-      </div>
-      ${field('report_month', 'ماه گزارش', reportPeriodSelect(t))}
-
-      ${recurBarHtml(t)}
-      ${t.id ? '<div id="kpi-box" style="display:none;margin-top:8px"></div>' : ''}
-
-      <!-- فیلدهای سفارشی نوع (داینامیک، از TaskTypeDef.fields) -->
-      <div id="custom-fields" style="display:none"></div>
-
-      ${field('description', 'توضیحات', `<textarea id="f-description" class="rich-editor" rows="3">${esc(t.description)}</textarea>`)}
-
-      <!-- گزارش کار (فقط برای تسک موجود) -->
-      ${t.id ? `<div class="report-sec">
-        <label style="font-weight:700">گزارش</label>
-        <textarea id="f-report" class="rich-editor" rows="3"></textarea>
-        <div style="margin-top:6px;display:flex;gap:8px;align-items:center">
-          <button type="button" class="btn btn-sm btn-p" id="report-send">ارسال گزارش</button>
-          <button type="button" class="btn btn-sm" id="report-cancel" style="display:none">لغو ویرایش</button>
+      <div class="tmodal-grid">
+        <!-- ستونِ راست (اصلی): اطلاعاتِ تسک -->
+        <div class="tmodal-left">
+          <div class="grid2">
+            ${field('project', 'پروژه', `<select id="f-project" class="rich-select"><option value="">— انتخاب پروژه —</option>${cfg.projects.map(([v, l, color, img]) => optRich(v, l, t.project_id, color, img)).join('')}</select>`)}
+            ${field('assignee', 'مسئول', assigneeSelect)}
+          </div>
+          <div class="grid2">
+            ${field('task_type', 'نوع تسک', `<select id="f-task_type">${typeOptions(typeSel)}</select>`)}
+            ${field('priority', 'اولویت', `<select id="f-priority"><option value="low">کم</option><option value="med">متوسط</option><option value="high">زیاد</option></select>`)}
+          </div>
+          ${field('title', 'عنوان', `<input id="f-title" class="input" value="${esc(t.title)}">`)}
+          <div class="grid2">
+            ${field('planned_date', 'تاریخ برنامه', `<div style="display:flex;align-items:center"><input id="f-planned_date" class="input jdate" dir="ltr" readonly placeholder="۱۴۰۵/۰۵/۱۵" value="${t.planned_date_fa || ''}"><span id="rel-planned" class="rel-hint"></span></div>`)}
+            ${field('estimate_minutes', 'تخمین زمان (دقیقه)', `<input id="f-estimate_minutes" class="input" type="number" dir="ltr" placeholder="۶۰" value="${t.estimate_minutes || ''}">`)}
+          </div>
+          ${field('report_month', 'ماه گزارش', reportPeriodSelect(t))}
+          <label style="display:flex;align-items:center;gap:8px;margin:0 0 14px;cursor:pointer">
+            <input type="checkbox" id="f-needs-review" ${needsReviewDefault ? 'checked' : ''} style="width:auto">
+            نیاز به بازبینی (بدونِ تاییدِ مدیر، «انجام‌شده» نمی‌شود)
+          </label>
+          ${recurBarHtml(t)}
+          <!-- فیلدهای سفارشی نوع (کلمه کلیدی/مترادف/... هرکدام یک ردیفِ کامل) -->
+          <div id="custom-fields" style="display:none"></div>
         </div>
-        <div id="report-list" class="report-list"></div>
-      </div>` : ''}
-
-      ${historyHtml(t)}
+        <!-- ستونِ چپ: وضعیت + توضیحات + گزارش + تاریخچه -->
+        <div class="tmodal-right">
+          ${field('status', 'وضعیت', `<select id="f-status">${statusOptions(t.status, needsReviewDefault)}</select>`)}
+          ${t.id ? '<div id="kpi-box" style="display:none;margin-bottom:12px"></div>' : ''}
+          ${field('description', 'توضیحات', `<textarea id="f-description" class="rich-editor" rows="4">${esc(t.description)}</textarea>`)}
+          ${t.id ? `<div class="report-sec">
+            <label style="font-weight:700">گزارش</label>
+            <textarea id="f-report" class="rich-editor" rows="3"></textarea>
+            <div style="margin-top:6px;display:flex;gap:8px;align-items:center">
+              <button type="button" class="btn btn-sm btn-p" id="report-send">ارسال گزارش</button>
+              <button type="button" class="btn btn-sm" id="report-cancel" style="display:none">لغو ویرایش</button>
+            </div>
+            <div id="report-list" class="report-list"></div>
+          </div>` : ''}
+          ${historyHtml(t)}
+        </div>
+      </div>
     </div>
     <div class="modal-f">
       ${canEditThis ? '<button class="btn btn-p" id="t-save">ذخیره</button>' : ''}
@@ -423,6 +446,14 @@
     const loaded = data.custom || {};
     document.getElementById('f-task_type').addEventListener('change', () => applyVisibility(loaded));
     applyVisibility(loaded);
+    // برچسبِ تاریخِ نسبی کنارِ «تاریخ برنامه» (امروز/فردا/۳ روز بعد) — اولیه + با انتخابِ تاریخ
+    const relInit = () => {
+      const inp = document.getElementById('f-planned_date'), h = document.getElementById('rel-planned');
+      if (inp && h) h.textContent = inp.value ? '(' + (window.App && App.relDate(inp.value) || '') + ')' : '';
+    };
+    relInit();
+    const pd = document.getElementById('f-planned_date');
+    if (pd) pd.addEventListener('change', relInit);
     if (window.RichText) RichText.init('#f-description');  // ادیتور غنی توضیحات
     const histBtn = document.getElementById('fix-hist-toggle');  // باز کردن سوابق قبلی نیاز به اصلاح
     if (histBtn) histBtn.onclick = () => {
@@ -452,11 +483,15 @@
       const btns = ['t-save', 't-save-next'].map((i) => document.getElementById(i)).filter(Boolean);
       btns.forEach((b) => { b.disabled = true; b.classList.add('loading'); });
       try {
+        let savedId = id;
         if (id) await App.fetchJSON(`/tasks/api/${id}/`, { method: 'PATCH', body: payload });
-        else await App.fetchJSON('/tasks/api/', { method: 'POST', body: payload });
+        else { const r = await App.fetchJSON('/tasks/api/', { method: 'POST', body: payload }); savedId = r.id; }
         App.toast('ذخیره شد', 'ok');
-        if (again) { openTask(null); }
-        else { App.closeModal(); setTimeout(() => location.reload(), 250); }
+        if (again) { openTask(null); return; }
+        App.closeModal();
+        // بدونِ رفرش: ردیفِ لیستِ تسک‌ها را درجا به‌روز/درج می‌کنیم؛ اگر نشد، رفرشِ نرم
+        const done = await refreshTaskRow(savedId, !id);
+        if (!done) setTimeout(() => location.reload(), 200);
       } catch (_) {
         saving = false;
         btns.forEach((b) => { b.disabled = false; b.classList.remove('loading'); });
@@ -493,6 +528,13 @@
   document.addEventListener('click', (e) => {
     const t = e.target.closest('[data-fix-note]');
     if (t) { e.stopImmediatePropagation(); e.preventDefault(); openTask(t.dataset.fixNote); }
+  });
+
+  // ── به‌روزرسانیِ برچسبِ تاریخِ نسبی بعد از انتخابِ تاریخ (بدونِ رفرش) ──
+  document.addEventListener('change', (e) => {
+    const inp = e.target.closest('.reldate-input'); if (!inp) return;
+    const lbl = inp.closest('.reldate-cell') && inp.closest('.reldate-cell').querySelector('.reldate-label');
+    if (lbl) { lbl.textContent = (window.App && App.relDate(inp.value)) || inp.value; lbl.title = inp.value; }
   });
 
   // ── ویرایشِ زندهٔ جدول تسک‌ها (بدون دکمهٔ ذخیره) ──

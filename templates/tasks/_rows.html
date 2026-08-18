@@ -6,15 +6,15 @@
     <td class="tcell">{% if all_types %}<select class="tx-inline ttype-sel" data-f="type_def" title="نوع تسک" style="color:rgb({{ t.color_rgb }})">{% for td in all_types %}<option value="{{ td.id }}"{% if t.type_def_id == td.id %} selected{% endif %}>{{ td.name }}</option>{% endfor %}</select>{% else %}<span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span>{% endif %}<input class="tx-inline" data-f="title" value="{{ t.title }}" title="{{ t.title }}">{% if t.review_status == 'needs_fix' %} <span class="tag t-warn" data-fix-note="{{ t.id }}" style="cursor:pointer">⚠</span>{% endif %}</td>
     <td><select class="tx-inline rich-select" data-f="project">{% for p in all_projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if t.project_id == p.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></td>
     <td><select class="tx-inline rich-select" data-f="assignee"><option value="">—</option>{% for c in all_colleagues %}<option value="{{ c.id }}" data-color="{{ c.color }}"{% if c.avatar %} data-img="{{ c.avatar.url }}"{% endif %} {% if t.assignee_id == c.id %}selected{% endif %}>{{ c.full_name }}</option>{% endfor %}</select></td>
-    <td><input class="tx-inline jdate" data-f="planned_date" dir="ltr" readonly value="{{ t.planned_date|jalali }}"></td>
-    <td>{% if t.done_date %}{{ t.done_date|jalali }}{% else %}<span class="zero">—</span>{% endif %}</td>
+    <td class="edit reldate-cell"><span class="reldate-label" title="{{ t.planned_date|jalali|default:'—' }}">{{ t.planned_date|reldate }}</span><input class="tx-inline jdate reldate-input" data-f="planned_date" dir="ltr" readonly value="{{ t.planned_date|jalali }}"></td>
+    <td class="reldate-ro"><span title="{{ t.done_date|jalali|default:'—' }}">{% if t.done_date %}{{ t.done_date|reldate }}{% else %}<span class="zero">—</span>{% endif %}</span></td>
     <td>{% include "tasks/_status_select.html" %}</td>
     {% else %}
     <td class="tcell"><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span> <span title="{{ t.title }}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px;display:inline-block;vertical-align:middle">{{ t.title }}</span>{% if t.review_status == 'needs_fix' %} <span class="tag t-warn" data-fix-note="{{ t.id }}" style="cursor:pointer">⚠</span>{% endif %}</td>
     <td><div class="assignee-cell">{% include "projects/_logo.html" with project=t.project %}<span>{{ t.project.name }}</span></div></td>
     <td><div class="assignee-cell">{% include "tasks/_avatar.html" with colleague=t.assignee %}<span>{{ t.assignee.full_name|default:"—" }}</span></div></td>
-    <td>{{ t.planned_date|jalali }}</td>
-    <td>{% if t.done_date %}{{ t.done_date|jalali }}{% else %}<span class="zero">—</span>{% endif %}</td>
+    <td class="reldate-ro"><span title="{{ t.planned_date|jalali|default:'—' }}">{{ t.planned_date|reldate }}</span></td>
+    <td class="reldate-ro"><span title="{{ t.done_date|jalali|default:'—' }}">{% if t.done_date %}{{ t.done_date|reldate }}{% else %}<span class="zero">—</span>{% endif %}</span></td>
     {% if t.assignee_id == my_colleague_id %}
     <td>{% include "tasks/_status_select.html" %}</td>
     {% else %}
