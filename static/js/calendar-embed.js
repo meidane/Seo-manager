@@ -7,7 +7,7 @@
   function chip(t) {
     return `<span class="tk${t.done ? ' done' : ''}" ` +
       `style="background:rgba(${t.color},.15);border-right:3px solid rgb(${t.color});color:rgb(${t.color})">` +
-      `${t.type_label}: ${t.title}<span class="tk-t">${t.time}</span></span>`;
+      `${t.type_label}: ${t.title}</span>`;
   }
   function cell(c) {
     let h = `<div class="cell${c.is_holiday && !c.dim ? ' off' : ''}${c.dim ? ' dim' : ''}${c.is_today ? ' today' : ''}">` +

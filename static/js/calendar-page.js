@@ -24,7 +24,7 @@
     const style = t.done ? '' : `style="background:rgba(${t.color},.15);border-right:3px solid rgb(${t.color});color:rgb(${t.color})"`;
     const attrs = t.virtual ? '' : ` draggable="true" data-id="${t.id}" data-open-task="${t.id}"`;
     return `<span class="tk${t.done ? ' done' : ''}${t.is_placeholder ? ' placeholder' : ''}${t.virtual ? ' virtual' : ''}"${attrs} ${style}>` +
-      `${av(t)}<span class="tk-tx">${t.type_label}: ${t.title}</span>${t.done ? '' : `<span class="tk-t">${t.time}</span>`}</span>`;
+      `${av(t)}<span class="tk-tx">${t.type_label}: ${t.title}</span></span>`;
   }
   function cellHtml(c) {
     let h = `<div class="cell${c.is_holiday && !c.dim ? ' off' : ''}${c.dim ? ' dim' : ''}${c.is_today ? ' today' : ''}" data-date="${c.gdate}" data-jdate="${c.jdate}">` +

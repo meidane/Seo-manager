@@ -12,6 +12,7 @@ from django.db import models
 from django.urls import reverse
 
 from accounts.tenancy import TenantManager, stamp_org
+from core.jalali import format_jalali as _fmt_jalali
 from core.models import TimeStampedModel
 
 
@@ -220,6 +221,10 @@ class Task(TimeStampedModel):
             'type_label': self.type_label,
             'color': self.color_rgb,
             'time': self.planned_time.strftime('%H:%M') if hasattr(self.planned_time, 'strftime') else str(self.planned_time or ''),
+            # تاریخِ برنامه (میلادی برای درگ تقویم + شمسی برای مودالِ ویرایش) — نبودش
+            # باعث می‌شد مودالِ ویرایش تاریخ را خالی نشان دهد
+            'planned_date_iso': self.planned_date.isoformat() if self.planned_date else '',
+            'planned_date_fa': _fmt_jalali(self.planned_date) if self.planned_date else '',
             'status': self.status,
             'needs_review': self.needs_review,
             'done': self.is_done,
@@ -589,6 +594,7 @@ class ReportMonthStrategy(TimeStampedModel):
     year = models.PositiveSmallIntegerField('سالِ گزارش')
     month = models.PositiveSmallIntegerField('ماهِ گزارش', choices=Task.REPORT_MONTH_CHOICES)
     description = models.TextField('استراتژی', blank=True)
+    order = models.IntegerField('ترتیبِ سکشن', default=0, db_index=True)
 
     objects = TenantManager()
     all_objects = models.Manager()
@@ -598,7 +604,7 @@ class ReportMonthStrategy(TimeStampedModel):
         verbose_name_plural = 'استراتژی‌های ماهِ گزارش'
         base_manager_name = 'all_objects'
         unique_together = ('project', 'year', 'month')
-        ordering = ['-year', '-month']
+        ordering = ['order', '-year', '-month']
 
     def save(self, *args, **kwargs):
         if self.organization_id is None and self.project_id:

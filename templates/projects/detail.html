@@ -38,8 +38,8 @@
 
   {# ── تب‌ها ── #}
   <div class="tabs" id="ptabs">
-    <button class="tab on" data-tab="overview">نمای کلی</button>
-    <button class="tab" data-tab="tasks">تسک‌ها</button>
+    <button class="tab" data-tab="overview">نمای کلی</button>
+    <button class="tab on" data-tab="tasks">تسک‌ها</button>
     {% if project.track_keyword_rank %}<button class="tab" data-tab="keywords">کلمات کلیدی</button>{% endif %}
     <button class="tab" data-tab="calendar">تقویم</button>
     {% if 'project_files' in org_perms %}<button class="tab" data-tab="files">فایل‌ها</button>{% endif %}
@@ -50,7 +50,7 @@
   </div>
 
   {# نمای کلی #}
-  <div class="tab-panel on" data-panel="overview">
+  <div class="tab-panel" data-panel="overview">
   <div class="stats" style="grid-template-columns:repeat(4,1fr)">
     <div class="stat glass"><div class="lab"><i class="dot" style="background:var(--success)"></i> انجام‌شده</div><div class="num">{{ stats.done|fa_digits }}</div></div>
     <div class="stat glass"><div class="lab"><i class="dot" style="background:var(--slate)"></i> باقی‌مانده</div><div class="num">{{ stats.remaining|fa_digits }}</div></div>
@@ -139,7 +139,7 @@
   {% endif %}
 
   {# تسک‌ها — بردِ سئو (سکشن‌های ماهِ گزارش، حالتِ شیت) #}
-  <section class="card glass tab-panel" data-panel="tasks" id="seo-board" data-project="{{ project.pk }}">
+  <section class="card glass tab-panel on" data-panel="tasks" id="seo-board" data-project="{{ project.pk }}">
     <div class="card-h">
       <h3>بردِ سئو — ماه‌های گزارش</h3>
       <div class="side-c" style="gap:8px">
@@ -166,8 +166,12 @@
 
       {% for s in seo_sections %}
       <div class="seo-section" data-year="{{ s.year }}" data-month="{{ s.month }}" style="margin-bottom:20px">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:7px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
           <b style="font-size:14.5px">{{ s.label }}</b>
+          <span class="sec-moves" style="display:inline-flex;gap:2px">
+            <button class="mini sec-up" title="بالا">▲</button>
+            <button class="mini sec-down" title="پایین">▼</button>
+          </span>
           <button class="chip seo-strategy{% if s.has_strategy %} on{% endif %}" data-year="{{ s.year }}" data-month="{{ s.month }}">📋 استراتژی</button>
           <span style="color:var(--text-faint);font-size:11px">{{ s.tasks|length|fa_digits }} تسک</span>
           <textarea class="seo-strat-data" hidden>{{ s.strategy }}</textarea>
@@ -298,10 +302,68 @@
   </section>
   {% endif %}
   {% if 'project_reports' in org_perms %}
-  <section class="card glass tab-panel" data-panel="reports"><div class="empty"><div class="ico">▪</div><h4>گزارش‌ها در گام گزارش‌دهی فعال می‌شود</h4></div></section>
+  <section class="card glass tab-panel" data-panel="reports">
+    <div class="card-h"><h3>گزارش‌های این پروژه</h3>
+      <div class="side-c"><a href="{% url 'reports:list' %}" class="btn btn-sm">همه‌ی گزارش‌ها ↗</a></div>
+    </div>
+    {% if project_reports %}
+      <div class="tscroll">
+      <table>
+        <thead><tr><th>عنوان</th><th>بازه</th><th>وضعیت</th><th>لینک عمومی</th></tr></thead>
+        <tbody>
+          {% for r in project_reports %}
+            <tr onclick="location.href='{{ r.get_absolute_url }}'" style="cursor:pointer">
+              <td>{{ r.title }}</td>
+              <td class="num-c">{{ r.date_from|jalali }} تا {{ r.date_to|jalali }}</td>
+              <td><span class="tag {% if r.status == 'final' %}t-ok{% else %}t-warn{% endif %}">{{ r.get_status_display }}</span></td>
+              <td>{% if r.is_public %}<a class="lnk" href="{{ r.public_url }}" target="_blank" rel="noopener" onclick="event.stopPropagation()">↗</a>{% else %}<span class="zero">—</span>{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    {% else %}
+      <div class="empty"><div class="ico">▪</div><h4>هنوز گزارشی برای این پروژه ساخته نشده</h4>
+        <a href="{% url 'reports:list' %}" class="btn btn-p" style="margin-top:12px">＋ ساخت گزارش</a></div>
+    {% endif %}
+  </section>
   {% endif %}
   {% if 'manage_finance' in org_perms %}
-  <section class="card glass tab-panel" data-panel="finance"><div class="empty"><div class="ico">₮</div><h4>حسابداری در گام حسابداری فعال می‌شود</h4></div></section>
+  <section class="card glass tab-panel" data-panel="finance">
+    <div class="card-h"><h3>گردشِ حساب پروژه (فاکتورها و تراکنش‌ها)</h3>
+      <div class="side-c" style="gap:8px">
+        {% if fin_project_balance %}<span class="tag {% if fin_project_balance > 0 %}t-warn{% elif fin_project_balance < 0 %}t-bad{% endif %}">مانده‌ی پروژه: {{ fin_project_balance|money }}</span>{% endif %}
+        <a href="{% url 'finance:ledger' %}?project={{ project.pk }}" class="btn btn-sm">گزارشِ کامل ↗</a>
+      </div>
+    </div>
+    {% if fin_rows %}
+      <div class="tscroll">
+      <table class="sheet">
+        <thead><tr><th>تاریخ</th><th>شرح</th><th>بانک</th><th>واریز</th><th>برداشت</th><th>مانده</th></tr></thead>
+        <tbody>
+          {% for r in fin_rows %}
+            <tr>
+              <td class="num-c">{{ r.date|jalali }}</td>
+              <td style="text-align:start">{% if r.kind == 'invoice' %}🧾 {% endif %}{{ r.title }}</td>
+              <td>{{ r.bank|default:'—' }}</td>
+              <td class="num-c dep">{% if r.deposit %}{{ r.deposit|money }}{% else %}—{% endif %}</td>
+              <td class="num-c wd">{% if r.withdrawal %}{{ r.withdrawal|money }}{% else %}—{% endif %}</td>
+              <td class="num-c" style="font-weight:600">{{ r.balance|money }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot><tr style="font-weight:700;border-top:2px solid var(--stroke)">
+          <td colspan="3">جمع</td>
+          <td class="num-c dep">{{ fin_totals.deposit|money }}</td>
+          <td class="num-c wd">{{ fin_totals.withdrawal|money }}</td>
+          <td class="num-c">{{ fin_totals.balance|money }}</td>
+        </tr></tfoot>
+      </table>
+      </div>
+    {% else %}
+      <div class="empty"><div class="ico">₮</div><h4>هنوز تراکنش یا فاکتوری برای این پروژه ثبت نشده</h4></div>
+    {% endif %}
+  </section>
   {% endif %}
 {% endblock %}
 
@@ -594,6 +656,20 @@
     if(!sel || !sel.value){ App.toast('ماهِ گزارش را انتخاب کن','warn'); return; }
     const [year, month] = sel.value.split('-').map(Number);
     try{ await App.fetchJSON(`/projects/api/${pid}/seo/section/`, {method:'POST', body:{year, month}}); reloadTasks(); }catch(_){}
+  });
+
+  // بالا/پایین بردنِ سکشنِ ماهِ گزارش (بدونِ رفرش، جابه‌جاییِ DOM + ذخیرهٔ ترتیب)
+  board.addEventListener('click', async e=>{
+    const up=e.target.closest('.sec-up'), dn=e.target.closest('.sec-down');
+    if(!up && !dn) return;
+    const sec=e.target.closest('.seo-section'); if(!sec) return;
+    if(up && sec.previousElementSibling && sec.previousElementSibling.classList.contains('seo-section'))
+      sec.parentNode.insertBefore(sec, sec.previousElementSibling);
+    else if(dn && sec.nextElementSibling && sec.nextElementSibling.classList.contains('seo-section'))
+      sec.parentNode.insertBefore(sec.nextElementSibling, sec);
+    else return;
+    const periods=[...board.querySelectorAll('.seo-section')].map(s=>[+s.dataset.year, +s.dataset.month]);
+    try{ await App.fetchJSON(`/projects/api/${pid}/seo/section-reorder/`, {method:'POST', body:{periods}}); App.toast('ترتیب ذخیره شد','ok'); }catch(_){}
   });
 
   // افزودنِ ردیف (Enter روی input) — «ایده»، فقط عنوان — بدونِ رفرش، درجِ زندهٔ ردیف

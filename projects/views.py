@@ -239,8 +239,12 @@ class ProjectDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
         for t in bt:
             k = (t.report_year, t.report_month)
             periods.add(k); by.setdefault(k, []).append(t)
+        # ترتیب: order دستیِ سکشن (اگر استراتژی دارد) سپس جدیدترین سال/ماه
+        def _skey(k):
+            s = strat.get(k)
+            return (s.order if s else 0, -(k[0] or 0), -k[1])
         sections = []
-        for yr, mo in sorted(periods, key=lambda k: (k[0] or 0, k[1]), reverse=True):
+        for yr, mo in sorted(periods, key=_skey):
             s = strat.get((yr, mo))
             sections.append({'year': yr, 'month': mo, 'label': f'{labels.get(mo, mo)} {yr}',
                              'strategy': s.description if s else '', 'has_strategy': bool(s and s.description),
@@ -258,6 +262,33 @@ class ProjectDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
         # ماه‌های گزارشِ تعریف‌شده در تنظیمات (منبعِ واحدِ افزودنِ سکشن) — منهای سکشن‌های موجود
         existing = {(s['year'], s['month']) for s in sections}
         ctx['seo_periods'] = [rp for rp in ReportPeriod.objects.all() if (rp.year, rp.month) not in existing]
+
+        # ── تبِ گزارش‌ها: فهرستِ گزارش‌های پروژه (کلیک → صفحهٔ گزارش) ──
+        if has_perm(self.request, 'project_reports'):
+            from reports.models import Report
+            ctx['project_reports'] = Report.objects.filter(project=p).order_by('-date_from', '-id')
+
+        # ── تبِ حسابداری: گردشِ حساب پروژه (فاکتورها = برداشت، تراکنش‌ها = واریز/برداشت) ──
+        if has_perm(self.request, 'manage_finance'):
+            from finance.balances import project_balance
+            from finance.models import Invoice, Transaction
+            rows = []
+            for inv in Invoice.objects.filter(project=p):
+                rows.append({'date': inv.issue_date, 'title': f'فاکتور #{inv.number}' + (f' — {inv.description}' if inv.description else ''),
+                             'deposit': 0, 'withdrawal': inv.grand_total, 'bank': '', 'kind': 'invoice', 'ref_id': inv.id})
+            for t in Transaction.objects.filter(project=p).select_related('bank_account'):
+                rows.append({'date': t.date, 'title': t.description or '—', 'deposit': t.deposit or 0,
+                             'withdrawal': t.withdrawal or 0, 'bank': t.bank_account.name if t.bank_account_id else '',
+                             'kind': 'tx', 'ref_id': t.id})
+            rows.sort(key=lambda r: (r['date'] or date.min, r['kind']))
+            bal = 0
+            for r in rows:
+                bal += (r['deposit'] - r['withdrawal'])
+                r['balance'] = bal
+            ctx['fin_rows'] = rows
+            ctx['fin_totals'] = {'deposit': sum(r['deposit'] for r in rows),
+                                 'withdrawal': sum(r['withdrawal'] for r in rows), 'balance': bal}
+            ctx['fin_project_balance'] = project_balance(p.id)
         return ctx
 
 
@@ -489,6 +520,29 @@ def seo_section_add(request, pk):
     except (TypeError, ValueError):
         return JsonResponse({'detail': 'سال و ماه لازم است'}, status=400)
     ReportMonthStrategy.objects.get_or_create(project=project, year=year, month=month)
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_http_methods(['POST'])
+def seo_section_reorder(request, pk):
+    """ترتیبِ سکشن‌های ماهِ گزارش (دکمه‌های بالا/پایین) — فهرستِ [[year,month],…] به ترتیبِ
+    جدید؛ برای هر کدام order را ست می‌کند (رکوردِ استراتژی را در صورتِ نبود می‌سازد)."""
+    from tasks.models import ReportMonthStrategy
+    err = _seo_gate(request, pk)
+    if err:
+        return err
+    project = get_object_or_404(Project, pk=pk)
+    periods = json.loads(request.body or '{}').get('periods') or []
+    for i, ym in enumerate(periods):
+        try:
+            year, month = int(ym[0]), int(ym[1])
+        except (TypeError, ValueError, IndexError):
+            continue
+        s, _ = ReportMonthStrategy.objects.get_or_create(project=project, year=year, month=month)
+        if s.order != i:
+            s.order = i
+            s.save(update_fields=['order'])
     return JsonResponse({'ok': True})
 
 
