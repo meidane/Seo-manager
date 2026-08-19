@@ -9,11 +9,31 @@
 - **دو حالتِ ماژول (پرچمِ `editable`):**
   - `editable=False` (پیش‌فرض، حالتِ «همهٔ انواع») → فقط ستون‌های **اصلیِ مشترکِ
     فقط‌خواندنی**: نوع(بَجِ کوچک)+عنوان، پروژه، مسئول، تاریخِ برنامه، وضعیت، «زمان/تخمین».
-    نه ویرایشِ inline، نه ستونِ اضافی، نه چک‌باکسِ گروهی.
-  - `editable=True` (فقط وقتی **یک نوع فیلتر شده** و کاربر `edit_task` دارد) → همان ستون‌ها
-    ویرایشیِ inline (`.tx-inline data-f=...`) + ستون‌های سفارشیِ آن نوع (`extra_columns`) +
-    چک‌باکسِ گروهی. `TaskListView.ctx['editable'] = can_edit_task and bool(type_def)`؛ بردِ
-    سئو: `can_edit_task and bool(seo_type)`.
+    نه ویرایشِ inline، نه ستونِ اضافی، نه چک‌باکسِ گروهی. **آیکنِ بازکردنِ مودال نیست —
+    کلیک روی هر جای ردیف مودال را باز می‌کند** (`data-open-task` روی خودِ `<tr>`؛ لینک/دراگ/
+    تگ‌باکس استثنا).
+  - `editable=True` (فقط وقتی **یک نوع فیلتر شده** و کاربر `edit_task` دارد) → **همهٔ**
+    ستون‌ها ویرایشیِ inline، شاملِ ستون‌های سفارشیِ آن نوع (`extra_columns`) + چک‌باکسِ
+    گروهی. اینجا کلیکِ ردیف مودال را باز نمی‌کند (سلول‌ها ویرایشی‌اند)؛ فقط **آیکنِ ⤢**
+    که **قبلِ دراپ‌داونِ نوع** در سلولِ عنوان است مودال را باز می‌کند.
+    `TaskListView.ctx['editable'] = can_edit_task and bool(type_def)`؛ بردِ سئو:
+    `can_edit_task and bool(seo_type)`.
+- **ویرایشِ inlineِ فیلدِ سفارشی** (`templates/tasks/_cf_cell.html`، یکی به‌ازای هر
+  `extra_columns` وقتی نوع انتخاب شده): ویجت بر پایهٔ `c.kind` — input/number/date(jdate)/
+  select(از `c.options`)/checkbox/**tags**. ذخیره با `class="cf-inline" data-cf="<key>"`؛
+  هندلرِ سراسریِ `tasks.js` آن را به `{custom_patch:{key:value}}` تبدیل می‌کند و
+  `apply_fields` این را **merge** می‌کند (نه بازنویسیِ کلِ `custom`؛ برخلافِ کلیدِ `custom`
+  که کلش را عوض می‌کند — از مودال). `custom_field_columns` حالا `kind/cf_key/options` را هم
+  برمی‌گرداند تا تمپلیت ویجتِ درست را بسازد.
+- **تگ‌باکسِ درون‌جدولی** (کلمات کلیدی/مترادف، `kind='tags'`): چیپ‌ها با `data-w`، دکمهٔ ×
+  حذف، دکمهٔ ＋ یک **پاپ‌آورِ `position:absolute`** (کمی پایین‌ترِ سلول، `z-index`، بدونِ
+  به‌هم‌ریختنِ جدول) برای افزودنِ کلمه (Enter/ویرگول چند کلمه). هر تغییر → `custom_patch`
+  با کلِ لیستِ کلمات. سیم‌کشی delegated در `tasks.js`.
+- **عرضِ هوشمندِ ستون‌ها:** سرستونِ عنوان `.th-title{width:100%}` (فضای اضافی را می‌گیرد)؛
+  بقیهٔ سلول‌ها `.nowrap-c{white-space:nowrap;width:1%}` (فقط به‌اندازهٔ محتوا). دراپ‌داونِ
+  نوع `.ttype-sel` فشرده (max-width کوچک)؛ وضعیت در `.status-wrap` تک‌خطی (دراپ‌داون + «— امروز»).
+- **تاریخِ نسبی همیشه نسبی است**، هر چقدر هم دور («۵۰۰ روز بعد») — `seo_extras.reldate` و
+  `App.relDate` هردو دیگر به تاریخِ خام برنمی‌گردند؛ تاریخِ اصلی فقط در `title` (هاور).
 - **پرچم‌های دیگرِ ماژول:** `hide_project` (سکشنِ برد پروژه‌اش مشخص است)، `row_drag`
   (دستگیرهٔ `.seo-drag` برای جابه‌جایی در برد). context لازم برای هر رندر: `all_types,
   all_projects, all_colleagues, status_choices, my_colleague_id, can_manage_any_timer,

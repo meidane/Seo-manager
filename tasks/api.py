@@ -131,6 +131,9 @@ def apply_fields(task: Task, data: dict):
                 task.task_type = td.builtin_key or Task.OTHER
     if 'custom' in data and isinstance(data['custom'], dict):
         task.custom = data['custom']
+    # ویرایشِ inlineِ یک فیلدِ سفارشیِ تنها در جدول (بدونِ بازنویسیِ کلِ custom) — merge
+    if 'custom_patch' in data and isinstance(data['custom_patch'], dict):
+        task.custom = {**(task.custom or {}), **data['custom_patch']}
     # اگر نوعِ سفارشی یک فیلد را «منبع تعداد کلمه» علامت زده باشد، word_count را از آن پر کن
     if task.type_def_id and isinstance(task.custom, dict):
         src = task.type_def.fields.filter(is_word_source=True).first()

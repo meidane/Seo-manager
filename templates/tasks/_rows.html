@@ -1,30 +1,30 @@
 {% load seo_extras %}
 {% for t in tasks %}
-  <tr data-id="{{ t.id }}" class="{% if t.is_overdue %}overdue-l {% endif %}{% if row_drag %}seo-row{% endif %}">
-    <td class="row-lead">{% if row_drag %}<i class="seo-drag" title="جابه‌جایی">⠿</i>{% endif %}<i class="row-open" data-open-task="{{ t.id }}" title="باز کردن مودال">⤢</i></td>
+  <tr data-id="{{ t.id }}" class="{% if t.is_overdue %}overdue-l {% endif %}{% if row_drag %}seo-row{% endif %}"{% if not editable %} data-open-task="{{ t.id }}" style="cursor:pointer"{% endif %}>
+    {% if row_drag %}<td class="row-lead"><i class="seo-drag" title="جابه‌جایی">⠿</i></td>{% endif %}
     {% if editable %}
-    {# ── ویرایشیِ inline (یک نوع انتخاب شده) ── #}
-    <td class="tcell">{% if all_types %}<select class="tx-inline ttype-sel" data-f="type_def" title="نوع تسک" style="color:rgb({{ t.color_rgb }})">{% for td in all_types %}<option value="{{ td.id }}"{% if t.type_def_id == td.id %} selected{% endif %}>{{ td.name }}</option>{% endfor %}</select>{% endif %}<input class="tx-inline" data-f="title" value="{{ t.title }}" title="{{ t.title }}">{% if t.page_link %}<a class="lnk-icon" href="{{ t.page_link }}" target="_blank" rel="noopener" title="{{ t.page_link }}" onclick="event.stopPropagation()">🔗</a>{% endif %}{% if t.review_status == 'needs_fix' %}<span class="tag t-warn" data-fix-note="{{ t.id }}" style="cursor:pointer">⚠</span>{% endif %}</td>
-    {% if not hide_project %}<td><select class="tx-inline rich-select" data-f="project">{% for p in all_projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if t.project_id == p.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></td>{% endif %}
-    <td><select class="tx-inline rich-select" data-f="assignee"><option value="">—</option>{% for c in all_colleagues %}<option value="{{ c.id }}" data-color="{{ c.color }}"{% if c.avatar %} data-img="{{ c.avatar.url }}"{% endif %} {% if t.assignee_id == c.id %}selected{% endif %}>{{ c.full_name }}</option>{% endfor %}</select></td>
+    {# ── ویرایشیِ inline (یک نوع انتخاب شده): آیکنِ بازکردنِ مودال قبلِ نوع ── #}
+    <td class="tcell"><i class="row-open" data-open-task="{{ t.id }}" title="باز کردن مودال">⤢</i>{% if all_types %}<select class="tx-inline ttype-sel" data-f="type_def" title="نوع تسک" style="color:rgb({{ t.color_rgb }})">{% for td in all_types %}<option value="{{ td.id }}"{% if t.type_def_id == td.id %} selected{% endif %}>{{ td.name }}</option>{% endfor %}</select>{% endif %}<input class="tx-inline ttl-in" data-f="title" value="{{ t.title }}" title="{{ t.title }}">{% if t.page_link %}<a class="lnk-icon" href="{{ t.page_link }}" target="_blank" rel="noopener" title="{{ t.page_link }}" onclick="event.stopPropagation()">🔗</a>{% endif %}{% if t.review_status == 'needs_fix' %}<span class="tag t-warn" data-fix-note="{{ t.id }}" style="cursor:pointer">⚠</span>{% endif %}</td>
+    {% if not hide_project %}<td class="nowrap-c"><select class="tx-inline rich-select" data-f="project">{% for p in all_projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if t.project_id == p.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></td>{% endif %}
+    <td class="nowrap-c"><select class="tx-inline rich-select" data-f="assignee"><option value="">—</option>{% for c in all_colleagues %}<option value="{{ c.id }}" data-color="{{ c.color }}"{% if c.avatar %} data-img="{{ c.avatar.url }}"{% endif %} {% if t.assignee_id == c.id %}selected{% endif %}>{{ c.full_name }}</option>{% endfor %}</select></td>
     <td class="edit reldate-cell"><span class="reldate-label" title="{{ t.planned_date|jalali|default:'—' }}">{% if t.planned_date %}{{ t.planned_date|reldate }}{% else %}<span class="zero">—</span>{% endif %}</span><input class="tx-inline jdate reldate-input" data-f="planned_date" dir="ltr" readonly value="{{ t.planned_date|jalali }}"></td>
-    <td>{% include "tasks/_status_cell.html" %}</td>
+    <td class="nowrap-c"><span class="status-wrap">{% include "tasks/_status_cell.html" %}</span></td>
     {% else %}
-    {# ── فقط‌خواندنیِ پیش‌فرض (فقط ستون‌های اصلیِ مشترک) ── #}
+    {# ── فقط‌خواندنیِ پیش‌فرض (فقط ستون‌های اصلیِ مشترک؛ کلِ ردیف باز می‌کند) ── #}
     <td class="tcell"><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span><span class="ttl-txt" title="{{ t.title }}">{{ t.title }}</span>{% if t.page_link %}<a class="lnk-icon" href="{{ t.page_link }}" target="_blank" rel="noopener" title="{{ t.page_link }}" onclick="event.stopPropagation()">🔗</a>{% endif %}{% if t.review_status == 'needs_fix' %} <span class="tag t-warn" data-fix-note="{{ t.id }}" style="cursor:pointer">⚠</span>{% endif %}</td>
-    {% if not hide_project %}<td><div class="assignee-cell">{% include "projects/_logo.html" with project=t.project %}<span>{{ t.project.name }}</span></div></td>{% endif %}
-    <td><div class="assignee-cell">{% include "tasks/_avatar.html" with colleague=t.assignee %}<span>{{ t.assignee.full_name|default:"—" }}</span></div></td>
+    {% if not hide_project %}<td class="nowrap-c"><div class="assignee-cell">{% include "projects/_logo.html" with project=t.project %}<span>{{ t.project.name }}</span></div></td>{% endif %}
+    <td class="nowrap-c"><div class="assignee-cell">{% include "tasks/_avatar.html" with colleague=t.assignee %}<span>{{ t.assignee.full_name|default:"—" }}</span></div></td>
     <td class="reldate-ro"><span title="{{ t.planned_date|jalali|default:'—' }}">{% if t.planned_date %}{{ t.planned_date|reldate }}{% else %}<span class="zero">—</span>{% endif %}</span></td>
-    <td>{% include "tasks/_status_cell.html" %}</td>
+    <td class="nowrap-c"><span class="status-wrap">{% include "tasks/_status_cell.html" %}</span></td>
     {% endif %}
     {# ── زمان: صرف‌شده / تخمین (یک ستون) ── #}
-    <td class="timer-cell{% if t.is_done %} done{% endif %}" data-id="{{ t.id }}" data-spent="{{ t.spent_minutes }}" data-running="{% if t.timer_started_at %}1{% else %}0{% endif %}" data-started="{% if t.timer_started_at %}{{ t.timer_started_at|date:'c' }}{% endif %}" title="صرف‌شده / تخمین">
+    <td class="timer-cell nowrap-c{% if t.is_done %} done{% endif %}" data-id="{{ t.id }}" data-spent="{{ t.spent_minutes }}" data-running="{% if t.timer_started_at %}1{% else %}0{% endif %}" data-started="{% if t.timer_started_at %}{{ t.timer_started_at|date:'c' }}{% endif %}" title="صرف‌شده / تخمین">
       {% if not t.is_done and t.assignee_id == my_colleague_id or not t.is_done and can_manage_any_timer %}<button class="tbtn" title="شروع/توقف تایمر">▶</button>{% endif %}
       <span class="tval">{{ t.spent_minutes|hours }}</span><span class="t-est">{% if t.estimate_minutes %} / {{ t.estimate_minutes|hours }}{% else %} / —{% endif %}</span>
       {% if can_edit_time %}<i class="tedit" title="ویرایش زمان (مدیر)">✏️</i>{% endif %}
     </td>
     {% if editable %}
-    {% for c in extra_columns %}<td class="dcell" data-open-task="{{ t.id }}" title="کلیک برای باز کردن/ویرایش">{% column_cell t c %}</td>{% endfor %}
+    {% for c in extra_columns %}<td class="dcell nowrap-c">{% include "tasks/_cf_cell.html" with t=t c=c %}</td>{% endfor %}
     <td class="chk-col">{% if can_edit_task %}<input type="checkbox" class="row-check" data-id="{{ t.id }}">{% endif %}</td>
     {% endif %}
   </tr>

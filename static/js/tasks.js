@@ -533,11 +533,57 @@
   });
 
   // ── ویرایشِ زندهٔ جدول تسک‌ها (بدون دکمهٔ ذخیره) ──
+  //    فیلدِ اصلی → {data-f: value}؛ فیلدِ سفارشی (data-cf) → {custom_patch:{key:value}}
   document.addEventListener('change', async (e) => {
-    const el = e.target.closest('.tx-inline'); if (!el) return;
+    const el = e.target.closest('.tx-inline, .cf-inline'); if (!el) return;
     const tr = el.closest('tr'); if (!tr) return;
-    try { await App.fetchJSON(`/tasks/api/${tr.dataset.id}/`, { method: 'PATCH', body: { [el.dataset.f]: el.value } }); App.toast('ذخیره شد', 'ok'); }
+    let body;
+    if (el.dataset.cf) {
+      const v = el.type === 'checkbox' ? el.checked : el.value;
+      body = { custom_patch: { [el.dataset.cf]: v } };
+    } else if (el.dataset.f) {
+      body = { [el.dataset.f]: el.value };
+    } else { return; }
+    try { await App.fetchJSON(`/tasks/api/${tr.dataset.id}/`, { method: 'PATCH', body }); App.toast('ذخیره شد', 'ok'); }
     catch (_) {}
+  });
+
+  // ── تگ‌باکسِ درون‌جدولی (کلمات کلیدی/مترادف): + برای افزودن، × برای حذف ──
+  function ctagPatch(box) {
+    const tr = box.closest('tr'); if (!tr) return;
+    const words = [...box.querySelectorAll('.ctag')].map((c) => c.dataset.w).filter(Boolean);
+    App.fetchJSON(`/tasks/api/${tr.dataset.id}/`, { method: 'PATCH', body: { custom_patch: { [box.dataset.cf]: words } } })
+      .then(() => App.toast('ذخیره شد', 'ok')).catch(() => {});
+  }
+  function ctagChip(w) {
+    const s = document.createElement('span'); s.className = 'ctag'; s.dataset.w = w;
+    s.textContent = w; const x = document.createElement('i'); x.className = 'ctag-x'; x.title = 'حذف'; x.textContent = '×';
+    s.appendChild(x); return s;
+  }
+  document.addEventListener('click', (e) => {
+    const x = e.target.closest('.ctag-x');
+    if (x) { e.stopPropagation(); const box = x.closest('.cf-tags'); x.closest('.ctag').remove(); ctagPatch(box); return; }
+    const add = e.target.closest('.ctag-add');
+    if (add) {
+      e.stopPropagation();
+      const box = add.closest('.cf-tags');
+      if (box.querySelector('.ctag-pop')) { box.querySelector('.ctag-pop').remove(); return; }
+      const pop = document.createElement('div'); pop.className = 'ctag-pop';
+      pop.innerHTML = '<input type="text" placeholder="کلمه… (Enter)"><button type="button">افزودن</button>';
+      box.appendChild(pop);
+      const inp = pop.querySelector('input'); inp.focus();
+      const commit = () => {
+        const raw = inp.value.trim(); if (!raw) { pop.remove(); return; }
+        // ویرگول → چند کلمه
+        raw.replace(/،/g, ',').split(',').map((w) => w.trim()).filter(Boolean).forEach((w) => {
+          if (![...box.querySelectorAll('.ctag')].some((c) => c.dataset.w === w))
+            box.insertBefore(ctagChip(w), add);
+        });
+        pop.remove(); ctagPatch(box);
+      };
+      pop.querySelector('button').onclick = commit;
+      inp.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); commit(); } if (ev.key === 'Escape') pop.remove(); });
+    }
   });
 
   // ── تغییر سریع وضعیت از دراپ‌داون ردیف ──
@@ -556,7 +602,7 @@
   document.addEventListener('click', (e) => {
     if (e.target.closest('#new-task')) { e.preventDefault(); openTask(null); return; }
     const row = e.target.closest('[data-open-task]');
-    if (row && !e.target.closest('a,select,input,button')) openTask(row.dataset.openTask);
+    if (row && !e.target.closest('a,select,input,button,.seo-drag,.cf-tags,.ctag-x,.ctag-add,.tedit')) openTask(row.dataset.openTask);
   });
 
   // ── عملیات گروهی ──

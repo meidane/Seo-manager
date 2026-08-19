@@ -224,9 +224,8 @@
     if (diff === 0) return 'امروز';
     if (diff === 1) return 'فردا';
     if (diff === -1) return 'دیروز';
-    if (diff > 1 && diff <= 10) return diff + ' روز بعد';
-    if (diff < -1 && diff >= -10) return (-diff) + ' روز قبل';
-    return s;  // خارج از ±۱۰ روز → خودِ تاریخ
+    if (diff > 0) return diff + ' روز بعد';       // همیشه نسبی، هر چقدر هم دور
+    return (-diff) + ' روز قبل';                    // تاریخِ اصلی در هاور (title) است
   }
 
   /* ── نمای عمومی ── */
