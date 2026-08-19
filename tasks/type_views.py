@@ -24,6 +24,20 @@ def _body(request):
         return {}
 
 
+def _field_dict(f):
+    """همه‌ی فیلدهای قابل‌ویرایشِ یک TaskTypeField — منبعِ واحدِ پاسخِ create/edit
+    تا مودالِ ویرایش در فرانت همه را داشته باشد (بدونِ رفرش)."""
+    return {
+        'id': f.id, 'key': f.key, 'label': f.label,
+        'kind': f.kind, 'kind_display': f.get_kind_display(),
+        'options': f.options, 'placeholder': f.placeholder,
+        'required': f.required, 'required_on_done': f.required_on_done,
+        'show_to_client': f.show_to_client, 'is_word_source': f.is_word_source,
+        'is_keyword_source': f.is_keyword_source, 'track_keyword_rank': f.track_keyword_rank,
+        'is_link_source': f.is_link_source, 'is_page_link': f.is_page_link,
+    }
+
+
 class TaskTypeListView(LoginRequiredMixin, ListView):
     model = TaskTypeDef
     template_name = 'settings/task_types.html'
@@ -120,9 +134,7 @@ def field_create(request, pk):
         is_page_link=bool(d.get('is_page_link')),
         order=t.fields.count(),
     )
-    return JsonResponse({'id': f.id, 'key': f.key, 'label': f.label,
-                         'kind': f.get_kind_display(), 'required': f.required,
-                         'show_to_client': f.show_to_client}, status=201)
+    return JsonResponse(_field_dict(f), status=201)
 
 
 @login_required
@@ -142,7 +154,7 @@ def field_edit(request, pk):
         if attr in d:
             setattr(f, attr, bool(d[attr]))
     f.save()
-    return JsonResponse({'ok': True})
+    return JsonResponse(_field_dict(f))
 
 
 @login_required

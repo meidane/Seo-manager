@@ -1,0 +1,10 @@
+{% load seo_extras %}<tr>
+  <th style="width:{% if row_drag %}44{% else %}26{% endif %}px"></th>
+  <th style="min-width:200px">عنوان</th>
+  {% if not hide_project %}<th>پروژه</th>{% endif %}
+  <th>مسئول</th>
+  <th>تاریخ برنامه</th>
+  <th>وضعیت</th>
+  <th>زمان / تخمین</th>
+  {% if editable %}{% for c in extra_columns %}<th>{{ c.label }}</th>{% endfor %}<th style="width:26px" class="chk-col">{% if can_edit_task %}<input type="checkbox" class="check-all">{% endif %}</th>{% endif %}
+</tr>

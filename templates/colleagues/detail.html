@@ -180,15 +180,16 @@
 
   <div class="tab-panel" data-panel="tasks">
     <section class="card glass">
-      <table>
-        <thead><tr><th>عنوان</th><th>پروژه</th><th>تاریخ برنامه</th><th>وضعیت</th><th>🔗</th></tr></thead>
-        <tbody>{% for t in task_rows %}<tr>
-          <td><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span> {{ t.title }}</td>
-          <td>{{ t.project.name }}</td><td>{{ t.planned_date|jalali }}</td>
-          <td><span class="tag t-{% if t.status == 'done' %}ok{% elif t.is_overdue %}bad{% else %}mute{% endif %}">{{ t.get_status_display }}</span></td>
-          <td>{% if t.published_url %}<a class="lnk" href="{{ t.published_url }}" target="_blank" rel="noopener">↗</a>{% endif %}</td>
-        </tr>{% empty %}<tr><td colspan="5" class="zero" style="padding:24px;text-align:center">تسکی در این بازه نیست</td></tr>{% endfor %}</tbody>
+      {% if task_rows %}
+      <div class="tsheet-wrap">
+      <table class="tsheet">
+        <thead>{% include "tasks/_task_thead.html" with editable=False hide_project=False %}</thead>
+        <tbody>{% include "tasks/_rows.html" with tasks=task_rows editable=False hide_project=False row_drag=False %}</tbody>
       </table>
+      </div>
+      {% else %}
+      <div class="empty"><div class="ico">📋</div><h4>تسکی در این بازه نیست</h4></div>
+      {% endif %}
     </section>
   </div>
 {% endblock %}

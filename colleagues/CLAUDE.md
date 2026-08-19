@@ -95,6 +95,9 @@ per-object (این فردِ مشخص).
     `core.columns.get_columns('colleagues','page')` می‌آیند — تنظیم در `/settings/columns/`.
   - `ColleagueDetailView` — آمار بازه، **دونات** تفکیک نوع (`donut_segments`)، تفکیک پروژه،
     روند روزانه، تب تقویم شخصی (embed)، تب تسک‌ها + بخشِ «دسترسی به سیستم» (بالا).
+    **تبِ تسک‌ها از همان ماژولِ واحدِ جدولِ تسک استفاده می‌کند** (`tasks/_task_thead.html`
+    + `_rows.html`، حالتِ فقط‌خواندنی `editable=False`) — نه یک جدولِ دستیِ جدا
+    (`tasks/CLAUDE.md`، بخشِ «ماژولِ واحدِ جدولِ تسک»).
   - CRUD + archive/restore («افزودنِ فرد» — فقط پروفایل، بدونِ حساب). گیت‌شده با
     `can_manage_colleague` (سازمانی یا مدیرِ همان فرد — بالا)، نه فقط `manage_people`.
   - `colleague_grant_access` / `colleague_quick_create` / `colleague_revoke_invite` —
