@@ -44,6 +44,7 @@ _BASE = {ColumnConfig.TASKS: TASKS, ColumnConfig.PROJECTS: PROJECTS, ColumnConfi
 _FIELD_KIND_TO_DISPLAY = {
     'text': 'text', 'textarea': 'text', 'number': 'number',
     'checkbox': 'bool', 'select': 'badge', 'url': 'link_icon', 'date': 'date',
+    'tags': 'tags',
 }
 
 
@@ -60,6 +61,10 @@ def custom_field_columns():
                 'key': f'cf:{td.id}:{f.key}',
                 'label': f.label,
                 'display': _FIELD_KIND_TO_DISPLAY.get(f.kind, 'text'),
+                # metaِ لازم برای ویرایشِ inline در جدول (وقتی نوع انتخاب شده):
+                'kind': f.kind,                 # tags/select/checkbox/date/number/url/text
+                'cf_key': f.key,                # کلیدِ داخلِ Task.custom (بدونِ cf:tid:)
+                'options': f.options,           # برای select (با ویرگول جدا)
             })
     return out
 

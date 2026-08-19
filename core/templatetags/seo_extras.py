@@ -25,7 +25,8 @@ def jalali_long(value):
 
 @register.filter(name='reldate')
 def reldate(value):
-    """تاریخ نسبی: «امروز/دیروز/فردا/N روز قبل/N روز بعد» تا ±۱۰ روز، وگرنه خودِ تاریخِ شمسی.
+    """تاریخ نسبی: «امروز/دیروز/فردا/N روز قبل/N روز بعد» — همیشه نسبی، هر چقدر هم دور
+    (مثلاً «۵۰۰ روز بعد»). تاریخِ اصلی در `title` (هاور) نمایش داده می‌شود، نه اینجا.
     منطقِ همسان با `App.relDate` در جاوااسکریپت (نمایشِ خواناترِ جدولِ تسک‌ها)."""
     if not value:
         return '—'
@@ -38,11 +39,9 @@ def reldate(value):
         return 'فردا'
     if diff == -1:
         return 'دیروز'
-    if 1 < diff <= 10:
+    if diff > 0:
         return f'{diff} روز بعد'
-    if -10 <= diff < -1:
-        return f'{-diff} روز قبل'
-    return j.format_jalali(value)
+    return f'{-diff} روز قبل'
 
 
 @register.filter(name='fa_digits')
@@ -94,6 +93,14 @@ def dictkey(d, key):
         return d.get(key)
     except AttributeError:
         return None
+
+
+@register.filter(name='split_options')
+def split_options(value):
+    """گزینه‌های یک فیلدِ select (رشته‌ی جداشده با ویرگولِ فارسی/انگلیسی) → لیستِ تمیز."""
+    if not value:
+        return []
+    return [o.strip() for o in str(value).replace('،', ',').split(',') if o.strip()]
 
 
 @register.filter(name='repfield')

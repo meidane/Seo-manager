@@ -1079,23 +1079,46 @@ table.sheet td:not(.edit){padding:6px 9px}
 .seo-addrow:hover td{background:rgba(79,118,246,.07)}
 .seo-sheet td.edit .jdate{cursor:pointer}
 
-/* ═══ ستون‌های جدولِ تسک: نوعِ ویرایشی + محدودسازیِ عرض + کلیک برای باز کردن ═══ */
-/* دراپ‌داونِ نوع به‌شکلِ بَجِ فشرده در سلولِ عنوان */
-.ttype-sel{max-width:96px;font-size:10.5px;font-weight:600;padding:2px 4px;border:1px solid var(--stroke-soft);
+/* ═══ ستون‌های جدولِ تسک: عرضِ هوشمند + نوعِ ویرایشی + ویرایشِ inlineِ سفارشی ═══ */
+/* عنوان تمامِ فضای اضافی را می‌گیرد؛ بقیهٔ ستون‌ها فقط به‌اندازهٔ محتوا (نه بیشتر) */
+.tsheet .th-title{width:100%}
+.tsheet .nowrap-c,.tsheet th.nowrap-c{white-space:nowrap;width:1%}
+/* دراپ‌داونِ نوع: فشرده، فقط به‌اندازهٔ محتوا (زیاد جا نگیرد) */
+.ttype-sel{max-width:74px;font-size:10px;font-weight:600;padding:2px 3px;border:1px solid var(--stroke-soft);
   border-radius:var(--r-full);background:rgba(255,255,255,.04);cursor:pointer;flex:none}
 .ttype-sel:hover{border-color:var(--stroke)}
-.tcell{display:flex;align-items:center;gap:6px}
-/* سلولِ عنوان زیادی پهن نشود؛ اینپوتِ عنوان داخلش ellipsis بگیرد */
-.tsheet .tcell,.seo-sheet .tcell{max-width:360px}
-.tcell .tx-inline[data-f="title"]{min-width:90px;text-overflow:ellipsis}
+.tcell{display:flex;align-items:center;gap:6px;min-width:220px}
+/* اینپوتِ عنوان فضای باقی‌ماندهٔ سلول را می‌گیرد (نه عرضِ ثابت) */
+.tcell .ttl-in{flex:1;min-width:80px;text-overflow:ellipsis}
+.row-open{cursor:pointer;flex:none;opacity:.55;font-size:12px;transition:opacity .12s}
+.row-open:hover{opacity:1}
 /* متنِ عنوان در حالتِ فقط‌خواندنی: کوتاه‌شونده با ... */
 .ttl-txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 /* آیکنِ لینکِ صفحه/انتشار در انتهای عنوان (به‌جای ستونِ جدا) */
 .lnk-icon{flex:none;text-decoration:none;font-size:12px;opacity:.7;transition:opacity .12s}
 .lnk-icon:hover{opacity:1}
-/* سلول‌های نمایشی (فیلدهای سفارشی/اضافی): عرضِ محدود + ellipsis؛ کلیک = باز کردنِ مودال */
-.dcell{max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
-.dcell:hover{background:var(--glass-hover)}
+/* وضعیت: دراپ‌داون + «— امروز» همیشه یک‌خطی */
+.status-wrap{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+/* سلولِ فیلدِ سفارشیِ ویرایشی (وقتی نوع انتخاب شده) */
+.dcell{min-width:120px;max-width:240px}
+.dcell .cf-inline{width:100%;min-width:70px}
+.dcell input.cf-inline[type=checkbox]{width:auto;min-width:0}
+
+/* ── تگ‌باکسِ درون‌جدولی (کلمات کلیدی/مترادف) ── */
+.cf-tags{display:flex;align-items:center;gap:4px;flex-wrap:wrap;position:relative}
+.cf-tags .ctag{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;padding:1px 4px 1px 6px;
+  border-radius:var(--r-full);background:var(--primary-soft);color:var(--primary-400);white-space:nowrap}
+.cf-tags .ctag-x{cursor:pointer;opacity:.65;font-style:normal;font-size:12px;line-height:1}
+.cf-tags .ctag-x:hover{opacity:1;color:var(--danger)}
+.cf-tags .ctag-add{border:1px dashed var(--stroke-soft);background:transparent;color:var(--text-dim);
+  width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;display:grid;place-items:center;flex:none}
+.cf-tags .ctag-add:hover{border-color:var(--primary-ring);color:var(--primary-400)}
+/* دراپ‌داونِ کوچکِ افزودن (کمی پایین‌تر، روی محتوا، بدونِ به‌هم‌ریختنِ جدول) */
+.ctag-pop{position:absolute;top:100%;right:0;margin-top:4px;z-index:40;display:flex;gap:5px;
+  background:var(--card-solid);border:1px solid var(--stroke);border-radius:var(--r-sm);
+  padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.ctag-pop input{width:130px;font-size:12px;padding:4px 7px}
+.ctag-pop button{border:0;background:var(--primary);color:#fff;border-radius:var(--r-sm);padding:0 10px;cursor:pointer;font-size:12px}
 
 /* ═══ تاریخِ نسبی در جدولِ تسک (امروز/فردا/۳ روز بعد) ═══ */
 .reldate-cell{position:relative;min-width:98px}
