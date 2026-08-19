@@ -20,10 +20,13 @@ class ProjectForm(forms.ModelForm):
     class Meta:
         model = Project
         fields = [
-            'name', 'logo', 'domain', 'track_keyword_rank', 'color', 'status', 'amount',
+            'name', 'logo', 'domain', 'track_keyword_rank', 'color', 'status', 'priority', 'amount',
             'client_name', 'client_phone', 'manager', 'members', 'description',
         ]
-        widgets = {'members': forms.CheckboxSelectMultiple}
+        widgets = {
+            'members': forms.CheckboxSelectMultiple,
+            'priority': forms.NumberInput(attrs={'dir': 'ltr', 'min': 1, 'placeholder': '۱ = بالاترین'}),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

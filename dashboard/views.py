@@ -108,9 +108,9 @@ class DashboardView(LoginRequiredMixin, DateRangeMixin, TemplateView):
                 p.state = ('ok', 'روی روال')
             else:
                 p.state = ('info', 'جلوتر')
-        # بدترین وضعیت بالا: بدون‌کار/عقب‌افتاده اول
+        # اولویتِ دستی اول (۱ بالاترین، بی‌اولویت‌ها ته)، سپس بدترین وضعیت بالا
         order = {'bad': 0, 'warn': 1, 'ok': 2, 'info': 3}
-        projects.sort(key=lambda p: (order[p.state[0]], -p.overdue))
+        projects.sort(key=lambda p: (p.priority if p.priority is not None else 9999, order[p.state[0]], -p.overdue))
         ctx['projects'] = projects
         ctx['project_columns'] = get_columns(ColumnConfig.PROJECTS, ColumnConfig.DASHBOARD)
 

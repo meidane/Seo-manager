@@ -40,6 +40,9 @@ class Project(TimeStampedModel):
     project_types = models.CharField('نوع پروژه', max_length=100, blank=True)
     status = models.CharField('وضعیت', max_length=10, choices=STATUS_CHOICES, default=ACTIVE)
     archived_at = models.DateTimeField('زمان غیرفعال‌سازی', null=True, blank=True)
+    # اولویتِ دستیِ نمایش (۱ = بالاترین). خالی = بدونِ اولویت (ته لیست). مرتب‌سازیِ
+    # صفحهٔ پروژه‌ها و داشبورد از این می‌خوانند: F('priority').asc(nulls_last=True).
+    priority = models.PositiveSmallIntegerField('اولویت', null=True, blank=True)
 
     amount = models.DecimalField('مبلغ قرارداد', max_digits=14, decimal_places=0, null=True, blank=True)
     contract_start = models.DateField('شروع قرارداد', null=True, blank=True)

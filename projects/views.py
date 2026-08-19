@@ -108,7 +108,7 @@ class ProjectListView(LoginRequiredMixin, DateRangeMixin, ListView):
         query = self.request.GET.get('q', '').strip()
         if query:
             qs = qs.filter(Q(name__icontains=query) | Q(domain__icontains=query))
-        from django.db.models import Case, IntegerField, Value, When
+        from django.db.models import Case, F, IntegerField, Value, When
         return qs.annotate(
             planned=Count('tasks', filter=Q(tasks__planned_date__range=(start, end))),
             done=Count('tasks', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
@@ -120,7 +120,7 @@ class ProjectListView(LoginRequiredMixin, DateRangeMixin, ListView):
             # پروژه‌ی شخصی همیشه اولِ لیست (فقط پروژه‌ی شخصیِ خودِ کاربر اینجا هست)
             _personal=Case(When(personal_owner__isnull=False, then=Value(0)),
                            default=Value(1), output_field=IntegerField()),
-        ).order_by('_personal', 'status', 'name')  # شخصی اول، سپس ترتیبِ پایدار
+        ).order_by('_personal', 'status', F('priority').asc(nulls_last=True), 'name')  # شخصی، فعال، اولویتِ دستی، نام
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)

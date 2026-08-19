@@ -51,6 +51,9 @@
 }
 
 *{box-sizing:border-box;margin:0;padding:0}
+/* کنترل‌های فرم فونت را ارث نمی‌برند (پیش‌فرضِ مرورگر) — همه‌جا Vazirmatn شود،
+   وگرنه بعضی دکمه‌ها/اینپوت‌ها فونتِ سیستم می‌گیرند (باگِ «وزیر لود نمی‌شود») */
+button,input,select,textarea{font-family:inherit}
 html{-webkit-font-smoothing:antialiased}
 body{
   font-family:Vazirmatn,system-ui,sans-serif;
@@ -736,8 +739,9 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .tw-stop:hover{background:var(--danger);color:#fff}
 
 /* تایمر تسک (ستون زمان) */
-.timer-cell{white-space:nowrap;display:flex;align-items:center;gap:6px;min-height:22px}
-.timer-cell .tbtn{border:0;background:rgba(255,255,255,.06);color:var(--text);width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;display:grid;place-items:center}
+.timer-cell{white-space:nowrap;display:flex;align-items:center;justify-content:flex-start;gap:6px;min-height:22px;min-width:96px}
+.timer-cell .tbtn{border:0;background:var(--primary-soft);color:var(--primary-400);width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:10px;line-height:1;display:grid;place-items:center;flex:none;padding:0}
+.timer-cell .tbtn:hover{background:var(--primary-ring);color:#fff}
 .timer-cell.running .tbtn{background:var(--danger);color:#fff}
 .timer-cell .tval{font-variant-numeric:tabular-nums;font-size:12px;color:var(--text);min-width:28px}
 .timer-cell.running .tval{color:#6FE3C4}
@@ -1073,16 +1077,18 @@ table.sheet td:not(.edit){padding:6px 9px}
 .seo-drag{cursor:grab;color:var(--text-faint);text-align:center;user-select:none}
 .seo-drag:active{cursor:grabbing}
 .seo-row[draggable=true]:hover .seo-drag{color:var(--primary-400)}
-.seo-sheet .seo-newtask{width:100%;background:transparent;border:0;color:var(--text);font-family:inherit;font-size:12.5px;padding:7px 9px;outline:none}
-.seo-sheet .seo-newtask::placeholder{color:var(--text-faint)}
+/* اینپوتِ «افزودن ایده/تسک» — بردِ سئو حالا `.tsheet` است نه `.seo-sheet`؛ اگر فقط
+   `.seo-sheet` اسکوپ بماند اینپوت استایل نمی‌گیرد و سفید/بهم‌ریخته می‌شود (باگِ رفع‌شده) */
+.tsheet .seo-newtask,.seo-sheet .seo-newtask{width:100%;background:transparent;border:0;color:var(--text);font-family:inherit;font-size:12.5px;padding:7px 9px;outline:none}
+.tsheet .seo-newtask::placeholder,.seo-sheet .seo-newtask::placeholder{color:var(--text-faint)}
 .seo-addrow td{background:rgba(79,118,246,.04)}
 .seo-addrow:hover td{background:rgba(79,118,246,.07)}
-.seo-sheet td.edit .jdate{cursor:pointer}
+.tsheet td.edit .jdate,.seo-sheet td.edit .jdate{cursor:pointer}
 
 /* ═══ ستون‌های جدولِ تسک: عرضِ هوشمند + نوعِ ویرایشی + ویرایشِ inlineِ سفارشی ═══ */
 /* عنوان تمامِ فضای اضافی را می‌گیرد؛ بقیهٔ ستون‌ها فقط به‌اندازهٔ محتوا (نه بیشتر) */
-.tsheet .th-title{width:100%}
-.tsheet .nowrap-c,.tsheet th.nowrap-c{white-space:nowrap;width:1%}
+.tsheet .th-title{min-width:200px}
+.tsheet .nowrap-c,.tsheet th.nowrap-c{white-space:nowrap}
 /* دراپ‌داونِ نوع: فشرده، فقط به‌اندازهٔ محتوا (زیاد جا نگیرد) */
 .ttype-sel{max-width:74px;font-size:10px;font-weight:600;padding:2px 3px;border:1px solid var(--stroke-soft);
   border-radius:var(--r-full);background:rgba(255,255,255,.04);cursor:pointer;flex:none}
@@ -1100,14 +1106,17 @@ table.sheet td:not(.edit){padding:6px 9px}
 /* وضعیت: دراپ‌داون + «— امروز» همیشه یک‌خطی */
 .status-wrap{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 /* سلولِ فیلدِ سفارشیِ ویرایشی (وقتی نوع انتخاب شده) */
-.dcell{min-width:120px;max-width:240px}
-.dcell .cf-inline{width:100%;min-width:70px}
+.dcell{min-width:150px;max-width:240px}
+.dcell .cf-inline{width:100%;min-width:90px}
 .dcell input.cf-inline[type=checkbox]{width:auto;min-width:0}
 
-/* ── تگ‌باکسِ درون‌جدولی (کلمات کلیدی/مترادف) ── */
-.cf-tags{display:flex;align-items:center;gap:4px;flex-wrap:wrap;position:relative}
+/* ── تگ‌باکسِ درون‌جدولی (کلمات کلیدی/مترادف) — تک‌خطی، ارتفاعِ ردیف را زیاد نمی‌کند ── */
+.cf-tags{display:flex;align-items:center;gap:4px;position:relative;max-width:100%}
+.cf-tags .ctag-list{display:flex;align-items:center;gap:4px;flex-wrap:nowrap;overflow-x:auto;
+  min-width:0;scrollbar-width:none}
+.cf-tags .ctag-list::-webkit-scrollbar{height:0;width:0}
 .cf-tags .ctag{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;padding:1px 4px 1px 6px;
-  border-radius:var(--r-full);background:var(--primary-soft);color:var(--primary-400);white-space:nowrap}
+  border-radius:var(--r-full);background:var(--primary-soft);color:var(--primary-400);white-space:nowrap;flex:none}
 .cf-tags .ctag-x{cursor:pointer;opacity:.65;font-style:normal;font-size:12px;line-height:1}
 .cf-tags .ctag-x:hover{opacity:1;color:var(--danger)}
 .cf-tags .ctag-add{border:1px dashed var(--stroke-soft);background:transparent;color:var(--text-dim);
@@ -1132,6 +1141,13 @@ table.sheet td:not(.edit){padding:6px 9px}
 .reldate-ro [title]{cursor:default}
 /* برچسبِ نسبیِ کنارِ تاریخ در مودال */
 .rel-hint{font-size:11px;color:var(--primary-400);margin-inline-start:8px}
+
+/* ── تفکیکِ روزانه: تیترِ نسبیِ بزرگ + تاریخِ خامِ کوچک (داشبورد + /tasks/?group=day) ── */
+.day-group{margin-top:14px}
+.day-group:first-child{margin-top:2px}
+.day-head{display:flex;align-items:baseline;gap:8px;margin-bottom:6px;font-size:12.5px}
+.day-head b{color:var(--text);font-size:14px}
+.day-head .day-date{color:var(--text-faint);font-size:11px}
 
 /* ═══ مودالِ تسک: تمام‌عرض، دوستونی، ارتفاعِ زیاد (کمترین اسکرول) ═══ */
 .modal:has(.tmodal){max-width:1080px;width:96vw;height:min(92vh,920px)}

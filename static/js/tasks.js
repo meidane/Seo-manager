@@ -572,12 +572,13 @@
       pop.innerHTML = '<input type="text" placeholder="کلمه… (Enter)"><button type="button">افزودن</button>';
       box.appendChild(pop);
       const inp = pop.querySelector('input'); inp.focus();
+      const list = box.querySelector('.ctag-list');
       const commit = () => {
         const raw = inp.value.trim(); if (!raw) { pop.remove(); return; }
         // ویرگول → چند کلمه
         raw.replace(/،/g, ',').split(',').map((w) => w.trim()).filter(Boolean).forEach((w) => {
           if (![...box.querySelectorAll('.ctag')].some((c) => c.dataset.w === w))
-            box.insertBefore(ctagChip(w), add);
+            list.appendChild(ctagChip(w));
         });
         pop.remove(); ctagPatch(box);
       };
