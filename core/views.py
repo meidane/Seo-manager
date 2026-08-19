@@ -53,9 +53,10 @@ class HolidayListView(LoginRequiredMixin, ListView):
 
 
 # ── سفارشی‌سازیِ ستون‌ها `/settings/columns/` ───────────────────────────────
-# پنج بخشِ قابل‌تنظیم: تسک‌ها(صفحه)، پروژه‌ها(صفحه/داشبورد)، همکاران(صفحه/داشبورد).
+# بخش‌های قابل‌تنظیم: پروژه‌ها(صفحه/داشبورد)، همکاران(صفحه/داشبورد).
+# تسک‌ها دیگر اینجا نیست — ستون‌های اضافیِ جدولِ تسک از فیلدهای سفارشیِ نوعِ انتخاب‌شده
+# می‌آیند (`core.columns.visible_task_columns`)، نه از یک کاتالوگِ ثابت.
 COLUMN_SECTIONS = [
-    (ColumnConfig.TASKS, ColumnConfig.PAGE, 'تسک‌ها — ستون‌های اضافی (صفحه‌ی تسک‌ها)'),
     (ColumnConfig.PROJECTS, ColumnConfig.PAGE, 'وضعیت پروژه‌ها — صفحه‌ی پروژه‌ها'),
     (ColumnConfig.PROJECTS, ColumnConfig.DASHBOARD, 'وضعیت پروژه‌ها — داشبورد'),
     (ColumnConfig.COLLEAGUES, ColumnConfig.PAGE, 'عملکرد همکاران — صفحه‌ی همکاران'),

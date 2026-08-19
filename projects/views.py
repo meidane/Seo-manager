@@ -255,10 +255,22 @@ class ProjectDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
         ctx['all_types'] = active_types
         ctx['seo_type'] = seo_type
         ctx['status_choices'] = Task.STATUS_CHOICES
-        # ستون‌های سفارشی مطابقِ لیستِ تسک‌ها (منبعِ واحد) — عمومی همیشه، سفارشیِ نوع فقط با فیلترِ نوع
+        # ستون‌های سفارشی — بدونِ نوع هیچ ستونِ اضافه‌ای (فقط اصلی، فقط‌خواندنی)
         from core.columns import visible_task_columns
-        ctx['seo_cols'] = visible_task_columns(seo_type)
-        ctx['can_edit_task'] = bool(getattr(self.request, 'membership', None) and self.request.membership.can('edit_task'))
+        ctx['seo_cols'] = ctx['extra_columns'] = visible_task_columns(seo_type)
+        mm = getattr(self.request, 'membership', None)
+        ctx['can_edit_task'] = bool(mm and mm.can('edit_task'))
+        # بردِ سئو از **همان ماژولِ جدولِ تسک** استفاده می‌کند (یکسان با همه‌جا): بدونِ ستونِ
+        # پروژه (پیش‌فرضِ سکشن)، دستگیرهٔ جابه‌جایی، ویرایشِ inline فقط با انتخابِ نوع.
+        ctx['hide_project'] = True
+        ctx['row_drag'] = True
+        ctx['editable'] = ctx['can_edit_task'] and bool(seo_type)
+        my_c = getattr(self.request.user, 'colleague', None)
+        ctx['my_colleague_id'] = my_c.id if my_c else None
+        ctx['all_projects'] = []
+        from tasks.api import can_manage_any_timer
+        ctx['can_manage_any_timer'] = can_manage_any_timer(mm)
+        ctx['can_edit_time'] = bool(mm and mm.can('edit_time'))
         # ماه‌های گزارشِ تعریف‌شده در تنظیمات (منبعِ واحدِ افزودنِ سکشن) — منهای سکشن‌های موجود
         existing = {(s['year'], s['month']) for s in sections}
         ctx['seo_periods'] = [rp for rp in ReportPeriod.objects.all() if (rp.year, rp.month) not in existing]
@@ -582,17 +594,26 @@ def seo_task_add(request, pk):
     else:
         task.task_type = Task.OTHER
     task.save()
-    # ردیف را همان‌جا رندر می‌کنیم تا فرانت بدونِ رفرش درج کند (ساختارِ یکسان با بقیه)
+    # ردیف را با **همان ماژولِ جدولِ تسک** رندر می‌کنیم (ساختارِ یکسان با همه‌جا)
     from django.template.loader import render_to_string
     from colleagues.models import Colleague
     from core.columns import visible_task_columns
+    from tasks.api import can_manage_any_timer
     from tasks.models import TaskTypeDef as _TTD
-    html = render_to_string('projects/_seo_row.html', {
-        't': task, 'can_edit_task': True,
+    seo_type = d.get('type') or ''
+    mm = getattr(request, 'membership', None)
+    my_c = getattr(request.user, 'colleague', None)
+    html = render_to_string('tasks/_rows.html', {
+        'tasks': [task], 'can_edit_task': True,
+        'editable': bool(seo_type), 'hide_project': True, 'row_drag': True,
+        'extra_columns': visible_task_columns(seo_type),
         'all_types': _TTD.objects.filter(is_active=True),
         'all_colleagues': Colleague.objects.filter(status=Colleague.ACTIVE),
-        'seo_cols': visible_task_columns(d.get('type') or ''),
+        'all_projects': [],
         'status_choices': Task.STATUS_CHOICES,
+        'my_colleague_id': my_c.id if my_c else None,
+        'can_manage_any_timer': can_manage_any_timer(mm),
+        'can_edit_time': bool(mm and mm.can('edit_time')),
     }, request=request)
     return JsonResponse({'ok': True, 'id': task.id, 'html': html})
 

@@ -176,20 +176,15 @@
           <span style="color:var(--text-faint);font-size:11px">{{ s.tasks|length|fa_digits }} تسک</span>
           <textarea class="seo-strat-data" hidden>{{ s.strategy }}</textarea>
         </div>
-        <div class="tscroll">
-        <table class="sheet seo-sheet">
-          <thead><tr>
-            <th style="width:22px"></th><th style="width:22px"></th>
-            <th style="min-width:230px">عنوان</th><th>مسئول</th><th>تاریخ برنامه</th><th>وضعیت</th>
-            {% for c in seo_cols %}<th>{{ c.label }}</th>{% endfor %}
-          </tr></thead>
+        <div class="tsheet-wrap">
+        <table class="tsheet">
+          <thead>{% include "tasks/_task_thead.html" %}</thead>
           <tbody data-year="{{ s.year }}" data-month="{{ s.month }}">
-            {% for t in s.tasks %}{% include "projects/_seo_row.html" %}{% endfor %}
+            {% include "tasks/_rows.html" with tasks=s.tasks %}
             {% if can_edit_task %}
             <tr class="seo-addrow">
-              <td></td><td class="zero">＋</td>
-              <td class="edit"><input class="seo-newtask" placeholder="افزودنِ ایده/تسک… (Enter)" data-year="{{ s.year }}" data-month="{{ s.month }}"></td>
-              <td colspan="{{ seo_cols|length|add:3 }}" class="zero" style="font-size:11px;text-align:start;padding-inline-start:10px">فقط عنوان لازم است؛ تاریخ را بعداً بگذار (ایده)</td>
+              <td></td><td class="edit"><input class="seo-newtask" placeholder="افزودنِ ایده/تسک… (Enter)" data-year="{{ s.year }}" data-month="{{ s.month }}"></td>
+              <td colspan="20" class="zero" style="font-size:11px;text-align:start;padding-inline-start:10px">فقط عنوان لازم است؛ تاریخ را بعداً بگذار (ایده)</td>
             </tr>
             {% endif %}
           </tbody>

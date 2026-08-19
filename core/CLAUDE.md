@@ -17,7 +17,9 @@
 - `htmlsan.py` — **`clean_html`** (whitelist bleach). خروجی هر ادیتور را پاکسازی کن.
 - `context_processors.py: date_range` — پیش‌تنظیم‌های بازه برای هدر.
 - `columns.py` — **کاتالوگِ ستون‌های قابل‌سفارشی‌سازی** (منبعِ واحدِ برچسب/حالتِ نمایش):
-  `TASKS/PROJECTS/COLLEAGUES` (لیست دیکشنری `{key,label,display,default}`) + `custom_field_columns()`
+  `PROJECTS/COLLEAGUES` (لیست دیکشنری `{key,label,display,default}`؛ **`TASKS` عمداً خالی
+  است** — ستونِ اضافیِ جدولِ تسک از فیلدهای سفارشیِ نوعِ انتخاب‌شده می‌آید، نه کاتالوگ؛ بخشِ
+  «تسک‌ها»ی `/settings/columns/` هم برداشته شد. ستونِ `state`ی پروژه‌ها هم حذف شد) + `custom_field_columns()`
   (برای تسک‌ها، از فیلدهای سفارشیِ انواعِ فعالِ سازمان داینامیک می‌سازد، کلید `cf:<type_def_id>:<field_key>`)
   + `get_columns(table, scope)` (می‌خواند از `ColumnConfig`، پیش‌فرض اگر تنظیم نشده) +
   `cell_value(obj, col)`. حالت‌های نمایش: `text, number, time(دقیقه→ساعت), date, timeago,

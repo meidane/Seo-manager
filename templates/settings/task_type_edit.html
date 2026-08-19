@@ -17,15 +17,25 @@
   <section class="card glass">
     <div class="card-h"><h3>فیلدهای این نوع</h3><span class="chip" id="f-count">{{ fields|length|fa_digits }} فیلد</span></div>
     <table id="f-table">
-      <thead><tr><th>برچسب</th><th>نوع فیلد</th><th>اجباری</th><th>نمایش به مشتری</th><th></th></tr></thead>
+      <thead><tr><th style="width:56px">ترتیب</th><th>برچسب</th><th>نوع فیلد</th><th>اجباری</th><th>نمایش به مشتری</th><th></th></tr></thead>
       <tbody>
         {% for f in fields %}
-          <tr data-fid="{{ f.id }}">
-            <td>{{ f.label }}{% if f.kind == 'select' and f.options %}<br><small style="color:var(--text-faint)">{{ f.options }}</small>{% endif %}</td>
-            <td><span class="tag t-info">{{ f.get_kind_display }}</span></td>
-            <td>{% if f.required %}✓{% else %}<span class="zero">—</span>{% endif %}</td>
-            <td>{% if f.show_to_client %}✓{% else %}<span class="zero">—</span>{% endif %}</td>
-            <td><button class="mini f-del" data-id="{{ f.id }}">حذف</button></td>
+          <tr data-fid="{{ f.id }}"
+              data-label="{{ f.label }}" data-kind="{{ f.kind }}" data-options="{{ f.options }}"
+              data-placeholder="{{ f.placeholder }}" data-required="{{ f.required|yesno:'1,0' }}"
+              data-required_on_done="{{ f.required_on_done|yesno:'1,0' }}"
+              data-show_to_client="{{ f.show_to_client|yesno:'1,0' }}"
+              data-is_word_source="{{ f.is_word_source|yesno:'1,0' }}"
+              data-is_keyword_source="{{ f.is_keyword_source|yesno:'1,0' }}"
+              data-track_keyword_rank="{{ f.track_keyword_rank|yesno:'1,0' }}"
+              data-is_link_source="{{ f.is_link_source|yesno:'1,0' }}"
+              data-is_page_link="{{ f.is_page_link|yesno:'1,0' }}">
+            <td><span class="f-move"><button class="mini f-up" title="بالا">▲</button><button class="mini f-down" title="پایین">▼</button></span></td>
+            <td class="f-label">{{ f.label }}{% if f.kind == 'select' and f.options %}<br><small style="color:var(--text-faint)">{{ f.options }}</small>{% endif %}</td>
+            <td class="f-kind"><span class="tag t-info">{{ f.get_kind_display }}</span></td>
+            <td class="f-req">{% if f.required %}✓{% else %}<span class="zero">—</span>{% endif %}</td>
+            <td class="f-cli">{% if f.show_to_client %}✓{% else %}<span class="zero">—</span>{% endif %}</td>
+            <td style="white-space:nowrap"><button class="mini f-edit" data-id="{{ f.id }}">ویرایش</button> <button class="mini f-del" data-id="{{ f.id }}">حذف</button></td>
           </tr>
         {% endfor %}
       </tbody>
@@ -108,6 +118,37 @@ document.getElementById('t-del').onclick=async()=>{ if(await App.confirm('این
 // نمایش گزینه‌ها فقط برای select
 document.getElementById('nf-kind').onchange=e=>{document.getElementById('nf-options-wrap').style.display=e.target.value==='select'?'':'none';};
 
+// گزینه‌های «نوع فیلد» برای مودالِ ویرایش (از همان select افزودن کلون می‌شود)
+const KIND_OPTS=document.getElementById('nf-kind').innerHTML;
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const yn=v=>v?'✓':'<span class="zero">—</span>';
+
+// ساختِ یک ردیفِ فیلد (منبعِ واحد؛ create/ویرایش هردو از این می‌سازند)
+function fieldRow(f){
+  const opts=(f.kind==='select'&&f.options)?`<br><small style="color:var(--text-faint)">${esc(f.options)}</small>`:'';
+  const d=k=>`data-${k}="${esc(f[k])}"`;
+  return `<tr data-fid="${f.id}" data-label="${esc(f.label)}" data-kind="${esc(f.kind)}" data-options="${esc(f.options)}"
+      data-placeholder="${esc(f.placeholder)}" data-required="${f.required?1:0}" data-required_on_done="${f.required_on_done?1:0}"
+      data-show_to_client="${f.show_to_client?1:0}" data-is_word_source="${f.is_word_source?1:0}"
+      data-is_keyword_source="${f.is_keyword_source?1:0}" data-track_keyword_rank="${f.track_keyword_rank?1:0}"
+      data-is_link_source="${f.is_link_source?1:0}" data-is_page_link="${f.is_page_link?1:0}">
+    <td><span class="f-move"><button class="mini f-up" title="بالا">▲</button><button class="mini f-down" title="پایین">▼</button></span></td>
+    <td class="f-label">${esc(f.label)}${opts}</td>
+    <td class="f-kind"><span class="tag t-info">${esc(f.kind_display||f.kind)}</span></td>
+    <td class="f-req">${yn(f.required)}</td>
+    <td class="f-cli">${yn(f.show_to_client)}</td>
+    <td style="white-space:nowrap"><button class="mini f-edit" data-id="${f.id}">ویرایش</button> <button class="mini f-del" data-id="${f.id}">حذف</button></td>
+  </tr>`;
+}
+// به‌روزرسانیِ ردیفِ موجود (بعدِ ویرایش) — کاملاً از fieldRow بازساخته می‌شود
+function replaceRow(fid,f){ const tr=document.querySelector(`#f-table tr[data-fid="${fid}"]`); if(tr) tr.outerHTML=fieldRow(f); }
+
+// POSTِ ترتیبِ فعلیِ ردیف‌ها
+function saveOrder(){
+  const order=[...document.querySelectorAll('#f-table tbody tr')].map(tr=>+tr.dataset.fid);
+  App.fetchJSON(`/settings/task-types/api/${TID}/reorder/`,{method:'POST',body:{order}});
+}
+
 // افزودن فیلد
 document.getElementById('nf-add').onclick=async()=>{
   const label=document.getElementById('nf-label').value.trim();
@@ -125,17 +166,68 @@ document.getElementById('nf-add').onclick=async()=>{
     is_page_link:document.getElementById('nf-pagelink').checked};
   try{ const f=await App.fetchJSON(`/settings/task-types/api/${TID}/fields/`,{method:'POST',body});
     const empty=document.getElementById('f-empty'); if(empty)empty.remove();
-    const tb=document.querySelector('#f-table tbody');
-    tb.insertAdjacentHTML('beforeend',`<tr data-fid="${f.id}"><td>${f.label}</td><td><span class="tag t-info">${f.kind}</span></td><td>${f.required?'✓':'<span class=zero>—</span>'}</td><td>${f.show_to_client?'✓':'<span class=zero>—</span>'}</td><td><button class="mini f-del" data-id="${f.id}">حذف</button></td></tr>`);
+    document.querySelector('#f-table tbody').insertAdjacentHTML('beforeend',fieldRow(f));
     document.getElementById('nf-label').value='';document.getElementById('nf-options').value='';document.getElementById('nf-placeholder').value='';
+    ['nf-required','nf-required-done','nf-wordsrc','nf-kwsrc','nf-kwrank','nf-linksrc','nf-pagelink'].forEach(i=>document.getElementById(i).checked=false);
     App.toast('فیلد افزوده شد','ok');
   }catch(_){}
 };
 
-// حذف فیلد
-document.addEventListener('click',async e=>{
-  const b=e.target.closest('.f-del'); if(!b)return;
-  if(await App.confirm('این فیلد حذف شود؟')){await App.fetchJSON(`/settings/task-types/api/fields/${b.dataset.id}/`,{method:'DELETE'});b.closest('tr').remove();App.toast('حذف شد','ok');}
+// مودالِ ویرایشِ یک فیلد
+function fieldModal(tr){
+  const g=k=>tr.dataset[k], b=k=>tr.dataset[k]==='1';
+  App.openModal(`<div class="modal-h"><h3>ویرایش فیلد</h3><button class="x" onclick="App.closeModal()">×</button></div>
+    <div class="modal-b">
+      <div class="grid2"><div class="field"><label>برچسب</label><input class="input" id="ef-label" value="${esc(g('label'))}"></div>
+        <div class="field"><label>نوع فیلد</label><select id="ef-kind">${KIND_OPTS}</select></div></div>
+      <div class="field" id="ef-options-wrap" style="display:${g('kind')==='select'?'':'none'}"><label>گزینه‌ها (با ویرگول جدا کن)</label><input class="input" id="ef-options" value="${esc(g('options'))}"></div>
+      <div class="field"><label>راهنمای فیلد (اختیاری)</label><input class="input" id="ef-placeholder" value="${esc(g('placeholder'))}"></div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:8px">
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="ef-required" ${b('required')?'checked':''} style="width:auto"> اجباری (همیشه)</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="ef-required-done" ${b('required_on_done')?'checked':''} style="width:auto"> اجباری فقط برای تکمیل</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="ef-client" ${b('show_to_client')?'checked':''} style="width:auto"> نمایش به مشتری</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="ef-wordsrc" ${b('is_word_source')?'checked':''} style="width:auto"> منبعِ تعداد کلمه</label>
+      </div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--stroke-soft)">
+        <small style="color:var(--text-faint);width:100%">اتصال به بستهٔ سئو (اختیاری):</small>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="ef-kwsrc" ${b('is_keyword_source')?'checked':''} style="width:auto"> حاویِ کلمهٔ کلیدی</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="ef-kwrank" ${b('track_keyword_rank')?'checked':''} style="width:auto"> رتبه‌اش ردیابی شود</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="ef-linksrc" ${b('is_link_source')?'checked':''} style="width:auto"> حاویِ لینکِ هدف</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="ef-pagelink" ${b('is_page_link')?'checked':''} style="width:auto"> لینکِ صفحهٔ همین تسک</label>
+      </div>
+    </div>
+    <div class="modal-f"><button class="btn btn-p" id="ef-save">ذخیره</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+  document.getElementById('ef-kind').value=g('kind');
+  document.getElementById('ef-kind').onchange=e=>{document.getElementById('ef-options-wrap').style.display=e.target.value==='select'?'':'none';};
+  document.getElementById('ef-save').onclick=async()=>{
+    const label=document.getElementById('ef-label').value.trim();
+    if(!label){App.toast('برچسب لازم است','warn');return;}
+    const body={label, kind:document.getElementById('ef-kind').value,
+      options:document.getElementById('ef-options').value.trim(),
+      placeholder:document.getElementById('ef-placeholder').value.trim(),
+      required:document.getElementById('ef-required').checked,
+      required_on_done:document.getElementById('ef-required-done').checked,
+      show_to_client:document.getElementById('ef-client').checked,
+      is_word_source:document.getElementById('ef-wordsrc').checked,
+      is_keyword_source:document.getElementById('ef-kwsrc').checked,
+      track_keyword_rank:document.getElementById('ef-kwrank').checked,
+      is_link_source:document.getElementById('ef-linksrc').checked,
+      is_page_link:document.getElementById('ef-pagelink').checked};
+    try{ const f=await App.fetchJSON(`/settings/task-types/api/fields/${tr.dataset.fid}/`,{method:'PATCH',body});
+      replaceRow(tr.dataset.fid,f); App.closeModal(); App.toast('ذخیره شد','ok');
+    }catch(_){}
+  };
+}
+
+// حذف/ویرایش/جابه‌جاییِ فیلد (delegated)
+document.getElementById('f-table').addEventListener('click',async e=>{
+  const del=e.target.closest('.f-del'), ed=e.target.closest('.f-edit'),
+        up=e.target.closest('.f-up'), down=e.target.closest('.f-down');
+  const tr=e.target.closest('tr');
+  if(del){ if(await App.confirm('این فیلد حذف شود؟')){await App.fetchJSON(`/settings/task-types/api/fields/${del.dataset.id}/`,{method:'DELETE'});tr.remove();App.toast('حذف شد','ok');} return; }
+  if(ed){ fieldModal(tr); return; }
+  if(up && tr.previousElementSibling){ tr.parentNode.insertBefore(tr,tr.previousElementSibling); saveOrder(); return; }
+  if(down && tr.nextElementSibling){ tr.parentNode.insertBefore(tr.nextElementSibling,tr); saveOrder(); return; }
 });
 
 // ── KPIها ──

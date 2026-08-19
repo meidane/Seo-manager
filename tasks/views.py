@@ -61,7 +61,7 @@ class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
             # سطلِ زباله: تسک‌های حذف‌شده، آخرِ همه — فقط برای کسی که می‌تواند حذف/بازیابی کند
             ctx['box_deleted'] = []
             if m and m.can('delete_task'):
-                del_qs = Task.objects.deleted().select_related('project', 'assignee', 'type_def', 'deleted_by')
+                del_qs = Task.objects.deleted().select_related('project', 'assignee', 'type_def', 'deleted_by').prefetch_related('type_def__fields')
                 if ids is not None:
                     del_qs = del_qs.filter(project_id__in=ids)
                 ctx['box_deleted'] = list(del_qs.order_by('-deleted_at')[:100])
@@ -91,6 +91,9 @@ class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
         # سطحِ سازمانی کافی است — اگر می‌بیندش، یعنی مالِ خودش است (یا own_tasks_only ندارد)
         ctx['can_edit_task'] = bool(m and m.can('edit_task'))
         ctx['my_colleague_id'] = my_colleague.id if my_colleague else None
+        # ویرایشِ inline فقط وقتی یک نوعِ تسک فیلتر شده (حالتِ «همهٔ انواع» فقط‌خواندنیِ
+        # ستون‌های اصلی است) — قاعدهٔ ساده‌سازیِ درخواستیِ کاربر.
+        ctx['editable'] = ctx['can_edit_task'] and bool(filters.get('type_def'))
         return ctx
 
 

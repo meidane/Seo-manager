@@ -42,7 +42,7 @@ def build_task_queryset(request):
     from .models import Task
 
     g = request.GET
-    base = Task.objects.filter(is_placeholder=False).select_related('project', 'assignee', 'type_def')
+    base = Task.objects.filter(is_placeholder=False).select_related('project', 'assignee', 'type_def').prefetch_related('type_def__fields')
 
     m = getattr(request, 'membership', None)
     my_colleague = getattr(request.user, 'colleague', None)

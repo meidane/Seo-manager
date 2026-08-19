@@ -12,12 +12,10 @@ from .models import ColumnConfig
 
 # پروژه/مسئول/تاریخ‌برنامه/وضعیت ستون‌های ثابتِ جدول تسک‌ها می‌مانند (ویرایشِ زنده دارند،
 # `templates/tasks/list.html`) — اینجا فقط ستون‌های «اضافی»ِ اختیاری‌اند که بعد از آن‌ها می‌آیند.
-TASKS = [
-    {'key': 'priority', 'label': 'اولویت', 'display': 'badge'},
-    {'key': 'estimate_minutes', 'label': 'تخمین (ساعت)', 'display': 'time'},
-    {'key': 'word_count', 'label': 'تعداد کلمه', 'display': 'number'},
-    {'key': 'published_url', 'label': 'لینک انتشار', 'display': 'link_icon', 'default': True},
-]
+# ستون‌های اضافیِ جدولِ تسک دیگر از یک کاتالوگِ ثابت نمی‌آیند — با انتخابِ نوعِ تسک،
+# فیلدهای سفارشیِ همان نوع نمایش داده می‌شوند (`visible_task_columns` → `custom_field_columns`).
+# پیش‌فرض (بدونِ انتخابِ نوع) فقط ستون‌های اصلیِ مشترک است، بدونِ ستونِ اضافی.
+TASKS = []
 
 PROJECTS = [
     {'key': 'planned', 'label': 'برنامه', 'display': 'number', 'default': True},
@@ -31,7 +29,6 @@ PROJECTS = [
     {'key': 'last_activity', 'label': 'آخرین فعالیت', 'display': 'timeago'},
     # هنوز به finance وصل نیست؛ همیشه «—» نشان می‌دهد تا آن گام بعدی انجام شود
     {'key': 'last_payment', 'label': 'آخرین پرداخت', 'display': 'date', 'default': True},
-    {'key': 'state', 'label': 'وضعیت', 'display': 'badge', 'default': True},
 ]
 
 COLLEAGUES = [
@@ -51,14 +48,17 @@ _FIELD_KIND_TO_DISPLAY = {
 
 
 def custom_field_columns():
-    """ستون‌های داینامیکِ فیلدِ سفارشیِ انواعِ فعالِ سازمانِ جاری (فقط برای تسک‌ها)."""
+    """ستون‌های داینامیکِ فیلدِ سفارشیِ انواعِ فعالِ سازمانِ جاری (فقط برای تسک‌ها).
+    فیلدِ «لینکِ صفحه» (`is_page_link`) ستون نمی‌شود — آیکنش کنارِ عنوانِ ردیف می‌آید."""
     from tasks.models import TaskTypeDef
     out = []
     for td in TaskTypeDef.objects.filter(is_active=True).prefetch_related('fields'):
         for f in td.fields.all():
+            if f.is_page_link or f.is_word_source:   # لینکِ صفحه در عنوان؛ «تعداد کلمه» حذف
+                continue
             out.append({
                 'key': f'cf:{td.id}:{f.key}',
-                'label': f'{td.name} — {f.label}',
+                'label': f.label,
                 'display': _FIELD_KIND_TO_DISPLAY.get(f.kind, 'text'),
             })
     return out
@@ -92,13 +92,14 @@ def get_columns(table, scope):
 
 
 def visible_task_columns(active_type_def_id=None):
-    """ستون‌های اضافیِ جدولِ تسک‌ها با قاعدهٔ «عمومی همیشه، سفارشیِ نوع فقط وقتی همان
-    نوع فیلتر شده». وگرنه اگر کاربر همهٔ فیلدهای سفارشیِ همهٔ انواع را در تنظیمات فعال کند،
-    جدول از ده‌ها ستونِ بی‌ربط شلوغ می‌شود (باگِ گزارش‌شده). `active_type_def_id` = نوعِ
-    فیلترشدهٔ جاری (یا None). منبعِ واحد — لیستِ تسک‌ها، لودِ تنبل و بردِ سئو از همین می‌خوانند."""
-    cols = get_columns(ColumnConfig.TASKS, ColumnConfig.PAGE)
-    tid = str(active_type_def_id) if active_type_def_id else ''
-    return [c for c in cols if (not c['key'].startswith('cf:')) or c['key'].split(':')[1] == tid]
+    """ستون‌های اضافیِ جدولِ تسک‌ها. **قاعدهٔ ساده‌شده:** بدونِ فیلترِ نوع → هیچ ستونِ
+    اضافه‌ای (فقط ستون‌های اصلیِ مشترک، فقط‌خواندنی). با انتخابِ یک نوع → **همهٔ**
+    فیلدهای سفارشیِ همان نوع (و حالتِ ویرایشِ inline). منبعِ واحد — لیستِ تسک‌ها، لودِ
+    تنبل و بردِ سئو همه از همین می‌خوانند تا جدولِ تسک همه‌جا یکسان باشد."""
+    if not active_type_def_id:
+        return []
+    tid = str(active_type_def_id)
+    return [c for c in custom_field_columns() if c['key'].split(':')[1] == tid]
 
 
 def cell_value(obj, col):

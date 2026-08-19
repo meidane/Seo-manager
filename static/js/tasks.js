@@ -107,10 +107,7 @@
             ${field('project', 'پروژه', `<select id="f-project" class="rich-select"><option value="">— انتخاب پروژه —</option>${cfg.projects.map(([v, l, color, img]) => optRich(v, l, t.project_id, color, img)).join('')}</select>`)}
             ${field('assignee', 'مسئول', assigneeSelect)}
           </div>
-          <div class="grid2">
-            ${field('task_type', 'نوع تسک', `<select id="f-task_type">${typeOptions(typeSel)}</select>`)}
-            ${field('priority', 'اولویت', `<select id="f-priority"><option value="low">کم</option><option value="med">متوسط</option><option value="high">زیاد</option></select>`)}
-          </div>
+          ${field('task_type', 'نوع تسک', `<select id="f-task_type">${typeOptions(typeSel)}</select>`)}
           ${field('title', 'عنوان', `<input id="f-title" class="input" value="${esc(t.title)}">`)}
           <div class="grid2">
             ${field('planned_date', 'تاریخ برنامه', `<div style="display:flex;align-items:center"><input id="f-planned_date" class="input jdate" dir="ltr" readonly placeholder="۱۴۰۵/۰۵/۱۵" value="${t.planned_date_fa || ''}"><span id="rel-planned" class="rel-hint"></span></div>`)}
@@ -317,7 +314,7 @@
       project: g('f-project'), assignee: g('f-assignee'),
       task_type: bk || 'other',
       type_def: (ty && typeof ty.id === 'number') ? ty.id : null,
-      priority: g('f-priority'), title: g('f-title'),
+      title: g('f-title'),
       planned_date: g('f-planned_date'), status: g('f-status'),
       needs_review: document.getElementById('f-needs-review').checked,
       estimate_minutes: g('f-estimate_minutes'), description: g('f-description'),
@@ -427,8 +424,6 @@
     App.openModal(modalHtml(data));
     if (window.RichSelect) RichSelect.init();  // دراپ‌داونِ غنیِ پروژه/مسئول در مودال
     if (data.status) document.getElementById('f-status').value = data.status;
-    if (data.priority) document.getElementById('f-priority').value = data.priority;
-    else document.getElementById('f-priority').value = 'med';
     // نیاز به بازبینی: با عوضِ مسئول، پیش‌فرضِ خودش را می‌گیرد؛ با تیک‌زدن/برداشتنِ
     // دستی، گزینه‌های وضعیت (انجام‌شده ⇄ تکمیل) دوباره ساخته می‌شوند.
     const needsReviewBox = document.getElementById('f-needs-review');

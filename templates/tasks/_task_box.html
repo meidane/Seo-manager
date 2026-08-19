@@ -4,7 +4,7 @@
   {% if tasks %}
     <div class="tsheet-wrap">
     <table class="tsheet"{% if table_id %} id="{{ table_id }}"{% endif %}>
-      <thead><tr><th style="width:26px"></th><th style="min-width:200px">عنوان</th><th>پروژه</th><th>مسئول</th><th>تاریخ برنامه</th><th>تاریخ انجام</th><th>وضعیت</th><th>زمان</th>{% for c in extra_columns %}<th>{{ c.label }}</th>{% endfor %}<th style="width:26px" class="chk-col">{% if can_edit_task %}<input type="checkbox" class="check-all">{% endif %}</th></tr></thead>
+      <thead>{% include "tasks/_task_thead.html" %}</thead>
       <tbody>
         {% include "tasks/_rows.html" %}
       </tbody>

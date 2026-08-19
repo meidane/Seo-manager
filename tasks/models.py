@@ -193,6 +193,16 @@ class Task(TimeStampedModel):
         return self.status == self.DONE
 
     @property
+    def page_link(self):
+        """لینکِ صفحه/انتشار — از فیلدِ سفارشیِ `is_page_link` (سئو) یا `published_url` هسته
+        (این دو عملاً یکی‌اند). آیکنِ کلیک‌پذیرِ کنارِ عنوانِ ردیف از همین می‌آید."""
+        if self.type_def_id and isinstance(self.custom, dict):
+            for f in self.type_def.fields.all():   # با prefetchِ type_def__fields، بدونِ N+1
+                if f.is_page_link and self.custom.get(f.key):
+                    return self.custom[f.key]
+        return self.published_url or ''
+
+    @property
     def type_label(self):
         if self.type_def_id:  # نوع سفارشی
             return self.type_def.name
