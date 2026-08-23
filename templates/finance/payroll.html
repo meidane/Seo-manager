@@ -6,6 +6,12 @@
   <div class="page-h"><h1>صورت‌حساب حقوق</h1><div class="side-c"><button class="btn btn-p" id="add-pay">＋ صدور حقوق</button></div></div>
   {% include "finance/_nav.html" %}
 
+  <form method="get" class="glass filters">
+    <select name="colleague" class="rich-select" onchange="this.form.submit()"><option value="">همه‌ی همکاران</option>{% for c in colleagues %}<option value="{{ c.id }}" data-color="{{ c.color }}"{% if c.avatar %} data-img="{{ c.avatar.url }}"{% endif %} {% if filters.colleague == c.id|stringformat:'s' %}selected{% endif %}>{{ c.full_name }}</option>{% endfor %}</select>
+    <select name="month" onchange="this.form.submit()"><option value="">همه‌ی ماه‌ها</option>{% for num,name in months %}<option value="{{ num }}" {% if filters.month == num|stringformat:'s' %}selected{% endif %}>{{ name }}</option>{% endfor %}</select>
+    {% if filters.colleague or filters.month %}<a href="{% url 'finance:payroll' %}" class="chip">✕ حذف فیلتر</a>{% endif %}
+  </form>
+
   <section class="card glass">
     {% if payrolls %}
       <div class="tscroll">
@@ -14,7 +20,7 @@
         <tbody>
           {% for p in payrolls %}
             <tr data-id="{{ p.id }}">
-              <td><b>{{ p.colleague.full_name }}</b></td>
+              <td><div class="assignee-cell">{% include "tasks/_avatar.html" with colleague=p.colleague %}<b>{{ p.colleague.full_name }}</b></div></td>
               <td class="num-c">{{ p.month_name }} {{ p.year|fa_digits }}</td>
               <td>{% for it in p.items.all %}<span class="tag t-mute" style="margin:1px">{{ it.title }}: {{ it.amount|money }}</span>{% endfor %}</td>
               <td class="num-c" style="font-weight:700">{{ p.total|money }}</td>

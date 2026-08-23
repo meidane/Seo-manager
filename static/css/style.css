@@ -1142,6 +1142,10 @@ table.sheet td:not(.edit){padding:6px 9px}
 /* برچسبِ نسبیِ کنارِ تاریخ در مودال */
 .rel-hint{font-size:11px;color:var(--primary-400);margin-inline-start:8px}
 
+/* ── ردیف‌های فرزند (اجزای حقوق در گزارش / اسپلیتِ تراکنش) ── */
+.split-child td{background:color-mix(in srgb,var(--primary) 4%,transparent);font-size:12px}
+.split-child .split-mark{color:var(--text-faint);margin-inline-end:2px}
+
 /* ── تفکیکِ روزانه: تیترِ نسبیِ بزرگ + تاریخِ خامِ کوچک (داشبورد + /tasks/?group=day) ── */
 .day-group{margin-top:14px}
 .day-group:first-child{margin-top:2px}

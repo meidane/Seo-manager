@@ -136,8 +136,9 @@ class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
         if start and end:
             qs = qs.filter(date__range=(start, end))
 
-        if g.get('bank'):
-            qs = qs.filter(bank_account_id=g['bank'])
+        bank_ids = [b for b in g.getlist('bank') if b]   # بانک چندانتخابی
+        if bank_ids:
+            qs = qs.filter(bank_account_id__in=bank_ids)
         if g.get('project'):
             qs = qs.filter(project_id=g['project'])
         # بابت: چندانتخابی
@@ -183,6 +184,7 @@ class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
         ctx['projects'] = Project.objects.filter(status=Project.ACTIVE, personal_owner__isnull=True)
         ctx['categories'] = Category.objects.all()
         ctx['selected_categories'] = cat_ids
+        ctx['selected_banks'] = bank_ids
         ctx['range_label'] = range_label
         ctx['q'] = q
         ctx['filters'] = g
@@ -220,7 +222,17 @@ class PayrollListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
 
         from .balances import salary_balances
         ctx = super().get_context_data(**kwargs)
-        payrolls = list(Payroll.objects.select_related('colleague').prefetch_related('items'))
+        g = self.request.GET
+        pq = Payroll.objects.select_related('colleague').prefetch_related('items')
+        # فیلترها: همکار + ماه (مثلِ فاکتور، ساختارِ مشترک)
+        if g.get('colleague'):
+            pq = pq.filter(colleague_id=g['colleague'])
+        if g.get('month'):
+            try:
+                pq = pq.filter(month=int(g['month']))
+            except (ValueError, TypeError):
+                pass
+        payrolls = list(pq)
         cids = {p.colleague_id for p in payrolls}
 
         # مانده‌ی «کل حساب با همکار» (منبع واحد: balances.salary_balances)
@@ -233,6 +245,7 @@ class PayrollListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
         ctx['salary_cat'] = salary_cat
         ctx['colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)
         ctx['months'] = list(enumerate(MONTH_NAMES, start=1))  # [(1,'فروردین'),...]
+        ctx['filters'] = g
         ctx['page_title'] = 'حقوق'
         return ctx
 
@@ -307,15 +320,18 @@ class LedgerView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateV
     def get_context_data(self, **kwargs):
         from core.jalali import format_jalali, j2g
         ctx = super().get_context_data(**kwargs)
-        start, end = self.get_range(self.request)
-        ctx.update(self.range_context())
         g = self.request.GET
+        # تاریخ اختیاری است — پیش‌فرض کلِ گردشِ حساب (بدونِ فیلترِ بازه)؛ فقط اگر کاربر
+        # صریح from/to/range بدهد اعمال می‌شود (مثلِ تراکنش‌ها).
+        start, end, range_label = _optional_range(g)
+        ctx['range_label'] = range_label
 
         project_id = g.get('project') or ''
         category_id = g.get('category') or ''
-        bank_id = g.get('bank') or ''
+        bank_ids = [b for b in g.getlist('bank') if b]   # بانک چندانتخابی
 
         ctx['banks'] = BankAccount.objects.filter(is_active=True)
+        ctx['selected_banks'] = bank_ids
         ctx['projects'] = Project.objects.filter(status=Project.ACTIVE, personal_owner__isnull=True)
         ctx['categories'] = Category.objects.all()
         ctx['filters'] = g
@@ -333,7 +349,10 @@ class LedgerView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateV
             ctx['mode'] = 'project'
             ctx['selected_project'] = Project.objects.filter(id=project_id).first()
             # فاکتورهای پروژه → برداشت
-            for inv in Invoice.objects.filter(project_id=project_id, issue_date__range=(start, end)):
+            inv_qs = Invoice.objects.filter(project_id=project_id)
+            if start and end:
+                inv_qs = inv_qs.filter(issue_date__range=(start, end))
+            for inv in inv_qs:
                 rows.append({
                     'date': inv.issue_date,
                     'title': f'فاکتور #{inv.number}' + (f' — {inv.description}' if inv.description else ''),
@@ -341,10 +360,11 @@ class LedgerView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateV
                     'deposit': 0, 'withdrawal': inv.grand_total, 'bank': '',
                 })
             # تراکنش‌های پروژه → واریز/برداشت
-            tx = Transaction.objects.select_related('bank_account').filter(
-                project_id=project_id, date__range=(start, end))
-            if bank_id:
-                tx = tx.filter(bank_account_id=bank_id)
+            tx = Transaction.objects.select_related('bank_account').filter(project_id=project_id)
+            if start and end:
+                tx = tx.filter(date__range=(start, end))
+            if bank_ids:
+                tx = tx.filter(bank_account_id__in=bank_ids)
             for t in tx:
                 rows.append({
                     'date': t.date, 'title': t.description or '—',
@@ -358,10 +378,11 @@ class LedgerView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateV
             cat = Category.objects.filter(id=category_id).select_related('colleague').first()
             ctx['selected_category'] = cat
             # تراکنش‌های این بابت → واریز/برداشت
-            tx = Transaction.objects.select_related('bank_account').filter(
-                categories__id=category_id, date__range=(start, end))
-            if bank_id:
-                tx = tx.filter(bank_account_id=bank_id)
+            tx = Transaction.objects.select_related('bank_account').filter(categories__id=category_id)
+            if start and end:
+                tx = tx.filter(date__range=(start, end))
+            if bank_ids:
+                tx = tx.filter(bank_account_id__in=bank_ids)
             for t in tx:
                 rows.append({
                     'date': t.date, 'title': t.description or '—',
@@ -369,18 +390,20 @@ class LedgerView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateV
                     'deposit': t.deposit or 0, 'withdrawal': t.withdrawal or 0,
                     'bank': t.bank_account.name if t.bank_account_id else '',
                 })
-            # بابتِ حقوق → حقوق‌های همکار در بازه (تاریخ = اولِ ماهِ ثبت) به‌عنوان واریز
+            # بابتِ حقوق → حقوق‌های همکار (تاریخ = اولِ ماهِ ثبت) به‌عنوان واریز؛ اجزای هر
+            # حقوق به‌صورتِ ردیف‌های فرزند (children) نمایش داده می‌شوند (گزارشِ بااجزا).
             if cat and cat.colleague_id:
                 for p in Payroll.objects.filter(colleague_id=cat.colleague_id).prefetch_related('items'):
                     try:
                         d = j2g(p.year, p.month, 1)
                     except (ValueError, TypeError):
                         continue
-                    if start <= d <= end:
+                    if (not start) or (start <= d <= end):
                         rows.append({
                             'date': d, 'title': f'حقوق {p.month_name} {p.year}',
                             'kind': 'payroll', 'ref_id': p.id,
                             'deposit': p.total, 'withdrawal': 0, 'bank': '',
+                            'children': [{'title': it.title, 'amount': it.amount} for it in p.items.all()],
                         })
 
         # مرتب‌سازی بر اساس تاریخ (پایدار) + مانده‌ی تجمعی

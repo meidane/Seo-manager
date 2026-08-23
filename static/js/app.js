@@ -152,13 +152,15 @@
      گروه‌بندی مستقل از خط (لاتین/فارسی). بک‌اند (`parse_amount`) و فرمِ فاکتور
      (`toNum`) ویرگول را پاک می‌کنند؛ برای فرمِ نیتیوِ Django هم روی submit پاک می‌شود. */
   function groupDigits(s) {
-    const d = (String(s).match(/[\d۰-۹]/g) || []).join('');
+    s = String(s);
+    const neg = /-/.test(s) ? '-' : '';   // منفی مجاز است (مثلاً کسری/برداشت در ردیفِ حقوق)
+    const d = (s.match(/[\d۰-۹]/g) || []).join('');
     let out = '';
     for (let i = 0; i < d.length; i++) {
       if (i > 0 && (d.length - i) % 3 === 0) out += ',';
       out += d[i];
     }
-    return out;
+    return neg + out;   // «-» تنها (حینِ تایپ) هم نگه داشته می‌شود
   }
   function formatMoneyInput(el) {
     const before = (el.value.slice(0, el.selectionStart).match(/[\d۰-۹]/g) || []).length;
@@ -182,7 +184,9 @@
   document.addEventListener('submit', (e) => {
     if (!e.target || !e.target.querySelectorAll) return;
     e.target.querySelectorAll('input.money').forEach((el) => {
-      el.value = el.value.replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[^\d]/g, '');
+      const v = el.value.replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+      const neg = /-/.test(v) ? '-' : '';   // منفی را حفظ کن (parse_amount هم منفی می‌پذیرد)
+      el.value = neg + v.replace(/[^\d]/g, '');
     });
   }, true);
   document.addEventListener('DOMContentLoaded', () => initMoney(document));

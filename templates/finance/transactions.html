@@ -15,7 +15,18 @@
       <input type="text" name="q" value="{{ q }}" placeholder="جستجو در شرح سند و توضیحات…" autocomplete="off"
              style="border:0;background:transparent;color:var(--text);flex:1;outline:none;font-family:inherit;font-size:13px">
     </div>
-    <select name="bank" onchange="this.form.submit()"><option value="">همه‌ی بانک‌ها</option>{% for b in banks %}<option value="{{ b.id }}" {% if filters.bank == b.id|stringformat:'s' %}selected{% endif %}>{{ b.name }}</option>{% endfor %}</select>
+    {# بانک — چندانتخابی، اعمالِ فوری #}
+    <div class="ms">
+      <button type="button" class="btn btn-sm ms-btn" id="bank-toggle">بانک{% if selected_banks %} (<span>{{ selected_banks|length|fa_digits }}</span>){% else %}: همه{% endif %} ▾</button>
+      <div class="ms-drop glass" id="bank-box">
+        <div class="ms-opts">
+        {% for b in banks %}
+          <label class="ms-opt"><input type="checkbox" name="bank" value="{{ b.id }}" {% if b.id|stringformat:'s' in selected_banks %}checked{% endif %}> <i class="dot" style="background:{{ b.color }}"></i> {{ b.name }}</label>
+        {% endfor %}
+        </div>
+        <div class="ms-foot"><button type="button" class="btn btn-sm" id="bank-clear">پاک‌کردنِ همه</button></div>
+      </div>
+    </div>
     <select name="project" class="rich-select" onchange="this.form.submit()"><option value="">همه‌ی پروژه‌ها</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
 
     {# بابت — چندانتخابی، قابلِ جستجو، اعمالِ فوری #}
@@ -46,7 +57,8 @@
     <input type="text" name="amt_max" value="{{ filters.amt_max }}" placeholder="تا مبلغ" class="input money" dir="ltr" style="max-width:120px">
     <button type="submit" class="btn btn-sm">اعمال</button>
 
-    <a href="?unassigned=1" class="chip {% if filters.unassigned == '1' %}on{% endif %}">فقط بدون پروژه/بابت</a>
+    {# «فقط بدون پروژه/بابت» — بقیهٔ فیلترها را حفظ می‌کند (querystring)، نه ریست #}
+    {% if filters.unassigned == '1' %}<a href="?{% querystring unassigned=None %}" class="chip on">فقط بدون پروژه/بابت ✕</a>{% else %}<a href="?{% querystring unassigned='1' %}" class="chip">فقط بدون پروژه/بابت</a>{% endif %}
   </form>
 
   {% if transactions %}
@@ -110,6 +122,15 @@
     document.addEventListener('click',e=>{ if(!e.target.closest('.ms')) cBox.classList.remove('open'); });
   }
 
+  // ── دراپ‌داونِ بانکِ چندانتخابی (اعمالِ فوری) ──
+  const bToggle=document.getElementById('bank-toggle'), bBox=document.getElementById('bank-box');
+  if(bToggle&&bBox){
+    bToggle.onclick=e=>{ e.preventDefault(); bBox.classList.toggle('open'); };
+    document.getElementById('bank-clear').onclick=()=>{ bBox.querySelectorAll('input[name="bank"]').forEach(c=>c.checked=false); document.getElementById('tx-filters').submit(); };
+    bBox.addEventListener('change',e=>{ if(e.target.name==='bank') document.getElementById('tx-filters').submit(); });
+    document.addEventListener('click',e=>{ if(!e.target.closest('#bank-box') && !e.target.closest('#bank-toggle')) bBox.classList.remove('open'); });
+  }
+
   // اطلاعاتِ بابت‌ها (id → {name,color}) + نگاشتِ نام→id برای datalist
   const CATS = { {% for c in categories %}"{{ c.id }}":{name:"{{ c.name|escapejs }}",color:"{{ c.color }}"}{% if not forloop.last %},{% endif %}{% endfor %} };
   const CAT_BY_NAME = {}; Object.keys(CATS).forEach(id=>{ CAT_BY_NAME[CATS[id].name]=id; });
@@ -144,6 +165,12 @@
     if(!cid){ App.toast('بابت پیدا نشد','warn'); return; }
     if(addChip(cell, cid)) saveCats(cell);
     inp.value='';
+  });
+  // انتخاب از دراپ‌داونِ بابت (datalist) → بدونِ نیاز به Enter خودکار افزوده می‌شود
+  sheet.addEventListener('input', e=>{
+    if(!e.target.matches('.txcat-add')) return;
+    const inp=e.target, val=inp.value.trim(), cid=CAT_BY_NAME[val];
+    if(cid){ const cell=inp.closest('.txcat-cell'); if(addChip(cell, cid)) saveCats(cell); inp.value=''; }
   });
   sheet.addEventListener('click', e=>{
     const x=e.target.closest('.txcat-x'); if(!x) return;
