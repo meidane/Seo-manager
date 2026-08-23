@@ -27,6 +27,8 @@
   کلیدی (مدل + API برای افزونهٔ مرورگر). الگوی «بسته برای هر شرکت» — برای مشتریِ بعدی یک اپِ مشابه بساز.
 - `rank-tracker-extension/` — **افزونهٔ کروم** (MV3، خارج از جنگو)، سازگار با `seo/api.py`.
   جزئیات در `seo/CLAUDE.md`، بخشِ «افزونهٔ مرورگر».
+- `personal/` — **فضای شخصیِ خصوصی** (فقط سوپریوزر/`admin`): اینباکسِ هفتگی، تسکِ روزانه،
+  هبیت ترکر، اهداف، ثانیه‌شمارِ عمر. غیرِ tenant، اسکوپ به `user`. `personal/CLAUDE.md`.
 
 ## قوانین طلایی (نقض نکن)
 1. **تاریخ‌ها در DB میلادی‌اند.** شمسی فقط در نمایش (`|jalali`) و ورودی (`parse_jalali`).
@@ -50,6 +52,8 @@
 | منبع | فایل |
 |---|---|
 | ذخیره‌ی فیلد تسک (create/update) | `tasks/api.py: apply_fields` |
+| چک‌لیستِ عمومیِ تسک (همه‌ی انواع) | `Task.checklist` (JSON `[{text,done}]`) + `apply_fields` (پاکسازی) + `tasks.js: checklistHtml/wireChecklist/readChecklist` (مودال) |
+| فضای شخصیِ خصوصیِ admin (اینباکس/روزانه/هبیت/اهداف/عمر) | اپِ `personal/` (گیت `personal/access.py: admin_only`، اسکوپِ `user`) — `personal/CLAUDE.md` |
 | اعتبارسنجیِ الزامِ فیلدِ سفارشی (required/required_on_done) | `tasks/api.py: _custom_fields_error` |
 | فیلدهای اختصاصیِ نوع در مودال (نه هسته‌ای) | `TaskTypeDef.fields` → `tasks.js: renderCustom` (هسته فقط ۱۰ فیلد عمومی دارد؛ `task-schema.js` فقط fallback برچسب/رنگِ tech/other) — فیلدِ `tags` با ویجتِ tagbox (`tasks.js: tagboxHtml/wireTagboxes`) |
 | اتصالِ کلمهٔ کلیدیِ تسک به ردیابیِ رتبهٔ سئو | `seo/signals.py: sync_tracked_keywords` |

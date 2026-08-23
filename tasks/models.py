@@ -91,6 +91,9 @@ class Task(TimeStampedModel):
     # نوع سفارشی (اختیاری) + مقادیر فیلدهای سفارشی؛ فیلدهای هسته‌ای بالا دست‌نخورده می‌مانند
     type_def = models.ForeignKey('tasks.TaskTypeDef', verbose_name='نوع سفارشی', on_delete=models.SET_NULL, null=True, blank=True, related_name='tasks')
     custom = models.JSONField('فیلدهای سفارشی', default=dict, blank=True)
+    # چک‌لیستِ عمومی (همه‌ی انواع) — لیستِ {'text': str, 'done': bool}. منبعِ ذخیره:
+    # apply_fields (پاکسازی می‌کند)؛ نمایش/ویرایش در مودالِ تسک (tasks.js: checklist*).
+    checklist = models.JSONField('چک‌لیست', default=list, blank=True)
     update_type = models.CharField('زیرنوع آپدیت', max_length=10, choices=UPDATE_TYPE_CHOICES, blank=True)
     title = models.CharField('عنوان', max_length=255)
     description = models.TextField('توضیحات', blank=True)

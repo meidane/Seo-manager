@@ -14,6 +14,9 @@
     <a href="{% url 'tasks:list' %}" class="{% if request.resolver_match.namespace == 'tasks' and request.resolver_match.url_name == 'list' %}on{% endif %}"><span class="ico">☰</span> تسک‌ها</a>
     <a href="{% url 'calendarapp:index' %}" class="{% if request.resolver_match.namespace == 'calendarapp' %}on{% endif %}"><span class="ico">▦</span> تقویم</a>
     <a href="{% url 'tasks:review' %}" class="{% if request.resolver_match.url_name == 'review' %}on{% endif %}"><span class="ico">◎</span> بازبینی تسک</a>
+    {% if request.user.is_superuser %}
+    <a href="{% url 'personal:index' %}" class="{% if request.resolver_match.namespace == 'personal' %}on{% endif %}"><span class="ico">✦</span> فضای شخصی</a>
+    {% endif %}
     <div class="nav-label">تیم و مالی</div>
     <a href="{% url 'colleagues:list' %}" class="{% if request.resolver_match.namespace == 'colleagues' %}on{% endif %}">
       <span class="ico">◉</span> افراد

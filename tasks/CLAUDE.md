@@ -80,6 +80,10 @@
     مودال) — کنترل‌کننده‌ی این‌که تسک اجازه دارد مستقیم `done` شود یا سقفش `pending`
     است (بخشِ «وضعیت‌ها» + «بازبینی تسک» پایین‌تر).
   - **سفارشی:** `type_def`(FK TaskTypeDef) + `custom`(JSON). فیلدهای هسته‌ای دست‌نخورده.
+  - **چک‌لیستِ عمومی:** `checklist`(JSON، لیستِ `{text,done}`) — برای **همه‌ی انواع** در مودال
+    دیده می‌شود (زیرِ توضیحات). یک ردیفِ خالی همیشه ته لیست؛ Enter یا دکمهٔ + ردیفِ بعد.
+    ذخیره/پاکسازی در `apply_fields` (متنِ خالی حذف)؛ UI در `tasks.js` (`checklistHtml/
+    wireChecklist/readChecklist`). `task_detail` GET آن را در `checklist` می‌فرستد.
   - propertyها: `is_overdue, is_done, type_label, color_rgb, to_dict()` (شامل آواتار برای تقویم)
 - **TaskTypeDef / TaskTypeField** — همه‌ی انواع (built-in + سفارشی) اینجا رکورد دارند.
   `builtin_key` پرشده = نوع پیش‌فرض (فیلدهای هسته‌ای + آمار داشبورد با همین کار می‌کنند)؛

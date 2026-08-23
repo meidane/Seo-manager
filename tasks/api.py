@@ -131,6 +131,15 @@ def apply_fields(task: Task, data: dict):
                 task.task_type = td.builtin_key or Task.OTHER
     if 'custom' in data and isinstance(data['custom'], dict):
         task.custom = data['custom']
+    # چک‌لیستِ عمومی — همیشه پاکسازی می‌شود (لیستِ {text, done}، متنِ خالی حذف)
+    if 'checklist' in data and isinstance(data['checklist'], list):
+        cl = []
+        for it in data['checklist']:
+            if isinstance(it, dict):
+                text = str(it.get('text', '')).strip()[:300]
+                if text:
+                    cl.append({'text': text, 'done': bool(it.get('done'))})
+        task.checklist = cl
     # ویرایشِ inlineِ یک فیلدِ سفارشیِ تنها در جدول (بدونِ بازنویسیِ کلِ custom) — merge
     if 'custom_patch' in data and isinstance(data['custom_patch'], dict):
         task.custom = {**(task.custom or {}), **data['custom_patch']}
@@ -435,6 +444,7 @@ def task_detail(request, pk):
             'review_status': task.review_status, 'review_note': task.review_note,
             'review_notes': _review_notes(task),
             'type_def': task.type_def_id, 'custom': task.custom or {},
+            'checklist': task.checklist or [],
             'recurrence': task.recurrence_id, 'report_month': task.report_month,
             'report_year': task.report_year,
             'history': _history_payload(task),

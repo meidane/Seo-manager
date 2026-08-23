@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% load static seo_extras %}
+
+{% block content %}
+<div class="pers" data-week="{{ week_start.isoformat }}" data-today="{{ today_iso }}"
+     data-birth="{{ life.birth_iso }}" data-death="{{ life.death_iso }}">
+
+  <div class="pers-grid2">
+    {# ── باکس ۱: اینباکسِ هفتگی ── #}
+    <section class="card glass pers-box" id="inbox-box">
+      <div class="pers-head">
+        <h3>اینباکس هفتگی</h3>
+        <div class="pers-week">
+          <a class="btn btn-sm" href="?week={{ prev_week }}">‹ قبل</a>
+          <span class="pers-week-lab">{{ week_start_fa }} – {{ week_end_fa }}{% if is_this_week %} · هفته‌ی جاری{% endif %}</span>
+          <a class="btn btn-sm" href="?week={{ next_week }}">بعد ›</a>
+        </div>
+      </div>
+      <div class="pers-list" id="inbox-list">
+        {% for t in inbox %}
+          <div class="pers-row" data-id="{{ t.id }}">
+            <input type="checkbox" class="pt-done" {% if t.done %}checked{% endif %}>
+            <span class="pt-title {% if t.done %}is-done{% endif %}" data-edit>{{ t.title }}</span>
+            {% if t.planned_date %}<span class="pt-plan" title="برنامه‌ریزی‌شده">📅 {{ t.planned_date|jalali }}</span>{% endif %}
+            <button class="pt-x" title="حذف">×</button>
+          </div>
+        {% empty %}
+          <div class="zero" id="inbox-empty">چیزی در این هفته ثبت نشده — هرچه به ذهنت می‌رسد بنویس.</div>
+        {% endfor %}
+      </div>
+      <div class="pers-add" id="inbox-add">
+        <input type="text" class="input" id="inbox-title" placeholder="یک کار بنویس و Enter بزن…">
+        <input type="text" class="input jdate pers-plan-input" id="inbox-plan" dir="ltr" readonly placeholder="برنامه‌ریزی" title="برنامه‌ریزی (تقویم)">
+        <button class="btn btn-p" id="inbox-plus" title="افزودن">＋</button>
+      </div>
+    </section>
+
+    {# ── باکس ۲: تسک‌های روزانه (امروز) ── #}
+    <section class="card glass pers-box" id="daily-box">
+      <div class="pers-head"><h3>تسک‌های امروز</h3></div>
+      <div class="pers-list" id="daily-list">
+        {% for t in daily %}
+          <div class="pers-row pers-drag" data-id="{{ t.id }}" draggable="true">
+            <span class="pt-grip" title="جابه‌جایی">⋮⋮</span>
+            <button class="pt-play {% if t.playing %}on{% endif %}" title="پلی">{% if t.playing %}⏸{% else %}▶{% endif %}</button>
+            <input type="checkbox" class="pt-done" {% if t.done %}checked{% endif %}>
+            <span class="pt-title {% if t.done %}is-done{% endif %}" data-edit>{{ t.title }}</span>
+            <button class="pt-x" title="حذف">×</button>
+          </div>
+        {% endfor %}
+        {% for t in system_tasks %}
+          <div class="pers-row pers-sys" data-task="{{ t.id }}" title="تسکِ سیستمی — برای ویرایش کلیک کن">
+            <span class="pt-sysdot" style="background:rgb({{ t.color_rgb }})"></span>
+            <span class="pt-title">{{ t.title }}</span>
+            <span class="pt-proj">{{ t.project.name }}</span>
+          </div>
+        {% endfor %}
+        {% if not daily and not system_tasks %}
+          <div class="zero" id="daily-empty">برای امروز کاری برنامه‌ریزی نشده.</div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
+  {# ── باکس ۳: هبیت ترکر ── #}
+  <section class="card glass pers-box" id="habit-box">
+    <div class="pers-head"><h3>عادت‌ها (هبیت ترکر)</h3><button class="btn btn-sm btn-p" id="habit-new">＋ عادت جدید</button></div>
+    <div id="habit-list">
+      {% for h in habits %}
+        <div class="habit-row" data-id="{{ h.obj.id }}" data-title="{{ h.obj.title }}"
+             data-weekdays="{{ h.obj.weekdays }}" data-polarity="{{ h.obj.polarity }}">
+          <div class="habit-info">
+            <span class="habit-dot {% if h.obj.polarity == 'good' %}good{% else %}bad{% endif %}"></span>
+            <b class="habit-title" data-edit>{{ h.obj.title }}</b>
+            <span class="habit-pct">{{ h.pct|fa_digits }}٪</span>
+          </div>
+          <div class="habit-days">
+            {% for c in h.cells %}
+              <button class="habit-cell{% if c.active %} active{% else %} off{% endif %}{% if c.done %} done{% endif %}{% if c.is_today %} today{% endif %}{% if c.is_future %} future{% endif %}"
+                      data-habit="{{ h.obj.id }}" data-date="{{ c.iso }}" {% if c.is_future or not c.active %}disabled{% endif %}
+                      title="{{ c.name }}">
+                <span class="hc-name">{{ c.name|slice:":1" }}</span>
+                <span class="hc-mark">{% if c.done %}✓{% elif c.active %}·{% endif %}</span>
+              </button>
+            {% endfor %}
+          </div>
+        </div>
+      {% empty %}
+        <div class="zero" id="habit-empty">هنوز عادتی تعریف نشده.</div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <div class="pers-grid2">
+    {# ── باکس ۴: اهداف ── #}
+    <section class="card glass pers-box" id="goal-box">
+      <div class="pers-head"><h3>اهداف</h3><button class="btn btn-sm btn-p" id="goal-new">＋ هدف جدید</button></div>
+      <div id="goal-list">
+        {% for g in goals %}
+          <div class="goal-row" data-id="{{ g.obj.id }}"
+               data-title="{{ g.obj.title }}" data-desc="{{ g.obj.description }}"
+               data-start="{{ g.start_num }}" data-end="{{ g.end_num }}">
+            <div class="goal-top">
+              <b class="goal-title" data-edit>{{ g.obj.title }}</b>
+              <span class="goal-meta">{{ g.elapsed|fa_digits }} از {{ g.total|fa_digits }} روز · {{ g.remaining|fa_digits }} روز مانده</span>
+            </div>
+            {% if g.obj.description %}<div class="goal-desc">{{ g.obj.description }}</div>{% endif %}
+            <div class="goal-bar"><i style="width:{{ g.pct }}%"></i></div>
+            <div class="goal-dates"><span>{{ g.start_fa }}</span><span>{{ g.pct|fa_digits }}٪</span><span>{{ g.end_fa }}</span></div>
+          </div>
+        {% empty %}
+          <div class="zero" id="goal-empty">هنوز هدفی ثبت نشده.</div>
+        {% endfor %}
+      </div>
+    </section>
+
+    {# ── باکس ۵: ثانیه‌شمارِ عمر ── #}
+    <section class="card glass pers-box pers-life" id="life-box">
+      <div class="pers-head"><h3>عمر</h3></div>
+      <div class="life-main">
+        <div class="life-num" id="life-lived">—</div>
+        <div class="life-sub">از عمرت گذشته</div>
+        <div class="life-bar"><i id="life-fill" style="width:0%"></i></div>
+        <div class="life-row"><span id="life-pct">—</span><span id="life-left">—</span></div>
+        <div class="life-tick" id="life-tick">—</div>
+        <div class="life-motto">هر ثانیه‌ای که می‌گذرد برنمی‌گردد. الان بهترین زمانِ کار کردن است.</div>
+      </div>
+    </section>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/personal.js' %}"></script>
+{% endblock %}

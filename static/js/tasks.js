@@ -127,6 +127,7 @@
           ${field('status', 'وضعیت', `<select id="f-status">${statusOptions(t.status, needsReviewDefault)}</select>`)}
           ${t.id ? '<div id="kpi-box" style="display:none;margin-bottom:12px"></div>' : ''}
           ${field('description', 'توضیحات', `<textarea id="f-description" class="rich-editor" rows="4">${esc(t.description)}</textarea>`)}
+          ${checklistHtml(t)}
           ${t.id ? `<div class="report-sec">
             <label style="font-weight:700">گزارش</label>
             <textarea id="f-report" class="rich-editor" rows="3"></textarea>
@@ -149,6 +150,53 @@
   }
 
   function esc(v) { return (v == null ? '' : String(v)).replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+
+  // ── چک‌لیستِ عمومی (همه‌ی انواع) — یک ردیفِ خالی همیشه ته لیست؛ Enter یا دکمه‌ی + ردیفِ بعد را می‌سازد ──
+  function ckRow(it) {
+    it = it || {};
+    return `<div class="ck-row"><input type="checkbox" class="ck-done"${it.done ? ' checked' : ''}>` +
+      `<input type="text" class="input ck-text" value="${esc(it.text)}" placeholder="یک مورد بنویس و Enter بزن…">` +
+      `<button type="button" class="ck-x" title="حذف">×</button></div>`;
+  }
+  function checklistHtml(t) {
+    const items = (t && t.checklist) || [];
+    const body = items.map(ckRow).join('') + ckRow();  // همیشه یک ردیفِ خالیِ آماده ته لیست
+    return `<div class="ck-wrap"><label style="font-weight:700">چک‌لیست</label>
+      <div class="ck-list" id="ck-list">${body}</div>
+      <button type="button" class="btn btn-sm ck-add" id="ck-add">+ افزودن مورد</button></div>`;
+  }
+  function ckAddRow(focus) {
+    const list = document.getElementById('ck-list'); if (!list) return;
+    list.insertAdjacentHTML('beforeend', ckRow());
+    if (focus) list.lastElementChild.querySelector('.ck-text').focus();
+  }
+  function wireChecklist() {
+    const list = document.getElementById('ck-list'); if (!list) return;
+    list.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && e.target.classList.contains('ck-text')) {
+        e.preventDefault();
+        const row = e.target.closest('.ck-row');
+        if (row === list.lastElementChild && e.target.value.trim()) ckAddRow(true);
+        else { const nx = row.nextElementSibling; if (nx) nx.querySelector('.ck-text').focus(); }
+      }
+    });
+    list.addEventListener('click', (e) => {
+      if (e.target.classList.contains('ck-x')) {
+        const rows = list.querySelectorAll('.ck-row');
+        if (rows.length > 1) e.target.closest('.ck-row').remove();
+        else { e.target.closest('.ck-row').querySelector('.ck-text').value = ''; }
+      }
+    });
+    const add = document.getElementById('ck-add');
+    if (add) add.onclick = () => ckAddRow(true);
+  }
+  function readChecklist() {
+    const list = document.getElementById('ck-list'); if (!list) return [];
+    return [...list.querySelectorAll('.ck-row')].map((r) => ({
+      text: r.querySelector('.ck-text').value.trim(),
+      done: r.querySelector('.ck-done').checked,
+    })).filter((x) => x.text);
+  }
 
   // ── نوار تکرار (فقط تسک جدید؛ برای تسکِ موجودِ تکرارشونده فقط بنر حذف سری) ──
   function recurBarHtml(t) {
@@ -335,6 +383,7 @@
       planned_date: g('f-planned_date'), status: g('f-status'),
       needs_review: document.getElementById('f-needs-review').checked,
       estimate_minutes: g('f-estimate_minutes'), description: g('f-description'),
+      checklist: readChecklist(),
     };
     // ماه گزارش: تک‌دراپ‌داونِ «سال-ماه» → به report_month + report_year تفکیک می‌شود
     const rp = g('f-report_period');
@@ -471,6 +520,7 @@
       l.style.display = l.style.display === 'none' ? '' : 'none';
     };
     wireRecur();               // نوار تکرار (تسک جدید)
+    wireChecklist();           // چک‌لیستِ عمومی
     if (id) { initReports(id); initKpis(id); }  // گزارش + نمایش KPI (تسک موجود)
     const recDel = document.getElementById('rec-del');
     if (recDel) recDel.onclick = async () => {

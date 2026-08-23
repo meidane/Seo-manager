@@ -714,6 +714,17 @@ body.nav-open .nav-backdrop{opacity:1;visibility:visible}
 .fixnote-meta{font-size:11px;color:var(--text-faint);margin-bottom:3px}
 
 /* بخش «گزارش» ته مودال تسک */
+/* چک‌لیستِ عمومیِ مودالِ تسک */
+.ck-wrap{margin-bottom:14px}
+.ck-wrap>label{display:block;margin-bottom:6px}
+.ck-list{display:flex;flex-direction:column;gap:6px}
+.ck-row{display:flex;align-items:center;gap:8px}
+.ck-row .ck-done{width:auto;flex:none}
+.ck-row .ck-text{flex:1}
+.ck-row .ck-done:checked+.ck-text{text-decoration:line-through;color:var(--text-dim)}
+.ck-x{flex:none;border:0;background:transparent;color:var(--text-dim);cursor:pointer;font-size:18px;line-height:1;padding:0 4px}
+.ck-x:hover{color:var(--danger)}
+.ck-add{margin-top:8px}
 .report-sec{margin-top:16px;border-top:1px solid var(--stroke-soft);padding-top:12px}
 .report-list{margin-top:10px;display:flex;flex-direction:column;gap:8px}
 .report-item{background:var(--fill);border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:8px 10px}
@@ -1199,3 +1210,74 @@ table.sheet td:not(.edit){padding:6px 9px}
 
 /* جمعِ ساعتِ کاریِ سلولِ تقویم (کنارِ تعدادِ تسک) */
 .cnt-h{font-size:9.5px;color:var(--primary-400);background:var(--primary-soft);border-radius:99px;padding:1px 6px;margin-inline-start:3px;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* ═══ فضای شخصی (/personal/) — فقط سوپریوزر ═══ */
+.pers{display:flex;flex-direction:column;gap:16px}
+.pers-grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:900px){.pers-grid2{grid-template-columns:1fr}}
+.pers-box{padding:16px}
+.pers-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.pers-head h3{margin:0;font-size:15px}
+.pers-week{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-dim)}
+.pers-week-lab{white-space:nowrap}
+.pers-list{display:flex;flex-direction:column;gap:4px;min-height:40px}
+.pers-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:var(--r-sm);background:var(--fill);border:1px solid var(--stroke-soft)}
+.pers-row:hover{background:var(--fill-strong)}
+.pers-row .pt-done{width:auto;flex:none}
+.pt-title{flex:1;cursor:pointer;font-size:13px}
+.pt-title.is-done{text-decoration:line-through;color:var(--text-dim)}
+.pt-plan{font-size:11px;color:var(--text-dim)}
+.pt-x{flex:none;border:0;background:transparent;color:var(--text-dim);cursor:pointer;font-size:17px;line-height:1}
+.pt-x:hover{color:var(--danger)}
+.pt-grip{cursor:grab;color:var(--text-faint);font-size:12px}
+.pt-play{flex:none;border:1px solid var(--stroke-soft);background:var(--fill);color:var(--text);border-radius:var(--r-full);width:24px;height:24px;cursor:pointer;font-size:11px}
+.pt-play.on{background:var(--success);color:#052; border-color:transparent}
+.pers-drag.dragging{opacity:.5}
+.pers-sys{cursor:pointer;opacity:.9}
+.pt-sysdot{width:8px;height:8px;border-radius:50%;flex:none}
+.pt-proj{font-size:11px;color:var(--text-dim)}
+.pers-add{display:flex;gap:8px;margin-top:10px}
+.pers-add .input{flex:1}
+.pers-plan-input{max-width:120px;flex:none}
+/* هبیت */
+.habit-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 4px;border-bottom:1px solid var(--stroke-soft);flex-wrap:wrap}
+.habit-row:last-child{border-bottom:0}
+.habit-info{display:flex;align-items:center;gap:8px;min-width:180px}
+.habit-dot{width:10px;height:10px;border-radius:50%;flex:none}
+.habit-dot.good{background:var(--success)}
+.habit-dot.bad{background:var(--danger)}
+.habit-title{cursor:pointer;font-size:13px}
+.habit-pct{font-size:12px;color:var(--text-dim);margin-inline-start:4px}
+.habit-days{display:flex;gap:5px}
+.habit-cell{width:34px;height:40px;border-radius:var(--r-sm);border:1px solid var(--stroke-soft);background:var(--fill);color:var(--text-dim);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;cursor:pointer;font-size:10px}
+.habit-cell.off{opacity:.35;background:transparent}
+.habit-cell.active{color:var(--text)}
+.habit-cell.done{background:var(--success);color:#052;border-color:transparent}
+.habit-cell.today{outline:2px solid var(--primary);outline-offset:1px}
+.habit-cell.future{opacity:.3;cursor:default}
+.habit-cell .hc-mark{font-size:12px;font-weight:700}
+/* اهداف */
+.goal-row{padding:10px 0;border-bottom:1px solid var(--stroke-soft)}
+.goal-row:last-child{border-bottom:0}
+.goal-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.goal-title{cursor:pointer;font-size:13px}
+.goal-meta{font-size:11px;color:var(--text-dim)}
+.goal-desc{font-size:12px;color:var(--text-dim);margin:4px 0 6px}
+.goal-bar{height:8px;border-radius:var(--r-full);background:var(--fill-strong);overflow:hidden;margin-top:6px}
+.goal-bar i{display:block;height:100%;background:var(--accent-grad)}
+.goal-dates{display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);margin-top:4px}
+/* عمر */
+.pers-life .life-main{text-align:center;padding:6px 0}
+.life-num{font-size:26px;font-weight:800}
+.life-sub{font-size:12px;color:var(--text-dim);margin-bottom:12px}
+.life-bar{height:12px;border-radius:var(--r-full);background:var(--fill-strong);overflow:hidden}
+.life-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--success),var(--warning),var(--danger))}
+.life-row{display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);margin-top:6px}
+.life-tick{font-family:monospace;font-size:15px;margin-top:10px;color:var(--warning)}
+.life-motto{font-size:12px;color:var(--text-dim);margin-top:12px;line-height:1.7}
+/* چیپ‌های مودالِ عادت */
+.wd-row,.pol-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.wd-chip,.pol-opt{padding:6px 12px;border-radius:var(--r-full);border:1px solid var(--stroke-soft);background:var(--fill);cursor:pointer;font-size:12px}
+.wd-chip.on{background:var(--primary);color:#fff;border-color:transparent}
+.pol-opt.good.on{background:var(--success);color:#052;border-color:transparent}
+.pol-opt.bad.on{background:var(--danger);color:#fff;border-color:transparent}

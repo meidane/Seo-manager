@@ -22,6 +22,7 @@ urlpatterns = [
     path('reports/', include('reports.urls')),
     path('finance/', include('finance.urls')),
     path('seo/', include('seo.urls')),
+    path('personal/', include('personal.urls')),
     path('r/<uuid:token>/', ReportPublicView.as_view(), name='report_public'),
     path('settings/task-types/', include('tasks.type_urls')),
     path('settings/', include('core.urls')),
