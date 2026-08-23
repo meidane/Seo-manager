@@ -108,7 +108,7 @@ class ProjectListView(LoginRequiredMixin, DateRangeMixin, ListView):
         query = self.request.GET.get('q', '').strip()
         if query:
             qs = qs.filter(Q(name__icontains=query) | Q(domain__icontains=query))
-        from django.db.models import Case, IntegerField, Value, When
+        from django.db.models import Case, F, IntegerField, Value, When
         return qs.annotate(
             planned=Count('tasks', filter=Q(tasks__planned_date__range=(start, end))),
             done=Count('tasks', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
@@ -120,7 +120,7 @@ class ProjectListView(LoginRequiredMixin, DateRangeMixin, ListView):
             # پروژه‌ی شخصی همیشه اولِ لیست (فقط پروژه‌ی شخصیِ خودِ کاربر اینجا هست)
             _personal=Case(When(personal_owner__isnull=False, then=Value(0)),
                            default=Value(1), output_field=IntegerField()),
-        ).order_by('_personal', 'status', 'name')  # شخصی اول، سپس ترتیبِ پایدار
+        ).order_by('_personal', 'status', F('priority').asc(nulls_last=True), 'name')  # شخصی، فعال، اولویتِ دستی، نام
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -555,6 +555,27 @@ def seo_section_reorder(request, pk):
         if s.order != i:
             s.order = i
             s.save(update_fields=['order'])
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_http_methods(['POST'])
+def seo_section_delete(request, pk):
+    """حذفِ یک سکشنِ ماهِ گزارش — فقط اگر هیچ تسکی در آن نباشد (وگرنه ابتدا باید
+    تسک‌ها حذف/جابه‌جا شوند، وگرنه سکشن با وجودِ تسک دوباره ساخته می‌شود)."""
+    from tasks.models import ReportMonthStrategy, Task
+    err = _seo_gate(request, pk)
+    if err:
+        return err
+    project = get_object_or_404(Project, pk=pk)
+    d = json.loads(request.body or '{}')
+    try:
+        year, month = int(d.get('year')), int(d.get('month'))
+    except (TypeError, ValueError):
+        return JsonResponse({'detail': 'سال و ماه لازم است'}, status=400)
+    if Task.objects.filter(project=project, report_year=year, report_month=month).exists():
+        return JsonResponse({'detail': 'این سکشن تسک دارد؛ اول تسک‌هایش را حذف یا جابه‌جا کن.'}, status=400)
+    ReportMonthStrategy.objects.filter(project=project, year=year, month=month).delete()
     return JsonResponse({'ok': True})
 
 

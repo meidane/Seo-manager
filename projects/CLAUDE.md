@@ -2,8 +2,12 @@
 
 ## مدل‌ها
 - **Project** — `name, domain, track_keyword_rank(چک‌باکس، برای بستهٔ seo), color,
-  project_types(CSV), status, archived_at, amount, contract_start/end, description,
+  project_types(CSV), status, archived_at, priority, amount, contract_start/end, description,
   client_*, manager(FK Colleague), members(M2M به Colleague), wp_*(فاز۳)`.
+  **`priority`** (`PositiveSmallInt`، اختیاری، ۱=بالاترین، خالی=ته): در فرمِ پروژه ست
+  می‌شود؛ **مرتب‌سازیِ صفحهٔ پروژه‌ها و داشبورد** از آن می‌خوانند — لیست با
+  `F('priority').asc(nulls_last=True)` (بعد از `_personal`/`status`)، داشبورد با
+  `key=(priority or 9999, state_order, -overdue)`. بی‌اولویت‌ها همیشه ته.
   `archive()/restore()` (غیرفعال، نه حذف). `types_list/types_display, is_active`.
   **`members` صرفاً یک تب نیست — گیتِ دسترسیِ واقعی است** (`projects/access.py:
   accessible_project_ids`، جزئیات پایین‌تر).

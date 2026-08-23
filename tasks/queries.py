@@ -106,14 +106,17 @@ def group_done_by_day(qs, start, end):
     """تسک‌های done در بازه، گروه‌بندی‌شده بر اساسِ `done_date` (جدیدترین روز اول).
     منبعِ واحد برای تفکیکِ روزانه‌ی صفحه‌ی تسک‌ها (`?group=day`) و جدولِ روزانه‌ی داشبورد."""
     from core.jalali import format_jalali
+    from core.templatetags.seo_extras import reldate
 
     from .models import Task
     day_qs = qs.filter(status=Task.DONE, done_date__range=(start, end)).order_by('-done_date', 'planned_time')
     groups = {}
     for t in day_qs:
         groups.setdefault(t.done_date, []).append(t)
+    # `rel` = برچسبِ نسبی («امروز/دیروز/۳ روز قبل») برای تیترِ روز؛ `date_fa` تاریخِ خام
+    # که کوچک‌تر کنارش می‌آید (تفکیکِ روزانهٔ داشبورد + صفحهٔ تسک‌ها).
     return [
-        {'date': d, 'date_fa': format_jalali(d), 'tasks': ts, 'count': len(ts)}
+        {'date': d, 'date_fa': format_jalali(d), 'rel': reldate(d), 'tasks': ts, 'count': len(ts)}
         for d, ts in sorted(groups.items(), reverse=True)
     ]
 

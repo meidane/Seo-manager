@@ -14,6 +14,8 @@
   <link rel="icon" href="{% static 'img/icon-192.png' %}">
   <link rel="stylesheet" href="{% static 'vendor/vazirmatn/vazirmatn.css' %}">
   <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  {# تمِ روشن/تیره: قبل از رنگ‌آمیزی اعمال شود تا پرش (flash) نداشته باشد #}
+  <script>try{var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
   {% block head %}{% endblock %}
 </head>
 <body>

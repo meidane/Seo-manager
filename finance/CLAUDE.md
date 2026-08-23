@@ -35,8 +35,17 @@
   جمع‌ها **property** روی Invoice (منبع واحد = ردیف‌ها): `subtotal`(Σ تعداد×واحد)،
   `tax_total`، `discount_total`، `grand_total`(=subtotal+tax−discount). ردیف: `base`(تعداد×واحد)، `total`.
 
+- **TransactionSplit** — تفکیکِ یک تراکنشِ بزرگ به چند جزء (`transaction FK related_name='splits'`,
+  `amount, project, category, note, order`). فقط **نمایشی**: مبلغِ خودِ تراکنش یک‌بار در
+  مانده می‌شمارد، اسپلیت‌ها زیرِ همان تراکنش به‌صورتِ ردیف‌های فرزندِ `.split-child` نشان داده
+  می‌شوند. API واحد `tx_split` (`/api/tx/<pk>/split/`): GET فهرست، POST بازساخت از آرایه‌ی
+  `splits[]` (حذف‌وساخت، مثلِ ردیف‌های فاکتور). UI: دکمه‌ی `⑂` روی هر ردیف → مودالِ اسپلیت
+  (`transactions.html`). همین الگوی `.split-child` برای «اجزای حقوق» در گزارش هم استفاده می‌شود.
+- **`parse_amount` منفی می‌پذیرد** و اینپوت‌های `.money` هم (JS) منفی را حفظ می‌کنند — ردیفِ
+  حقوق می‌تواند منفی باشد (کسری/برداشت) تا مانده منفی شود.
+
 ## ابزار
-`utils.py`: `parse_amount` (اعداد فارسی/ویرگول → int)، `parse_excel_date` (شمسی/میلادی + ساعت).
+`utils.py`: `parse_amount` (اعداد فارسی/ویرگول → int، با علامتِ منفی)، `parse_excel_date` (شمسی/میلادی + ساعت).
 
 ## جریان ورود اکسل (چندبانکه)
 `import_preview` (POST فایل+bank+**format**) → `_parse_workbook(f, fmt)` → پرچم تکراری →

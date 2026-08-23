@@ -22,6 +22,7 @@ urlpatterns = [
     path('api/categories/', views.category_create, name='category_create'),
     path('api/categories/<int:pk>/', views.category_edit, name='category_edit'),
     path('api/tx/<int:pk>/', views.tx_edit, name='tx_edit'),
+    path('api/tx/<int:pk>/split/', views.tx_split, name='tx_split'),
     path('api/tx/bulk/', views.tx_bulk, name='tx_bulk'),
     path('api/import/preview/', views.import_preview, name='import_preview'),
     path('api/import/confirm/', views.import_confirm, name='import_confirm'),

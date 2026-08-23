@@ -298,6 +298,23 @@
     }).join('');
   }
 
+  // مقادیرِ فعلیِ فیلدهای سفارشی را از DOM می‌خواند (منبعِ واحد؛ collect و تعویضِ نوع
+  // هر دو از این می‌خوانند تا با عوض‌کردنِ نوع، فیلدهای هم‌کلید حفظ شوند).
+  function readCustomValues() {
+    const custom = {};
+    document.querySelectorAll('#custom-fields .cf').forEach((el) => {
+      if (el.dataset.kind === 'tags') {
+        const pend = el.querySelector('.tagbox-input');
+        if (pend && pend.value.trim()) { tagboxAddWords(el, pend.value); pend.value = ''; }
+        custom[el.dataset.key] = [...el.querySelectorAll('.tagbox-chip')]
+          .map((c) => c.dataset.w).filter((w) => w && w.trim());
+      } else {
+        custom[el.dataset.key] = el.type === 'checkbox' ? el.checked : el.value;
+      }
+    });
+    return custom;
+  }
+
   // نمایش فیلدها دیگر برحسبِ نوعِ built-in نیست: فیلدهای عمومی همیشه دیده می‌شوند،
   // فقط فیلدهای سفارشیِ همان نوع (renderCustom) داینامیک اضافه/عوض می‌شوند.
   function applyVisibility(loadedCustom) {
@@ -324,20 +341,7 @@
     if (rp) { const [y, m] = rp.split('-'); p.report_year = +y; p.report_month = +m; }
     else { p.report_year = null; p.report_month = null; }
     if (ty && ty.fields && ty.fields.length) {
-      const custom = {};
-      document.querySelectorAll('#custom-fields .cf').forEach((el) => {
-        if (el.dataset.kind === 'tags') {
-          // متنِ تایپ‌شده که هنوز Enter/+ نخورده را هم قبلِ جمع‌آوری به چیپ تبدیل کن
-          // (وگرنه کلمهٔ آخر موقعِ ذخیره گم می‌شد → کاربر «none» می‌دید)
-          const pend = el.querySelector('.tagbox-input');
-          if (pend && pend.value.trim()) { tagboxAddWords(el, pend.value); pend.value = ''; }
-          custom[el.dataset.key] = [...el.querySelectorAll('.tagbox-chip')]
-            .map((c) => c.dataset.w).filter((w) => w && w.trim());  // بدونِ undefined/خالی
-        } else {
-          custom[el.dataset.key] = el.type === 'checkbox' ? el.checked : el.value;
-        }
-      });
-      p.custom = custom;
+      p.custom = readCustomValues();
     }
     // تکرار (فقط تسک جدید)
     const recOpts = document.getElementById('rec-opts');
@@ -439,7 +443,13 @@
     });
     needsReviewBox.addEventListener('change', rebuildStatus);
     const loaded = data.custom || {};
-    document.getElementById('f-task_type').addEventListener('change', () => applyVisibility(loaded));
+    // با عوض‌کردنِ نوع، مقادیرِ فعلیِ فیلدها را نگه دار و روی مقادیرِ اولیه merge کن؛
+    // فیلدهایی که کلیدِ یکسان در نوعِ جدید دارند (مثلاً «کلمات کلیدی» در انتشار↔آپدیت)
+    // حفظ می‌شوند، نه اینکه همه‌چیز بپرد (درخواستِ کاربر).
+    document.getElementById('f-task_type').addEventListener('change', () => {
+      Object.assign(loaded, readCustomValues());
+      applyVisibility(loaded);
+    });
     applyVisibility(loaded);
     // برچسبِ تاریخِ نسبی کنارِ «تاریخ برنامه» (امروز/فردا/۳ روز بعد) — اولیه + با انتخابِ تاریخ
     const relInit = () => {
@@ -572,12 +582,13 @@
       pop.innerHTML = '<input type="text" placeholder="کلمه… (Enter)"><button type="button">افزودن</button>';
       box.appendChild(pop);
       const inp = pop.querySelector('input'); inp.focus();
+      const list = box.querySelector('.ctag-list');
       const commit = () => {
         const raw = inp.value.trim(); if (!raw) { pop.remove(); return; }
         // ویرگول → چند کلمه
         raw.replace(/،/g, ',').split(',').map((w) => w.trim()).filter(Boolean).forEach((w) => {
           if (![...box.querySelectorAll('.ctag')].some((c) => c.dataset.w === w))
-            box.insertBefore(ctagChip(w), add);
+            list.appendChild(ctagChip(w));
         });
         pop.remove(); ctagPatch(box);
       };

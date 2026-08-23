@@ -152,13 +152,15 @@
      گروه‌بندی مستقل از خط (لاتین/فارسی). بک‌اند (`parse_amount`) و فرمِ فاکتور
      (`toNum`) ویرگول را پاک می‌کنند؛ برای فرمِ نیتیوِ Django هم روی submit پاک می‌شود. */
   function groupDigits(s) {
-    const d = (String(s).match(/[\d۰-۹]/g) || []).join('');
+    s = String(s);
+    const neg = /-/.test(s) ? '-' : '';   // منفی مجاز است (مثلاً کسری/برداشت در ردیفِ حقوق)
+    const d = (s.match(/[\d۰-۹]/g) || []).join('');
     let out = '';
     for (let i = 0; i < d.length; i++) {
       if (i > 0 && (d.length - i) % 3 === 0) out += ',';
       out += d[i];
     }
-    return out;
+    return neg + out;   // «-» تنها (حینِ تایپ) هم نگه داشته می‌شود
   }
   function formatMoneyInput(el) {
     const before = (el.value.slice(0, el.selectionStart).match(/[\d۰-۹]/g) || []).length;
@@ -182,10 +184,33 @@
   document.addEventListener('submit', (e) => {
     if (!e.target || !e.target.querySelectorAll) return;
     e.target.querySelectorAll('input.money').forEach((el) => {
-      el.value = el.value.replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[^\d]/g, '');
+      const v = el.value.replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+      const neg = /-/.test(v) ? '-' : '';   // منفی را حفظ کن (parse_amount هم منفی می‌پذیرد)
+      el.value = neg + v.replace(/[^\d]/g, '');
     });
   }, true);
   document.addEventListener('DOMContentLoaded', () => initMoney(document));
+
+  /* ── تمِ روشن/تیره ── منبعِ واحد؛ localStorage نگه می‌دارد، data-theme روی <html> ست می‌شود.
+     پیش‌فرض «تیره» (بدونِ data-theme). فقط متغیرهای CSS عوض می‌شوند (style.css). */
+  function currentTheme() { return document.documentElement.getAttribute('data-theme') || 'dark'; }
+  function applyTheme(t) {
+    if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    else document.documentElement.removeAttribute('data-theme');
+    try { localStorage.setItem('theme', t); } catch (e) { /* private mode */ }
+    // برچسب/آیکنِ دکمه‌ها را هم‌گام کن (سایدبار + هر کنترلِ دیگر)
+    const next = t === 'light' ? 'dark' : 'light';
+    document.querySelectorAll('[data-theme-label]').forEach((el) => { el.textContent = next === 'light' ? 'تمِ روشن' : 'تمِ تیره'; });
+    document.querySelectorAll('[data-theme-ico]').forEach((el) => { el.textContent = t === 'light' ? '☀' : '◐'; });
+    document.querySelectorAll('[data-theme-radio]').forEach((el) => { el.checked = el.value === t; });
+  }
+  function toggleTheme() { applyTheme(currentTheme() === 'light' ? 'dark' : 'light'); }
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('#theme-toggle')) { e.preventDefault(); toggleTheme(); }
+    const r = e.target.closest('[data-theme-radio]');
+    if (r) applyTheme(r.value);
+  });
+  document.addEventListener('DOMContentLoaded', () => applyTheme(currentTheme()));
 
   /* ── دعوت‌نامه‌ها ── بنرِ سراسری + صفحه‌ی /invites/ هر دو از این دلیگیت استفاده می‌کنند ── */
   document.addEventListener('click', (e) => {
@@ -237,5 +262,8 @@
     closeModal,
     confirm: confirmDialog,
     relDate,
+    setTheme: applyTheme,
+    toggleTheme,
+    initMoney,
   };
 })();

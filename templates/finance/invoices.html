@@ -23,7 +23,7 @@
             <tr onclick="location.href='{% url 'finance:invoice_edit_page' inv.pk %}'" style="cursor:pointer">
               <td class="num-c"><b>#{{ inv.number|fa_digits }}</b></td>
               <td class="num-c">{{ inv.issue_date|jalali }}</td>
-              <td>{{ inv.project.name|default:'—' }}</td>
+              <td>{% if inv.project_id %}<div class="assignee-cell">{% include "projects/_logo.html" with project=inv.project %}<span>{{ inv.project.name }}</span></div>{% else %}—{% endif %}</td>
               <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ inv.description }}">{{ inv.description|default:'—' }}</td>
               <td class="num-c">{% if inv.due_date %}{{ inv.due_date|jalali }}{% else %}—{% endif %}</td>
               <td class="num-c" style="font-weight:700">{{ inv.grand_total|money }}</td>

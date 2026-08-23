@@ -4,12 +4,22 @@
 
 {% block content %}
   <div class="page-h"><h1>گزارش — گردش حساب</h1>
-    {% if range_start_fa %}<span class="range-note">{{ range_start_fa }} تا {{ range_end_fa }} — {{ range_days|fa_digits }} روز</span>{% endif %}
+    {% if range_label %}<span class="range-note">{{ range_label }}</span>{% else %}<span class="range-note">همه‌ی تاریخ‌ها</span>{% endif %}
   </div>
   {% include "finance/_nav.html" %}
 
   <form method="get" class="glass filters" id="ledger-filters">
-    <select name="bank"><option value="">همه‌ی بانک‌ها</option>{% for b in banks %}<option value="{{ b.id }}" {% if filters.bank == b.id|stringformat:'s' %}selected{% endif %}>{{ b.name }}</option>{% endfor %}</select>
+    {# بانک — چندانتخابی #}
+    <div class="ms">
+      <button type="button" class="btn btn-sm ms-btn" id="lg-bank-toggle">بانک{% if selected_banks %} (<span>{{ selected_banks|length|fa_digits }}</span>){% else %}: همه{% endif %} ▾</button>
+      <div class="ms-drop glass" id="lg-bank-box">
+        <div class="ms-opts">
+        {% for b in banks %}
+          <label class="ms-opt"><input type="checkbox" name="bank" value="{{ b.id }}" {% if b.id|stringformat:'s' in selected_banks %}checked{% endif %}> <i class="dot" style="background:{{ b.color }}"></i> {{ b.name }}</label>
+        {% endfor %}
+        </div>
+      </div>
+    </div>
 
     <select name="project" id="lg-project" class="rich-select"><option value="">— پروژه —</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
 
@@ -20,6 +30,11 @@
            value="{% for c in categories %}{% if filters.category == c.id|stringformat:'s' %}{{ c.name }}{% endif %}{% endfor %}">
     <input type="hidden" name="category" id="lg-category" value="{{ filters.category }}">
     <datalist id="lg-cats">{% for c in categories %}<option value="{{ c.name }}"></option>{% endfor %}</datalist>
+
+    <span class="sep"></span>
+    {# تاریخ اختیاری — پیش‌فرض همه؛ فقط در صورتِ نیاز پر می‌شود #}
+    <input class="input jdate" name="from" dir="ltr" placeholder="از تاریخ" autocomplete="off" value="{{ filters.from }}" style="max-width:120px">
+    <input class="input jdate" name="to" dir="ltr" placeholder="تا تاریخ" autocomplete="off" value="{{ filters.to }}" style="max-width:120px">
 
     <button type="submit" class="btn btn-sm btn-p">اعمال</button>
     <a href="{% url 'finance:ledger' %}" class="btn btn-sm">پاک‌کردن</a>
@@ -61,6 +76,16 @@
               <td class="num {% if r.withdrawal %}wd{% endif %}">{% if r.withdrawal %}{{ r.withdrawal|money }}{% else %}—{% endif %}</td>
               <td class="num-c" style="font-weight:700;{% if r.balance < 0 %}color:var(--danger){% endif %}">{{ r.balance|money }}</td>
             </tr>
+            {# اجزای حقوق به‌صورتِ ردیف‌های فرزند (فقط نمایش، در مانده حساب نمی‌شوند) #}
+            {% for ch in r.children %}
+            <tr class="split-child">
+              <td></td><td></td>
+              <td style="text-align:right;color:var(--text-dim)"><span class="split-mark">└</span> {{ ch.title }}</td>
+              <td></td>
+              <td class="num dep" style="opacity:.75">{{ ch.amount|money }}</td>
+              <td></td><td></td>
+            </tr>
+            {% endfor %}
           {% endfor %}
         </tbody>
         <tfoot>
@@ -92,6 +117,13 @@
   catS.addEventListener('input', syncCat);
   catS.addEventListener('change', ()=>{ syncCat(); if(catH.value) document.getElementById('ledger-filters').submit(); });
   proj.addEventListener('change', ()=>{ if(proj.value){ catS.value=''; catH.value=''; } document.getElementById('ledger-filters').submit(); });
+
+  // دراپ‌داونِ بانکِ چندانتخابی
+  const bT=document.getElementById('lg-bank-toggle'), bB=document.getElementById('lg-bank-box');
+  if(bT&&bB){
+    bT.onclick=e=>{ e.preventDefault(); bB.classList.toggle('open'); };
+    document.addEventListener('click',e=>{ if(!e.target.closest('#lg-bank-box') && !e.target.closest('#lg-bank-toggle')) bB.classList.remove('open'); });
+  }
 })();
 </script>
 {% endblock %}

@@ -5,9 +5,11 @@
 {% block content %}
   <section class="card glass cal" style="margin-top:0">
     <div class="cal-bar">
-      <button class="nav-b" id="cal-prev">›</button>
+      {# RTL: «بعد» سمتِ راست با فلشِ راست‌سو (›)، «قبل» سمتِ چپ با فلشِ چپ‌سو (‹) —
+         هماهنگ با تقویمِ امبد/دیت‌پیکر/صفحه‌بندی #}
+      <button class="nav-b" id="cal-next">›</button>
       <h3 id="cal-title">{{ month_title }}</h3>
-      <button class="nav-b" id="cal-next">‹</button>
+      <button class="nav-b" id="cal-prev">‹</button>
       <button class="btn btn-sm" id="cal-today">برو به امروز</button>
       <div class="side-c" style="margin-inline-start:auto;display:flex;gap:6px;flex-wrap:wrap">
         <select id="cal-f-project" class="rich-select" style="max-width:150px"><option value="">همه‌ی پروژه‌ها</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %}>{{ p.name }}</option>{% endfor %}</select>

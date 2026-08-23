@@ -21,6 +21,15 @@
     </div>
   </section>
 
+  <section class="card glass" style="margin-bottom:14px">
+    <div class="card-h"><h3>ظاهر (تم)</h3></div>
+    <div style="padding:14px 17px;display:flex;gap:18px;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0"><input type="radio" name="theme" value="dark" data-theme-radio style="width:auto"> تیره</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0"><input type="radio" name="theme" value="light" data-theme-radio style="width:auto"> روشن</label>
+      <span class="sub" style="color:var(--text-faint);font-size:12px">انتخاب روی همین مرورگر ذخیره می‌شود.</span>
+    </div>
+  </section>
+
   <div class="cards-grid">
     {% if 'manage_teams' in org_perms %}
       <a href="{% url 'accounts:teams' %}" class="colleague-card card glass">

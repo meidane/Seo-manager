@@ -14,6 +14,18 @@
   --stroke:rgba(255,255,255,.10);
   --stroke-soft:rgba(255,255,255,.055);
   --blur:18px;
+  /* پُرکننده‌های سطحیِ نیمه‌شفاف (منبعِ واحد — به‌جای هر rgba(255,255,255,.0x) پراکنده).
+     در تمِ روشن فقط همین‌ها به مشکیِ نیمه‌شفاف برمی‌گردند و کلِ سایت درست می‌شود. */
+  --fill:rgba(255,255,255,.04);          /* پس‌زمینهٔ ورودی/دکمه/چیپِ محو */
+  --fill-strong:rgba(255,255,255,.08);   /* پُرترِ نوار/شمارنده/دکمهٔ کوچک */
+  --row-alt:rgba(255,255,255,.02);        /* راه‌راهِ زوجِ جدول‌ها + هاورِ خیلی محو */
+  --scrollbar:rgba(255,255,255,.12);      /* اسکرول‌بار */
+  /* پس‌زمینهٔ صفحه (هاله‌های رنگی) — در تمِ روشن یک‌جا override می‌شود */
+  --body-bg:
+    radial-gradient(1100px 640px at 86% -15%,rgba(64,110,240,.28),transparent 60%),
+    radial-gradient(820px 560px at -4% 6%,rgba(110,105,235,.15),transparent 58%),
+    radial-gradient(760px 640px at 14% 112%,rgba(56,120,235,.12),transparent 60%),
+    var(--bg);
 
   /* رنگ اصلی — آبیِ ایندیگویی (ترکیبِ آبی‌بنفش، متمایل به آبی) */
   --primary:#4F76F6;
@@ -50,16 +62,45 @@
   --ease:160ms cubic-bezier(.4,0,.2,1);
 }
 
+/* ═══ تمِ روشن — فقط همین متغیرها override می‌شوند، هیچ قاعدهٔ کامپوننتیِ جدا نیست.
+   چون همهٔ رنگ‌ها از متغیر می‌آیند، هر کامپوننتِ جدید خودکار در هر دو تم درست کار می‌کند
+   (هیچ‌وقت لازم نیست دو نسخه را جدا نگه داری). با data-theme="light" روی <html> فعال می‌شود. */
+:root[data-theme="light"]{
+  --bg:#EEF1F8;
+  --glass:rgba(255,255,255,.72);
+  --glass-2:rgba(255,255,255,.9);
+  --glass-hover:rgba(79,118,246,.08);
+  --stroke:rgba(20,28,54,.13);
+  --stroke-soft:rgba(20,28,54,.07);
+  --fill:rgba(20,28,54,.04);
+  --fill-strong:rgba(20,28,54,.08);
+  --row-alt:rgba(20,28,54,.025);
+  --scrollbar:rgba(20,28,54,.22);
+  --primary-soft:rgba(79,118,246,.12);
+  --primary-ring:rgba(79,118,246,.34);
+  --card-solid:#FFFFFF;
+  --text:#1B2233;
+  --text-dim:#57627A;
+  --text-faint:#8A94AC;
+  --shadow:0 8px 30px rgba(23,33,66,.10);
+  --shadow-lg:0 22px 60px rgba(23,33,66,.15);
+  --glow:0 0 0 1px var(--primary-ring),0 10px 30px rgba(79,118,246,.22);
+  --body-bg:
+    radial-gradient(1100px 640px at 86% -15%,rgba(79,118,246,.10),transparent 60%),
+    radial-gradient(820px 560px at -4% 6%,rgba(139,110,246,.07),transparent 58%),
+    radial-gradient(760px 640px at 14% 112%,rgba(56,120,235,.06),transparent 60%),
+    var(--bg);
+}
+
 *{box-sizing:border-box;margin:0;padding:0}
+/* کنترل‌های فرم فونت را ارث نمی‌برند (پیش‌فرضِ مرورگر) — همه‌جا Vazirmatn شود،
+   وگرنه بعضی دکمه‌ها/اینپوت‌ها فونتِ سیستم می‌گیرند (باگِ «وزیر لود نمی‌شود») */
+button,input,select,textarea{font-family:inherit}
 html{-webkit-font-smoothing:antialiased}
 body{
   font-family:Vazirmatn,system-ui,sans-serif;
-  /* هاله‌های رنگیِ زنده: ایندیگو (بالا-راست)، بنفش (چپ)، صورتیِ کم‌رنگ (پایین) */
-  background:
-    radial-gradient(1100px 640px at 86% -15%,rgba(64,110,240,.28),transparent 60%),
-    radial-gradient(820px 560px at -4% 6%,rgba(110,105,235,.15),transparent 58%),
-    radial-gradient(760px 640px at 14% 112%,rgba(56,120,235,.12),transparent 60%),
-    var(--bg);
+  /* هاله‌های رنگیِ زنده — منبعِ واحد `--body-bg` (در تمِ روشن override می‌شود) */
+  background:var(--body-bg);
   background-attachment:fixed;
   color:var(--text);
   font-size:14px; line-height:1.75;
@@ -68,8 +109,8 @@ body{
 a{color:inherit;text-decoration:none}
 ::selection{background:var(--primary-soft)}
 ::-webkit-scrollbar{width:9px;height:9px}
-::-webkit-scrollbar-thumb{background:rgba(255,255,255,.10);border-radius:99px}
-::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.18)}
+::-webkit-scrollbar-thumb{background:var(--scrollbar);border-radius:99px}
+::-webkit-scrollbar-thumb:hover{background:var(--scrollbar);filter:brightness(1.4)}
 ::-webkit-scrollbar-track{background:transparent}
 
 /* ── شیشه ── */
@@ -93,7 +134,7 @@ a{color:inherit;text-decoration:none}
 /* ── سایدبار ── */
 .side{
   padding:18px 14px;border-left:1px solid var(--stroke-soft);
-  background:rgba(255,255,255,.025);
+  background:var(--row-alt);
   backdrop-filter:blur(var(--blur));
   position:sticky;top:0;height:100vh;overflow-y:auto;
 }
@@ -132,7 +173,7 @@ a{color:inherit;text-decoration:none}
 }
 .search{
   flex:1;max-width:340px;display:flex;align-items:center;gap:8px;
-  background:rgba(255,255,255,.04);border:1px solid var(--stroke-soft);
+  background:var(--fill);border:1px solid var(--stroke-soft);
   border-radius:var(--r-full);padding:7px 14px;color:var(--text-faint);font-size:13px;
   transition:var(--ease);cursor:text;
 }
@@ -140,7 +181,7 @@ a{color:inherit;text-decoration:none}
 .kbd{margin-inline-start:auto;font-size:10px;border:1px solid var(--stroke-soft);
   border-radius:5px;padding:1px 6px;color:var(--text-faint)}
 
-.range{display:flex;gap:3px;background:rgba(255,255,255,.04);
+.range{display:flex;gap:3px;background:var(--fill);
   border:1px solid var(--stroke-soft);border-radius:var(--r-full);padding:3px}
 .range button, .range a{
   border:0;background:none;color:var(--text-dim);font-family:inherit;font-size:12.5px;
@@ -161,7 +202,7 @@ a{color:inherit;text-decoration:none}
   cursor:pointer;transition:var(--ease);display:inline-flex;align-items:center;gap:6px;
   text-decoration:none;
 }
-.btn:hover{background:var(--glass-hover);border-color:rgba(255,255,255,.18)}
+.btn:hover{background:var(--glass-hover);border-color:var(--stroke)}
 .btn-p{
   background:linear-gradient(135deg,var(--primary),var(--primary-600));
   border-color:transparent;color:#fff;font-weight:500;
@@ -176,14 +217,14 @@ a{color:inherit;text-decoration:none}
 .input, input[type=text], input[type=password], input[type=email],
 input[type=number], input[type=url], textarea, select{
   width:100%;font-family:inherit;font-size:13.5px;color:var(--text);
-  background:rgba(255,255,255,.04);border:1px solid var(--stroke-soft);
+  background:var(--fill);border:1px solid var(--stroke-soft);
   border-radius:var(--r-sm);padding:9px 12px;transition:var(--ease);
 }
 .input:focus, input:focus, textarea:focus, select:focus{
   outline:0;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-ring);
 }
 /* رفع متن نامرئی دراپ‌داون‌ها: پس‌زمینه‌ی تیره برای گزینه‌ها */
-select option, select optgroup{background:#0E1526;color:var(--text)}
+select option, select optgroup{background:var(--card-solid);color:var(--text)}
 select{color:var(--text)}
 /* رنگ‌بندی وضعیت (دراپ‌داون ردیف تسک) */
 .row-status{border-radius:var(--r-full);border:1px solid var(--stroke-soft);font-weight:500}
@@ -236,7 +277,7 @@ label{font-size:12px;color:var(--text-dim);display:block;margin-bottom:6px}
    context جدا می‌سازد) بالای جدولِ بعدی بنشیند و دراپ‌داونِ بابت رویِ جدول باز شود */
 .filters{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 14px;position:relative;z-index:30}
 .filters select{width:auto;min-width:130px;flex:none;padding:7px 10px;font-size:12.5px;
-  border-radius:var(--r-sm);background:rgba(255,255,255,.04);border:1px solid var(--stroke-soft);color:var(--text)}
+  border-radius:var(--r-sm);background:var(--fill);border:1px solid var(--stroke-soft);color:var(--text)}
 .filters select:hover{border-color:var(--stroke)}
 .sep{width:1px;align-self:stretch;min-height:20px;background:var(--stroke-soft);flex:none}
 
@@ -271,7 +312,7 @@ tbody tr:last-child td{border-bottom:0}
 .proj b{font-weight:500;font-size:13px;display:block;line-height:1.4}
 .proj span{font-size:11px;color:var(--text-faint);direction:ltr;display:block}
 
-.bar{height:6px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden;min-width:74px}
+.bar{height:6px;border-radius:99px;background:var(--fill-strong);overflow:hidden;min-width:74px}
 .bar i{display:block;height:100%;border-radius:99px;
   background:linear-gradient(90deg,var(--primary),var(--primary-400))}
 .bar.ok i{background:linear-gradient(90deg,var(--success),#6EE7C4)}
@@ -403,7 +444,7 @@ tbody tr:last-child td{border-bottom:0}
 .tab-panel.on{display:block}
 
 /* ═══ حسابداری + تنظیمات (نوارِ تبِ سنجاقی) ═══ */
-.fin-nav,.settings-nav{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:16px;background:rgba(255,255,255,.03);
+.fin-nav,.settings-nav{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:16px;background:var(--fill);
   border:1px solid var(--stroke-soft);border-radius:var(--r-full);padding:4px;width:fit-content}
 .fin-nav a,.settings-nav a{padding:7px 16px;border-radius:var(--r-full);font-size:13px;color:var(--text-dim);transition:var(--ease)}
 .fin-nav a:hover,.settings-nav a:hover{background:var(--glass);color:var(--text)}
@@ -414,7 +455,7 @@ tbody tr:last-child td{border-bottom:0}
 .sect .tris{display:flex;gap:16px;font-size:12px}
 .sect .tris span{display:flex;flex-direction:column}
 .sect .tris b{font-size:14px;font-variant-numeric:tabular-nums}
-.mini-bar{height:5px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden;margin-top:5px}
+.mini-bar{height:5px;border-radius:99px;background:var(--fill-strong);overflow:hidden;margin-top:5px}
 .mini-bar i{display:block;height:100%;border-radius:99px}
 .bank-card{padding:16px 18px;position:relative;overflow:hidden}
 .bank-card .bname{display:flex;align-items:center;gap:9px;font-size:13.5px;font-weight:500;margin-bottom:10px}
@@ -425,7 +466,7 @@ tbody tr:last-child td{border-bottom:0}
 .dep{color:#6FE3C4} .wd{color:#FFA3B3}
 .sheet-wrap{overflow-x:auto;border:1px solid var(--stroke-soft);border-radius:var(--r)}
 table.sheet{border-collapse:collapse;width:100%;font-size:12.5px;min-width:960px}
-table.sheet th{background:rgba(255,255,255,.04);position:sticky;top:0;z-index:5;padding:9px 10px;
+table.sheet th{background:var(--fill);position:sticky;top:0;z-index:5;padding:9px 10px;
   border:1px solid var(--stroke-soft);font-weight:500;color:var(--text-dim);white-space:nowrap;text-align:center}
 table.sheet td{padding:8px 10px;border:1px solid var(--stroke-soft);text-align:center;height:36px}
 table.sheet td.num{font-variant-numeric:tabular-nums;text-align:left;direction:ltr}
@@ -434,7 +475,7 @@ table.sheet td.edit select,table.sheet td.edit input{padding:4px 6px;font-size:1
 color: white;
     font-family: 'Vazirmatn';}
 table.sheet td.edit select:focus,table.sheet td.edit input:focus{background:var(--bg)}
-table.sheet tr:hover td{background:rgba(255,255,255,.02)}
+table.sheet tr:hover td{background:var(--row-alt)}
 .chk-col{width:34px}
 .stepper{display:flex;gap:0;margin-bottom:20px;max-width:560px}
 .stepper .st{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;position:relative}
@@ -457,7 +498,7 @@ table.sheet tr:hover td{background:rgba(255,255,255,.02)}
 .drop .ico{font-size:32px;opacity:.6;margin-bottom:8px}
 .files-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
 .file-card{border:1px solid var(--stroke-soft);border-radius:var(--r-sm);overflow:hidden;background:var(--glass);position:relative}
-.file-card .thumb{height:100px;display:grid;place-items:center;background:rgba(255,255,255,.03);font-size:30px;color:var(--text-faint)}
+.file-card .thumb{height:100px;display:grid;place-items:center;background:var(--fill);font-size:30px;color:var(--text-faint)}
 .file-card .thumb img{width:100%;height:100%;object-fit:cover}
 .file-card .meta{padding:8px 10px}
 .file-card .meta b{font-size:12px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
@@ -510,7 +551,7 @@ table.sheet tr:hover td{background:rgba(255,255,255,.02)}
 .cell{min-height:120px;min-width:0;padding:5px;border-inline-start:1px solid var(--stroke-soft);border-bottom:1px solid var(--stroke-soft);
   position:relative;transition:var(--ease);display:flex;flex-direction:column;gap:3px}
 .cell:nth-child(7n){border-inline-start:0}
-.cell:hover{background:rgba(255,255,255,.022)}
+.cell:hover{background:var(--row-alt)}
 .cell.off{background:rgba(251,87,115,.045)}
 .cell.dim{opacity:.35}
 .cell.today{box-shadow:inset 0 0 0 1.5px var(--primary);border-radius:9px}
@@ -519,7 +560,7 @@ table.sheet tr:hover td{background:rgba(255,255,255,.02)}
 .dnum{font-size:12px;color:var(--text-dim);font-variant-numeric:tabular-nums}
 .cell.off .dnum{color:#FF9AAB} .cell.today .dnum{color:#fff;font-weight:700}
 .hol{font-size:9.5px;color:#FF9AAB;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
-.cnt{margin-inline-start:auto;font-size:9.5px;min-width:16px;height:16px;border-radius:99px;background:rgba(255,255,255,.09);
+.cnt{margin-inline-start:auto;font-size:9.5px;min-width:16px;height:16px;border-radius:99px;background:var(--fill-strong);
   color:var(--text-dim);display:grid;place-items:center;padding:0 4px;flex:none}
 .cell-add{position:absolute;top:5px;inset-inline-start:5px;width:20px;height:20px;border-radius:50%;border:0;
   background:var(--primary);color:#fff;cursor:pointer;font-size:13px;line-height:1;opacity:0;transition:var(--ease);z-index:4;display:grid;place-items:center}
@@ -540,7 +581,7 @@ table.sheet tr:hover td{background:rgba(255,255,255,.02)}
 
 /* ── دیت‌پیکر شمسی ── */
 .dp-pop{position:absolute;z-index:300;width:250px;padding:10px;border-radius:var(--r);
-  background:#0B1220;border:1px solid var(--stroke);box-shadow:var(--shadow-lg)}
+  background:var(--card-solid);border:1px solid var(--stroke);box-shadow:var(--shadow-lg)}
 .dp-head{display:flex;align-items:center;gap:6px;margin-bottom:8px}
 .dp-head h4{flex:1;text-align:center;font-size:13px;font-weight:500}
 .dp-nav{width:24px;height:24px;border-radius:6px;border:1px solid var(--stroke-soft);background:transparent;color:var(--text-dim);cursor:pointer}
@@ -600,7 +641,7 @@ html{scroll-behavior:smooth}
 
 /* همبرگر و پس‌زمینه‌ی کشوی موبایل */
 .nav-toggle{display:none;flex:none;width:38px;height:38px;border-radius:var(--r-sm);
-  border:1px solid var(--stroke-soft);background:rgba(255,255,255,.04);color:var(--text);
+  border:1px solid var(--stroke-soft);background:var(--fill);color:var(--text);
   font-size:17px;line-height:1;cursor:pointer;align-items:center;justify-content:center;transition:var(--ease)}
 .nav-toggle:hover{background:var(--glass-hover)}
 .nav-backdrop{position:fixed;inset:0;z-index:110;background:rgba(3,7,18,.55);
@@ -675,7 +716,7 @@ body.nav-open .nav-backdrop{opacity:1;visibility:visible}
 /* بخش «گزارش» ته مودال تسک */
 .report-sec{margin-top:16px;border-top:1px solid var(--stroke-soft);padding-top:12px}
 .report-list{margin-top:10px;display:flex;flex-direction:column;gap:8px}
-.report-item{background:rgba(255,255,255,.03);border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:8px 10px}
+.report-item{background:var(--fill);border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:8px 10px}
 .report-meta{font-size:11px;color:var(--text-faint);margin-bottom:4px;display:flex;align-items:center;gap:6px}
 .report-tools{margin-inline-start:auto;display:flex;gap:9px}
 .report-tools i{cursor:pointer;font-style:normal;opacity:.65;font-size:12.5px}
@@ -701,16 +742,16 @@ body.nav-open .nav-backdrop{opacity:1;visibility:visible}
 /* اسکرول‌بارِ .tsheet-wrap از بلوکِ یکپارچهٔ «نشانگرِ اسکرولِ افقی» می‌آید */
 .tsheet{min-width:940px;border-collapse:collapse}
 /* نمای گوگل‌شیت برای جدولِ تسک‌ها: خط‌کشیِ سلولی + هدرِ چسبان + راه‌راهِ ملایم */
-.tsheet thead th{background:rgba(255,255,255,.035);position:sticky;top:0;z-index:4;
+.tsheet thead th{background:var(--fill);position:sticky;top:0;z-index:4;
   border:1px solid var(--stroke-soft);padding:8px 10px}
 .tsheet tbody td{border:1px solid var(--stroke-soft);height:38px}
-.tsheet tbody tr:nth-child(even) td{background:rgba(255,255,255,.014)}
+.tsheet tbody tr:nth-child(even) td{background:var(--row-alt)}
 .tsheet tbody tr:hover td{background:var(--glass-hover)}
 .tcell{display:flex;align-items:center;gap:6px}
 .tx-inline{max-width:100%;background:transparent;border:1px solid transparent;border-radius:6px;color:inherit;font:inherit;font-size:12.5px;padding:4px 6px}
 .tcell .tx-inline{flex:1;min-width:120px}
 .tx-inline:hover{border-color:var(--stroke-soft)}
-.tx-inline:focus{border-color:var(--primary-ring);background:rgba(255,255,255,.04);outline:none}
+.tx-inline:focus{border-color:var(--primary-ring);background:var(--fill);outline:none}
 select.tx-inline{cursor:pointer;max-width:150px}
 .row-open{cursor:pointer;opacity:.5;font-style:normal;font-size:14px}
 .row-open:hover{opacity:1;color:var(--primary-400)}
@@ -724,7 +765,7 @@ select.tx-inline{cursor:pointer;max-width:150px}
 /* ویجت سراسریِ «در حال انجام» (گوشهٔ پایین-چپ) */
 .timer-widget{position:fixed;bottom:16px;inset-inline-start:16px;z-index:60;display:none;flex-direction:column;gap:5px;
   min-width:220px;max-width:290px;padding:10px 12px;border-radius:var(--r-sm);
-  background:var(--surface,rgba(20,26,38,.92));border:1px solid var(--stroke-soft);backdrop-filter:blur(8px);box-shadow:0 8px 28px rgba(0,0,0,.35)}
+  background:var(--card-solid);border:1px solid var(--stroke);backdrop-filter:blur(8px);box-shadow:var(--shadow)}
 .timer-widget.on{display:flex}
 .timer-widget .tw-h{font-size:11px;color:var(--text-faint);margin-bottom:2px}
 .tw-row{display:flex;align-items:center;gap:7px;font-size:12.5px}
@@ -732,12 +773,13 @@ select.tx-inline{cursor:pointer;max-width:150px}
 @keyframes twpulse{0%{box-shadow:0 0 0 0 rgba(45,212,167,.5)}70%{box-shadow:0 0 0 6px rgba(45,212,167,0)}100%{box-shadow:0 0 0 0 rgba(45,212,167,0)}}
 .tw-tt{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tw-time{font-variant-numeric:tabular-nums;color:#6FE3C4}
-.tw-stop{border:0;background:rgba(255,255,255,.08);color:var(--text);width:20px;height:20px;border-radius:5px;cursor:pointer;font-size:9px;line-height:1}
+.tw-stop{border:0;background:var(--fill-strong);color:var(--text);width:20px;height:20px;border-radius:5px;cursor:pointer;font-size:9px;line-height:1}
 .tw-stop:hover{background:var(--danger);color:#fff}
 
 /* تایمر تسک (ستون زمان) */
-.timer-cell{white-space:nowrap;display:flex;align-items:center;gap:6px;min-height:22px}
-.timer-cell .tbtn{border:0;background:rgba(255,255,255,.06);color:var(--text);width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;display:grid;place-items:center}
+.timer-cell{white-space:nowrap;display:flex;align-items:center;justify-content:flex-start;gap:6px;min-height:22px;min-width:96px}
+.timer-cell .tbtn{border:0;background:var(--primary-soft);color:var(--primary-400);width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:10px;line-height:1;display:grid;place-items:center;flex:none;padding:0}
+.timer-cell .tbtn:hover{background:var(--primary-ring);color:#fff}
 .timer-cell.running .tbtn{background:var(--danger);color:#fff}
 .timer-cell .tval{font-variant-numeric:tabular-nums;font-size:12px;color:var(--text);min-width:28px}
 .timer-cell.running .tval{color:#6FE3C4}
@@ -761,7 +803,7 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .rs{position:relative;display:inline-block;min-width:150px;vertical-align:middle}
 .rs .rs-native{display:none}
 .rs-btn{display:flex;align-items:center;gap:7px;width:100%;font-family:inherit;font-size:12.5px;color:var(--text);
-  background:rgba(255,255,255,.04);border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:6px 10px;cursor:pointer;text-align:start}
+  background:var(--fill);border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:6px 10px;cursor:pointer;text-align:start}
 .rs-btn:hover{border-color:var(--stroke)}
 .rs-btn .rs-lb{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rs-btn .rs-caret{opacity:.5;font-size:10px;flex:none}
@@ -780,7 +822,7 @@ select.tx-inline{cursor:pointer;max-width:150px}
 /* نسخهٔ فشرده در جدولِ تسک‌ها (ویرایشِ inline) */
 .tsheet .rs{min-width:120px;width:100%}
 .tsheet .rs-btn{padding:4px 7px;background:transparent;border-color:transparent}
-.tsheet .rs-btn:hover{border-color:var(--stroke-soft);background:rgba(255,255,255,.04)}
+.tsheet .rs-btn:hover{border-color:var(--stroke-soft);background:var(--fill)}
 .tsheet .rs-av{width:18px;height:18px;font-size:8.5px}
 
 /* تاریخچهٔ تسک در مودال */
@@ -806,7 +848,7 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .wt-chip{font-size:11px;background:var(--primary-soft);color:#BBD4FF;border:1px solid var(--primary-ring);padding:2px 9px;border-radius:99px;white-space:nowrap}
 .wt-chip.wt-in{background:rgba(251,191,36,.10);border-color:rgba(251,191,36,.26);color:#FCD98A}
 .wt-startend{font-size:11.5px;color:var(--text-dim);direction:ltr}
-.wt-timeline{position:relative;height:14px;border-radius:99px;background:rgba(255,255,255,.05);overflow:hidden;border:1px solid var(--stroke-soft)}
+.wt-timeline{position:relative;height:14px;border-radius:99px;background:var(--fill);overflow:hidden;border:1px solid var(--stroke-soft)}
 .wt-seg{position:absolute;top:0;bottom:0;background:var(--primary);border-radius:99px;min-width:2px}
 .wt-seg.wt-inact{background:repeating-linear-gradient(45deg,rgba(251,87,115,.85),rgba(251,87,115,.85) 3px,rgba(251,87,115,.5) 3px,rgba(251,87,115,.5) 6px);z-index:2}
 .wt-empty{position:absolute;inset:0;display:grid;place-items:center;font-size:10.5px;color:var(--text-faint)}
@@ -830,7 +872,7 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .satt-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .satt-main b{font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .satt-task{font-size:10.5px;color:var(--text-faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.satt-tl{position:relative;height:5px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden;margin-top:1px}
+.satt-tl{position:relative;height:5px;border-radius:99px;background:var(--fill-strong);overflow:hidden;margin-top:1px}
 .satt-tl .s{position:absolute;top:0;bottom:0;background:var(--primary);border-radius:99px;min-width:1px}
 .satt-tl .s.in{background:rgba(251,87,115,.8);z-index:2}
 .satt-sum{font-size:10.5px;color:var(--text-dim);font-variant-numeric:tabular-nums;flex:none;direction:ltr}
@@ -844,7 +886,7 @@ select.tx-inline{cursor:pointer;max-width:150px}
 
 /* ردیف‌های ماهِ گزارش زیرِ هر پروژه (شخصی‌سازیِ سئو) */
 #proj-table:not(.rm-on) .rmonth-row{display:none}
-.rmonth-row{cursor:pointer;background:rgba(255,255,255,.015)}
+.rmonth-row{cursor:pointer;background:var(--row-alt)}
 .rmonth-row:hover td{background:rgba(65,131,242,.06)}
 .rmonth-row td{font-size:12px;color:var(--text-dim);border-top:0}
 .rm-label{padding-inline-start:22px;color:var(--text-dim)}
@@ -857,10 +899,10 @@ select.tx-inline{cursor:pointer;max-width:150px}
 
 /* سوییچرِ سازمان در هدر */
 .org-switch{max-width:170px;padding:6px 10px;font-size:12.5px;border-radius:var(--r-sm);
-  background:rgba(255,255,255,.04);border:1px solid var(--stroke-soft);color:var(--text)}
+  background:var(--fill);border:1px solid var(--stroke-soft);color:var(--text)}
 
 /* فیلدِ چندتایی (کلمه + Enter) — کلماتِ کلیدی/LSI/هدف در مودالِ تسک */
-.tagbox{background:rgba(255,255,255,.04);border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:8px}
+.tagbox{background:var(--fill);border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:8px}
 .tagbox-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
 .tagbox-chips:empty{display:none}
 .tagbox-chip{gap:4px;padding:3px 6px 3px 9px}
@@ -871,7 +913,7 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .tagbox-add{flex:none;padding:6px 14px}
 
 /* KPIها (مدیریت نوع تسک + مودال/بازبینی) */
-.kpi-item{border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:8px;background:rgba(255,255,255,.02)}
+.kpi-item{border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:8px;background:var(--row-alt)}
 .kpi-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .kpi-tools{margin-inline-start:auto;display:flex;gap:8px}
 .kpi-tools i,.ci-del{cursor:pointer;font-style:normal;opacity:.65;font-size:12.5px}
@@ -906,13 +948,13 @@ select.tx-inline{cursor:pointer;max-width:150px}
 /* سفارشی‌سازیِ ستون‌ها — /settings/columns/ */
 .col-list{display:flex;flex-direction:column;gap:2px;padding:10px 14px}
 .col-row{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:var(--r-sm);border:1px solid transparent}
-.col-row:hover{background:rgba(255,255,255,.03);border-color:var(--stroke-soft)}
+.col-row:hover{background:var(--fill);border-color:var(--stroke-soft)}
 .col-row label{display:flex;align-items:center;gap:8px;margin:0;font-size:13px;cursor:pointer;flex:1}
 .col-row input[type=checkbox]{width:auto}
 .col-row.off{opacity:.5}
 .col-arrows{display:flex;gap:4px}
 .col-arrows i{cursor:pointer;font-style:normal;opacity:.55;font-size:11px;width:20px;height:20px;display:grid;place-items:center;border-radius:5px}
-.col-arrows i:hover{opacity:1;background:rgba(255,255,255,.06)}
+.col-arrows i:hover{opacity:1;background:var(--fill-strong)}
 
 /* پیش‌نمای تسک تکرارشونده در تقویم (کم‌رنگ/خط‌چین) */
 .tk.placeholder{opacity:.5;border:1px dashed var(--stroke)!important;background:transparent!important;filter:grayscale(.3)}
@@ -920,7 +962,7 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .tk.placeholder .tk-t{display:none}
 /* بخشِ تکرار در مودال تسک */
 .rec-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:12.5px}
-.rec-opt{padding:5px 10px;border-radius:99px;border:1px solid var(--stroke-soft);cursor:pointer;background:rgba(255,255,255,.03)}
+.rec-opt{padding:5px 10px;border-radius:99px;border:1px solid var(--stroke-soft);cursor:pointer;background:var(--fill)}
 .rec-opt.on{background:var(--primary-soft);border-color:var(--primary-ring);color:var(--primary-400)}
 
 /* ── بازبینیِ تسک (صفحه‌ی کارت‌ها) ── */
@@ -933,7 +975,7 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .rev-meta b{color:var(--text);font-weight:500}
 .rev-why{margin-inline-start:auto;font-size:11px;color:var(--text-faint)}
 .rev-desc{font-size:12.5px;color:var(--text-dim);line-height:1.8;padding:10px 12px;margin-bottom:10px;
-  background:rgba(255,255,255,.02);border:1px solid var(--stroke-soft);border-radius:var(--r-sm)}
+  background:var(--row-alt);border:1px solid var(--stroke-soft);border-radius:var(--r-sm)}
 .rev-desc p{margin:0}
 .rev-kw{margin-bottom:10px}
 .rev-actions{display:flex;flex-wrap:wrap;gap:8px;padding-top:10px;border-top:1px solid var(--stroke-soft)}
@@ -999,7 +1041,7 @@ table.sheet td:not(.edit){padding:6px 9px}
 .sheet-wrap,.tscroll,.tsheet-wrap{scrollbar-width:thin;scrollbar-color:var(--stroke) transparent}
 .sheet-wrap::-webkit-scrollbar,.tscroll::-webkit-scrollbar,.tsheet-wrap::-webkit-scrollbar{height:12px}
 .sheet-wrap::-webkit-scrollbar-track,.tscroll::-webkit-scrollbar-track,.tsheet-wrap::-webkit-scrollbar-track{
-  background:rgba(255,255,255,.05);border-radius:99px;margin:0 2px}
+  background:var(--fill);border-radius:99px;margin:0 2px}
 .sheet-wrap::-webkit-scrollbar-thumb,.tscroll::-webkit-scrollbar-thumb,.tsheet-wrap::-webkit-scrollbar-thumb{
   background:var(--stroke);border-radius:99px;border:3px solid transparent;background-clip:padding-box;min-width:44px}
 .sheet-wrap::-webkit-scrollbar-thumb:hover,.tscroll::-webkit-scrollbar-thumb:hover,.tsheet-wrap::-webkit-scrollbar-thumb:hover{
@@ -1073,19 +1115,21 @@ table.sheet td:not(.edit){padding:6px 9px}
 .seo-drag{cursor:grab;color:var(--text-faint);text-align:center;user-select:none}
 .seo-drag:active{cursor:grabbing}
 .seo-row[draggable=true]:hover .seo-drag{color:var(--primary-400)}
-.seo-sheet .seo-newtask{width:100%;background:transparent;border:0;color:var(--text);font-family:inherit;font-size:12.5px;padding:7px 9px;outline:none}
-.seo-sheet .seo-newtask::placeholder{color:var(--text-faint)}
+/* اینپوتِ «افزودن ایده/تسک» — بردِ سئو حالا `.tsheet` است نه `.seo-sheet`؛ اگر فقط
+   `.seo-sheet` اسکوپ بماند اینپوت استایل نمی‌گیرد و سفید/بهم‌ریخته می‌شود (باگِ رفع‌شده) */
+.tsheet .seo-newtask,.seo-sheet .seo-newtask{width:100%;background:transparent;border:0;color:var(--text);font-family:inherit;font-size:12.5px;padding:7px 9px;outline:none}
+.tsheet .seo-newtask::placeholder,.seo-sheet .seo-newtask::placeholder{color:var(--text-faint)}
 .seo-addrow td{background:rgba(79,118,246,.04)}
 .seo-addrow:hover td{background:rgba(79,118,246,.07)}
-.seo-sheet td.edit .jdate{cursor:pointer}
+.tsheet td.edit .jdate,.seo-sheet td.edit .jdate{cursor:pointer}
 
 /* ═══ ستون‌های جدولِ تسک: عرضِ هوشمند + نوعِ ویرایشی + ویرایشِ inlineِ سفارشی ═══ */
 /* عنوان تمامِ فضای اضافی را می‌گیرد؛ بقیهٔ ستون‌ها فقط به‌اندازهٔ محتوا (نه بیشتر) */
-.tsheet .th-title{width:100%}
-.tsheet .nowrap-c,.tsheet th.nowrap-c{white-space:nowrap;width:1%}
+.tsheet .th-title{min-width:200px}
+.tsheet .nowrap-c,.tsheet th.nowrap-c{white-space:nowrap}
 /* دراپ‌داونِ نوع: فشرده، فقط به‌اندازهٔ محتوا (زیاد جا نگیرد) */
 .ttype-sel{max-width:74px;font-size:10px;font-weight:600;padding:2px 3px;border:1px solid var(--stroke-soft);
-  border-radius:var(--r-full);background:rgba(255,255,255,.04);cursor:pointer;flex:none}
+  border-radius:var(--r-full);background:var(--fill);cursor:pointer;flex:none}
 .ttype-sel:hover{border-color:var(--stroke)}
 .tcell{display:flex;align-items:center;gap:6px;min-width:220px}
 /* اینپوتِ عنوان فضای باقی‌ماندهٔ سلول را می‌گیرد (نه عرضِ ثابت) */
@@ -1100,14 +1144,17 @@ table.sheet td:not(.edit){padding:6px 9px}
 /* وضعیت: دراپ‌داون + «— امروز» همیشه یک‌خطی */
 .status-wrap{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 /* سلولِ فیلدِ سفارشیِ ویرایشی (وقتی نوع انتخاب شده) */
-.dcell{min-width:120px;max-width:240px}
-.dcell .cf-inline{width:100%;min-width:70px}
+.dcell{min-width:150px;max-width:240px}
+.dcell .cf-inline{width:100%;min-width:90px}
 .dcell input.cf-inline[type=checkbox]{width:auto;min-width:0}
 
-/* ── تگ‌باکسِ درون‌جدولی (کلمات کلیدی/مترادف) ── */
-.cf-tags{display:flex;align-items:center;gap:4px;flex-wrap:wrap;position:relative}
+/* ── تگ‌باکسِ درون‌جدولی (کلمات کلیدی/مترادف) — تک‌خطی، ارتفاعِ ردیف را زیاد نمی‌کند ── */
+.cf-tags{display:flex;align-items:center;gap:4px;position:relative;max-width:100%}
+.cf-tags .ctag-list{display:flex;align-items:center;gap:4px;flex-wrap:nowrap;overflow-x:auto;
+  min-width:0;scrollbar-width:none}
+.cf-tags .ctag-list::-webkit-scrollbar{height:0;width:0}
 .cf-tags .ctag{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;padding:1px 4px 1px 6px;
-  border-radius:var(--r-full);background:var(--primary-soft);color:var(--primary-400);white-space:nowrap}
+  border-radius:var(--r-full);background:var(--primary-soft);color:var(--primary-400);white-space:nowrap;flex:none}
 .cf-tags .ctag-x{cursor:pointer;opacity:.65;font-style:normal;font-size:12px;line-height:1}
 .cf-tags .ctag-x:hover{opacity:1;color:var(--danger)}
 .cf-tags .ctag-add{border:1px dashed var(--stroke-soft);background:transparent;color:var(--text-dim);
@@ -1132,6 +1179,17 @@ table.sheet td:not(.edit){padding:6px 9px}
 .reldate-ro [title]{cursor:default}
 /* برچسبِ نسبیِ کنارِ تاریخ در مودال */
 .rel-hint{font-size:11px;color:var(--primary-400);margin-inline-start:8px}
+
+/* ── ردیف‌های فرزند (اجزای حقوق در گزارش / اسپلیتِ تراکنش) ── */
+.split-child td{background:color-mix(in srgb,var(--primary) 4%,transparent);font-size:12px}
+.split-child .split-mark{color:var(--text-faint);margin-inline-end:2px}
+
+/* ── تفکیکِ روزانه: تیترِ نسبیِ بزرگ + تاریخِ خامِ کوچک (داشبورد + /tasks/?group=day) ── */
+.day-group{margin-top:14px}
+.day-group:first-child{margin-top:2px}
+.day-head{display:flex;align-items:baseline;gap:8px;margin-bottom:6px;font-size:12.5px}
+.day-head b{color:var(--text);font-size:14px}
+.day-head .day-date{color:var(--text-faint);font-size:11px}
 
 /* ═══ مودالِ تسک: تمام‌عرض، دوستونی، ارتفاعِ زیاد (کمترین اسکرول) ═══ */
 .modal:has(.tmodal){max-width:1080px;width:96vw;height:min(92vh,920px)}

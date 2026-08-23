@@ -29,10 +29,10 @@
   {% if grouped_by_day %}
     {# ── تفکیکِ روزانه: تسک‌های انجام‌شده در بازه، گروه‌بندی‌شده روی done_date ── #}
     {% if day_groups %}
-      {# ساختارِ یکسان با بقیهٔ بخش‌ها: همان جعبهٔ تسک (ویرایشِ زنده، نوع، ستون‌ها) #}
-      {% for grp in day_groups %}
-        {% include "tasks/_task_box.html" with title=grp.date_fa tasks=grp.tasks empty_icon="📅" empty_text="" %}
-      {% endfor %}
+      {# ساختارِ یکسان با داشبورد: هر روز = تیترِ نسبی + جدولِ تسکِ فقط‌خواندنی #}
+      <section class="card glass" style="margin-top:14px">
+        {% for grp in day_groups %}{% include "tasks/_day_group.html" %}{% endfor %}
+      </section>
     {% else %}
       <section class="card glass"><div class="empty"><div class="ico">📅</div><h4>تسکِ انجام‌شده‌ای در این بازه نیست</h4></div></section>
     {% endif %}

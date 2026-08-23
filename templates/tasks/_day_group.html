@@ -1,0 +1,15 @@
+{% load seo_extras %}
+{% comment %}
+یک روزِ «تفکیکِ روزانه» — همان ماژولِ جدولِ تسک (فقط‌خواندنی) تا با بقیهٔ جدول‌ها یکسان
+باشد. تیترِ روز = برچسبِ نسبیِ بزرگ («امروز/۳ روز قبل») + تاریخِ خامِ کوچک کنارش.
+استفاده: داشبورد (درونِ کارتِ «انجام‌شده به تفکیک روز») + `/tasks/?group=day`.
+{% endcomment %}
+<div class="day-group">
+  <div class="day-head"><b>{{ grp.rel }}</b><span class="day-date">{{ grp.date_fa }}</span><span class="chip">{{ grp.count|fa_digits }} تسک</span></div>
+  <div class="tsheet-wrap">
+  <table class="tsheet">
+    <thead>{% include "tasks/_task_thead.html" with editable=False hide_project=False %}</thead>
+    <tbody>{% include "tasks/_rows.html" with tasks=grp.tasks editable=False hide_project=False row_drag=False %}</tbody>
+  </table>
+  </div>
+</div>
