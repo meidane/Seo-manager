@@ -560,6 +560,27 @@ def seo_section_reorder(request, pk):
 
 @login_required
 @require_http_methods(['POST'])
+def seo_section_delete(request, pk):
+    """حذفِ یک سکشنِ ماهِ گزارش — فقط اگر هیچ تسکی در آن نباشد (وگرنه ابتدا باید
+    تسک‌ها حذف/جابه‌جا شوند، وگرنه سکشن با وجودِ تسک دوباره ساخته می‌شود)."""
+    from tasks.models import ReportMonthStrategy, Task
+    err = _seo_gate(request, pk)
+    if err:
+        return err
+    project = get_object_or_404(Project, pk=pk)
+    d = json.loads(request.body or '{}')
+    try:
+        year, month = int(d.get('year')), int(d.get('month'))
+    except (TypeError, ValueError):
+        return JsonResponse({'detail': 'سال و ماه لازم است'}, status=400)
+    if Task.objects.filter(project=project, report_year=year, report_month=month).exists():
+        return JsonResponse({'detail': 'این سکشن تسک دارد؛ اول تسک‌هایش را حذف یا جابه‌جا کن.'}, status=400)
+    ReportMonthStrategy.objects.filter(project=project, year=year, month=month).delete()
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_http_methods(['POST'])
 def seo_task_add(request, pk):
     """افزودنِ ردیفِ تسک به یک سکشن — «ایده» (بدونِ تاریخ، فقط عنوان). فیلدهای لازم
     فقط موقعِ برنامه‌ریزی (ست‌کردنِ تاریخ/تکمیل) اعمال می‌شوند (tasks.api)."""
