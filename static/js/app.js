@@ -191,6 +191,27 @@
   }, true);
   document.addEventListener('DOMContentLoaded', () => initMoney(document));
 
+  /* ── تمِ روشن/تیره ── منبعِ واحد؛ localStorage نگه می‌دارد، data-theme روی <html> ست می‌شود.
+     پیش‌فرض «تیره» (بدونِ data-theme). فقط متغیرهای CSS عوض می‌شوند (style.css). */
+  function currentTheme() { return document.documentElement.getAttribute('data-theme') || 'dark'; }
+  function applyTheme(t) {
+    if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    else document.documentElement.removeAttribute('data-theme');
+    try { localStorage.setItem('theme', t); } catch (e) { /* private mode */ }
+    // برچسب/آیکنِ دکمه‌ها را هم‌گام کن (سایدبار + هر کنترلِ دیگر)
+    const next = t === 'light' ? 'dark' : 'light';
+    document.querySelectorAll('[data-theme-label]').forEach((el) => { el.textContent = next === 'light' ? 'تمِ روشن' : 'تمِ تیره'; });
+    document.querySelectorAll('[data-theme-ico]').forEach((el) => { el.textContent = t === 'light' ? '☀' : '◐'; });
+    document.querySelectorAll('[data-theme-radio]').forEach((el) => { el.checked = el.value === t; });
+  }
+  function toggleTheme() { applyTheme(currentTheme() === 'light' ? 'dark' : 'light'); }
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('#theme-toggle')) { e.preventDefault(); toggleTheme(); }
+    const r = e.target.closest('[data-theme-radio]');
+    if (r) applyTheme(r.value);
+  });
+  document.addEventListener('DOMContentLoaded', () => applyTheme(currentTheme()));
+
   /* ── دعوت‌نامه‌ها ── بنرِ سراسری + صفحه‌ی /invites/ هر دو از این دلیگیت استفاده می‌کنند ── */
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('.invite-accept, .invite-reject');
@@ -241,5 +262,8 @@
     closeModal,
     confirm: confirmDialog,
     relDate,
+    setTheme: applyTheme,
+    toggleTheme,
+    initMoney,
   };
 })();
