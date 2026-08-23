@@ -129,7 +129,8 @@ class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         g = self.request.GET
-        qs = Transaction.objects.select_related('bank_account', 'project').prefetch_related('categories')
+        qs = Transaction.objects.select_related('bank_account', 'project').prefetch_related(
+            'categories', 'splits__project', 'splits__category')
 
         # بازه‌ی تاریخ اختیاری (پیش‌فرض: همه‌ی تراکنش‌ها)
         start, end, range_label = _optional_range(g)
@@ -537,6 +538,31 @@ def tx_edit(request, pk):
     # هشدارِ نرم (بدونِ بلاک) اگر این نسبت‌دهی ناسازگاریِ حسابداری ساخت
     warning = _tx_anomaly_warning(t)
     return JsonResponse({'ok': True, 'warning': warning})
+
+
+@login_required
+@require_finance
+@require_http_methods(['GET', 'POST'])
+def tx_split(request, pk):
+    """تفکیکِ یک تراکنش. GET = فهرستِ اسپلیت‌های فعلی؛ POST = بازساخت از آرایه‌ی
+    `splits=[{amount, project, category, note}]` (حذف و ساختِ دوباره، مثلِ ردیف‌های فاکتور)."""
+    from .models import TransactionSplit
+    t = get_object_or_404(Transaction, pk=pk)
+    if request.method == 'GET':
+        return JsonResponse({'splits': [
+            {'amount': str(s.amount), 'project': s.project_id, 'category': s.category_id, 'note': s.note}
+            for s in t.splits.all()]})
+    d = _body(request)
+    t.splits.all().delete()
+    for i, s in enumerate(d.get('splits', [])):
+        amt = parse_amount(s.get('amount', 0))
+        if not amt and not (s.get('project') or s.get('category') or s.get('note')):
+            continue
+        TransactionSplit.objects.create(
+            transaction=t, amount=amt, order=i,
+            project_id=s.get('project') or None, category_id=s.get('category') or None,
+            note=(s.get('note') or '').strip())
+    return JsonResponse({'ok': True, 'count': t.splits.count()})
 
 
 def _tx_anomaly_warning(t):

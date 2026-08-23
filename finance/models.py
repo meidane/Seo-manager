@@ -132,6 +132,27 @@ class Transaction(TimeStampedModel):
         return hashlib.sha256(raw.encode('utf-8')).hexdigest()
 
 
+class TransactionSplit(models.Model):
+    """تفکیکِ یک تراکنشِ بزرگ به چند جزء (مثلاً واریزِ ۱۰۰م: ۲۰م سئو، ۴۰م شخصی، …).
+    فقط **نمایش/تفکیک** است — مبلغِ خودِ تراکنش یک‌بار در مانده می‌شمارد؛ اسپلیت‌ها
+    زیرِ همان تراکنش به‌عنوان ردیف‌های فرزند نشان داده می‌شوند (ظاهرِ متفاوت)."""
+
+    transaction = models.ForeignKey(Transaction, verbose_name='تراکنش', on_delete=models.CASCADE, related_name='splits')
+    amount = models.DecimalField('مبلغ', max_digits=16, decimal_places=0, default=0)
+    project = models.ForeignKey('projects.Project', verbose_name='پروژه', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    category = models.ForeignKey(Category, verbose_name='بابت', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    note = models.CharField('توضیحات', max_length=255, blank=True)
+    order = models.PositiveIntegerField('ترتیب', default=0)
+
+    class Meta:
+        verbose_name = 'تفکیک تراکنش'
+        verbose_name_plural = 'تفکیک تراکنش‌ها'
+        ordering = ['order', 'id']
+
+    def __str__(self):
+        return f'{self.transaction_id} — {self.amount}'
+
+
 class Invoice(TimeStampedModel):
     """فاکتور فروش/خدمات به یک پروژه.
 

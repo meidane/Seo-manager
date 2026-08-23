@@ -75,7 +75,7 @@
             <td class="chk-col"><input type="checkbox" class="row-check" data-id="{{ t.id }}" style="width:auto"></td>
             <td>{{ t.date|jalali }}</td>
             <td><span class="tag t-mute" style="white-space:nowrap">{{ t.bank_account.name }}</span></td>
-            <td style="text-align:right;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ t.description }}">{{ t.description }}</td>
+            <td style="text-align:right;max-width:220px"><span style="display:inline-block;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle" title="{{ t.description }}">{{ t.description }}</span> <button type="button" class="mini tx-split-btn" data-id="{{ t.id }}" title="تفکیک این تراکنش">⑂</button></td>
             <td class="num {% if t.deposit %}dep{% endif %}">{% if t.deposit %}{{ t.deposit|money }}{% else %}—{% endif %}</td>
             <td class="num {% if t.withdrawal %}wd{% endif %}">{% if t.withdrawal %}{{ t.withdrawal|money }}{% else %}—{% endif %}</td>
             <td class="num">{% if t.balance != None %}{{ t.balance|money }}{% else %}—{% endif %}</td>
@@ -83,6 +83,18 @@
             <td class="edit txcat-cell" data-id="{{ t.id }}"><div class="txcat-wrap">{% for c in t.categories.all %}<span class="tag txcat-chip" data-cid="{{ c.id }}" style="background:color-mix(in srgb,{{ c.color }} 18%,transparent);color:{{ c.color }}">{{ c.name }}<i class="txcat-x">×</i></span>{% endfor %}<input class="txcat-add" list="tx-cats-dl" placeholder="＋بابت" autocomplete="off"></div></td>
             <td class="edit"><input class="tx-f" data-f="note" value="{{ t.note }}" placeholder="—"></td>
           </tr>
+          {% for s in t.splits.all %}
+          <tr class="split-child">
+            <td></td><td></td><td></td>
+            <td style="text-align:right;color:var(--text-dim)"><span class="split-mark">└</span> {% if s.note %}{{ s.note }}{% elif s.category_id %}{{ s.category.name }}{% else %}تفکیک{% endif %}</td>
+            <td class="num {% if t.deposit %}dep{% endif %}">{% if t.deposit %}{{ s.amount|money }}{% else %}—{% endif %}</td>
+            <td class="num {% if t.withdrawal %}wd{% endif %}">{% if t.withdrawal %}{{ s.amount|money }}{% else %}—{% endif %}</td>
+            <td></td>
+            <td>{% if s.project_id %}<div class="assignee-cell">{% include "projects/_logo.html" with project=s.project %}<span>{{ s.project.name }}</span></div>{% else %}—{% endif %}</td>
+            <td>{% if s.category_id %}<span class="tag" style="background:color-mix(in srgb,{{ s.category.color }} 18%,transparent);color:{{ s.category.color }}">{{ s.category.name }}</span>{% else %}—{% endif %}</td>
+            <td style="color:var(--text-dim)">{{ s.note }}</td>
+          </tr>
+          {% endfor %}
         {% endfor %}
       </tbody>
     </table>
@@ -221,6 +233,51 @@
   document.getElementById('bulk-project').onchange=e=>{ if(e.target.value) bulk('set_project',{project:e.target.value}); };
   document.getElementById('bulk-category').onchange=e=>{ if(e.target.value) bulk('set_category',{category:e.target.value}); };
   document.getElementById('bulk-del').onclick=async()=>{ if(await App.confirm('تراکنش‌های انتخاب‌شده حذف شوند؟')) bulk('delete',{}); };
+
+  // ── تفکیکِ تراکنش (split) ──
+  const PROJ_OPTS = `{% for p in projects %}<option value="{{ p.id }}">{{ p.name|escapejs }}</option>{% endfor %}`;
+  const CAT_OPTS = `{% for c in categories %}<option value="{{ c.id }}">{{ c.name|escapejs }}</option>{% endfor %}`;
+  function splitRow(s){ s=s||{}; const d=document.createElement('div'); d.className='sp-row';
+    d.style.cssText='display:flex;gap:6px;margin-bottom:6px;align-items:center';
+    d.innerHTML=`<input class="input money sp-amt" dir="ltr" placeholder="مبلغ" value="${s.amount||''}" style="max-width:130px">
+      <select class="sp-proj"><option value="">— پروژه —</option>${PROJ_OPTS}</select>
+      <select class="sp-cat"><option value="">— بابت —</option>${CAT_OPTS}</select>
+      <input class="input sp-note" placeholder="توضیحات" style="flex:1">
+      <button type="button" class="mini sp-del" tabindex="-1">×</button>`;
+    if(s.project) d.querySelector('.sp-proj').value=s.project;
+    if(s.category) d.querySelector('.sp-cat').value=s.category;
+    if(s.note) d.querySelector('.sp-note').value=s.note;
+    return d;
+  }
+  async function openSplit(id){
+    let data={splits:[]};
+    try{ data=await App.fetchJSON(`/finance/api/tx/${id}/split/`); }catch(_){}
+    App.openModal(`<div class="modal-h"><h3>تفکیک تراکنش</h3><button class="x" onclick="App.closeModal()">×</button></div>
+      <div class="modal-b">
+        <p style="color:var(--text-faint);font-size:12px;margin-bottom:8px">مبلغِ کلِ تراکنش یک‌بار در مانده می‌شمارد؛ این‌ها فقط تفکیکِ نمایشیِ زیرِ همان تراکنش‌اند.</p>
+        <div id="sp-items"></div>
+        <button class="mini" id="sp-add" style="margin-top:4px">＋ افزودن ردیف</button>
+      </div>
+      <div class="modal-f"><button class="btn btn-p" id="sp-save">ذخیره</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+    const items=document.getElementById('sp-items');
+    const rows=(data.splits&&data.splits.length)?data.splits:[{}];
+    rows.forEach(r=>items.appendChild(splitRow(r)));
+    if(window.App&&App.initMoney) App.initMoney(items);
+    function addRow(){ const r=splitRow({}); items.appendChild(r); r.querySelector('.sp-amt').focus(); }
+    document.getElementById('sp-add').onclick=addRow;
+    items.addEventListener('keydown', e=>{ if(e.key==='Enter'&&e.target.matches('.sp-note')){ e.preventDefault(); addRow(); } });
+    items.addEventListener('click', e=>{ const d=e.target.closest('.sp-del'); if(d&&items.children.length>1) d.closest('.sp-row').remove(); });
+    document.getElementById('sp-save').onclick=async()=>{
+      const splits=[...items.querySelectorAll('.sp-row')].map(r=>({
+        amount:r.querySelector('.sp-amt').value,
+        project:r.querySelector('.sp-proj').value,
+        category:r.querySelector('.sp-cat').value,
+        note:r.querySelector('.sp-note').value.trim(),
+      })).filter(x=>x.amount||x.project||x.category||x.note);
+      try{ await App.fetchJSON(`/finance/api/tx/${id}/split/`,{method:'POST',body:{splits}}); App.toast('ذخیره شد','ok'); location.reload(); }catch(_){}
+    };
+  }
+  document.addEventListener('click', e=>{ const b=e.target.closest('.tx-split-btn'); if(b){ e.preventDefault(); e.stopPropagation(); openSplit(b.dataset.id); } });
 })();
 </script>
 {% endblock %}
