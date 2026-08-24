@@ -53,7 +53,7 @@
 |---|---|
 | ذخیره‌ی فیلد تسک (create/update) | `tasks/api.py: apply_fields` |
 | چک‌لیستِ عمومیِ تسک (همه‌ی انواع) | `Task.checklist` (JSON `[{text,done}]`) + `apply_fields` (پاکسازی) + `tasks.js: checklistHtml/wireChecklist/readChecklist` (مودال) |
-| فضای شخصیِ خصوصیِ admin (اینباکس/روزانه/هبیت/اهداف/عمر) | اپِ `personal/` (گیت `personal/access.py: admin_only`، اسکوپِ `user`) — `personal/CLAUDE.md` |
+| فضای شخصیِ خصوصیِ admin (اینباکس/روزانه/هبیت/اهداف/عمر) | اپِ `personal/` (گیت `personal/access.py: admin_only`؛ تسک‌ها = `Task`ِ نوعِ «شخصی» در پروژهٔ شخصی، عادت/هدف مدلِ خودِ اپ) — `personal/CLAUDE.md` |
 | اعتبارسنجیِ الزامِ فیلدِ سفارشی (required/required_on_done) | `tasks/api.py: _custom_fields_error` |
 | فیلدهای اختصاصیِ نوع در مودال (نه هسته‌ای) | `TaskTypeDef.fields` → `tasks.js: renderCustom` (هسته فقط ۱۰ فیلد عمومی دارد؛ `task-schema.js` فقط fallback برچسب/رنگِ tech/other) — فیلدِ `tags` با ویجتِ tagbox (`tasks.js: tagboxHtml/wireTagboxes`) |
 | اتصالِ کلمهٔ کلیدیِ تسک به ردیابیِ رتبهٔ سئو | `seo/signals.py: sync_tracked_keywords` |

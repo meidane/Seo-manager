@@ -1292,3 +1292,13 @@ table.sheet td:not(.edit){padding:6px 9px}
 .wd-chip.on{background:var(--primary);color:#fff;border-color:transparent}
 .pol-opt.good.on{background:var(--success);color:#052;border-color:transparent}
 .pol-opt.bad.on{background:var(--danger);color:#fff;border-color:transparent}
+
+/* فضای شخصی — افزوده‌های نسخهٔ ۲ (درصد، ردیفِ کم‌رنگ، تاریخِ inline، عمر) */
+.pers-prog{position:relative;height:20px;border-radius:var(--r-full);background:var(--fill-strong);overflow:hidden;margin-bottom:12px}
+.pers-prog>i{position:absolute;inset-inline-start:0;top:0;bottom:0;background:var(--accent-grad);transition:width .3s}
+.pers-prog>b{position:relative;z-index:1;display:block;text-align:center;font-size:11px;line-height:20px;font-weight:700}
+.pers-row.dim{opacity:.5}
+.pers-row .pt-date{flex:none;max-width:120px;font-size:11px;padding:4px 6px;background:transparent;border:1px dashed var(--stroke-soft);color:var(--text-dim);cursor:pointer}
+.pers-row .pt-date:hover{border-style:solid}
+.pers-week .nav-b{width:26px;height:26px;line-height:24px}
+.life-count{font-size:18px;font-weight:800;line-height:1.9;direction:rtl}

@@ -1,9 +1,11 @@
-"""مدل‌های «فضای شخصی» — کاملاً خصوصی، اسکوپ‌شده به کاربر (نه سازمان).
+"""مدل‌های «فضای شخصی» — عادت‌ها و اهداف (کاملاً خصوصی، اسکوپ‌شده به کاربر).
 
-این اپ عمداً tenant-scoped **نیست**؛ هر رکورد فقط به `user` تعلق دارد و همه‌ی
-کوئری‌ها در ویو/API با `user=request.user` فیلتر می‌شوند. دسترسی هم فقط برای
-سوپریوزر باز است (`personal.access.admin_only`). داده‌ی شخصی است — هیچ‌جای دیگری
-از سیستم به این مدل‌ها وصل نمی‌شود.
+تسک‌های شخصی (اینباکس/روزانه) **مدلِ جدا ندارند**؛ همان `tasks.Task`اند با نوعِ
+«شخصی» (`TaskTypeDef` که کاربر می‌سازد)، در پروژهٔ شخصیِ خودکارِ همکار
+(`Project.personal_owner`، فقط خودش می‌بیند) — پس در تقویم/لیست هم فقط برای admin
+دیده می‌شوند بدونِ سیستمِ موازی. فقط عادت/هدف اینجا مدلِ اختصاصی دارند (معادلی در
+سیستمِ تسک ندارند). این اپ عمداً tenant-scoped **نیست**؛ اسکوپِ هر رکورد `user` است.
+دسترسی فقط برای یوزرِ `admin` (`personal.access.admin_only`).
 """
 from datetime import timedelta
 
@@ -16,31 +18,6 @@ from core.jalali import g2j
 def week_saturday(d):
     """شنبه‌ی هفته‌ی شمسیِ حاویِ تاریخِ میلادیِ d (هفته = شنبه تا جمعه)."""
     return d - timedelta(days=g2j(d).weekday())  # شمسی: شنبه=۰ .. جمعه=۶
-
-
-class PersonalTask(models.Model):
-    """تسکِ شخصی — هم «اینباکسِ» ثبتِ سریع (به تفکیکِ هفته) و هم «تسکِ روزانه»
-    (وقتی `planned_date` بگیرد)."""
-
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='personal_tasks')
-    title = models.CharField('عنوان', max_length=255)
-    note = models.TextField('توضیحات', blank=True)
-    kind = models.CharField('نوع', max_length=40, blank=True)  # برچسبِ آزاد
-    week_start = models.DateField('شنبه‌ی هفته', db_index=True)  # هفته‌ی ثبت در اینباکس
-    planned_date = models.DateField('تاریخِ برنامه', null=True, blank=True, db_index=True)
-    done = models.BooleanField('انجام‌شده', default=False)
-    playing = models.BooleanField('در حالِ اجرا', default=False)  # فوکوسِ فعلی (فقط یکی)
-    order = models.IntegerField('ترتیب', default=0, db_index=True)  # جابه‌جاییِ باکسِ روزانه
-    created_at = models.DateTimeField('ایجاد', auto_now_add=True)
-    updated_at = models.DateTimeField('ویرایش', auto_now=True)
-
-    class Meta:
-        verbose_name = 'تسک شخصی'
-        verbose_name_plural = 'تسک‌های شخصی'
-        ordering = ['order', 'id']
-
-    def __str__(self):
-        return self.title
 
 
 class Habit(models.Model):
