@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" href="{% static 'img/icon-192.png' %}">
   <link rel="icon" href="{% static 'img/icon-192.png' %}">
   <link rel="stylesheet" href="{% static 'vendor/vazirmatn/vazirmatn.css' %}">
-  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v={% asset_v %}">
   {# تمِ روشن/تیره: قبل از رنگ‌آمیزی اعمال شود تا پرش (flash) نداشته باشد #}
   <script>try{var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
   {% block head %}{% endblock %}
@@ -57,9 +57,26 @@
 {% endif %}
 
 <script>
-/* ثبتِ سرویس‌ورکرِ PWA (فقط در بسترِ امن: https یا localhost) */
+/* ثبتِ سرویس‌ورکرِ PWA (فقط در بسترِ امن: https یا localhost).
+   وقتی نسخهٔ جدید فعال شد، صفحه یک‌بار خودکار رفرش می‌شود تا کاربر آپدیت را ببیند —
+   بدونِ نیاز به پاک‌کردنِ دستیِ کش (رفعِ «کاربران آپدیت‌ها را نمی‌بینند»). */
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(){}); });
+  window.addEventListener('load', function(){
+    var hadController = !!navigator.serviceWorker.controller;   // نصبِ اولیه نبود = آپدیت
+    navigator.serviceWorker.register('/sw.js').then(function(reg){
+      reg.update().catch(function(){});
+      // هر بار که تب دوباره فوکوس گرفت، وجودِ نسخهٔ جدید را چک کن
+      document.addEventListener('visibilitychange', function(){
+        if (!document.hidden) reg.update().catch(function(){});
+      });
+    }).catch(function(){});
+    var refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if (!hadController || refreshing) return;   // اولین نصب → رفرش نکن
+      refreshing = true;
+      window.location.reload();
+    });
+  });
 }
 /* کشوی سایدبار در موبایل */
 (function(){var t=document.getElementById('nav-toggle'),b=document.getElementById('nav-backdrop');if(!t)return;
@@ -69,7 +86,7 @@ if(b)b.addEventListener('click',close);
 document.addEventListener('keydown',function(e){if(e.key==='Escape')close();});
 document.querySelectorAll('.side .nav a').forEach(function(a){a.addEventListener('click',close);});})();
 </script>
-<script src="{% static 'js/app.js' %}"></script>
+<script src="{% static 'js/app.js' %}?v={% asset_v %}"></script>
 {% if user.is_authenticated %}
 <script src="{% static 'js/timer-widget.js' %}"></script>
 <script src="{% static 'js/datepicker.js' %}"></script>

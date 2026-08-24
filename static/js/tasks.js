@@ -620,9 +620,15 @@
     s.textContent = w; const x = document.createElement('i'); x.className = 'ctag-x'; x.title = 'حذف'; x.textContent = '×';
     s.appendChild(x); return s;
   }
-  document.addEventListener('click', (e) => {
+  document.addEventListener('click', async (e) => {
     const x = e.target.closest('.ctag-x');
-    if (x) { e.stopPropagation(); const box = x.closest('.cf-tags'); x.closest('.ctag').remove(); ctagPatch(box); return; }
+    if (x) {
+      e.stopPropagation();
+      const chip = x.closest('.ctag'), box = x.closest('.cf-tags');
+      const w = chip.dataset.w || '';
+      if (!await App.confirm(`«${w}» حذف شود؟`)) return;   // تأیید قبلِ حذف
+      chip.remove(); ctagPatch(box); return;
+    }
     const add = e.target.closest('.ctag-add');
     if (add) {
       e.stopPropagation();

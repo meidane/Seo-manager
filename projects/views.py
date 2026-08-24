@@ -109,7 +109,7 @@ class ProjectListView(LoginRequiredMixin, DateRangeMixin, ListView):
         if query:
             qs = qs.filter(Q(name__icontains=query) | Q(domain__icontains=query))
         from django.db.models import Case, F, IntegerField, Value, When
-        return qs.annotate(
+        qs = qs.annotate(
             planned=Count('tasks', filter=Q(tasks__planned_date__range=(start, end))),
             done=Count('tasks', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
             words=Sum('tasks__word_count', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
@@ -120,7 +120,18 @@ class ProjectListView(LoginRequiredMixin, DateRangeMixin, ListView):
             # پروژه‌ی شخصی همیشه اولِ لیست (فقط پروژه‌ی شخصیِ خودِ کاربر اینجا هست)
             _personal=Case(When(personal_owner__isnull=False, then=Value(0)),
                            default=Value(1), output_field=IntegerField()),
-        ).order_by('_personal', 'status', F('priority').asc(nulls_last=True), 'name')  # شخصی، فعال، اولویتِ دستی، نام
+        )
+        # سورتینگِ ساده (منبعِ واحدِ گزینه‌ها = SORTS). پروژهٔ شخصی همیشه اول، سپس کلیدِ انتخابی، سپس نام.
+        SORTS = {
+            'priority': F('priority').asc(nulls_last=True),   # پیش‌فرض: اولویتِ دستی
+            'name': 'name',
+            'overdue': F('overdue').desc(),                    # عقب‌افتاده‌ترین بالا
+            'planned': F('planned').desc(),                    # پرکارترین بالا
+            'done': F('done').desc(),
+            'activity': F('last_activity').desc(nulls_last=True),  # تازه‌ترین فعالیت بالا
+        }
+        self._sort = self.request.GET.get('sort') if self.request.GET.get('sort') in SORTS else 'priority'
+        return qs.order_by('_personal', 'status', SORTS[self._sort], 'name')
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -141,6 +152,8 @@ class ProjectListView(LoginRequiredMixin, DateRangeMixin, ListView):
             else:
                 p.state = ('info', 'جلوتر')
         ctx['columns'] = get_columns(ColumnConfig.PROJECTS, ColumnConfig.PAGE)
+        ctx['sort'] = getattr(self, '_sort', 'priority')
+        ctx['q'] = self.request.GET.get('q', '').strip()
         # ── ماه‌های گزارش (شخصی‌سازیِ سئو): ماهِ قبل/جاری/بعد ──
         from tasks.models import Task
         cur_y, cur_m = _current_jalali_ym()
