@@ -32,6 +32,19 @@
   به `page_obj` نیاز دارد (`{% querystring %}` بقیه‌ی پارامترها را حفظ می‌کند، `elided_pages`
   بازه را می‌سازد). در هر لیستِ صفحه‌بندی‌شده `{% include %}`اش کن؛ CSS: `.pagi/.pg` در `style.css`.
 
+## PWA / کشِ آپدیت (`pwa.py`) — «کاربران آپدیت‌ها را نمی‌بینند»
+`core/pwa.py` مانیفست + سرویس‌ورکر (`/sw.js`) را می‌سازد. **قانونِ ضدِ کشِ کهنه:**
+- **نسخه از محتوا مشتق می‌شود:** `_asset_version()` = هشِ بایت‌های `style.css/app.js/tasks.js`.
+  با هر تغییرِ CSS/JS، هم نامِ کشِ سرویس‌ورکر عوض می‌شود (کشِ قدیمی در `activate` پاک)، هم
+  `?v=` روی لینک‌های `base.html` (تگِ `{% asset_v %}`) → کشِ HTTPِ مرورگر هم باطل می‌شود.
+  مستقل از DEBUG/هش‌دارشدنِ نامِ فایل کار می‌کند.
+- **استاتیک = stale-while-revalidate** (نه cache-first)، **ناوبری = network-first**،
+  `sw.js` با `no-store`. `skipWaiting`+`clients.claim` + رفرشِ یک‌بارهٔ صفحه در `base.html`
+  (`controllerchange`) تا کاربر آپدیت را بدونِ پاک‌کردنِ دستیِ کش ببیند.
+- **تله:** هرگز استاتیک را cache-first با نسخهٔ ثابت نگه ندار (باگِ قبلی: کاربران تا ابد
+  روی نسخهٔ قدیمی می‌ماندند). **توصیهٔ تولید:** `DEBUG=False` تا WhiteNoiseِ
+  ManifestStaticFilesStorage نامِ فایل‌ها را هم هش‌دار و immutable کند (لایهٔ محکم‌تر).
+
 ## ویوها / دستورها
 - `views.py`: `HolidayListView` (`/settings/holidays/`) + **`editor_upload`** (`/api/editor/upload/`
   در config/urls؛ آپلود عکس ادیتور، فقط تصویر، سقف ۲۰MB) + `ColumnsSettingsView`/`columns_save`
