@@ -65,7 +65,6 @@ if ('serviceWorker' in navigator) {
     var hadController = !!navigator.serviceWorker.controller;   // نصبِ اولیه نبود = آپدیت
     navigator.serviceWorker.register('/sw.js').then(function(reg){
       reg.update().catch(function(){});
-      // هر بار که تب دوباره فوکوس گرفت، وجودِ نسخهٔ جدید را چک کن
       document.addEventListener('visibilitychange', function(){
         if (!document.hidden) reg.update().catch(function(){});
       });
