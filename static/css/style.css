@@ -34,6 +34,8 @@
   --primary-400:#7C9CFA;
   --primary-soft:rgba(79,118,246,.15);
   --primary-ring:rgba(79,118,246,.40);
+  /* رنگِ متن روی پس‌زمینهٔ نیمه‌شفافِ ایندیگویی (منو/چیپِ فعال) — در تمِ روشن تیره می‌شود */
+  --on-soft:#DCE6FF;
   /* گرادیانِ لهجه‌ایِ سراسری (آبی→ایندیگو) — برند/دکمه/حالتِ فعال */
   --accent-grad:linear-gradient(135deg,var(--primary),#6E8BFA);
   /* رنگِ تقریبیِ سطحِ کارت — برای ماسکِ هاله‌های اسکرول (scroll-shadows) */
@@ -78,6 +80,7 @@
   --scrollbar:rgba(20,28,54,.22);
   --primary-soft:rgba(79,118,246,.12);
   --primary-ring:rgba(79,118,246,.34);
+  --on-soft:#2F4FBF;
   --card-solid:#FFFFFF;
   --text:#1B2233;
   --text-dim:#57627A;
@@ -156,7 +159,7 @@ a{color:inherit;text-decoration:none}
 }
 .nav a:hover,.nav-logout-form button:hover{background:var(--glass);color:var(--text)}
 .nav-logout-form{margin:0}
-.nav a.on{background:var(--primary-soft);color:#fff;font-weight:500}
+.nav a.on{background:var(--primary-soft);color:var(--on-soft);font-weight:500}
 .nav a.on::after{
   content:"";position:absolute;right:-14px;top:50%;transform:translateY(-50%);
   width:3px;height:18px;border-radius:0 3px 3px 0;background:var(--primary);
@@ -270,7 +273,7 @@ label{font-size:12px;color:var(--text-dim);display:block;margin-bottom:6px}
 .chip{font-size:11px;color:var(--text-dim);background:var(--glass);border:1px solid var(--stroke-soft);
   padding:3px 10px;border-radius:var(--r-full);cursor:pointer;transition:var(--ease)}
 .chip:hover{background:var(--glass-hover);color:var(--text)}
-.chip.on{background:var(--primary-soft);border-color:var(--primary-ring);color:#BBD4FF}
+.chip.on{background:var(--primary-soft);border-color:var(--primary-ring);color:var(--on-soft)}
 
 /* ── نوار فیلترها (لیست تسک‌ها و مشابه) ── */
 /* position:relative + z-index تا نوارِ فیلتر (که به‌خاطرِ backdrop-filter یک stacking
@@ -309,8 +312,10 @@ tbody tr:last-child td{border-bottom:0}
 
 .proj{display:flex;align-items:center;gap:9px}
 .pdot{width:9px;height:9px;border-radius:3px;flex:none}
-.proj b{font-weight:500;font-size:13px;display:block;line-height:1.4}
-.proj span{font-size:11px;color:var(--text-faint);direction:ltr;display:block}
+/* رَپِرِ نام+دامنه: ستونِ RTL (نامِ فارسی راست‌چین). فقط دامنه LTR ولی باز هم از راست. */
+.proj>span{display:flex;flex-direction:column;min-width:0}
+.proj b{font-weight:600;font-size:13px;line-height:1.4;color:var(--text)}
+.proj>span>span{font-size:11px;color:var(--text-faint);direction:ltr;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 .bar{height:6px;border-radius:99px;background:var(--fill-strong);overflow:hidden;min-width:74px}
 .bar i{display:block;height:100%;border-radius:99px;
@@ -439,7 +444,7 @@ tbody tr:last-child td{border-bottom:0}
 .tab{border:0;background:none;color:var(--text-dim);font-family:inherit;font-size:13px;
   padding:9px 14px;cursor:pointer;transition:var(--ease);border-bottom:2px solid transparent;margin-bottom:-1px}
 .tab:hover{color:var(--text)}
-.tab.on{color:#fff;border-bottom-color:var(--primary)}
+.tab.on{color:var(--text);border-bottom-color:var(--primary)}
 .tab-panel{display:none}
 .tab-panel.on{display:block}
 
@@ -811,7 +816,7 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .rs-av img{width:100%;height:100%;object-fit:cover}
 .rs-av.rs-empty{background:var(--glass-2)}
 .rs-menu{display:none;position:absolute;top:calc(100% + 4px);inset-inline-start:0;z-index:80;min-width:200px;max-width:280px;
-  background:var(--surface,rgba(20,26,38,.98));border:1px solid var(--stroke);border-radius:var(--r-sm);box-shadow:0 12px 34px rgba(0,0,0,.45);padding:6px}
+  background:var(--card-solid);border:1px solid var(--stroke);border-radius:var(--r-sm);box-shadow:var(--shadow);padding:6px}
 .rs-menu.open{display:block}
 .rs-search{width:100%;margin-bottom:6px;padding:6px 9px;font-size:12px}
 .rs-items{max-height:260px;overflow:auto;display:flex;flex-direction:column;gap:1px}
@@ -891,6 +896,12 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .rmonth-row td{font-size:12px;color:var(--text-dim);border-top:0}
 .rm-label{padding-inline-start:22px;color:var(--text-dim)}
 .rm-tag{font-size:9.5px;background:var(--glass-2);color:var(--text-faint);padding:1px 6px;border-radius:99px;margin-inline-start:4px}
+/* جدولِ پروژه‌ها کمی شارپ‌تر (مشخص‌تر، بدونِ شلوغی): هدرِ پررنگ‌تر + هاورِ واضح +
+   خط‌کشیِ ردیف‌های اصلی. اعداد کمی پررنگ‌تر تا کم‌رنگ به‌نظر نرسند. */
+#proj-table thead th{background:var(--fill);color:var(--text-dim);font-weight:600;font-size:12px;text-align:start}
+#proj-table .proj-row td{border-top:1px solid var(--stroke-soft)}
+#proj-table .proj-row:hover td{background:var(--glass-hover)}
+#proj-table td.num,#proj-table .proj-row td{color:var(--text)}
 
 /* لوگوی کوچکِ پروژه (جدولِ پروژه‌ها و دراپ‌داون‌ها) */
 .mini-logo{width:24px;height:24px;border-radius:7px;flex:none;display:inline-grid;place-items:center;overflow:hidden;vertical-align:middle}
@@ -929,7 +940,7 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .subtab{border:0;background:none;color:var(--text-dim);font-family:inherit;font-size:12.5px;
   padding:7px 12px;cursor:pointer;border-bottom:2px solid transparent;transition:var(--ease)}
 .subtab:hover{color:var(--text)}
-.subtab.on{color:#fff;border-bottom-color:var(--primary)}
+.subtab.on{color:var(--text);border-bottom-color:var(--primary)}
 .subtab-panel{display:none}
 .subtab-panel.on{display:block}
 .rk-spark{display:block;width:90px;height:24px}

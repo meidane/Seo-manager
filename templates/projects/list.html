@@ -15,6 +15,14 @@
   <section class="card glass">
     <div class="card-h"><h3>وضعیت پروژه‌ها در بازه</h3>
       <div class="side-c" style="gap:8px">
+        <select class="filters-sort" title="مرتب‌سازی" onchange="location.href='?sort='+this.value+'{% if q %}&q={{ q|urlencode }}{% endif %}'" style="width:auto;padding:5px 9px;font-size:12px">
+          <option value="priority" {% if sort == 'priority' %}selected{% endif %}>مرتب‌سازی: اولویتِ دستی</option>
+          <option value="name" {% if sort == 'name' %}selected{% endif %}>نام</option>
+          <option value="overdue" {% if sort == 'overdue' %}selected{% endif %}>بیشترین عقب‌افتاده</option>
+          <option value="planned" {% if sort == 'planned' %}selected{% endif %}>پرکارترین (برنامه)</option>
+          <option value="done" {% if sort == 'done' %}selected{% endif %}>بیشترین انجام‌شده</option>
+          <option value="activity" {% if sort == 'activity' %}selected{% endif %}>آخرین فعالیت</option>
+        </select>
         <button type="button" class="chip" id="rm-toggle" title="نمایشِ ماه‌های گزارش زیرِ هر پروژه">📅 ماه‌های گزارش</button>
         <a href="{% url 'core:columns' %}" class="mini" title="سفارشی‌سازی ستون‌ها">⚙ ستون‌ها</a>
       </div>
