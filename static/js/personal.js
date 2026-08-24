@@ -244,6 +244,7 @@
   const elPct = document.getElementById('life-pct');
   const elLeftD = document.getElementById('life-left-days');
   function tickLife() {
+    if (!elCount || !elFill || !elPct || !elLeftD) return;  // DOM ناقص → بی‌سروصدا رد شو
     const now = new Date();
     const lived = now - birth;
     const pct = Math.min(Math.max(lived / total * 100, 0), 100);
@@ -258,6 +259,5 @@
     elPct.textContent = toFa(pct.toFixed(1)) + '٪ گذشته';
     elLeftD.textContent = toFa(Math.floor(Math.max(death - now, 0) / 86400000).toLocaleString('en-US')) + ' روز';
   }
-  tickLife();
-  setInterval(tickLife, 1000);
+  if (elCount) { tickLife(); setInterval(tickLife, 1000); }
 })();

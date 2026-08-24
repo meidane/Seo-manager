@@ -1300,5 +1300,9 @@ table.sheet td:not(.edit){padding:6px 9px}
 .pers-row.dim{opacity:.5}
 .pers-row .pt-date{flex:none;max-width:120px;font-size:11px;padding:4px 6px;background:transparent;border:1px dashed var(--stroke-soft);color:var(--text-dim);cursor:pointer}
 .pers-row .pt-date:hover{border-style:solid}
-.pers-week .nav-b{width:26px;height:26px;line-height:24px}
+/* دکمه‌های ناوبریِ هفته/روز در فضای شخصی: چون <a>اند (نه <button>)، باید صریح
+   inline-flex شوند وگرنه width/height بی‌اثر و آیکن از کادر بیرون می‌زند. */
+.pers-week .nav-b{display:inline-flex;align-items:center;justify-content:center;
+  width:26px;height:26px;flex:none;text-decoration:none;padding:0}
+.pers-week{flex-wrap:wrap}
 .life-count{font-size:18px;font-weight:800;line-height:1.9;direction:rtl}
