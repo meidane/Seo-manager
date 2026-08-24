@@ -211,3 +211,11 @@ def sec_hm(value):
     except (ValueError, TypeError):
         return '00:00'
     return f'{m // 60:02d}:{m % 60:02d}'
+
+
+@register.simple_tag(name='asset_v')
+def asset_v():
+    """نسخهٔ استاتیک (هشِ محتوای CSS/JS) — به‌عنوانِ `?v=` روی لینک‌های اصلی می‌آید تا با
+    هر deploy، کشِ مرورگر و سرویس‌ورکر هر دو باطل شوند (رفعِ «کاربران آپدیت نمی‌بینند»)."""
+    from core.pwa import _asset_version
+    return _asset_version()
