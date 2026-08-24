@@ -6,7 +6,7 @@
 from django.http import HttpResponse, JsonResponse
 from django.templatetags.static import static
 
-CACHE_VERSION = 'seopanel-v1'
+CACHE_VERSION = 'seopanel-v2'  # با هر تغییرِ مهمِ استاتیک بالا ببر تا کشِ سرویس‌ورکر پاک شود
 
 
 def manifest(request):
