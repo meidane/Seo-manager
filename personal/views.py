@@ -70,7 +70,10 @@ class PersonalDashboardView(View):
         wk_done = sum(1 for t in inbox if t.is_done)
 
         # تسک‌های روزِ انتخاب‌شده: شخصی‌ها (قابل‌ویرایش) + سیستمی‌های همان روز (فقط‌خواندنی)
+        from .models import DailyPlan
         daily = list(ptasks.filter(planned_date=day).order_by('board_order', 'id'))
+        for t in daily:  # تضمینِ رکوردِ تاریخچهٔ روز (برای نمودار)، idempotent
+            DailyPlan.objects.get_or_create(task=t, date=day, defaults={'user': user})
         system_tasks = []
         if me:
             sys_qs = Task.objects.filter(assignee=me, planned_date=day).exclude(status=Task.DONE)
@@ -102,16 +105,34 @@ class PersonalDashboardView(View):
         habits = []
         for h in Habit.objects.filter(user=user, active=True).order_by('order', 'id'):
             wset = h.weekday_set()
-            cells, expected, kept = [], 0, 0
+            target_total = len(wset) or 7  # مخرج = روزهای هدفِ هفته (بی‌روز = روزانه)
+            cells, done_days = [], 0
             for wd in hdays:
                 active = wd['jwd'] in wset
                 done = logs.get((h.id, wd['date']), False)
-                if active and not wd['is_future']:
-                    expected += 1
-                    if done:
-                        kept += 1
+                # هر روزی که انجام شده حساب می‌شود (حتی اگر روزِ هدف نبوده) — تعدادِ انجام مهم است
+                if done and not wd['is_future']:
+                    done_days += 1
                 cells.append({**wd, 'active': active, 'done': done})
-            habits.append({'obj': h, 'cells': cells, 'pct': _pct(kept, expected)})
+            habits.append({'obj': h, 'cells': cells, 'done_days': done_days,
+                           'target': target_total, 'pct': min(100, _pct(done_days, target_total))})
+
+        # ── نمودارِ هفتگیِ باکسِ روزانه (برنامه‌ریزی/انجام/درصد/ساعت در هفتهٔ حاویِ روزِ انتخابی) ──
+        cw_sat = week_saturday(day)
+        cplans = list(DailyPlan.objects.filter(
+            user=user, date__range=(cw_sat, cw_sat + timedelta(days=6)),
+            task__deleted_at__isnull=True).select_related('task'))
+        chart = []
+        for i in range(7):
+            d = cw_sat + timedelta(days=i)
+            dps = [p for p in cplans if p.date == d]
+            planned = len(dps)
+            done = sum(1 for p in dps if p.done)
+            minutes = sum((p.task.spent_minutes or 0) for p in dps)
+            chart.append({'name': WEEKDAY_NAMES[i], 'day_fa': format_jalali(d, '%d', fa_digits=True),
+                          'planned': planned, 'done': done, 'pct': _pct(done, planned),
+                          'hours': round(minutes / 60, 1), 'is_today': d == today, 'is_future': d > today,
+                          'is_sel': d == day})
 
         # ── اهداف ──
         goals = []
@@ -142,6 +163,10 @@ class PersonalDashboardView(View):
             'day_fa': jalali_long(day), 'is_today': day == today,
             'day_prev': nav(day=(day - timedelta(days=1)).isoformat()),
             'day_next': nav(day=(day + timedelta(days=1)).isoformat()),
+            'chart': chart,
+            'cweek_fa': jalali_long(cw_sat) + ' – ' + jalali_long(cw_sat + timedelta(days=6)),
+            'cweek_prev': nav(day=(day - timedelta(days=7)).isoformat()),
+            'cweek_next': nav(day=(day + timedelta(days=7)).isoformat()),
             'week_days': hdays, 'habits': habits,
             'hweek_fa': jalali_long(hsat) + ' – ' + jalali_long(hsat + timedelta(days=6)),
             'is_this_hweek': hsat == week_saturday(today),

@@ -48,30 +48,34 @@
         e.stopPropagation();
         const on = !e.target.classList.contains('on');
         try {
-          const r = await api(`/tasks/api/${id}/timer/`, 'POST', { action: on ? 'start' : 'stop' });
+          await api(`/tasks/api/${id}/timer/`, 'POST', { action: on ? 'start' : 'stop' });
           list.querySelectorAll('.pt-play.on').forEach((b) => { b.classList.remove('on'); b.textContent = '▶'; });
           if (on) { e.target.classList.add('on'); e.target.textContent = '⏸'; }
-          // استارت ممکن است تسک را doing کند؛ استاپِ خودکارِ بقیه از پاسخ می‌آید (اینجا فقط UI)
-          void r;
         } catch (_) {}
+        return;
+      }
+      if (e.target.classList.contains('pt-move')) {   // انتقال به فردا (تاریخچهٔ روزِ فعلی می‌ماند)
+        e.stopPropagation();
+        try { await api(`/personal/api/tasks/${id}/move/`, 'POST'); location.reload(); } catch (_) {}
       }
     });
-    // done (change روی چک‌باکس)
+    // done (change روی چک‌باکس) — از endpointِ شخصی (هم وضعیتِ تسک، هم DailyPlanِ آن روز)
     list.addEventListener('change', async (e) => {
       const row = e.target.closest('.pers-row'); if (!row) return;
       if (e.target.classList.contains('pt-done')) {
         const done = e.target.checked;
         try {
-          await api(`/tasks/api/${row.dataset.id}/status/`, 'POST', { status: done ? 'done' : 'todo' });
+          await api(`/personal/api/tasks/${row.dataset.id}/done/`, 'PATCH', { done });
           row.querySelector('.pt-title').classList.toggle('is-done', done);
-          row.classList.toggle('dim', done || !!row.querySelector('.pt-date') && !!row.querySelector('.pt-date').value);
+          const dateInp = row.querySelector('.pt-date');
+          row.classList.toggle('dim', done || !!(dateInp && dateInp.value));
           refreshPct(box);
         } catch (_) { e.target.checked = !done; }
         return;
       }
       // تعیینِ تاریخِ برنامه (inline) → ساختاری: رفرش
       if (e.target.classList.contains('pt-date') && e.target.value.trim()) {
-        try { await api(`/tasks/api/${row.dataset.id}/`, 'PATCH', { planned_date: e.target.value.trim() }); location.reload(); } catch (_) {}
+        try { await api(`/personal/api/tasks/${row.dataset.id}/plan/`, 'PATCH', { date: e.target.value.trim() }); location.reload(); } catch (_) {}
       }
     });
     if (daily) wireDrag(list);

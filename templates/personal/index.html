@@ -52,14 +52,34 @@
           <a class="nav-b" href="{{ day_next }}" title="روز بعد">›</a>
         </div>
       </div>
-      <div class="pers-prog"><i style="width:{{ day_pct }}%"></i><b>{{ day_pct|fa_digits }}٪ · {{ day_done|fa_digits }} از {{ day_total|fa_digits }}</b></div>
+      {# نمودارِ هفتگی: برنامه‌ریزی/انجام/درصد/ساعت #}
+      <div class="pchart">
+        <div class="pchart-nav">
+          <a class="nav-b" href="{{ cweek_prev }}" title="هفته‌ی قبل">‹</a>
+          <span class="pchart-lab">{{ cweek_fa }}</span>
+          <a class="nav-b" href="{{ cweek_next }}" title="هفته‌ی بعد">›</a>
+        </div>
+        <div class="pchart-bars">
+          {% for c in chart %}
+            <div class="pchart-col{% if c.is_today %} today{% endif %}{% if c.is_sel %} sel{% endif %}{% if c.is_future %} future{% endif %}"
+                 title="{{ c.name }}: {{ c.done|fa_digits }} از {{ c.planned|fa_digits }} · {{ c.hours|fa_digits }} ساعت">
+              <span class="pchart-val">{{ c.done|fa_digits }}/{{ c.planned|fa_digits }}</span>
+              <div class="pchart-track"><i style="height:{{ c.pct }}%"></i></div>
+              <span class="pchart-hr">{{ c.hours|fa_digits }}س</span>
+              <span class="pchart-dname">{{ c.name|slice:':1' }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
       <div class="pers-list" id="daily-list">
         {% for t in daily %}
           <div class="pers-row pers-drag{% if t.is_done %} dim{% endif %}" data-id="{{ t.id }}" data-open-task="{{ t.id }}" draggable="true">
             <span class="pt-grip" title="جابه‌جایی">⋮⋮</span>
             <button class="pt-play {% if t.timer_started_at %}on{% endif %}" title="پلی">{% if t.timer_started_at %}⏸{% else %}▶{% endif %}</button>
+            {% if t.estimate_minutes %}<span class="pt-est" title="تخمین زمان">{{ t.estimate_minutes|fa_digits }}د</span>{% endif %}
             <input type="checkbox" class="pt-done" {% if t.is_done %}checked{% endif %}>
             <span class="pt-title {% if t.is_done %}is-done{% endif %}">{{ t.title }}</span>
+            <button class="pt-move" title="انتقال به فردا">→ فردا</button>
             <button class="pt-x" title="حذف">×</button>
           </div>
         {% endfor %}

@@ -63,6 +63,27 @@ class HabitLog(models.Model):
         return f'{self.habit_id}@{self.date}'
 
 
+class DailyPlan(models.Model):
+    """رکوردِ «این تسک برای این روز برنامه‌ریزی شده بود» — تاریخچهٔ روزانه.
+
+    با «انتقال به فردا» رکوردِ روزِ اصلی پاک نمی‌شود (فقط رکوردِ روزِ جدید اضافه می‌شود)،
+    تا درصدِ برنامه‌ریزی/انجامِ هر روز در نمودارِ باکسِ روزانه حفظ بماند. `done` = آیا در
+    همان روز انجام شد (per-day، نه وضعیتِ سراسریِ تسک).
+    """
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='daily_plans')
+    task = models.ForeignKey('tasks.Task', on_delete=models.CASCADE, related_name='daily_plans')
+    date = models.DateField('تاریخ', db_index=True)
+    done = models.BooleanField('انجام‌شده در همان روز', default=False)
+
+    class Meta:
+        verbose_name = 'برنامهٔ روزانه'
+        verbose_name_plural = 'برنامه‌های روزانه'
+        unique_together = ('task', 'date')
+
+    def __str__(self):
+        return f'{self.task_id}@{self.date}'
+
+
 class Goal(models.Model):
     """هدف — با تایم‌لاینِ ساده‌ی «چند روزش گذشته»."""
 

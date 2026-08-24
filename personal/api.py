@@ -75,6 +75,67 @@ def ptask_add(request):
     return JsonResponse({'id': t.id, 'title': t.title})
 
 
+def _ensure_plan(task, d, user):
+    """رکوردِ DailyPlan برای (تسک، روز) را تضمین کن (idempotent)."""
+    from .models import DailyPlan
+    DailyPlan.objects.get_or_create(task=task, date=d, defaults={'user': user})
+
+
+@admin_only
+@require_http_methods(['PATCH'])
+def ptask_plan(request, pk):
+    """تعیینِ تاریخِ برنامهٔ یک تسکِ شخصی (از اینباکسِ inline) + ثبتِ تاریخچهٔ روز."""
+    task = get_object_or_404(_personal_qs(request), pk=pk)
+    d = _pdate(_body(request).get('date'))
+    task.planned_date = d
+    task.save(update_fields=['planned_date', 'updated_at'])
+    if d:
+        _ensure_plan(task, d, request.user)
+    return JsonResponse({'ok': True, 'planned_date': d.isoformat() if d else None})
+
+
+@admin_only
+@require_http_methods(['POST'])
+def ptask_move(request, pk):
+    """انتقال به فردا — تاریخچهٔ روزِ فعلی حفظ می‌شود (رکوردِ DailyPlanِ روزِ قبل می‌ماند)."""
+    from datetime import date, timedelta
+    task = get_object_or_404(_personal_qs(request), pk=pk)
+    cur = task.planned_date or date.today()
+    _ensure_plan(task, cur, request.user)          # روزِ فعلی در تاریخچه بماند
+    nxt = cur + timedelta(days=1)
+    task.planned_date = nxt
+    task.save(update_fields=['planned_date', 'updated_at'])
+    _ensure_plan(task, nxt, request.user)
+    return JsonResponse({'ok': True, 'planned_date': nxt.isoformat()})
+
+
+@admin_only
+@require_http_methods(['PATCH'])
+def ptask_done(request, pk):
+    """تیک/برداشتنِ انجام — هم وضعیتِ تسک، هم `DailyPlan.done`ِ روزِ برنامه‌اش را هم‌گام می‌کند."""
+    from datetime import date
+
+    from tasks.api import _stop_timer
+    from tasks.models import Task
+
+    from .models import DailyPlan
+    task = get_object_or_404(_personal_qs(request), pk=pk)
+    done = bool(_body(request).get('done'))
+    if done:
+        task.status = Task.DONE
+        if not task.done_date:
+            task.done_date = date.today()
+        _stop_timer(task)
+    else:
+        task.status = Task.TODO
+        task.done_date = None
+    task.save()
+    if task.planned_date:
+        _ensure_plan(task, task.planned_date, request.user)
+        DailyPlan.objects.filter(task=task, date=task.planned_date).update(done=done)
+    return JsonResponse({'ok': True, 'done': done})
+
+
 @admin_only
 @require_http_methods(['POST'])
 def ptask_reorder(request):
