@@ -1422,3 +1422,5 @@ table.sheet td:not(.edit){padding:6px 9px}
   border-radius:var(--r-full);width:24px;height:24px;cursor:pointer;font-size:12px;line-height:1}
 .pt-unplan:hover{background:var(--fill-strong);color:var(--text)}
 .pers-list.drop-hi{outline:2px dashed var(--primary);outline-offset:2px;border-radius:var(--r-sm)}
+.pt-time{flex:none;font-size:11px;color:var(--text-dim);white-space:nowrap;font-variant-numeric:tabular-nums}
+.pt-est{flex:none;font-size:10px;color:var(--warning);white-space:nowrap}

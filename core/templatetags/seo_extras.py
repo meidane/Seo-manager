@@ -201,6 +201,17 @@ def timeago(value):
     return f'{years} سال پیش'
 
 
+@register.filter(name='hm')
+def hm(value):
+    """دقیقه → «H:MM» (ساعت بدونِ صفرِ ابتدایی، دقیقه دو رقمی، لاتین). خالی/صفر → «0:00».
+    فرمتِ واحدِ نمایشِ زمان در کلِ سیستم (تخمین/صرف‌شده/تایمر)."""
+    try:
+        m = max(0, int(value or 0))
+    except (ValueError, TypeError):
+        return '0:00'
+    return f'{m // 60}:{m % 60:02d}'
+
+
 @register.filter(name='min_hm')
 def min_hm(value):
     """دقیقه → «HH:MM» با ارقامِ لاتین (برای ساعتِ کاریِ حضورغیاب)."""

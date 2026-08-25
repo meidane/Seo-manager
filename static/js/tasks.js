@@ -111,7 +111,7 @@
           ${field('title', 'عنوان', `<input id="f-title" class="input" value="${esc(t.title)}">`)}
           <div class="grid2">
             ${field('planned_date', 'تاریخ برنامه', `<div style="display:flex;align-items:center"><input id="f-planned_date" class="input jdate" dir="ltr" readonly placeholder="۱۴۰۵/۰۵/۱۵" value="${t.planned_date_fa || ''}"><span id="rel-planned" class="rel-hint"></span></div>`)}
-            ${field('estimate_minutes', 'تخمین زمان (دقیقه)', `<input id="f-estimate_minutes" class="input" type="number" dir="ltr" placeholder="۶۰" value="${t.estimate_minutes || ''}">`)}
+            ${field('estimate_minutes', 'تخمین زمان (H:MM)', `<input id="f-estimate_minutes" class="input" dir="ltr" placeholder="0:00" value="${t.estimate_minutes ? fmtMin(t.estimate_minutes) : ''}">`)}
           </div>
           ${field('report_month', 'ماه گزارش', reportPeriodSelect(t))}
           <label style="display:flex;align-items:center;gap:8px;margin:0 0 14px;cursor:pointer">
@@ -382,7 +382,7 @@
       title: g('f-title'),
       planned_date: g('f-planned_date'), status: g('f-status'),
       needs_review: document.getElementById('f-needs-review').checked,
-      estimate_minutes: g('f-estimate_minutes'), description: g('f-description'),
+      estimate_minutes: parseHM(g('f-estimate_minutes')), description: g('f-description'),
       checklist: readChecklist(),
     };
     // ماه گزارش: تک‌دراپ‌داونِ «سال-ماه» → به report_month + report_year تفکیک می‌شود
@@ -690,7 +690,15 @@
 
   // ── تایمر تسک (ستون «زمان» لیست) — با delegation تا ردیف‌های بعداً اضافه‌شده
   //    (جدولِ تسک‌های آینده، لودِ تنبل) هم بدونِ سیم‌کشیِ دوباره کار کنند. ──
-  function fmtMin(m) { m = Math.max(0, Math.round(m)); const h = Math.floor(m / 60), mm = m % 60; return h ? `${h}:${String(mm).padStart(2, '0')}` : `${mm}د`; }
+  // فرمتِ واحدِ زمان «H:MM» (هماهنگ با فیلترِ hm سرور و ویجتِ تایمر)
+  function fmtMin(m) { m = Math.max(0, Math.round(m)); return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`; }
+  function parseHM(s) {  // «1:30»→۹۰ ، «۹۰»→۹۰ ، خالی→null
+    s = String(s == null ? '' : s).trim().replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+    if (!s) return null;
+    if (s.includes(':')) { const [h, mm] = s.split(':'); return (parseInt(h, 10) || 0) * 60 + (parseInt(mm, 10) || 0); }
+    return parseInt(s, 10) || 0;
+  }
+  window.fmtMin = fmtMin; window.parseHM = parseHM;
   function renderTimerCell(cell) {
     const val = cell.querySelector('.tval');
     const btn = cell.querySelector('.tbtn');
@@ -731,9 +739,9 @@
     e.stopPropagation();
     const cell = edit.closest('.timer-cell');
     const id = cell.dataset.id;
-    const cur = prompt('زمان کارکرد (دقیقه):', cell.dataset.spent);
+    const cur = prompt('زمان کارکرد (H:MM):', fmtMin(+cell.dataset.spent || 0));
     if (cur === null) return;
-    try { const d = await App.fetchJSON(`/tasks/api/${id}/timer/`, { method: 'PATCH', body: { minutes: cur } }); cell.dataset.spent = d.spent_minutes; renderTimerCell(cell); } catch (_) {}
+    try { const d = await App.fetchJSON(`/tasks/api/${id}/timer/`, { method: 'PATCH', body: { minutes: parseHM(cur) } }); cell.dataset.spent = d.spent_minutes; renderTimerCell(cell); } catch (_) {}
   });
 
   // ── لودِ تنبل: اسکرول برای صفحه‌بندیِ جعبه‌ی «انجام‌شده‌ها» (بیش از ۵۰ ردیف) ──

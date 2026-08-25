@@ -47,10 +47,17 @@
       if (e.target.classList.contains('pt-play')) {
         e.stopPropagation();
         const on = !e.target.classList.contains('on');
+        const btn = e.target;
         try {
-          await api(`/tasks/api/${id}/timer/`, 'POST', { action: on ? 'start' : 'stop' });
+          const d = await api(`/tasks/api/${id}/timer/`, 'POST', { action: on ? 'start' : 'stop' });
           list.querySelectorAll('.pt-play.on').forEach((b) => { b.classList.remove('on'); b.textContent = '▶'; });
-          if (on) { e.target.classList.add('on'); e.target.textContent = '⏸'; }
+          if (on) { btn.classList.add('on'); btn.textContent = '⏸'; }
+          // به‌روزرسانیِ اجاکسیِ زمانِ صرف‌شده بعد از توقف (بدونِ رفرش)
+          const timeEl = row.querySelector('.pt-time');
+          if (timeEl && d && d.spent_minutes != null && window.fmtMin) {
+            const est = timeEl.textContent.split('/')[1];
+            timeEl.textContent = window.fmtMin(d.spent_minutes) + (est ? ' /' + est : '');
+          }
         } catch (_) {}
         return;
       }

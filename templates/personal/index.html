@@ -76,7 +76,7 @@
           <div class="pers-row pers-drag{% if t.is_done %} dim{% endif %}" data-id="{{ t.id }}" data-open-task="{{ t.id }}" draggable="true">
             <span class="pt-grip" title="جابه‌جایی">⋮⋮</span>
             <button class="pt-play {% if t.timer_started_at %}on{% endif %}" title="پلی">{% if t.timer_started_at %}⏸{% else %}▶{% endif %}</button>
-            {% if t.estimate_minutes %}<span class="pt-est" title="تخمین زمان">{{ t.estimate_minutes|fa_digits }}د</span>{% endif %}
+            <span class="pt-time" title="زمانِ صرف‌شده / تخمین" dir="ltr">{{ t.spent_minutes|hm }}{% if t.estimate_minutes %} / {{ t.estimate_minutes|hm }}{% endif %}</span>
             <input type="checkbox" class="pt-done" {% if t.is_done %}checked{% endif %}>
             <span class="pt-title {% if t.is_done %}is-done{% endif %}">{{ t.title }}</span>
             <button class="pt-move" title="انتقال به فردا">→ فردا</button>
