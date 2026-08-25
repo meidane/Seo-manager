@@ -1,0 +1,4 @@
+<select class="pt-goal" data-id="{{ t.id }}"{% if t.goal_color %} style="color:{{ t.goal_color }};border-color:{{ t.goal_color }}"{% endif %} title="وصل به هدف">
+  <option value="">🎯</option>
+  {% for g in goal_list %}<option value="{{ g.id }}"{% if t.goal_id == g.id %} selected{% endif %}>🎯 {{ g.title }}</option>{% endfor %}
+</select>

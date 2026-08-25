@@ -134,6 +134,15 @@ class PersonalDashboardView(View):
                           'hours': round(minutes / 60, 1), 'is_today': d == today, 'is_future': d > today,
                           'is_sel': d == day})
 
+        # ── وصلِ تسک‌ها به هدف (آیکنِ 🎯 + انتخابگرِ ردیف) ──
+        from .models import GoalLink
+        _ids = [t.id for t in inbox] + [t.id for t in daily]
+        gmap = {gl.task_id: gl.goal for gl in GoalLink.objects.filter(task_id__in=_ids).select_related('goal')}
+        for t in inbox + daily:
+            g = gmap.get(t.id)
+            t.goal_id = g.id if g else ''
+            t.goal_color = g.color if g else ''
+
         # ── اهداف ──
         goals = []
         for g in Goal.objects.filter(user=user):
@@ -167,6 +176,7 @@ class PersonalDashboardView(View):
             'cweek_fa': jalali_long(cw_sat) + ' – ' + jalali_long(cw_sat + timedelta(days=6)),
             'cweek_prev': nav(day=(day - timedelta(days=7)).isoformat()),
             'cweek_next': nav(day=(day + timedelta(days=7)).isoformat()),
+            'goal_list': [{'id': x['obj'].id, 'title': x['obj'].title, 'color': x['obj'].color} for x in goals],
             'week_days': hdays, 'habits': habits,
             'hweek_fa': jalali_long(hsat) + ' – ' + jalali_long(hsat + timedelta(days=6)),
             'is_this_hweek': hsat == week_saturday(today),

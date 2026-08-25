@@ -221,24 +221,44 @@
   const habitNew = document.getElementById('habit-new');
   if (habitNew) habitNew.onclick = () => { App.openModal(habitModalHtml(null)); wireHabitModal(null); };
 
-  // ── اهداف ──
-  function goalModalHtml(g) {
+  // ── درگ‌ودراپِ قابلِ‌استفادهٔ مجدد (یک‌جا نوشته، همه‌جا استفاده) ──
+  function makeSortable(list, sel, onDrop) {
+    let dr = null;
+    list.addEventListener('dragstart', (e) => { dr = e.target.closest(sel); if (dr) dr.classList.add('dragging'); });
+    list.addEventListener('dragend', () => { if (!dr) return; dr.classList.remove('dragging'); const el = dr; dr = null; onDrop([...list.querySelectorAll(sel)].map((r) => +r.dataset.id), el); });
+    list.addEventListener('dragover', (e) => {
+      e.preventDefault(); if (!dr) return;
+      const after = [...list.querySelectorAll(sel + ':not(.dragging)')].find((r) => { const b = r.getBoundingClientRect(); return e.clientY < b.top + b.height / 2; });
+      if (after) list.insertBefore(dr, after); else list.appendChild(dr);
+    });
+  }
+  window.makeSortable = makeSortable;
+
+  // ── اهداف: مودالِ ویرایش (رنگ + TinyMCE) ──
+  function goalEditHtml(g) {
+    const color = (g && g.color) || '#6366F1';
     return `<div class="modal-h"><h3>${g ? 'ویرایش هدف' : 'هدف جدید'}</h3><button class="x" onclick="App.closeModal()">×</button></div>
       <div class="modal-b">
-        <label>عنوان</label><input id="g-title" class="input" value="${g ? esc(g.title) : ''}">
-        <label>توضیحات</label><textarea id="g-desc" class="input" rows="3">${g ? esc(g.desc) : ''}</textarea>
-        <div class="grid2"><div><label>شروع</label><input id="g-start" class="input jdate" dir="ltr" readonly value="${g ? esc(g.start) : ''}"></div>
-        <div><label>پایان</label><input id="g-end" class="input jdate" dir="ltr" readonly value="${g ? esc(g.end) : ''}"></div></div>
+        <div class="grid2"><div><label>عنوان</label><input id="g-title" class="input" value="${g ? esc(g.title) : ''}"></div>
+        <div><label>رنگ</label><input id="g-color" type="color" class="input g-color" value="${color}"></div></div>
+        <label>توضیحات</label><textarea id="g-desc" class="rich-editor" rows="4">${g ? esc(g.description || '') : ''}</textarea>
+        <div class="grid2"><div><label>شروع</label><input id="g-start" class="input jdate" dir="ltr" readonly value="${g ? esc(g.start_num || '') : ''}"></div>
+        <div><label>پایان</label><input id="g-end" class="input jdate" dir="ltr" readonly value="${g ? esc(g.end_num || '') : ''}"></div></div>
       </div>
       <div class="modal-f"><button class="btn btn-p" id="g-save">ذخیره</button>
         <button class="btn" onclick="App.closeModal()">انصراف</button>
         ${g ? '<button class="btn" id="g-del" style="margin-inline-start:auto;color:var(--danger)">حذف</button>' : ''}</div>`;
   }
-  function wireGoalModal(id) {
+  function openGoalEdit(g) {
+    App.openModal(goalEditHtml(g));
+    if (window.RichText) RichText.init('#g-desc');
+    const id = g && g.id;
     document.getElementById('g-save').onclick = async () => {
+      if (window.RichText) RichText.save();
       const body = {
         title: document.getElementById('g-title').value.trim(),
         description: document.getElementById('g-desc').value,
+        color: document.getElementById('g-color').value,
         start_date: document.getElementById('g-start').value.trim(),
         end_date: document.getElementById('g-end').value.trim(),
       };
@@ -255,15 +275,60 @@
       try { await api(`/personal/api/goals/${id}/`, 'DELETE'); App.closeModal(); location.reload(); } catch (_) {}
     };
   }
+
+  // ── اهداف: مودالِ جزئیات (متا + توضیحات + تسک‌های مرتبط + افزودن + جابه‌جایی) ──
+  const gtRow = (t) => `<div class="gt-row" data-id="${t.id}" draggable="true"><span class="gt-grip">⋮⋮</span>` +
+    `<span class="gt-title${t.done ? ' is-done' : ''}">${esc(t.title)}</span>${t.planned ? '<span class="gt-date" title="برنامه‌ریزی‌شده">📅</span>' : ''}` +
+    `<button class="gt-x" title="جدا کردن از هدف">×</button></div>`;
+  async function openGoalDetail(id) {
+    let g; try { g = await api(`/personal/api/goals/${id}/`); } catch (_) { return; }
+    App.openModal(`<div class="modal-h"><h3><i class="goal-dot" style="background:${g.color}"></i> ${esc(g.title)}</h3><button class="x" onclick="App.closeModal()">×</button></div>
+      <div class="modal-b">
+        <div class="gd-meta">${g.start_fa} – ${g.end_fa}</div>
+        ${g.description ? `<div class="rich gd-desc">${g.description}</div>` : ''}
+        <label style="font-weight:700;margin:12px 0 6px;display:block">تسک‌های مرتبط</label>
+        <div class="gt-list" id="gt-list">${g.tasks.map(gtRow).join('') || '<div class="zero" id="gt-zero">تسکی وصل نشده</div>'}</div>
+        <div class="pers-add" style="margin-top:8px"><input id="gt-new" class="input" placeholder="تسکِ جدید برای این هدف…"><button class="btn btn-p" id="gt-add">＋</button></div>
+      </div>
+      <div class="modal-f"><button class="btn" id="gd-edit">ویرایشِ هدف</button><button class="btn" onclick="App.closeModal()">بستن</button></div>`);
+    const list = document.getElementById('gt-list'), inp = document.getElementById('gt-new');
+    const add = async () => {
+      const title = inp.value.trim(); if (!title) return;
+      try {
+        const t = await api(`/personal/api/goals/${id}/add-task/`, 'POST', { title });
+        const z = document.getElementById('gt-zero'); if (z) z.remove();
+        list.insertAdjacentHTML('beforeend', gtRow({ id: t.id, title: t.title, done: false, planned: null }));
+        inp.value = ''; inp.focus();
+      } catch (_) {}
+    };
+    document.getElementById('gt-add').onclick = add;
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } });
+    list.addEventListener('click', async (e) => {
+      if (!e.target.classList.contains('gt-x')) return;
+      const row = e.target.closest('.gt-row');
+      try { await api(`/personal/api/tasks/${row.dataset.id}/goal/`, 'PATCH', { goal: null }); row.remove(); } catch (_) {}
+    });
+    makeSortable(list, '.gt-row', (ids) => { api(`/personal/api/goals/${id}/reorder/`, 'POST', { ids }).catch(() => {}); });
+    document.getElementById('gd-edit').onclick = () => openGoalEdit(g);
+  }
+
   const goalList = document.getElementById('goal-list');
   if (goalList) goalList.addEventListener('click', (e) => {
-    const t = e.target.closest('.goal-title'); if (!t) return;
-    const row = t.closest('.goal-row');
-    App.openModal(goalModalHtml({ title: row.dataset.title, desc: row.dataset.desc, start: row.dataset.start, end: row.dataset.end }));
-    wireGoalModal(row.dataset.id);
+    const row = e.target.closest('.goal-row'); if (row) openGoalDetail(row.dataset.id);
   });
   const goalNew = document.getElementById('goal-new');
-  if (goalNew) goalNew.onclick = () => { App.openModal(goalModalHtml(null)); wireGoalModal(null); };
+  if (goalNew) goalNew.onclick = () => openGoalEdit(null);
+
+  // ── انتخابگرِ هدفِ هر ردیف (اینباکس/روزانه) ──
+  document.addEventListener('change', async (e) => {
+    const sel = e.target.closest('.pt-goal'); if (!sel) return;
+    const gid = sel.value;
+    try {
+      const r = await api(`/personal/api/tasks/${sel.dataset.id}/goal/`, 'PATCH', { goal: gid || null });
+      const col = (gid && r.color) ? r.color : '';
+      sel.style.color = col; sel.style.borderColor = col;
+    } catch (_) {}
+  });
 
   // ── عمر: شمارشِ باقی‌مانده به صورتِ «سال/روز/ساعت/دقیقه/ثانیه» ──
   const birth = new Date(root.dataset.birth + 'T00:00:00');

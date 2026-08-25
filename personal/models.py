@@ -85,11 +85,12 @@ class DailyPlan(models.Model):
 
 
 class Goal(models.Model):
-    """هدف — با تایم‌لاینِ ساده‌ی «چند روزش گذشته»."""
+    """هدف — با تایم‌لاینِ ساده‌ی «چند روزش گذشته» + رنگ (برای آیکنِ 🎯 روی تسکِ وصل‌شده)."""
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='goals')
     title = models.CharField('عنوان', max_length=200)
-    description = models.TextField('توضیحات', blank=True)
+    description = models.TextField('توضیحات', blank=True)  # HTML پاکسازی‌شده (TinyMCE)
+    color = models.CharField('رنگ', max_length=7, default='#6366F1')
     start_date = models.DateField('شروع')
     end_date = models.DateField('پایان')
     created_at = models.DateTimeField('ایجاد', auto_now_add=True)
@@ -101,3 +102,20 @@ class Goal(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class GoalLink(models.Model):
+    """وصلِ یک تسکِ شخصی به یک هدف (فقط در فضای شخصی؛ مدلِ Task دست‌نخورده می‌ماند).
+    هر تسک حداکثر به یک هدف وصل است (OneToOne)."""
+
+    goal = models.ForeignKey(Goal, on_delete=models.CASCADE, related_name='links')
+    task = models.OneToOneField('tasks.Task', on_delete=models.CASCADE, related_name='goal_link')
+    order = models.IntegerField('ترتیب', default=0, db_index=True)
+
+    class Meta:
+        verbose_name = 'وصلِ تسک به هدف'
+        verbose_name_plural = 'وصل‌های تسک به هدف'
+        ordering = ['order', 'id']
+
+    def __str__(self):
+        return f'{self.task_id}→{self.goal_id}'

@@ -29,6 +29,7 @@
           <div class="pers-row{% if t.dim %} dim{% endif %}" data-id="{{ t.id }}" data-open-task="{{ t.id }}">
             <input type="checkbox" class="pt-done" {% if t.is_done %}checked{% endif %}>
             <span class="pt-title {% if t.is_done %}is-done{% endif %}">{{ t.title }}</span>
+            {% include "personal/_goal_select.html" with t=t %}
             <input type="text" class="pt-date jdate" dir="ltr" readonly placeholder="📅 برنامه" value="{% if t.planned_date %}{{ t.planned_date|jalali }}{% endif %}" title="تعیینِ تاریخِ برنامه">
             <button class="pt-x" title="حذف">×</button>
           </div>
@@ -79,6 +80,7 @@
             <span class="pt-time" title="زمانِ صرف‌شده / تخمین" dir="ltr">{{ t.spent_minutes|hm }}{% if t.estimate_minutes %} / {{ t.estimate_minutes|hm }}{% endif %}</span>
             <input type="checkbox" class="pt-done" {% if t.is_done %}checked{% endif %}>
             <span class="pt-title {% if t.is_done %}is-done{% endif %}">{{ t.title }}</span>
+            {% include "personal/_goal_select.html" with t=t %}
             <button class="pt-move" title="انتقال به فردا">→ فردا</button>
             <button class="pt-unplan" title="بازگشت به اینباکس (حذفِ تاریخ)">↩</button>
           </div>
@@ -139,14 +141,12 @@
       <div class="pers-head"><h3>اهداف</h3><button class="btn btn-sm btn-p" id="goal-new">＋ هدف جدید</button></div>
       <div id="goal-list">
         {% for g in goals %}
-          <div class="goal-row" data-id="{{ g.obj.id }}" data-title="{{ g.obj.title }}"
-               data-desc="{{ g.obj.description }}" data-start="{{ g.start_num }}" data-end="{{ g.end_num }}">
+          <div class="goal-row" data-id="{{ g.obj.id }}">
             <div class="goal-top">
-              <b class="goal-title" data-edit>{{ g.obj.title }}</b>
+              <b class="goal-title"><i class="goal-dot" style="background:{{ g.obj.color }}"></i>{{ g.obj.title }}</b>
               <span class="goal-meta">{{ g.elapsed|fa_digits }} از {{ g.total|fa_digits }} روز · {{ g.remaining|fa_digits }} روز مانده</span>
             </div>
-            {% if g.obj.description %}<div class="goal-desc">{{ g.obj.description }}</div>{% endif %}
-            <div class="goal-bar"><i style="width:{{ g.pct }}%"></i></div>
+            <div class="goal-bar"><i style="width:{{ g.pct }}%;background:{{ g.obj.color }}"></i></div>
             <div class="goal-dates"><span>{{ g.start_fa }}</span><span>{{ g.pct|fa_digits }}٪</span><span>{{ g.end_fa }}</span></div>
           </div>
         {% empty %}

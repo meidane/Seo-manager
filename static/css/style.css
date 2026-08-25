@@ -1457,3 +1457,21 @@ input[type=checkbox]:disabled{opacity:.5;cursor:default}
 .ck-field .ck-plus:hover{color:var(--success)}
 .ck-field .ck-x:hover{color:var(--danger)}
 .ck-row{display:flex;align-items:center;gap:8px}
+
+/* اهداف: انتخابگرِ ردیف + آیکن‌ها + مودالِ جزئیات */
+.pt-goal{flex:none;max-width:34px;border:1px solid var(--stroke-soft);background:var(--fill);color:var(--text-dim);
+  border-radius:var(--r-full);font-size:11px;padding:3px 4px;cursor:pointer}
+.pt-goal:focus{max-width:150px}
+.goal-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-inline-end:6px;vertical-align:middle;flex:none}
+.g-color{padding:2px;height:34px;cursor:pointer}
+.gd-meta{font-size:12px;color:var(--text-dim);margin-bottom:8px}
+.gd-desc{font-size:13px;margin-bottom:6px}
+.gt-list{display:flex;flex-direction:column;gap:5px}
+.gt-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:var(--r-sm);background:var(--fill);border:1px solid var(--stroke-soft)}
+.gt-row.dragging{opacity:.5}
+.gt-grip{cursor:grab;color:var(--text-faint);font-size:12px}
+.gt-title{flex:1;font-size:13px}
+.gt-title.is-done{text-decoration:line-through;color:var(--text-dim)}
+.gt-x{flex:none;border:0;background:transparent;color:var(--text-dim);cursor:pointer;font-size:16px;line-height:1}
+.gt-x:hover{color:var(--danger)}
+.goal-row{cursor:pointer}

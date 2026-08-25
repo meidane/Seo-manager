@@ -54,25 +54,49 @@ def _pdate(value):
 
 
 # ── تسک‌های شخصی (Task با نوعِ «شخصی») ───────────────────────────────────
-@admin_only
-@require_http_methods(['POST'])
-def ptask_add(request):
-    """ثبتِ سریعِ اینباکس — بدونِ تاریخ (ایده)؛ دیفالت‌ها سرورساید تحمیل می‌شوند."""
+def _create_personal_task(request, title):
+    """ساختِ یک تسکِ شخصیِ بی‌تاریخ (ایدهٔ اینباکس). خطا→(None, پیام)."""
     from tasks import history as taskhistory
     from tasks.models import Task
     me, pproject, ptype = personal_context(request)
     if not (me and pproject):
-        return JsonResponse({'detail': 'پروفایل یا پروژهٔ شخصی یافت نشد'}, status=400)
+        return None, 'پروفایل یا پروژهٔ شخصی یافت نشد'
     if not ptype:
-        return JsonResponse({'detail': f'اول نوعِ تسکِ «{PERSONAL_TYPE_NAME}» را در تنظیمات بساز'}, status=400)
-    title = (_body(request).get('title') or '').strip()
+        return None, f'اول نوعِ تسکِ «{PERSONAL_TYPE_NAME}» را در تنظیمات بساز'
+    title = (title or '').strip()
     if not title:
-        return JsonResponse({'detail': 'عنوان لازم است'}, status=400)
+        return None, 'عنوان لازم است'
     t = Task(created_by=request.user, project=pproject, assignee=me, type_def=ptype,
              task_type=ptype.builtin_key or Task.OTHER, title=title[:255], planned_date=None)
     t.save()
     taskhistory.record(t, taskhistory.TaskHistory.CREATED, request.user)
+    return t, None
+
+
+@admin_only
+@require_http_methods(['POST'])
+def ptask_add(request):
+    """ثبتِ سریعِ اینباکس — بدونِ تاریخ (ایده)؛ دیفالت‌ها سرورساید تحمیل می‌شوند."""
+    t, err = _create_personal_task(request, _body(request).get('title'))
+    if err:
+        return JsonResponse({'detail': err}, status=400)
     return JsonResponse({'id': t.id, 'title': t.title})
+
+
+@admin_only
+@require_http_methods(['PATCH'])
+def task_goal(request, pk):
+    """وصل/قطعِ یک تسکِ شخصی به یک هدف ({goal: id} یا {goal: null})."""
+    from .models import Goal, GoalLink
+    task = get_object_or_404(_personal_qs(request), pk=pk)
+    gid = _body(request).get('goal')
+    GoalLink.objects.filter(task=task).delete()
+    if gid:
+        g = get_object_or_404(Goal, pk=gid, user=request.user)
+        nxt = (GoalLink.objects.filter(goal=g).count())
+        GoalLink.objects.create(goal=g, task=task, order=nxt)
+        return JsonResponse({'ok': True, 'goal': g.id, 'color': g.color})
+    return JsonResponse({'ok': True, 'goal': None})
 
 
 def _ensure_plan(task, d, user):
@@ -206,6 +230,11 @@ def habit_toggle(request):
 
 
 # ── اهداف ────────────────────────────────────────────────────────────────
+def _clean(html):
+    from core.htmlsan import clean_html
+    return clean_html(html or '')
+
+
 @admin_only
 @require_http_methods(['POST'])
 def goal_add(request):
@@ -216,23 +245,34 @@ def goal_add(request):
         return JsonResponse({'detail': 'عنوان، شروع و پایان لازم است'}, status=400)
     if end < start:
         return JsonResponse({'detail': 'پایان نباید قبل از شروع باشد'}, status=400)
-    Goal.objects.create(user=request.user, title=title[:200], description=data.get('description') or '',
-                        start_date=start, end_date=end)
+    Goal.objects.create(user=request.user, title=title[:200], description=_clean(data.get('description')),
+                        color=(data.get('color') or '#6366F1')[:7], start_date=start, end_date=end)
     return JsonResponse({'ok': True}, status=201)
 
 
 @admin_only
-@require_http_methods(['PATCH', 'DELETE'])
+@require_http_methods(['GET', 'PATCH', 'DELETE'])
 def goal_detail(request, pk):
     g = get_object_or_404(Goal, pk=pk, user=request.user)
     if request.method == 'DELETE':
         g.delete()
         return JsonResponse({'ok': True})
+    if request.method == 'GET':  # جزئیاتِ مودالِ هدف + تسک‌های مرتبط
+        from core.jalali import format_jalali, jalali_long
+        links = g.links.select_related('task').filter(task__deleted_at__isnull=True).order_by('order', 'id')
+        tasks = [{'id': l.task_id, 'title': l.task.title, 'done': l.task.is_done,
+                  'planned': l.task.planned_date.isoformat() if l.task.planned_date else None} for l in links]
+        return JsonResponse({'id': g.id, 'title': g.title, 'description': g.description, 'color': g.color,
+                             'start_fa': jalali_long(g.start_date), 'end_fa': jalali_long(g.end_date),
+                             'start_num': format_jalali(g.start_date, fa_digits=True),
+                             'end_num': format_jalali(g.end_date, fa_digits=True), 'tasks': tasks})
     data = _body(request)
     if 'title' in data:
         g.title = (data['title'] or '').strip()[:200]
     if 'description' in data:
-        g.description = data['description'] or ''
+        g.description = _clean(data['description'])
+    if 'color' in data and data['color']:
+        g.color = data['color'][:7]
     if 'start_date' in data and _pdate(data['start_date']):
         g.start_date = _pdate(data['start_date'])
     if 'end_date' in data and _pdate(data['end_date']):
@@ -242,4 +282,27 @@ def goal_detail(request, pk):
     if g.end_date < g.start_date:
         return JsonResponse({'detail': 'پایان نباید قبل از شروع باشد'}, status=400)
     g.save()
+    return JsonResponse({'ok': True})
+
+
+@admin_only
+@require_http_methods(['POST'])
+def goal_add_task(request, pk):
+    """افزودنِ تسکِ جدید (به اینباکس) که مستقیم به این هدف وصل است."""
+    from .models import GoalLink
+    g = get_object_or_404(Goal, pk=pk, user=request.user)
+    t, err = _create_personal_task(request, _body(request).get('title'))
+    if err:
+        return JsonResponse({'detail': err}, status=400)
+    GoalLink.objects.create(goal=g, task=t, order=GoalLink.objects.filter(goal=g).count())
+    return JsonResponse({'id': t.id, 'title': t.title})
+
+
+@admin_only
+@require_http_methods(['POST'])
+def goal_reorder(request, pk):
+    from .models import GoalLink
+    g = get_object_or_404(Goal, pk=pk, user=request.user)
+    for i, tid in enumerate(_body(request).get('ids') or []):
+        GoalLink.objects.filter(goal=g, task_id=tid).update(order=i)
     return JsonResponse({'ok': True})

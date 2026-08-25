@@ -16,9 +16,12 @@ urlpatterns = [
     path('api/tasks/<int:pk>/plan/', api.ptask_plan, name='ptask_plan'),
     path('api/tasks/<int:pk>/move/', api.ptask_move, name='ptask_move'),
     path('api/tasks/<int:pk>/done/', api.ptask_done, name='ptask_done'),
+    path('api/tasks/<int:pk>/goal/', api.task_goal, name='task_goal'),
     path('api/habits/', api.habit_add, name='habit_add'),
     path('api/habits/<int:pk>/', api.habit_detail, name='habit_detail'),
     path('api/habits/toggle/', api.habit_toggle, name='habit_toggle'),
     path('api/goals/', api.goal_add, name='goal_add'),
     path('api/goals/<int:pk>/', api.goal_detail, name='goal_detail'),
+    path('api/goals/<int:pk>/add-task/', api.goal_add_task, name='goal_add_task'),
+    path('api/goals/<int:pk>/reorder/', api.goal_reorder, name='goal_reorder'),
 ]
