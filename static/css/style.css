@@ -1494,3 +1494,8 @@ input[type=checkbox]:disabled{opacity:.5;cursor:default}
 .ck-row .ck-done{flex:none}
 #custom-fields{grid-template-columns:repeat(12,minmax(0,1fr));gap:8px;align-items:start}
 #custom-fields .field{margin-bottom:0}
+
+/* هدرِ چسبانِ شناورِ جدول‌ها (sticky-thead.js) */
+.thead-float{position:fixed;top:0;overflow:hidden;z-index:30;pointer-events:none;box-shadow:0 6px 16px rgba(0,0,0,.18)}
+.thead-float table{border-collapse:collapse}
+.thead-float thead th{position:static}
