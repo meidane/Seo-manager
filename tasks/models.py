@@ -332,8 +332,16 @@ class TaskTypeField(models.Model):
         (TAGS, 'چندتایی (کلمه + اینتر)'),
     ]
 
+    FULL = 'full'
+    HALF = 'half'
+    THIRD = 'third'
+    QUARTER = 'quarter'
+    WIDTH_CHOICES = [(FULL, 'تمام‌عرض'), (HALF, 'نصف'), (THIRD, 'یک‌سوم'), (QUARTER, 'یک‌چهارم')]
+
     type_def = models.ForeignKey(TaskTypeDef, verbose_name='نوع', on_delete=models.CASCADE, related_name='fields')
     key = models.CharField('کلید', max_length=40, blank=True)  # خودکار: f<id>
+    # عرضِ فیلد در مودالِ تسک (چیدمانِ گریدِ ۱۲ستونه) — کاربر در تنظیمات تعیین می‌کند
+    width = models.CharField('عرض در مودال', max_length=8, choices=WIDTH_CHOICES, default=FULL)
     label = models.CharField('برچسب', max_length=120)
     kind = models.CharField('نوع فیلد', max_length=12, choices=KIND_CHOICES, default=TEXT)
     options = models.CharField('گزینه‌ها (با ویرگول)', max_length=500, blank=True)  # فقط select
@@ -374,7 +382,7 @@ class TaskTypeField(models.Model):
             'key': self.key, 'label': self.label, 'kind': self.kind,
             'options': self.options_list, 'placeholder': self.placeholder,
             'required': self.required, 'required_on_done': self.required_on_done,
-            'show_to_client': self.show_to_client,
+            'show_to_client': self.show_to_client, 'width': self.width,
         }
 
 

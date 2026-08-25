@@ -32,7 +32,7 @@ def _field_dict(f):
         'kind': f.kind, 'kind_display': f.get_kind_display(),
         'options': f.options, 'placeholder': f.placeholder,
         'required': f.required, 'required_on_done': f.required_on_done,
-        'show_to_client': f.show_to_client, 'is_word_source': f.is_word_source,
+        'show_to_client': f.show_to_client, 'is_word_source': f.is_word_source, 'width': f.width,
         'is_keyword_source': f.is_keyword_source, 'track_keyword_rank': f.track_keyword_rank,
         'is_link_source': f.is_link_source, 'is_page_link': f.is_page_link,
     }
@@ -132,6 +132,7 @@ def field_create(request, pk):
         track_keyword_rank=bool(d.get('track_keyword_rank')),
         is_link_source=bool(d.get('is_link_source')),
         is_page_link=bool(d.get('is_page_link')),
+        width=d.get('width') if d.get('width') in dict(TaskTypeField.WIDTH_CHOICES) else 'full',
         order=t.fields.count(),
     )
     return JsonResponse(_field_dict(f), status=201)
@@ -149,6 +150,8 @@ def field_edit(request, pk):
     for attr in ('label', 'kind', 'options', 'placeholder'):
         if attr in d:
             setattr(f, attr, d[attr])
+    if d.get('width') in dict(TaskTypeField.WIDTH_CHOICES):
+        f.width = d['width']
     for attr in ('required', 'required_on_done', 'show_to_client', 'is_word_source',
                  'is_keyword_source', 'track_keyword_rank', 'is_link_source', 'is_page_link'):
         if attr in d:

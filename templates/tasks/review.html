@@ -67,7 +67,7 @@ async function scoreKpis(id){
   const body=d.kpis.map(k=>{
     if(k.has_checklist){
       const items=k.items.map(it=>`<label style="display:flex;align-items:center;gap:8px;margin:0;padding:3px 0;cursor:pointer">
-        <input type="checkbox" class="kci" data-score="${it.score}" value="${it.id}" ${(k.checked||[]).includes(it.id)?'checked':''} style="width:auto"> ${it.title} <b>(${it.score})</b>${it.description?` <span class="kpi-info" title="${it.description.replace(/"/g,'&quot;')}">ℹ️</span>`:''}</label>`).join('');
+        <input type="checkbox" class="kci" data-score="${it.score}" value="${it.id}" ${(k.checked||[]).includes(it.id)?'checked':''}> ${it.title} <b>(${it.score})</b>${it.description?` <span class="kpi-info" title="${it.description.replace(/"/g,'&quot;')}">ℹ️</span>`:''}</label>`).join('');
       return `<div class="kpi-item" data-kpi="${k.id}" data-checklist="1"><div class="kpi-head"><b>${k.title}</b><span class="tag t-mute">سقف ${k.cap}</span><span class="kscore tag t-ok">۰</span></div><div class="kpi-items">${items}</div></div>`;
     }
     return `<div class="kpi-item" data-kpi="${k.id}"><div class="kpi-head"><b>${k.title}</b><span class="tag t-mute">سقف ${k.max_score}</span><input class="input knum" type="number" dir="ltr" min="0" max="${k.max_score}" value="${k.given!=null?k.given:0}" style="max-width:80px"></div></div>`;

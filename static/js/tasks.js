@@ -118,7 +118,7 @@
             ${field('report_month', 'ماه گزارش', reportPeriodSelect(t))}
           </div>
           <label style="display:flex;align-items:center;gap:8px;margin:0 0 14px;cursor:pointer">
-            <input type="checkbox" id="f-needs-review" ${needsReviewDefault ? 'checked' : ''} style="width:auto">
+            <input type="checkbox" id="f-needs-review" ${needsReviewDefault ? 'checked' : ''}>
             نیاز به بازبینی (بدونِ تاییدِ مدیر، «انجام‌شده» نمی‌شود)
           </label>
           ${recurBarHtml(t)}
@@ -221,7 +221,7 @@
         <label style="margin:0">هر</label><input class="input" id="rec-interval" type="number" dir="ltr" value="1" style="max-width:60px">
         <b id="rec-unit"></b>
         <span id="rec-weekdays" style="display:none;gap:4px">${wk.map((w, i) => `<span class="rec-opt" data-wd="${i}">${w}</span>`).join('')}</span>
-        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="rec-skip" checked style="width:auto"> رد کردن تعطیلات</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="rec-skip" checked> رد کردن تعطیلات</label>
       </div></div>`;
   }
 
@@ -328,25 +328,29 @@
     });
   }
 
+  // عرضِ فیلدِ سفارشی در گریدِ ۱۲ستونه (از تنظیماتِ نوعِ تسک)
+  const CF_SPAN = { full: 12, half: 6, third: 4, quarter: 3 };
+
   // ── رندر فیلدهای سفارشی یک نوع ──
   function renderCustom(t, values) {
     const box = document.getElementById('custom-fields');
     if (!t || !t.fields || !t.fields.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
     values = values || {};
-    box.style.display = '';
+    box.style.display = 'grid';
     wireTagboxes(box);
     box.innerHTML = t.fields.map((f) => {
+      const span = CF_SPAN[f.width] || 12;
       const v = values[f.key] != null ? values[f.key] : '';
       let input;
       if (f.kind === 'tags') input = tagboxHtml(f.key, Array.isArray(v) ? v : [], f.placeholder);
       else if (f.kind === 'textarea') input = `<textarea class="cf" data-key="${f.key}" rows="2" placeholder="${esc(f.placeholder)}">${esc(v)}</textarea>`;
-      else if (f.kind === 'checkbox') input = `<label style="display:flex;align-items:center;gap:8px;margin:0"><input type="checkbox" class="cf" data-key="${f.key}" ${v ? 'checked' : ''} style="width:auto"> ${esc(f.label)}</label>`;
+      else if (f.kind === 'checkbox') input = `<label style="display:flex;align-items:center;gap:8px;margin:0"><input type="checkbox" class="cf" data-key="${f.key}" ${v ? 'checked' : ''}> ${esc(f.label)}</label>`;
       else if (f.kind === 'select') input = `<select class="cf" data-key="${f.key}"><option value="">—</option>${f.options.map((o) => opt(o, o, v)).join('')}</select>`;
       else if (f.kind === 'number') input = `<input type="number" class="cf input" data-key="${f.key}" value="${esc(v)}" placeholder="${esc(f.placeholder)}">`;
       else input = `<input type="text" class="cf input" data-key="${f.key}" dir="${f.kind === 'url' ? 'ltr' : 'rtl'}" value="${esc(v)}" placeholder="${esc(f.placeholder)}">`;
-      if (f.kind === 'checkbox') return `<div class="field" data-cf>${input}</div>`;
+      if (f.kind === 'checkbox') return `<div class="field" data-cf style="grid-column:span ${span}">${input}</div>`;
       const req = f.required ? ' *' : (f.required_on_done ? ' (برای تکمیل الزامی)' : '');
-      return `<div class="field" data-cf><label>${esc(f.label)}${req}</label>${input}</div>`;
+      return `<div class="field" data-cf style="grid-column:span ${span}"><label>${esc(f.label)}${req}</label>${input}</div>`;
     }).join('');
   }
 

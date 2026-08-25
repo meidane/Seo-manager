@@ -601,7 +601,8 @@ table.sheet tr:hover td{background:var(--row-alt)}
 .cal{margin-top:0}
 .cal-bar{display:flex;align-items:center;gap:9px;padding:13px 16px;border-bottom:1px solid var(--stroke-soft);flex-wrap:wrap}
 .cal-bar h3{font-size:15px;font-weight:500;min-width:110px;text-align:center}
-.nav-b{width:28px;height:28px;border-radius:8px;border:1px solid var(--stroke-soft);background:transparent;
+.nav-b{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;flex:none;
+  border-radius:8px;border:1px solid var(--stroke-soft);background:transparent;text-decoration:none;
   color:var(--text-dim);cursor:pointer;transition:var(--ease);font-size:14px}
 .nav-b:hover{background:var(--glass-hover);color:var(--text)}
 .grid7{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
@@ -1475,3 +1476,21 @@ input[type=checkbox]:disabled{opacity:.5;cursor:default}
 .gt-x{flex:none;border:0;background:transparent;color:var(--text-dim);cursor:pointer;font-size:16px;line-height:1}
 .gt-x:hover{color:var(--danger)}
 .goal-row{cursor:pointer}
+
+/* مودالِ تسک: فشرده و مینیمال تا ۴ستون جا شود، بدونِ سرریزِ دراپ‌داون */
+.modal:has(.tmodal){max-width:1040px}
+.tmodal-grid{gap:16px}
+.tmodal-right{padding-inline-start:16px}
+.tmodal .field{margin-bottom:9px;min-width:0}
+.tmodal .field>label{font-size:11px;color:var(--text-dim);margin-bottom:3px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tmodal .input,.tmodal select,.tmodal textarea{font-size:12.5px;padding:6px 8px;min-width:0;max-width:100%;width:100%}
+.tmodal .grid4,.tmodal .grid2{gap:8px}
+.tmodal .grid4>.field,.tmodal .grid2>.field{min-width:0}
+.tmodal .rs{min-width:0;max-width:100%;width:100%}
+.tmodal .rs-btn{width:100%;min-width:0;max-width:100%;font-size:12.5px;padding:5px 8px;overflow:hidden}
+.tmodal .rs-btn>*{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tmodal .field label{font-size:11px}
+/* چک‌لیستِ مودال: چک‌باکسِ اندازه‌درست کنارِ اینپوت */
+.ck-row .ck-done{flex:none}
+#custom-fields{grid-template-columns:repeat(12,minmax(0,1fr));gap:8px;align-items:start}
+#custom-fields .field{margin-bottom:0}

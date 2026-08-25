@@ -9,7 +9,7 @@
     <a href="{% url 'task_types:list' %}" class="btn btn-sm">← انواع</a>
     <h1 id="t-name" contenteditable="true" style="outline:none;border-bottom:1px dashed transparent" onfocus="this.style.borderColor='var(--stroke)'" onblur="this.style.borderColor='transparent'">{{ type_def.name }}</h1>
     <input type="color" id="t-color" value="{{ type_def.color }}" style="width:40px;height:34px;padding:2px;background:transparent;border:1px solid var(--stroke-soft);border-radius:var(--r-sm);cursor:pointer">
-    <label style="display:flex;align-items:center;gap:7px;cursor:pointer;margin:0;font-size:13px"><input type="checkbox" id="t-review" {% if type_def.requires_review %}checked{% endif %} style="width:auto"> نیاز به بازبینی دارد</label>
+    <label style="display:flex;align-items:center;gap:7px;cursor:pointer;margin:0;font-size:13px"><input type="checkbox" id="t-review" {% if type_def.requires_review %}checked{% endif %}> نیاز به بازبینی دارد</label>
     <div class="side-c"><button class="btn" id="t-del" style="color:var(--danger)">حذف نوع</button></div>
   </div>
 
@@ -21,7 +21,7 @@
       <tbody>
         {% for f in fields %}
           <tr data-fid="{{ f.id }}"
-              data-label="{{ f.label }}" data-kind="{{ f.kind }}" data-options="{{ f.options }}"
+              data-label="{{ f.label }}" data-kind="{{ f.kind }}" data-options="{{ f.options }}" data-width="{{ f.width }}"
               data-placeholder="{{ f.placeholder }}" data-required="{{ f.required|yesno:'1,0' }}"
               data-required_on_done="{{ f.required_on_done|yesno:'1,0' }}"
               data-show_to_client="{{ f.show_to_client|yesno:'1,0' }}"
@@ -53,20 +53,23 @@
           <select id="nf-kind">{% for v,l in kind_choices %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select>
         </div>
       </div>
+      <div class="field"><label>عرض در مودالِ تسک</label>
+        <select id="nf-width"><option value="full">تمام‌عرض</option><option value="half">نصف (۲تایی)</option><option value="third">یک‌سوم (۳تایی)</option><option value="quarter">یک‌چهارم (۴تایی)</option></select>
+      </div>
       <div class="field" id="nf-options-wrap" style="display:none"><label>گزینه‌ها (با ویرگول جدا کن)</label><input class="input" id="nf-options" placeholder="کم، متوسط، زیاد"></div>
       <div class="field"><label>راهنمای فیلد (اختیاری)</label><input class="input" id="nf-placeholder"></div>
       <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:8px">
-        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-required" style="width:auto"> اجباری (همیشه)</label>
-        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-required-done" style="width:auto"> اجباری فقط برای تکمیل</label>
-        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-client" checked style="width:auto"> نمایش به مشتری</label>
-        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-wordsrc" style="width:auto"> منبعِ تعداد کلمه</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-required"> اجباری (همیشه)</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-required-done"> اجباری فقط برای تکمیل</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-client" checked> نمایش به مشتری</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-wordsrc"> منبعِ تعداد کلمه</label>
       </div>
       <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:14px;padding-top:8px;border-top:1px solid var(--stroke-soft)">
         <small style="color:var(--text-faint);width:100%">اتصال به بستهٔ سئو (اختیاری):</small>
-        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-kwsrc" style="width:auto"> حاویِ کلمهٔ کلیدی</label>
-        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-kwrank" style="width:auto"> رتبه‌اش ردیابی شود</label>
-        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-linksrc" style="width:auto"> حاویِ لینکِ هدف</label>
-        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-pagelink" style="width:auto"> لینکِ صفحهٔ همین تسک</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-kwsrc"> حاویِ کلمهٔ کلیدی</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-kwrank"> رتبه‌اش ردیابی شود</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-linksrc"> حاویِ لینکِ هدف</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="nf-pagelink"> لینکِ صفحهٔ همین تسک</label>
       </div>
       <button class="btn btn-p" id="nf-add">افزودن فیلد</button>
     </div>
@@ -127,7 +130,7 @@ const yn=v=>v?'✓':'<span class="zero">—</span>';
 function fieldRow(f){
   const opts=(f.kind==='select'&&f.options)?`<br><small style="color:var(--text-faint)">${esc(f.options)}</small>`:'';
   const d=k=>`data-${k}="${esc(f[k])}"`;
-  return `<tr data-fid="${f.id}" data-label="${esc(f.label)}" data-kind="${esc(f.kind)}" data-options="${esc(f.options)}"
+  return `<tr data-fid="${f.id}" data-label="${esc(f.label)}" data-kind="${esc(f.kind)}" data-options="${esc(f.options)}" data-width="${esc(f.width||'full')}"
       data-placeholder="${esc(f.placeholder)}" data-required="${f.required?1:0}" data-required_on_done="${f.required_on_done?1:0}"
       data-show_to_client="${f.show_to_client?1:0}" data-is_word_source="${f.is_word_source?1:0}"
       data-is_keyword_source="${f.is_keyword_source?1:0}" data-track_keyword_rank="${f.track_keyword_rank?1:0}"
@@ -163,7 +166,8 @@ document.getElementById('nf-add').onclick=async()=>{
     is_keyword_source:document.getElementById('nf-kwsrc').checked,
     track_keyword_rank:document.getElementById('nf-kwrank').checked,
     is_link_source:document.getElementById('nf-linksrc').checked,
-    is_page_link:document.getElementById('nf-pagelink').checked};
+    is_page_link:document.getElementById('nf-pagelink').checked,
+    width:document.getElementById('nf-width').value};
   try{ const f=await App.fetchJSON(`/settings/task-types/api/${TID}/fields/`,{method:'POST',body});
     const empty=document.getElementById('f-empty'); if(empty)empty.remove();
     document.querySelector('#f-table tbody').insertAdjacentHTML('beforeend',fieldRow(f));
@@ -182,22 +186,25 @@ function fieldModal(tr){
         <div class="field"><label>نوع فیلد</label><select id="ef-kind">${KIND_OPTS}</select></div></div>
       <div class="field" id="ef-options-wrap" style="display:${g('kind')==='select'?'':'none'}"><label>گزینه‌ها (با ویرگول جدا کن)</label><input class="input" id="ef-options" value="${esc(g('options'))}"></div>
       <div class="field"><label>راهنمای فیلد (اختیاری)</label><input class="input" id="ef-placeholder" value="${esc(g('placeholder'))}"></div>
+      <div class="field"><label>عرض در مودالِ تسک</label><select id="ef-width">
+        <option value="full">تمام‌عرض</option><option value="half">نصف (۲تایی)</option><option value="third">یک‌سوم (۳تایی)</option><option value="quarter">یک‌چهارم (۴تایی)</option></select></div>
       <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:8px">
-        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="ef-required" ${b('required')?'checked':''} style="width:auto"> اجباری (همیشه)</label>
-        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="ef-required-done" ${b('required_on_done')?'checked':''} style="width:auto"> اجباری فقط برای تکمیل</label>
-        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="ef-client" ${b('show_to_client')?'checked':''} style="width:auto"> نمایش به مشتری</label>
-        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="ef-wordsrc" ${b('is_word_source')?'checked':''} style="width:auto"> منبعِ تعداد کلمه</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="ef-required" ${b('required')?'checked':''}> اجباری (همیشه)</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="ef-required-done" ${b('required_on_done')?'checked':''}> اجباری فقط برای تکمیل</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="ef-client" ${b('show_to_client')?'checked':''}> نمایش به مشتری</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="ef-wordsrc" ${b('is_word_source')?'checked':''}> منبعِ تعداد کلمه</label>
       </div>
       <div style="display:flex;gap:18px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--stroke-soft)">
         <small style="color:var(--text-faint);width:100%">اتصال به بستهٔ سئو (اختیاری):</small>
-        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="ef-kwsrc" ${b('is_keyword_source')?'checked':''} style="width:auto"> حاویِ کلمهٔ کلیدی</label>
-        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="ef-kwrank" ${b('track_keyword_rank')?'checked':''} style="width:auto"> رتبه‌اش ردیابی شود</label>
-        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="ef-linksrc" ${b('is_link_source')?'checked':''} style="width:auto"> حاویِ لینکِ هدف</label>
-        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="ef-pagelink" ${b('is_page_link')?'checked':''} style="width:auto"> لینکِ صفحهٔ همین تسک</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="ef-kwsrc" ${b('is_keyword_source')?'checked':''}> حاویِ کلمهٔ کلیدی</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="ef-kwrank" ${b('track_keyword_rank')?'checked':''}> رتبه‌اش ردیابی شود</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="ef-linksrc" ${b('is_link_source')?'checked':''}> حاویِ لینکِ هدف</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="ef-pagelink" ${b('is_page_link')?'checked':''}> لینکِ صفحهٔ همین تسک</label>
       </div>
     </div>
     <div class="modal-f"><button class="btn btn-p" id="ef-save">ذخیره</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
   document.getElementById('ef-kind').value=g('kind');
+  document.getElementById('ef-width').value=g('width')||'full';
   document.getElementById('ef-kind').onchange=e=>{document.getElementById('ef-options-wrap').style.display=e.target.value==='select'?'':'none';};
   document.getElementById('ef-save').onclick=async()=>{
     const label=document.getElementById('ef-label').value.trim();
@@ -212,7 +219,8 @@ function fieldModal(tr){
       is_keyword_source:document.getElementById('ef-kwsrc').checked,
       track_keyword_rank:document.getElementById('ef-kwrank').checked,
       is_link_source:document.getElementById('ef-linksrc').checked,
-      is_page_link:document.getElementById('ef-pagelink').checked};
+      is_page_link:document.getElementById('ef-pagelink').checked,
+      width:document.getElementById('ef-width').value};
     try{ const f=await App.fetchJSON(`/settings/task-types/api/fields/${tr.dataset.fid}/`,{method:'PATCH',body});
       replaceRow(tr.dataset.fid,f); App.closeModal(); App.toast('ذخیره شد','ok');
     }catch(_){}
@@ -238,7 +246,7 @@ function kpiModal(d){
       <div class="grid2"><div class="field"><label>عنوان</label><input class="input" id="k-title" value="${d.title||''}"></div>
         <div class="field"><label>حداکثر امتیاز (بدون چک‌لیست)</label><input class="input" id="k-max" type="number" dir="ltr" value="${d.max||10}"></div></div>
       <div class="field"><label>توضیحات (پشت آیکن ℹ نمایش داده می‌شود)</label><textarea class="input" id="k-desc" rows="2">${d.desc||''}</textarea></div>
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="k-cl" ${d.cl=='1'?'checked':''} style="width:auto"> چک‌لیستی (امتیاز = جمع آیتم‌های تیک‌خورده)</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="k-cl" ${d.cl=='1'?'checked':''}> چک‌لیستی (امتیاز = جمع آیتم‌های تیک‌خورده)</label>
     </div>
     <div class="modal-f"><button class="btn btn-p" id="k-save">ذخیره</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
   document.getElementById('k-save').onclick=async()=>{

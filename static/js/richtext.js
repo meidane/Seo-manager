@@ -47,7 +47,7 @@
         autoresize_bottom_margin: 12,
         content_style: 'body{font-family:Vazirmatn,system-ui,sans-serif;font-size:14px;line-height:1.9;'
           + '-webkit-user-select:text;user-select:text;-webkit-touch-callout:default;'
-          + (light ? 'background:#fff;color:#15181f' : 'background:transparent;color:#E9EEF9') + '}'
+          + (light ? 'background:#fff;color:#15181f' : 'background:#12172a;color:#E9EEF9') + '}'
           + 'a{color:' + (light ? '#2F4FBF' : '#7C9CFA') + '}'
           + 'img{max-width:100%;height:auto;border-radius:6px}',
         // پشتیبانی از کپی/پیستِ موبایل (منویِ نگه‌داشتن/انتخاب)
