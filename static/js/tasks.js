@@ -103,17 +103,20 @@
       <div class="tmodal-grid">
         <!-- ستونِ راست (اصلی): اطلاعاتِ تسک -->
         <div class="tmodal-left">
-          <div class="grid2">
-            ${field('project', 'پروژه', `<select id="f-project" class="rich-select"><option value="">— انتخاب پروژه —</option>${cfg.projects.map(([v, l, color, img]) => optRich(v, l, t.project_id, color, img)).join('')}</select>`)}
+          <!-- ردیفِ ۴ستونه: پروژه / مسئول / نوع / وضعیت -->
+          <div class="grid4">
+            ${field('project', 'پروژه', `<select id="f-project" class="rich-select"><option value="">— انتخاب —</option>${cfg.projects.map(([v, l, color, img]) => optRich(v, l, t.project_id, color, img)).join('')}</select>`)}
             ${field('assignee', 'مسئول', assigneeSelect)}
+            ${field('task_type', 'نوع تسک', `<select id="f-task_type">${typeOptions(typeSel)}</select>`)}
+            ${field('status', 'وضعیت', `<select id="f-status">${statusOptions(t.status, needsReviewDefault)}</select>`)}
           </div>
-          ${field('task_type', 'نوع تسک', `<select id="f-task_type">${typeOptions(typeSel)}</select>`)}
           ${field('title', 'عنوان', `<input id="f-title" class="input" value="${esc(t.title)}">`)}
-          <div class="grid2">
+          <!-- ردیفِ ۴ستونه: تاریخ / تخمین / ماه گزارش -->
+          <div class="grid4">
             ${field('planned_date', 'تاریخ برنامه', `<div style="display:flex;align-items:center"><input id="f-planned_date" class="input jdate" dir="ltr" readonly placeholder="۱۴۰۵/۰۵/۱۵" value="${t.planned_date_fa || ''}"><span id="rel-planned" class="rel-hint"></span></div>`)}
-            ${field('estimate_minutes', 'تخمین زمان (H:MM)', `<input id="f-estimate_minutes" class="input" dir="ltr" placeholder="0:00" value="${t.estimate_minutes ? fmtMin(t.estimate_minutes) : ''}">`)}
+            ${field('estimate_minutes', 'تخمین (H:MM)', `<input id="f-estimate_minutes" class="input" dir="ltr" placeholder="0:00" value="${t.estimate_minutes ? fmtMin(t.estimate_minutes) : ''}">`)}
+            ${field('report_month', 'ماه گزارش', reportPeriodSelect(t))}
           </div>
-          ${field('report_month', 'ماه گزارش', reportPeriodSelect(t))}
           <label style="display:flex;align-items:center;gap:8px;margin:0 0 14px;cursor:pointer">
             <input type="checkbox" id="f-needs-review" ${needsReviewDefault ? 'checked' : ''} style="width:auto">
             نیاز به بازبینی (بدونِ تاییدِ مدیر، «انجام‌شده» نمی‌شود)
@@ -122,12 +125,11 @@
           <!-- فیلدهای سفارشی نوع (کلمه کلیدی/مترادف/... هرکدام یک ردیفِ کامل) -->
           <div id="custom-fields" style="display:none"></div>
         </div>
-        <!-- ستونِ چپ: وضعیت + توضیحات + گزارش + تاریخچه -->
+        <!-- ستونِ چپ: چک‌لیست (بالا) + توضیحات + گزارش + تاریخچه -->
         <div class="tmodal-right">
-          ${field('status', 'وضعیت', `<select id="f-status">${statusOptions(t.status, needsReviewDefault)}</select>`)}
+          ${checklistHtml(t)}
           ${t.id ? '<div id="kpi-box" style="display:none;margin-bottom:12px"></div>' : ''}
           ${field('description', 'توضیحات', `<textarea id="f-description" class="rich-editor" rows="4">${esc(t.description)}</textarea>`)}
-          ${checklistHtml(t)}
           ${t.id ? `<div class="report-sec">
             <label style="font-weight:700">گزارش</label>
             <textarea id="f-report" class="rich-editor" rows="3"></textarea>
@@ -151,24 +153,27 @@
 
   function esc(v) { return (v == null ? '' : String(v)).replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
 
-  // ── چک‌لیستِ عمومی (همه‌ی انواع) — یک ردیفِ خالی همیشه ته لیست؛ Enter یا دکمه‌ی + ردیفِ بعد را می‌سازد ──
+  // ── چک‌لیستِ عمومی — هر ردیف: چک‌باکس + متن + دکمه‌های + و × داخلِ همان اینپوت.
+  //    Enter یا + ردیفِ جدید می‌سازد؛ × حذف می‌کند (بدونِ دکمه‌ی جدای «افزودن»).
   function ckRow(it) {
     it = it || {};
     return `<div class="ck-row"><input type="checkbox" class="ck-done"${it.done ? ' checked' : ''}>` +
-      `<input type="text" class="input ck-text" value="${esc(it.text)}" placeholder="یک مورد بنویس و Enter بزن…">` +
-      `<button type="button" class="ck-x" title="حذف">×</button></div>`;
+      `<div class="ck-field"><input type="text" class="ck-text" value="${esc(it.text)}" placeholder="یک مورد بنویس و Enter بزن…">` +
+      `<button type="button" class="ck-plus" title="افزودن">＋</button>` +
+      `<button type="button" class="ck-x" title="حذف">×</button></div></div>`;
   }
   function checklistHtml(t) {
     const items = (t && t.checklist) || [];
     const body = items.map(ckRow).join('') + ckRow();  // همیشه یک ردیفِ خالیِ آماده ته لیست
     return `<div class="ck-wrap"><label style="font-weight:700">چک‌لیست</label>
-      <div class="ck-list" id="ck-list">${body}</div>
-      <button type="button" class="btn btn-sm ck-add" id="ck-add">+ افزودن مورد</button></div>`;
+      <div class="ck-list" id="ck-list">${body}</div></div>`;
   }
-  function ckAddRow(focus) {
-    const list = document.getElementById('ck-list'); if (!list) return;
-    list.insertAdjacentHTML('beforeend', ckRow());
-    if (focus) list.lastElementChild.querySelector('.ck-text').focus();
+  function ckAddAfter(row, focus) {
+    const html = ckRow();
+    if (row && row.parentElement) row.insertAdjacentHTML('afterend', html);
+    else { const list = document.getElementById('ck-list'); if (list) list.insertAdjacentHTML('beforeend', html); }
+    const nw = row ? row.nextElementSibling : document.getElementById('ck-list').lastElementChild;
+    if (focus && nw) nw.querySelector('.ck-text').focus();
   }
   function wireChecklist() {
     const list = document.getElementById('ck-list'); if (!list) return;
@@ -176,19 +181,18 @@
       if (e.key === 'Enter' && e.target.classList.contains('ck-text')) {
         e.preventDefault();
         const row = e.target.closest('.ck-row');
-        if (row === list.lastElementChild && e.target.value.trim()) ckAddRow(true);
-        else { const nx = row.nextElementSibling; if (nx) nx.querySelector('.ck-text').focus(); }
+        if (row.nextElementSibling) row.nextElementSibling.querySelector('.ck-text').focus();
+        else if (e.target.value.trim()) ckAddAfter(row, true);
       }
     });
     list.addEventListener('click', (e) => {
+      if (e.target.classList.contains('ck-plus')) { ckAddAfter(e.target.closest('.ck-row'), true); return; }
       if (e.target.classList.contains('ck-x')) {
         const rows = list.querySelectorAll('.ck-row');
         if (rows.length > 1) e.target.closest('.ck-row').remove();
-        else { e.target.closest('.ck-row').querySelector('.ck-text').value = ''; }
+        else e.target.closest('.ck-row').querySelector('.ck-text').value = '';
       }
     });
-    const add = document.getElementById('ck-add');
-    if (add) add.onclick = () => ckAddRow(true);
   }
   function readChecklist() {
     const list = document.getElementById('ck-list'); if (!list) return [];
