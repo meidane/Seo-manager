@@ -29,6 +29,25 @@ def _stop_timer(task):
     elapsed = int((timezone.now() - task.timer_started_at).total_seconds() // 60)
     task.spent_minutes = (task.spent_minutes or 0) + max(0, elapsed)
     task.timer_started_at = None
+    task.timer_heartbeat = None
+
+
+# آستانهٔ کهنگیِ ضربان: تب بسته/خواب بیش از این → تایمر روی آخرین ضربان متوقف می‌شود
+TIMER_STALE_MINUTES = 5
+
+
+def _reap_stale_timers():
+    """تایمرهایی که ضربانشان بیش از ۵ دقیقه کهنه شده (تب بسته/خواب) را روی همان آخرین
+    ضربان متوقف کن — تا زمانِ ازدست‌رفته به تسک اضافه نشود. سبک است (تایمرهای فعال کم‌اند)."""
+    now = timezone.now()
+    cutoff = now - timedelta(minutes=TIMER_STALE_MINUTES)
+    for t in Task.all_objects.filter(timer_started_at__isnull=False, timer_heartbeat__lt=cutoff):
+        end = t.timer_heartbeat or t.timer_started_at
+        elapsed = int((end - t.timer_started_at).total_seconds() // 60)
+        t.spent_minutes = (t.spent_minutes or 0) + max(0, elapsed)
+        t.timer_started_at = None
+        t.timer_heartbeat = None
+        t.save(update_fields=['spent_minutes', 'timer_started_at', 'timer_heartbeat', 'updated_at'])
 
 
 def _task_perm_ok(request, task, perm):
@@ -537,8 +556,15 @@ def task_status(request, pk):
 @login_required
 @require_http_methods(['GET'])
 def running_timers(request):
-    """تسک‌های در حال اجرای تایمر برای کاربرِ جاری (+ زیرمجموعه‌هایش) — ویجتِ سراسری."""
+    """تسک‌های در حال اجرای تایمر برای کاربرِ جاری (+ زیرمجموعه‌هایش) — ویجتِ سراسری.
+    این endpoint هر ۳۰ثانیه توسطِ ویجت poll می‌شود؛ فرصتی است تا (۱) تایمرهای کهنه را
+    جمع کنیم و (۲) «ضربانِ» تایمرهای خودِ کاربر را تازه کنیم (تبِ باز = زنده)."""
     from .queries import running_timers_payload
+    _reap_stale_timers()
+    my = getattr(request.user, 'colleague', None)
+    if my:
+        Task.all_objects.filter(assignee_id=my.id, timer_started_at__isnull=False).update(
+            timer_heartbeat=timezone.now())
     return JsonResponse({'running': running_timers_payload(request)})
 
 
@@ -564,9 +590,11 @@ def task_timer(request, pk):
             return JsonResponse({'detail': 'عدد نامعتبر'}, status=400)
         task.save(update_fields=['spent_minutes', 'updated_at'])
         return JsonResponse({'spent_minutes': task.spent_minutes, 'timer_running': bool(task.timer_started_at)})
-    # POST start/stop — مسئولِ خودِ تسک، یا کسی که اجازه‌ی مدیریتِ تایمرِ دیگران را دارد
-    if not _is_own_task(request, task) and not can_manage_any_timer(m):
-        return JsonResponse({'detail': 'دسترسیِ استارت/استاپِ تایمرِ این تسک را نداری'}, status=403)
+    # POST start/stop — فقط مسئولِ خودِ تسک (هرکس فقط زمانِ خودش را می‌زند)
+    if not _is_own_task(request, task):
+        return JsonResponse({'detail': 'فقط می‌توانی زمانِ تسک‌های خودت را استارت/استاپ کنی'}, status=403)
+    _reap_stale_timers()  # تایمرهای کهنه (تب بسته) را اول جمع کن
+    task.refresh_from_db(fields=['timer_started_at', 'spent_minutes', 'timer_heartbeat', 'status'])
     action = _body(request).get('action')
     now = timezone.now()
     stopped = None
@@ -582,10 +610,12 @@ def task_timer(request, pk):
                 elapsed_o = int((now - other.timer_started_at).total_seconds() // 60)
                 other.spent_minutes = (other.spent_minutes or 0) + max(0, elapsed_o)
                 other.timer_started_at = None
-                other.save(update_fields=['spent_minutes', 'timer_started_at', 'updated_at'])
+                other.timer_heartbeat = None
+                other.save(update_fields=['spent_minutes', 'timer_started_at', 'timer_heartbeat', 'updated_at'])
                 stopped = {'id': other.id, 'spent_minutes': other.spent_minutes}
         task.timer_started_at = now
-        fields = ['timer_started_at', 'updated_at']
+        task.timer_heartbeat = now
+        fields = ['timer_started_at', 'timer_heartbeat', 'updated_at']
         # پلی‌زدن یعنی کار شروع شد — وضعیت به «در حال انجام» می‌رود (فقط از «در انتظار»)
         if task.status == Task.TODO:
             task.status = Task.DOING
@@ -595,7 +625,8 @@ def task_timer(request, pk):
         elapsed = int((now - task.timer_started_at).total_seconds() // 60)
         task.spent_minutes = (task.spent_minutes or 0) + max(0, elapsed)
         task.timer_started_at = None
-        task.save(update_fields=['spent_minutes', 'timer_started_at', 'updated_at'])
+        task.timer_heartbeat = None
+        task.save(update_fields=['spent_minutes', 'timer_started_at', 'timer_heartbeat', 'updated_at'])
     elif action not in ('start', 'stop'):
         return JsonResponse({'detail': 'action نامعتبر'}, status=400)
     resp = {'spent_minutes': task.spent_minutes, 'timer_running': bool(task.timer_started_at),

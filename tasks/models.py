@@ -124,6 +124,9 @@ class Task(TimeStampedModel):
     # ── زمانِ واقعیِ کارکرد (تایمر) ──
     spent_minutes = models.PositiveIntegerField('زمان کارکرد (دقیقه)', default=0)
     timer_started_at = models.DateTimeField('شروع تایمر جاری', null=True, blank=True)
+    # آخرین «ضربانِ» تب هنگام اجرای تایمر — اگر بیش از ۵ دقیقه کهنه شد (تب بسته/خواب)،
+    # تایمر خودکار روی همین زمان متوقف می‌شود (tasks/api.py: _reap_stale_timers).
+    timer_heartbeat = models.DateTimeField('ضربانِ تایمر', null=True, blank=True)
 
     # ── رپورتاژ ──
     media_name = models.CharField('نام رسانه', max_length=150, blank=True)
