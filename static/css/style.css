@@ -800,13 +800,6 @@ body.nav-open .nav-backdrop{opacity:1;visibility:visible}
 .ck-wrap{margin-bottom:14px}
 .ck-wrap>label{display:block;margin-bottom:6px}
 .ck-list{display:flex;flex-direction:column;gap:6px}
-.ck-row{display:flex;align-items:center;gap:8px}
-.ck-row .ck-done{width:auto;flex:none}
-.ck-row .ck-text{flex:1}
-.ck-row .ck-done:checked+.ck-text{text-decoration:line-through;color:var(--text-dim)}
-.ck-x{flex:none;border:0;background:transparent;color:var(--text-dim);cursor:pointer;font-size:18px;line-height:1;padding:0 4px}
-.ck-x:hover{color:var(--danger)}
-.ck-add{margin-top:8px}
 .report-sec{margin-top:16px;border-top:1px solid var(--stroke-soft);padding-top:12px}
 .report-list{margin-top:10px;display:flex;flex-direction:column;gap:8px}
 .report-item{background:var(--fill);border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:8px 10px}
@@ -1001,15 +994,17 @@ select.tx-inline{cursor:pointer;max-width:150px}
   background:var(--fill);border:1px solid var(--stroke-soft);color:var(--text)}
 
 /* فیلدِ چندتایی (کلمه + Enter) — کلماتِ کلیدی/LSI/هدف در مودالِ تسک */
-.tagbox{background:var(--fill);border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:8px}
-.tagbox-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.tagbox{background:transparent;border:0;border-radius:var(--r-sm);padding:0}
+.tagbox-chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:5px}
 .tagbox-chips:empty{display:none}
-.tagbox-chip{gap:4px;padding:3px 6px 3px 9px}
-.tagbox-x{cursor:pointer;font-style:normal;opacity:.6;font-size:13px;line-height:1}
+.tagbox-chip{gap:4px;padding:2px 6px 2px 8px;font-size:11px}
+.tagbox-x{cursor:pointer;font-style:normal;opacity:.6;font-size:12px;line-height:1}
 .tagbox-x:hover{opacity:1;color:var(--danger)}
-.tagbox-row{display:flex;gap:6px}
-.tagbox-input{flex:1}
-.tagbox-add{flex:none;padding:6px 14px}
+/* اینپوتِ کلمه با دکمهٔ ＋ داخلِ خودش (مثلِ چک‌لیست) */
+.tagbox-field{display:flex;align-items:center;background:var(--fill);border:1px solid var(--stroke-soft);border-radius:var(--r-sm);overflow:hidden}
+.tagbox-field .tagbox-input{flex:1;border:0;background:transparent;color:var(--text);padding:6px 9px;font-family:inherit;font-size:12.5px;outline:none;min-width:0}
+.tagbox-field .tagbox-add{flex:none;border:0;background:transparent;color:var(--text-dim);cursor:pointer;font-size:15px;line-height:1;padding:0 9px}
+.tagbox-field .tagbox-add:hover{color:var(--success)}
 
 /* KPIها (مدیریت نوع تسک + مودال/بازبینی) */
 .kpi-item{border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:8px;background:var(--row-alt)}
@@ -1460,9 +1455,10 @@ input[type=checkbox]:disabled{opacity:.5;cursor:default}
 .ck-row{display:flex;align-items:center;gap:8px}
 
 /* اهداف: انتخابگرِ ردیف + آیکن‌ها + مودالِ جزئیات */
-.pt-goal{flex:none;max-width:34px;border:1px solid var(--stroke-soft);background:var(--fill);color:var(--text-dim);
-  border-radius:var(--r-full);font-size:11px;padding:3px 4px;cursor:pointer}
-.pt-goal:focus{max-width:150px}
+/* انتخابگرِ هدف: آیکنِ SVGِ رنگی + selectِ نامرئیِ روی آن (بدونِ فلشِ دراپ‌داون) */
+.pt-goal-wrap{position:relative;width:22px;height:22px;flex:none;display:inline-flex}
+.pt-goal-ic{width:22px;height:22px;color:var(--gc,var(--text-faint));pointer-events:none}
+.pt-goal{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;appearance:none;-webkit-appearance:none;border:0;padding:0}
 .goal-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-inline-end:6px;vertical-align:middle;flex:none}
 .g-color{padding:2px;height:34px;cursor:pointer}
 .gd-meta{font-size:12px;color:var(--text-dim);margin-bottom:8px}
@@ -1496,6 +1492,26 @@ input[type=checkbox]:disabled{opacity:.5;cursor:default}
 #custom-fields .field{margin-bottom:0}
 
 /* هدرِ چسبانِ شناورِ جدول‌ها (sticky-thead.js) */
-.thead-float{position:fixed;top:0;overflow:hidden;z-index:30;pointer-events:none;box-shadow:0 6px 16px rgba(0,0,0,.18)}
-.thead-float table{border-collapse:collapse}
-.thead-float thead th{position:static}
+.thead-float{position:fixed;top:0;overflow:hidden;z-index:30;pointer-events:none;box-shadow:0 6px 16px rgba(0,0,0,.22)}
+.thead-float table{border-collapse:collapse;background:var(--card-solid)}
+.thead-float thead th{position:static;background:var(--card-solid)}
+
+/* هم‌ارتفاع کردنِ فیلدهای مودال: native select و rich-select و input یک قد */
+.tmodal select,.tmodal .rs-btn,.tmodal .input{height:34px;box-sizing:border-box}
+.tmodal .rs-btn{display:flex;align-items:center}
+.tmodal .rs-btn img,.tmodal .rs-btn .fb{width:18px;height:18px;border-radius:50%;flex:none}
+.tmodal textarea{height:auto}
+
+/* TinyMCE: آیکن‌های کوچک‌تر + نوارِ ابزار در تمِ روشن، روشن */
+.tox .tox-editor-header{padding:2px 4px !important}
+.tox .tox-toolbar__primary{padding:0 !important}
+.tox .tox-tbtn{height:28px !important;width:30px !important;margin:0 1px !important}
+.tox .tox-tbtn svg{transform:scale(.82)}
+:root[data-theme="light"] .tox.tox-tinymce{border-color:#dfe3ee !important}
+:root[data-theme="light"] .tox .tox-editor-header,
+:root[data-theme="light"] .tox .tox-toolbar,
+:root[data-theme="light"] .tox .tox-toolbar__primary,
+:root[data-theme="light"] .tox .tox-toolbar__group{background:#f3f5fa !important;border-color:#e2e6f0 !important}
+:root[data-theme="light"] .tox .tox-tbtn{color:#2b2f3a !important}
+:root[data-theme="light"] .tox .tox-tbtn svg{fill:#2b2f3a !important}
+:root[data-theme="light"] .tox .tox-tbtn:hover{background:#e4e8f2 !important}

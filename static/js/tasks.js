@@ -113,15 +113,15 @@
           ${field('title', 'عنوان', `<input id="f-title" class="input" value="${esc(t.title)}">`)}
           <!-- ردیفِ ۴ستونه: تاریخ / تخمین / ماه گزارش -->
           <div class="grid4">
-            ${field('planned_date', 'تاریخ برنامه', `<div style="display:flex;align-items:center"><input id="f-planned_date" class="input jdate" dir="ltr" readonly placeholder="۱۴۰۵/۰۵/۱۵" value="${t.planned_date_fa || ''}"><span id="rel-planned" class="rel-hint"></span></div>`)}
+            ${field('planned_date', 'تاریخ برنامه', `<div style="display:flex;align-items:center"><input id="f-planned_date" class="input jdate" dir="ltr" readonly value="${t.planned_date_fa || ''}"><span id="rel-planned" class="rel-hint"></span></div>`)}
             ${field('estimate_minutes', 'تخمین (H:MM)', `<input id="f-estimate_minutes" class="input" dir="ltr" placeholder="0:00" value="${t.estimate_minutes ? fmtMin(t.estimate_minutes) : ''}">`)}
             ${field('report_month', 'ماه گزارش', reportPeriodSelect(t))}
           </div>
+          ${recurBarHtml(t)}
           <label style="display:flex;align-items:center;gap:8px;margin:0 0 14px;cursor:pointer">
             <input type="checkbox" id="f-needs-review" ${needsReviewDefault ? 'checked' : ''}>
-            نیاز به بازبینی (بدونِ تاییدِ مدیر، «انجام‌شده» نمی‌شود)
+            بازبینی
           </label>
-          ${recurBarHtml(t)}
           <!-- فیلدهای سفارشی نوع (کلمه کلیدی/مترادف/... هرکدام یک ردیفِ کامل) -->
           <div id="custom-fields" style="display:none"></div>
         </div>
@@ -297,7 +297,7 @@
     const chips = (words || []).map(tagChip).join('');
     return `<div class="tagbox cf" data-key="${key}" data-kind="tags">
       <div class="tagbox-chips">${chips}</div>
-      <div class="tagbox-row"><input type="text" class="input tagbox-input" placeholder="${esc(placeholder || 'بنویس و Enter بزن…')}"><button type="button" class="btn btn-sm tagbox-add">+</button></div>
+      <div class="tagbox-field"><input type="text" class="tagbox-input" placeholder="${esc(placeholder || 'بنویس و Enter بزن…')}"><button type="button" class="tagbox-add" title="افزودن">＋</button></div>
     </div>`;
   }
   function tagboxAddWords(box, raw) {

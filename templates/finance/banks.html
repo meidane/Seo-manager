@@ -89,7 +89,7 @@ function catModal(data){
           <option value="transaction" ${d.income==='invoice'?'':'selected'}>از تراکنش‌ها (واریزی‌ها)</option>
           <option value="invoice" ${d.income==='invoice'?'selected':''}>از فاکتورها</option>
         </select></div>
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px"><input type="checkbox" id="c-sal" ${d.salary==='1'?'checked':''} style="width:auto"> مربوط به حقوق است</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px"><input type="checkbox" id="c-sal" ${d.salary==='1'?'checked':''}> مربوط به حقوق است</label>
     </div>
     <div class="modal-f"><button class="btn btn-p" id="c-save">ذخیره</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
   document.getElementById('c-save').onclick=async()=>{

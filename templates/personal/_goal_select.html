@@ -1,4 +1,7 @@
-<select class="pt-goal" data-id="{{ t.id }}"{% if t.goal_color %} style="color:{{ t.goal_color }};border-color:{{ t.goal_color }}"{% endif %} title="وصل به هدف">
-  <option value="">🎯</option>
-  {% for g in goal_list %}<option value="{{ g.id }}"{% if t.goal_id == g.id %} selected{% endif %}>🎯 {{ g.title }}</option>{% endfor %}
-</select>
+<span class="pt-goal-wrap"{% if t.goal_color %} style="--gc:{{ t.goal_color }}"{% endif %}>
+  <svg class="pt-goal-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4.6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg>
+  <select class="pt-goal" data-id="{{ t.id }}" title="وصل به هدف">
+    <option value="">بدون هدف</option>
+    {% for g in goal_list %}<option value="{{ g.id }}"{% if t.goal_id == g.id %} selected{% endif %}>{{ g.title }}</option>{% endfor %}
+  </select>
+</span>

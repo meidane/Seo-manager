@@ -49,8 +49,9 @@ class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
             week_end = today + timedelta(days=6)
             not_done = base.exclude(status=Task.DONE)
             # جعبه‌ی ۱: این‌هفته + عقب‌افتاده‌ها (هر چقدر قدیمی)، قدیمی‌ترین/عقب‌افتاده‌ترین اول
+            # ترتیب: نزدیک‌ترین تاریخ/عقب‌افتاده اول؛ در هر روز (مثلِ امروز) جدیدترین بالا
             ctx['box_recent'] = list(not_done.filter(planned_date__lte=week_end).order_by(
-                'planned_date', 'planned_time', 'id')[:BOX_CAP])
+                'planned_date', 'planned_time', '-created_at', '-id')[:BOX_CAP])
             # جعبه‌ی ۲: آینده، بیش از ۱ هفته — نزدیک‌ترین تاریخ اول
             ctx['box_future'] = list(not_done.filter(planned_date__gt=week_end).order_by(
                 'planned_date', 'planned_time', 'id')[:BOX_CAP])

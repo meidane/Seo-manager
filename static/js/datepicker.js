@@ -40,7 +40,14 @@
     document.body.appendChild(pop);
     const r = input.getBoundingClientRect();
     pop.style.top = (window.scrollY + r.bottom + 4) + 'px';
-    pop.style.insetInlineStart = (window.scrollX + r.left) + 'px';
+    // مختصاتِ سندی با left (نه inset-inline-start که در RTL به right نگاشت می‌شود و پاپ‌آور
+    // را دور از فیلد می‌بُرد)؛ با کلمپ تا از لبهٔ صفحه بیرون نزند.
+    const vw = document.documentElement.clientWidth;
+    let left = window.scrollX + r.left;
+    left = Math.max(6 + window.scrollX, Math.min(left, window.scrollX + vw - 268));  // عرضِ تقریبیِ پاپ‌آور
+    pop.style.left = left + 'px';
+    pop.style.insetInlineStart = 'auto';
+    pop.style.right = 'auto';
     render();
   }
 

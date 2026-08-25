@@ -98,7 +98,7 @@
     <div style="padding:0 14px 14px;display:flex;flex-wrap:wrap;gap:12px">
       {% for c in all_colleagues %}
         <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer">
-          <input type="checkbox" class="mem-box" value="{{ c.id }}" {% if c.id in member_ids %}checked{% endif %} {% if not can_manage_members %}disabled{% endif %} style="width:auto">
+          <input type="checkbox" class="mem-box" value="{{ c.id }}" {% if c.id in member_ids %}checked{% endif %} {% if not can_manage_members %}disabled{% endif %}>
           {{ c.full_name }}
         </label>
       {% empty %}

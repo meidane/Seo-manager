@@ -166,9 +166,10 @@
     });
   }
   function recomputeHabitPct(rowEl) {
-    const cells = [...rowEl.querySelectorAll('.habit-cell.active:not(.future)')];
-    const done = cells.filter((c) => c.classList.contains('done')).length;
-    rowEl.querySelector('.habit-pct').textContent = toFa(cells.length ? Math.round(done / cells.length * 100) : 0) + '٪';
+    // شمارنده = هر روزِ انجام‌شده (هدف یا نه)؛ مخرج = روزهای هدفِ هفته (اگر هیچ = ۷). سقفِ ۱۰۰.
+    const doneDays = rowEl.querySelectorAll('.habit-cell.done:not(.future)').length;
+    const target = rowEl.querySelectorAll('.habit-cell.active').length || 7;
+    rowEl.querySelector('.habit-pct').textContent = toFa(Math.min(100, Math.round(doneDays / target * 100))) + '٪';
   }
   function habitModalHtml(h) {
     const wset = h && h.weekdays ? h.weekdays.split(',') : [];
@@ -325,8 +326,8 @@
     const gid = sel.value;
     try {
       const r = await api(`/personal/api/tasks/${sel.dataset.id}/goal/`, 'PATCH', { goal: gid || null });
-      const col = (gid && r.color) ? r.color : '';
-      sel.style.color = col; sel.style.borderColor = col;
+      const wrap = sel.closest('.pt-goal-wrap');
+      if (wrap) wrap.style.setProperty('--gc', (gid && r.color) ? r.color : '');
     } catch (_) {}
   });
 

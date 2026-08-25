@@ -18,7 +18,7 @@
   {# ── لینک عمومی ── #}
   <section class="glass filters" style="justify-content:space-between">
     <label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">
-      <input type="checkbox" id="r-public" {% if report.is_public %}checked{% endif %} style="width:auto"> لینک عمومی برای مشتری فعال باشد
+      <input type="checkbox" id="r-public" {% if report.is_public %}checked{% endif %}> لینک عمومی برای مشتری فعال باشد
     </label>
     <span style="display:flex;gap:8px;align-items:center">
       <input class="input" id="r-link" style="max-width:340px" dir="ltr" readonly value="{{ request.scheme }}://{{ request.get_host }}{{ report.public_url }}">
@@ -141,7 +141,7 @@ document.getElementById('p-fetch').onclick=async()=>{
   if(!d.groups.length){box.innerHTML='<div class="empty" style="padding:20px">تسکِ جدیدی در این بازه نیست</div>';document.getElementById('pull-actions').style.display='none';return;}
   box.innerHTML=d.groups.map(g=>`<div style="margin-bottom:10px"><b style="font-size:12px;color:var(--text-dim)">${g.label}</b>`+
     g.tasks.map(t=>`<label class="pull-row">
-      <input type="checkbox" class="pick" value="${t.id}" style="width:auto">
+      <input type="checkbox" class="pick" value="${t.id}">
       <span class="ttype" style="background:rgba(${t.color},.16);color:rgb(${t.color})">${t.type_label}</span>
       <span>${t.title}</span><span style="color:var(--text-faint);font-size:11px">${t.assignee} · ${t.done_date_fa}</span>
       ${t.done?'':`<span class="pull-not-done">⏳ ${t.status_label}</span>`}</label>`).join('')+`</div>`).join('');
@@ -184,7 +184,7 @@ document.addEventListener('click',async e=>{
 // ── تنظیمات نمایش مشتری ──
 document.getElementById('r-settings').onclick=()=>{
   const boxes=CLIENT_FIELDS.map(([k,l])=>`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;margin:0;cursor:pointer">
-    <input type="checkbox" class="vf" value="${k}" ${VISIBLE.includes(k)?'checked':''} style="width:auto"> ${l}</label>`).join('');
+    <input type="checkbox" class="vf" value="${k}" ${VISIBLE.includes(k)?'checked':''}> ${l}</label>`).join('');
   App.openModal(`<div class="modal-h"><h3>چه فیلدهایی به مشتری نمایش داده شوند؟</h3><button class="x" onclick="App.closeModal()">×</button></div>
     <div class="modal-b"><p style="color:var(--text-faint);font-size:12px;margin-bottom:10px">عنوان همیشه نمایش داده می‌شود. بقیه را انتخاب کن.</p>${boxes}</div>
     <div class="modal-f"><button class="btn btn-p" id="vf-save">ذخیره</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);

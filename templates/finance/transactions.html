@@ -65,14 +65,14 @@
   <div class="sheet-wrap">
     <table class="sheet" id="tx-sheet">
       <thead><tr>
-        <th class="chk-col"><input type="checkbox" id="check-all" style="width:auto"></th>
+        <th class="chk-col"><input type="checkbox" id="check-all"></th>
         <th>تاریخ</th><th>بانک</th><th>شرح سند</th><th>واریز</th><th>برداشت</th><th>مانده</th>
         <th style="background:rgba(65,131,242,.08)">پروژه</th><th style="background:rgba(65,131,242,.08)">بابت</th><th style="background:rgba(65,131,242,.08)">توضیحات</th>
       </tr></thead>
       <tbody>
         {% for t in transactions %}
           <tr data-id="{{ t.id }}">
-            <td class="chk-col"><input type="checkbox" class="row-check" data-id="{{ t.id }}" style="width:auto"></td>
+            <td class="chk-col"><input type="checkbox" class="row-check" data-id="{{ t.id }}"></td>
             <td>{{ t.date|jalali }}</td>
             <td><span class="tag t-mute" style="white-space:nowrap">{{ t.bank_account.name }}</span></td>
             <td style="text-align:right;max-width:220px"><span style="display:inline-block;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle" title="{{ t.description }}">{{ t.description }}</span> <button type="button" class="mini tx-split-btn" data-id="{{ t.id }}" title="تفکیک این تراکنش">⑂</button></td>

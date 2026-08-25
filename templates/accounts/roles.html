@@ -41,7 +41,7 @@
     <div style="margin-bottom:10px">
       <div style="font-size:11.5px;color:var(--text-faint);font-weight:700;margin-bottom:4px">${g.name}</div>
       <div style="border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:8px">
-        ${g.perms.map(([k,l])=>`<label style="display:flex;align-items:center;gap:7px;margin:0;padding:3px 0;cursor:pointer"><input type="checkbox" class="pm-box" value="${k}" ${sel.includes(k)?'checked':''} style="width:auto"> ${l}</label>`).join('')}
+        ${g.perms.map(([k,l])=>`<label style="display:flex;align-items:center;gap:7px;margin:0;padding:3px 0;cursor:pointer"><input type="checkbox" class="pm-box" value="${k}" ${sel.includes(k)?'checked':''}> ${l}</label>`).join('')}
       </div>
     </div>`).join('');
   const pickedPerms=()=>[...document.querySelectorAll('.pm-box:checked')].map(c=>c.value);

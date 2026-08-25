@@ -9,9 +9,9 @@
   try { items = JSON.parse(document.getElementById('running-timers-data').textContent || '[]'); } catch (_) {}
 
   const esc = (v) => (v || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-  function fmt(mins) {
-    const m = Math.max(0, Math.round(mins)), h = Math.floor(m / 60), mm = m % 60;
-    return h ? `${h}:${String(mm).padStart(2, '0')}` : `${mm}:00`;
+  function fmt(mins) {  // همیشه «H:MM» (۶ دقیقه = 0:06، نه 6:00)
+    const m = Math.max(0, Math.round(mins));
+    return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
   }
   function elapsed(it) {
     return (it.spent || 0) + (it.started ? (Date.now() - new Date(it.started).getTime()) / 60000 : 0);
