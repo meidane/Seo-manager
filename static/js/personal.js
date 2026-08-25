@@ -57,6 +57,11 @@
       if (e.target.classList.contains('pt-move')) {   // انتقال به فردا (تاریخچهٔ روزِ فعلی می‌ماند)
         e.stopPropagation();
         try { await api(`/personal/api/tasks/${id}/move/`, 'POST'); location.reload(); } catch (_) {}
+        return;
+      }
+      if (e.target.classList.contains('pt-unplan')) {  // بازگشت به اینباکس (حذفِ تاریخ)
+        e.stopPropagation();
+        try { await api(`/personal/api/tasks/${id}/plan/`, 'PATCH', { date: '' }); location.reload(); } catch (_) {}
       }
     });
     // done (change روی چک‌باکس) — از endpointِ شخصی (هم وضعیتِ تسک، هم DailyPlanِ آن روز)
@@ -81,12 +86,18 @@
     if (daily) wireDrag(list);
   }
 
+  // درگِ ردیفِ روزانه: جابه‌جایی داخلِ لیست، یا رهاکردن روی اینباکس = بازگشت به اینباکس
+  let dragged = null, toInbox = false;
   function wireDrag(list) {
-    let dragged = null;
-    list.addEventListener('dragstart', (e) => { dragged = e.target.closest('.pers-drag'); if (dragged) dragged.classList.add('dragging'); });
+    list.addEventListener('dragstart', (e) => { dragged = e.target.closest('.pers-drag'); toInbox = false; if (dragged) dragged.classList.add('dragging'); });
     list.addEventListener('dragend', async () => {
       if (!dragged) return;
+      const id = dragged.dataset.id;
       dragged.classList.remove('dragging'); dragged = null;
+      if (toInbox) {  // رها روی اینباکس → حذفِ تاریخ (برگشت به اینباکس)
+        try { await api(`/personal/api/tasks/${id}/plan/`, 'PATCH', { date: '' }); location.reload(); } catch (_) {}
+        return;
+      }
       const ids = [...list.querySelectorAll('.pers-drag')].map((r) => +r.dataset.id);
       try { await api('/personal/api/tasks/reorder/', 'POST', { ids }); } catch (_) {}
     });
@@ -104,6 +115,14 @@
   const dailyBox = document.getElementById('daily-box');
   if (inboxBox) wireList(inboxBox, false);
   if (dailyBox) wireList(dailyBox, true);
+
+  // اینباکس به‌عنوان مقصدِ رهاکردنِ تسکِ روزانه (unplan)
+  const inboxList = document.getElementById('inbox-list');
+  if (inboxList) {
+    inboxList.addEventListener('dragover', (e) => { if (dragged) { e.preventDefault(); toInbox = true; inboxList.classList.add('drop-hi'); } });
+    inboxList.addEventListener('dragleave', () => { toInbox = false; inboxList.classList.remove('drop-hi'); });
+    inboxList.addEventListener('drop', (e) => { e.preventDefault(); inboxList.classList.remove('drop-hi'); });
+  }
 
   // ── افزودن به اینباکس ──
   const addInput = document.getElementById('inbox-title');

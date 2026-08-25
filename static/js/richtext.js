@@ -26,18 +26,29 @@
     });
   }
 
+  // تمِ جاری: روشن فقط وقتی data-theme=light صریح ست شده (پیش‌فرضِ پروژه تیره است)
+  function isLight() {
+    return document.documentElement.getAttribute('data-theme') === 'light';
+  }
+
   function init(selector) {
     ensureTiny(() => {
       window.tinymce.remove(selector);
+      // فقط اسکینِ oxide-dark bundle شده؛ در تمِ روشن به‌جای اسکینِ روشن (که فایلش نیست)
+      // محتوای ادیتور را با content_style روشن می‌کنیم تا متنِ توضیحات در لایت خوانا باشد.
+      const light = isLight();
       window.tinymce.init({
         selector, base_url: BASE, suffix: '.min',
-        directionality: 'rtl', skin: 'oxide-dark', content_css: 'dark',
+        directionality: 'rtl', skin: 'oxide-dark',
+        content_css: light ? false : 'dark',
         menubar: false, statusbar: false, height: 240, branding: false,
         plugins: 'lists link image table autoresize code',
         toolbar: 'bold italic | h2 h3 | bullist numlist | link image table | code',
         autoresize_bottom_margin: 12,
         content_style: 'body{font-family:Vazirmatn,system-ui,sans-serif;font-size:14px;line-height:1.9;'
-          + '-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}'
+          + '-webkit-user-select:text;user-select:text;-webkit-touch-callout:default;'
+          + (light ? 'background:#fff;color:#15181f' : 'background:transparent;color:#E9EEF9') + '}'
+          + 'a{color:' + (light ? '#2F4FBF' : '#7C9CFA') + '}'
           + 'img{max-width:100%;height:auto;border-radius:6px}',
         // پشتیبانی از کپی/پیستِ موبایل (منویِ نگه‌داشتن/انتخاب)
         browser_spellcheck: true,

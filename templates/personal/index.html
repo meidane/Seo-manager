@@ -80,7 +80,7 @@
             <input type="checkbox" class="pt-done" {% if t.is_done %}checked{% endif %}>
             <span class="pt-title {% if t.is_done %}is-done{% endif %}">{{ t.title }}</span>
             <button class="pt-move" title="انتقال به فردا">→ فردا</button>
-            <button class="pt-x" title="حذف">×</button>
+            <button class="pt-unplan" title="بازگشت به اینباکس (حذفِ تاریخ)">↩</button>
           </div>
         {% endfor %}
         {% for t in system_tasks %}
@@ -155,7 +155,7 @@
       </div>
     </section>
 
-    {# ── باکس ۵: عمر ── #}
+    {% comment %} ── باکس ۵: عمر (فعلاً غیرفعال طبق درخواست) ──
     <section class="card glass pers-box pers-life" id="life-box">
       <div class="pers-head"><h3>عمر</h3></div>
       <div class="life-main">
@@ -166,6 +166,7 @@
         <div class="life-motto">هر ثانیه‌ای که می‌گذرد برنمی‌گردد. الان بهترین زمانِ کار کردن است.</div>
       </div>
     </section>
+    {% endcomment %}
   </div>
 
 </div>
