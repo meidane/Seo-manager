@@ -1,8 +1,11 @@
 {% load seo_extras %}<tr>
   {% if row_drag %}<th style="width:26px"></th>{% endif %}
+  {% if not editable %}<th class="nowrap-c" style="width:1%"></th>{% endif %}{# آواتارِ مسئول + لوگوی پروژه (بدونِ نام) #}
   <th class="th-title">عنوان</th>
-  {% if not hide_project %}<th class="nowrap-c">پروژه</th>{% endif %}
-  <th class="nowrap-c">مسئول</th>
+  {% if editable %}
+    {% if not hide_project %}<th class="nowrap-c">پروژه</th>{% endif %}
+    <th class="nowrap-c">مسئول</th>
+  {% endif %}
   <th class="nowrap-c">تاریخ برنامه</th>
   <th class="nowrap-c">وضعیت</th>
   <th class="nowrap-c">زمان / تخمین</th>

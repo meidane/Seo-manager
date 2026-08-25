@@ -1424,3 +1424,21 @@ table.sheet td:not(.edit){padding:6px 9px}
 .pers-list.drop-hi{outline:2px dashed var(--primary);outline-offset:2px;border-radius:var(--r-sm)}
 .pt-time{flex:none;font-size:11px;color:var(--text-dim);white-space:nowrap;font-variant-numeric:tabular-nums}
 .pt-est{flex:none;font-size:10px;color:var(--warning);white-space:nowrap}
+
+/* چک‌باکسِ سفارشیِ سراسری — قشنگ‌تر و هماهنگ با تم (accent + اندازه + گردی) */
+input[type=checkbox]{
+  appearance:none;-webkit-appearance:none;flex:none;
+  width:18px;height:18px;border:1.5px solid var(--stroke);border-radius:5px;
+  background:var(--fill);cursor:pointer;position:relative;vertical-align:middle;
+  transition:background .12s,border-color .12s}
+input[type=checkbox]:hover{border-color:var(--primary-400)}
+input[type=checkbox]:checked{background:var(--primary);border-color:var(--primary)}
+input[type=checkbox]:checked::after{
+  content:'';position:absolute;inset-inline-start:5px;top:1px;width:5px;height:9px;
+  border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+input[type=checkbox]:disabled{opacity:.5;cursor:default}
+
+/* سلولِ آواتارِ مسئول + لوگوی پروژه (جدولِ فقط‌خواندنی، بدونِ نام) */
+.idcell{white-space:nowrap}
+.idcell img,.idcell .fb,.idcell .avatar,.idcell .logo,.idcell>span{vertical-align:middle;display:inline-flex}
+.idcell>*+*{margin-inline-start:5px}
