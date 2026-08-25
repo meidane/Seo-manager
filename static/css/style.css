@@ -627,8 +627,12 @@ table.sheet tr:hover td{background:var(--row-alt)}
   background:var(--primary);color:#fff;cursor:pointer;font-size:13px;line-height:1;opacity:0;transition:var(--ease);z-index:4;display:grid;place-items:center}
 .cell:hover .cell-add{opacity:1}
 .cell-add:hover{background:var(--primary-400)}
-.tk{border-radius:6px;padding:3px 6px;font-size:11px;line-height:1.4;cursor:pointer;transition:var(--ease);
+.tk{border-radius:6px;padding:3px 6px;font-size:11px;line-height:1.4;cursor:pointer;transition:var(--ease);color:var(--text);
   display:flex;align-items:center;gap:5px;overflow:hidden;min-width:0;width:100%;flex:none}
+/* «+N مورد دیگر»: تا کلیک‌نکردن فقط ۵ تسکِ اول؛ با کلیک، سلول باز و همه دیده می‌شوند */
+.cell:not(.expanded) .tk-extra{display:none}
+.more{border:0;background:transparent;font-family:inherit}
+.cell.expanded{background:var(--row-alt)}
 .tk:hover{transform:translateX(-2px)}
 .tk-av{width:15px;height:15px;border-radius:50%;flex:none;object-fit:cover;display:grid;place-items:center;font-size:8px;color:#fff;font-weight:700;border:1px solid rgba(255,255,255,.25)}
 .tk-tx{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}

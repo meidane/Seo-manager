@@ -225,6 +225,16 @@ class Task(TimeStampedModel):
             return '249,115,22'
         return TYPE_COLORS.get(self.task_type, TYPE_COLORS['other'])
 
+    def _project_color_rgb(self):
+        """رنگِ پروژه (hex→rgb) برای رنگ‌بندیِ تقویم بر اساسِ پروژه (نه نوعِ تسک)."""
+        h = (self.project.color if self.project_id else '').lstrip('#')
+        if len(h) == 6:
+            try:
+                return ','.join(str(int(h[i:i + 2], 16)) for i in (0, 2, 4))
+            except ValueError:
+                pass
+        return self.color_rgb
+
     def to_dict(self):
         """نمایش سبک برای API تقویم/لیست."""
         return {
@@ -233,6 +243,7 @@ class Task(TimeStampedModel):
             'type': self.task_type,
             'type_label': self.type_label,
             'color': self.color_rgb,
+            'project_color': self._project_color_rgb(),
             'time': self.planned_time.strftime('%H:%M') if hasattr(self.planned_time, 'strftime') else str(self.planned_time or ''),
             # تاریخِ برنامه (میلادی برای درگ تقویم + شمسی برای مودالِ ویرایش) — نبودش
             # باعث می‌شد مودالِ ویرایش تاریخ را خالی نشان دهد

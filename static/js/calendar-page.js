@@ -20,10 +20,11 @@
       ? `<img class="tk-av" src="${t.avatar}" alt="">`
       : `<span class="tk-av" style="background:${t.a_color}">${t.initials || ''}</span>`;
   }
-  function chip(t) {
-    const style = t.done ? '' : `style="background:rgba(${t.color},.15);border-right:3px solid rgb(${t.color});color:rgb(${t.color})"`;
+  function chip(t, extra) {
+    const pc = t.project_color || t.color;  // رنگ‌بندی بر اساسِ پروژه (نه نوعِ تسک)
+    const style = t.done ? '' : `style="background:rgba(${pc},.14);border-right:3px solid rgb(${pc})"`;
     const attrs = t.virtual ? '' : ` draggable="true" data-id="${t.id}" data-open-task="${t.id}"`;
-    return `<span class="tk${t.done ? ' done' : ''}${t.is_placeholder ? ' placeholder' : ''}${t.virtual ? ' virtual' : ''}"${attrs} ${style}>` +
+    return `<span class="tk${extra ? ' tk-extra' : ''}${t.done ? ' done' : ''}${t.is_placeholder ? ' placeholder' : ''}${t.virtual ? ' virtual' : ''}"${attrs} ${style}>` +
       `${av(t)}<span class="tk-tx">${t.type_label}: ${t.title}</span></span>`;
   }
   function cellHtml(c) {
@@ -33,8 +34,8 @@
       `${c.tasks.length ? `<span class="cnt">${c.tasks.length.toLocaleString('en-US')}</span>` : ''}` +
       (() => { const mn = c.tasks.reduce((s, t) => s + (t.estimate_minutes || 0), 0); return mn ? `<span class="cnt-h" title="جمعِ زمانِ تخمینیِ این روز">${Math.round(mn / 60 * 10) / 10}h</span>` : ''; })() + `</div>`;
     if (!c.dim && canCreateTask) h += `<button class="cell-add" data-jdate="${c.jdate}" title="تسک جدید در این روز">＋</button>`;
-    c.tasks.slice(0, 5).forEach((t) => (h += chip(t)));
-    if (c.tasks.length > 5) h += `<span class="more">+${(c.tasks.length - 5).toLocaleString('en-US')} مورد دیگر</span>`;
+    c.tasks.forEach((t, i) => (h += chip(t, i >= 5)));
+    if (c.tasks.length > 5) h += `<button type="button" class="more" data-more>+${(c.tasks.length - 5).toLocaleString('en-US')} مورد دیگر</button>`;
     return h + '</div>';
   }
 
@@ -57,7 +58,15 @@
   // ── دکمه‌ی + هر روز → مودال تسک با تاریخ پرشده ──
   grid.addEventListener('click', (e) => {
     const add = e.target.closest('.cell-add');
-    if (add && window.openTask) { e.stopPropagation(); window.openTask(null, { planned_date_fa: add.dataset.jdate }); }
+    if (add && window.openTask) { e.stopPropagation(); window.openTask(null, { planned_date_fa: add.dataset.jdate }); return; }
+    const more = e.target.closest('[data-more]');   // «+N مورد دیگر» → باز/بستنِ سلول
+    if (more) {
+      e.stopPropagation();
+      const cell = more.closest('.cell');
+      if (!more.dataset.label) more.dataset.label = more.textContent;
+      const open = cell.classList.toggle('expanded');
+      more.textContent = open ? 'بستن' : more.dataset.label;
+    }
   });
 
   // ── درگ‌ودراپ: چیپ روی سلول → PATCH تاریخ برنامه ──
