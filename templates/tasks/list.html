@@ -21,7 +21,7 @@
     <select name="report_month" onchange="this.form.submit()"><option value="">همه‌ی ماه‌های گزارش</option>
       {% for v,l in report_months %}<option value="{{ v }}" {% if filters.report_month == v|stringformat:'s' %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
     <span class="sep"></span>
-    <a href="?overdue=1" class="chip {% if filters.overdue == '1' %}on{% endif %}" style="border-color:rgba(251,87,115,.4);color:#FFA3B3">🔴 عقب‌افتاده‌ها</a>
+    <a href="?overdue=1" class="chip {% if filters.overdue == '1' %}on{% endif %}" style="border-color:rgba(251,87,115,.4);color:var(--bad-fg)">🔴 عقب‌افتاده‌ها</a>
     <a href="?group=day" class="chip {% if grouped_by_day %}on{% endif %}">📅 تفکیکِ روزانه (انجام‌شده)</a>
     {% if grouped_by_day %}<a href="{% url 'tasks:list' %}" class="chip">✕ خروج از تفکیک</a>{% endif %}
   </form>
@@ -39,10 +39,10 @@
   {% else %}
 
   {# ── جعبه‌ی ۱: این‌هفته + عقب‌افتاده‌ها (قدیمی‌ترین/عقب‌افتاده‌ترین اول) ── #}
-  {% include "tasks/_task_box.html" with title="این هفته و عقب‌افتاده‌ها" tasks=box_recent empty_icon="✅" empty_text="کاری برای این هفته یا عقب‌افتاده‌ای نیست" %}
+  {% include "tasks/_task_box.html" with title="این هفته و عقب‌افتاده‌ها" tasks=box_recent day_gap=True empty_icon="✅" empty_text="کاری برای این هفته یا عقب‌افتاده‌ای نیست" %}
 
   {# ── جعبه‌ی ۲: آینده، بیش از ۱ هفته (نزدیک‌ترین تاریخ اول) ── #}
-  {% include "tasks/_task_box.html" with title="تسک‌های آینده (بیش از ۱ هفته)" tasks=box_future empty_icon="📆" empty_text="تسکِ آینده‌ای بیش از یک هفته نیست" %}
+  {% include "tasks/_task_box.html" with title="تسک‌های آینده (بیش از ۱ هفته)" tasks=box_future day_gap=True empty_icon="📆" empty_text="تسکِ آینده‌ای بیش از یک هفته نیست" %}
 
   {# ── جعبه‌ی ۳: انجام‌شده‌ها (جدیدترین اول، لودِ تنبل) ── #}
   {% include "tasks/_task_box.html" with title="تسک‌های انجام‌شده" tasks=box_done table_id="done-tsheet" empty_icon="☑" empty_text="هنوز تسکِ انجام‌شده‌ای ثبت نشده" %}

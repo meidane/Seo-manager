@@ -1,5 +1,6 @@
 {% load seo_extras %}
 {% for t in tasks %}
+  {% if day_gap %}{% ifchanged t.planned_date %}{% if not forloop.first %}<tr class="day-gap" aria-hidden="true"><td colspan="30"></td></tr>{% endif %}{% endifchanged %}{% endif %}
   <tr data-id="{{ t.id }}" class="{% if t.is_overdue %}overdue-l {% endif %}{% if row_drag %}seo-row{% endif %}"{% if not editable %} data-open-task="{{ t.id }}" style="cursor:pointer"{% endif %}>
     {% if row_drag %}<td class="row-lead"><i class="seo-drag" title="جابه‌جایی">⠿</i></td>{% endif %}
     {% if editable %}

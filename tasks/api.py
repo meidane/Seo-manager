@@ -199,6 +199,21 @@ def apply_fields(task: Task, data: dict):
         _stop_timer(task)
 
 
+def _visible_report_periods(past_months=3):
+    """ماه‌های گزارشِ قابل‌انتخاب در مودال: جاری + همهٔ آینده + حداکثر `past_months` ماهِ
+    گذشته. ماهِ تمام‌شده‌ی قدیمی‌تر از این حذف می‌شود (طبقِ درخواست: مثلاً مرداد که تمام
+    شد فقط تا ۳ ماه در دراپ‌داون بماند، بعد از آن نه)."""
+    from .models import ReportPeriod
+    cy, cm = today_jalali().year, today_jalali().month
+    cur = cy * 12 + cm
+    out = []
+    for p in ReportPeriod.objects.all():
+        idx = p.year * 12 + p.month
+        if idx >= cur - past_months:   # جاری/آینده یا حداکثر ۳ ماهِ گذشته
+            out.append([p.value, p.label])
+    return out
+
+
 @login_required
 @require_http_methods(['GET'])
 def form_data(request):
@@ -233,7 +248,8 @@ def form_data(request):
         'reportMonths': list(Task.REPORT_MONTH_CHOICES),  # [[1,'فروردین'],…] برای دراپ‌داونِ «ماه گزارش»
         'reportYear': today_jalali().year,  # پیش‌فرضِ سالِ گزارش (جالیِ جاری)
         # ماه‌های گزارشِ تعریف‌شده در تنظیمات (منبعِ واحد) — [[value,label],…] value='سال-ماه'
-        'reportPeriods': [[p.value, p.label] for p in ReportPeriod.objects.all()],
+        # فقط جاری/آینده + حداکثر ۳ ماهِ گذشته؛ ماهِ تمام‌شده‌ی قدیمی‌تر از دراپ‌داون حذف می‌شود.
+        'reportPeriods': _visible_report_periods(),
         'customTypes': [
             {'id': t.id, 'name': t.name, 'color': t.color, 'icon': t.icon,
              'builtin_key': t.builtin_key, 'fields': t.schema(),

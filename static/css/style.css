@@ -36,6 +36,9 @@
   --primary-ring:rgba(79,118,246,.40);
   /* رنگِ متن روی پس‌زمینهٔ نیمه‌شفافِ ایندیگویی (منو/چیپِ فعال) — در تمِ روشن تیره می‌شود */
   --on-soft:#DCE6FF;
+  /* رنگِ متنِ حالت‌ها روی تینتِ نیمه‌شفاف (تگ/عدد/چیپ) — در تمِ روشن تیره می‌شوند تا
+     خوانا بمانند (سبز/قرمز/آبی/زردِ روشن روی پس‌زمینهٔ سفید دیده نمی‌شدند). */
+  --ok-fg:var(--ok-fg); --bad-fg:var(--bad-fg); --info-fg:var(--info-fg); --amber-fg:var(--amber-fg);
   /* گرادیانِ لهجه‌ایِ سراسری (آبی→ایندیگو) — برند/دکمه/حالتِ فعال */
   --accent-grad:linear-gradient(135deg,var(--primary),#6E8BFA);
   /* رنگِ تقریبیِ سطحِ کارت — برای ماسکِ هاله‌های اسکرول (scroll-shadows) */
@@ -84,6 +87,7 @@
   --primary-soft:rgba(79,118,246,.12);
   --primary-ring:rgba(79,118,246,.34);
   --on-soft:#2F4FBF;
+  --ok-fg:#0E9F78; --bad-fg:#D64560; --info-fg:#1E88C7; --amber-fg:#B7791F;
   --card-solid:#FFFFFF;
   --text:#1B2233;
   --text-dim: #2e3542;
@@ -259,10 +263,10 @@ select option, select optgroup{background:var(--card-solid);color:var(--text)}
 select{color:var(--text)}
 /* رنگ‌بندی وضعیت (دراپ‌داون ردیف تسک) */
 .row-status{border-radius:var(--r-full);border:1px solid var(--stroke-soft);font-weight:500}
-.row-status.st-done{color:#6FE3C4;border-color:rgba(45,212,167,.4);background:rgba(45,212,167,.08)}
+.row-status.st-done{color:var(--ok-fg);border-color:rgba(45,212,167,.4);background:rgba(45,212,167,.08)}
 .row-status.st-doing{color:#FDBA8C;border-color:rgba(249,115,22,.4);background:rgba(249,115,22,.08)}
 .row-status.st-todo{color:var(--text-dim)}
-.row-status.st-cancelled{color:#FFA3B3;border-color:rgba(251,87,115,.4);background:rgba(251,87,115,.08)}
+.row-status.st-cancelled{color:var(--bad-fg);border-color:rgba(251,87,115,.4);background:rgba(251,87,115,.08)}
 label{font-size:12px;color:var(--text-dim);display:block;margin-bottom:6px}
 .field{margin-bottom:14px}
 
@@ -287,7 +291,7 @@ label{font-size:12px;color:var(--text-dim);display:block;margin-bottom:6px}
 .alert .arw{opacity:.5;font-size:11px}
 .a-red{background:rgba(251,87,115,.10);border-color:rgba(251,87,115,.28);color:#FFC2CC}
 .a-org{background:rgba(249,115,22,.10);border-color:rgba(249,115,22,.28);color:#FDBA8C}
-.a-yel{background:rgba(251,191,36,.10);border-color:rgba(251,191,36,.26);color:#FCD98A}
+.a-yel{background:rgba(251,191,36,.10);border-color:rgba(251,191,36,.26);color:var(--amber-fg)}
 .a-blu{background:rgba(56,189,248,.10);border-color:rgba(56,189,248,.26);color:#A5E2FC}
 
 /* ── کارت ── */
@@ -366,7 +370,7 @@ tbody tr:last-child td{border-bottom:0}
 .t-ok{background: rgba(45, 212, 167, .14);color: #23a683;}
 .t-warn{background:rgba(249,115,22,.14);color: #dc8549;}
 .t-bad{background:rgba(251,87,115,.14);color: #df6379;}
-.t-info{background:rgba(56,189,248,.14);color:#8FD8FA}
+.t-info{background:rgba(56,189,248,.14);color:var(--info-fg)}
 .t-mute{background:rgba(143,160,184,.13);color:var(--text-dim)}
 .zero{color:var(--text-faint)}
 .red-n{color:#FF9AAB;font-weight:700}
@@ -421,7 +425,7 @@ tbody tr:last-child td{border-bottom:0}
 }
 .toast.ok{border-inline-end-color:var(--success)}
 .toast.err{border-inline-end-color:var(--danger)}
-.toast.warn{border-inline-end-color:var(--warning)}
+.toast.warn{border-inline-end-color:var(--amber-fg)}
 @keyframes toast-in{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
 
 /* ── ورود ── */
@@ -524,7 +528,7 @@ tbody tr:last-child td{border-bottom:0}
 .bank-card .bnum{font-size:11px;color:var(--text-faint);direction:ltr;letter-spacing:1px}
 .bank-card .bbal{font-size:22px;font-weight:700;margin-top:8px;font-variant-numeric:tabular-nums}
 .bank-card .bbal small{font-size:13px;font-weight:400;color:var(--text-dim)}
-.dep{color:#6FE3C4} .wd{color:#FFA3B3}
+.dep{color:var(--ok-fg)} .wd{color:var(--bad-fg)}
 .sheet-wrap{overflow-x:auto;border:1px solid var(--stroke-soft);border-radius:var(--r)}
 table.sheet{border-collapse:collapse;width:100%;font-size:12.5px;min-width:960px}
 table.sheet th{background:var(--fill);position:sticky;top:0;z-index:5;padding:9px 10px;
@@ -533,8 +537,7 @@ table.sheet td{padding:8px 10px;border:1px solid var(--stroke-soft);text-align:c
 table.sheet td.num{font-variant-numeric:tabular-nums;text-align:left;direction:ltr}
 table.sheet td.edit{background:rgba(65,131,242,.04)}
 table.sheet td.edit select,table.sheet td.edit input{padding:4px 6px;font-size:12px;background:transparent;border:0;
-color: white;
-    font-family: 'Vazirmatn';}
+color:var(--text);font-family:inherit}
 table.sheet td.edit select:focus,table.sheet td.edit input:focus{background:var(--bg)}
 table.sheet tr:hover td{background:var(--row-alt)}
 .chk-col{width:34px}
@@ -543,12 +546,12 @@ table.sheet tr:hover td{background:var(--row-alt)}
 .stepper .st .dot{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:13px;
   background:var(--glass);border:1px solid var(--stroke);color:var(--text-dim);z-index:2}
 .stepper .st.on .dot{background:linear-gradient(135deg,var(--primary),var(--primary-600));color:#fff;border-color:transparent}
-.stepper .st.done .dot{background:rgba(45,212,167,.2);color:#6FE3C4;border-color:transparent}
+.stepper .st.done .dot{background:rgba(45,212,167,.2);color:var(--ok-fg);border-color:transparent}
 .stepper .st span{font-size:11.5px;color:var(--text-dim)}
 .stepper .st::after{content:"";position:absolute;top:15px;inset-inline-end:50%;width:100%;height:1px;background:var(--stroke-soft);z-index:1}
 .stepper .st:first-child::after{display:none}
 .dup-row td{opacity:.45}
-.dup-badge{font-size:9.5px;background:rgba(251,87,115,.18);color:#FFA3B3;padding:1px 6px;border-radius:99px}
+.dup-badge{font-size:9.5px;background:rgba(251,87,115,.18);color:var(--bad-fg);padding:1px 6px;border-radius:99px}
 .pay-comp{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .pay-comp .c{font-size:11px;padding:3px 10px;border-radius:var(--r-full);background:var(--glass);border:1px solid var(--stroke-soft)}
 
@@ -565,7 +568,7 @@ table.sheet tr:hover td{background:var(--row-alt)}
 .file-card .meta b{font-size:12px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
 .file-card .meta span{font-size:10.5px;color:var(--text-faint)}
 .file-card .del{position:absolute;top:6px;inset-inline-start:6px;width:22px;height:22px;border-radius:50%;border:0;
-  background:rgba(3,7,18,.7);color:#FFA3B3;cursor:pointer;opacity:0;transition:var(--ease)}
+  background:rgba(3,7,18,.7);color:var(--bad-fg);cursor:pointer;opacity:0;transition:var(--ease)}
 .file-card:hover .del{opacity:1}
 
 /* ── همکار در جدول ── */
@@ -588,7 +591,7 @@ table.sheet tr:hover td{background:var(--row-alt)}
 .item-m .grow{margin-inline-start:auto;display:flex;gap:5px}
 .ttype{font-size:10.5px;padding:1.5px 8px;border-radius:var(--r-full);font-weight:500;flex:none;display:inline-flex;align-items:center}
 .mini.go:hover{border-color:var(--primary-ring);color:#BBD4FF;background:var(--primary-soft)}
-.mini.ok:hover{border-color:rgba(45,212,167,.4);color:#6FE3C4;background:rgba(45,212,167,.12)}
+.mini.ok:hover{border-color:rgba(45,212,167,.4);color:var(--ok-fg);background:rgba(45,212,167,.12)}
 
 /* ── نمودار ── */
 .chart-wrap{padding:16px}
@@ -858,7 +861,7 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .tw-dot{width:8px;height:8px;border-radius:50%;background:#2DD4A7;flex:none;box-shadow:0 0 0 0 rgba(45,212,167,.6);animation:twpulse 1.6s infinite}
 @keyframes twpulse{0%{box-shadow:0 0 0 0 rgba(45,212,167,.5)}70%{box-shadow:0 0 0 6px rgba(45,212,167,0)}100%{box-shadow:0 0 0 0 rgba(45,212,167,0)}}
 .tw-tt{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tw-time{font-variant-numeric:tabular-nums;color:#6FE3C4}
+.tw-time{font-variant-numeric:tabular-nums;color:var(--ok-fg)}
 .tw-stop{border:0;background:var(--fill-strong);color:var(--text);width:20px;height:20px;border-radius:5px;cursor:pointer;font-size:9px;line-height:1}
 .tw-stop:hover{background:var(--danger);color:#fff}
 
@@ -868,7 +871,7 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .timer-cell .tbtn:hover{background:var(--primary-ring);color:#fff}
 .timer-cell.running .tbtn{background:var(--danger);color:#fff}
 .timer-cell .tval{font-variant-numeric:tabular-nums;font-size:12px;color:var(--text);min-width:28px}
-.timer-cell.running .tval{color:#6FE3C4}
+.timer-cell.running .tval{color:var(--ok-fg)}
 /* تخمینِ زمان کنارِ صرف‌شده (کم‌رنگ‌تر، برای تمایز: صرف‌شده / تخمین) */
 .t-est{font-variant-numeric:tabular-nums;font-size:11px;color:var(--text-faint)}
 /* «تکمیل — امروز/دیروز» کنارِ وضعیت */
@@ -919,10 +922,10 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .hist-item{background:var(--glass);border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:8px 10px}
 .hist-meta{font-size:11.5px;color:var(--text-faint);margin-bottom:3px}
 .hist-badge{display:inline-block;padding:1px 7px;border-radius:99px;font-size:10.5px;font-weight:700}
-.hist-created{background:rgba(45,212,167,.16);color:#6FE3C4}
+.hist-created{background:rgba(45,212,167,.16);color:var(--ok-fg)}
 .hist-updated{background:rgba(56,189,248,.16);color:#7CC7F5}
-.hist-deleted{background:rgba(251,87,115,.16);color:#FFA3B3}
-.hist-restored{background:rgba(251,191,36,.16);color:#FCD98A}
+.hist-deleted{background:rgba(251,87,115,.16);color:var(--bad-fg)}
+.hist-restored{background:rgba(251,191,36,.16);color:var(--amber-fg)}
 .hist-ch{font-size:12px;color:var(--text-dim);padding:1px 0}
 .hist-old{color:var(--text-faint);text-decoration:line-through}
 .hist-new{color:var(--text)}
@@ -932,7 +935,7 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .wt-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;flex-wrap:wrap}
 .wt-sum{display:flex;gap:6px;align-items:center}
 .wt-chip{font-size:11px;background:var(--primary-soft);color:#BBD4FF;border:1px solid var(--primary-ring);padding:2px 9px;border-radius:99px;white-space:nowrap}
-.wt-chip.wt-in{background:rgba(251,191,36,.10);border-color:rgba(251,191,36,.26);color:#FCD98A}
+.wt-chip.wt-in{background:rgba(251,191,36,.10);border-color:rgba(251,191,36,.26);color:var(--amber-fg)}
 .wt-startend{font-size:11.5px;color:var(--text-dim);direction:ltr}
 .wt-timeline{position:relative;height:14px;border-radius:99px;background:var(--fill);overflow:hidden;border:1px solid var(--stroke-soft)}
 .wt-seg{position:absolute;top:0;bottom:0;background:var(--primary);border-radius:99px;min-width:2px}
@@ -1031,7 +1034,7 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .star:hover{opacity:1}
 .star.on{color:#FBBF24;opacity:1}
 .chg{font-size:12px;font-weight:600}
-.chg.up{color:#6FE3C4}
+.chg.up{color:var(--ok-fg)}
 .chg.down{color:#FF9AAB}
 .rk-url{color:var(--text-faint);font-size:11px}
 .kw-hist{display:flex;flex-direction:column;gap:5px;max-height:220px;overflow-y:auto;margin:10px 0}
@@ -1281,6 +1284,9 @@ table.sheet td:not(.edit){padding:6px 9px}
 /* برچسبِ نسبیِ کنارِ تاریخ در مودال */
 .rel-hint{font-size:11px;color:var(--primary-400);margin-inline-start:8px}
 
+/* ── جداکنندهٔ روز در جدولِ تسک (چند پیکسل فاصله بینِ روزهای مختلف) ── */
+.tsheet tr.day-gap>td{height:7px!important;padding:0!important;border:0!important;background:transparent!important}
+
 /* ── ردیف‌های فرزند (اجزای حقوق در گزارش / اسپلیتِ تراکنش) ── */
 .split-child td{background:color-mix(in srgb,var(--primary) 4%,transparent);font-size:12px}
 .split-child .split-mark{color:var(--text-faint);margin-inline-end:2px}
@@ -1363,7 +1369,7 @@ table.sheet td:not(.edit){padding:6px 9px}
 .life-bar{height:12px;border-radius:var(--r-full);background:var(--fill-strong);overflow:hidden}
 .life-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--success),var(--warning),var(--danger))}
 .life-row{display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);margin-top:6px}
-.life-tick{font-family:monospace;font-size:15px;margin-top:10px;color:var(--warning)}
+.life-tick{font-family:monospace;font-size:15px;margin-top:10px;color:var(--amber-fg)}
 .life-motto{font-size:12px;color:var(--text-dim);margin-top:12px;line-height:1.7}
 /* چیپ‌های مودالِ عادت */
 .wd-row,.pol-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
@@ -1412,7 +1418,7 @@ table.sheet td:not(.edit){padding:6px 9px}
 .pt-move{flex:none;border:1px solid var(--stroke-soft);background:var(--fill);color:var(--text-dim);border-radius:var(--r-full);
   font-size:10px;padding:2px 7px;cursor:pointer;white-space:nowrap}
 .pt-move:hover{background:var(--fill-strong);color:var(--text)}
-.pt-est{flex:none;font-size:10px;color:var(--warning);white-space:nowrap}
+.pt-est{flex:none;font-size:10px;color:var(--amber-fg);white-space:nowrap}
 /* موبایل: انتخاب/کپی/پیستِ متن در ادیتورها و متن‌های نمایشی */
 .rich-editor,.rich,.report-body,.goal-desc,[contenteditable=true]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
 .modal input,.modal textarea{-webkit-user-select:text;user-select:text}
@@ -1423,7 +1429,7 @@ table.sheet td:not(.edit){padding:6px 9px}
 .pt-unplan:hover{background:var(--fill-strong);color:var(--text)}
 .pers-list.drop-hi{outline:2px dashed var(--primary);outline-offset:2px;border-radius:var(--r-sm)}
 .pt-time{flex:none;font-size:11px;color:var(--text-dim);white-space:nowrap;font-variant-numeric:tabular-nums}
-.pt-est{flex:none;font-size:10px;color:var(--warning);white-space:nowrap}
+.pt-est{flex:none;font-size:10px;color:var(--amber-fg);white-space:nowrap}
 
 /* چک‌باکسِ سفارشیِ سراسری — قشنگ‌تر و هماهنگ با تم (accent + اندازه + گردی) */
 input[type=checkbox]{
