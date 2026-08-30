@@ -180,3 +180,33 @@ def report_month_reorder(request):
             p.order = i
             p.save(update_fields=['order'])
     return JsonResponse({'ok': True})
+
+
+# ── اعلان‌ها (API سبک) ─────────────────────────────────────────────────────
+@login_required
+@require_http_methods(['GET'])
+def notifications_api(request):
+    """فهرستِ اعلان‌های اخیر + شمارِ خوانده‌نشده (برای پولینگ/رفرشِ زنگوله)."""
+    from .models import Notification
+    qs = Notification.objects.filter(user=request.user)
+    items = [{
+        'id': n.id, 'text': n.text, 'url': n.url, 'icon': n.icon,
+        'read': n.read, 'ago': timezone.localtime(n.created_at).strftime('%m/%d %H:%M'),
+    } for n in qs[:15]]
+    return JsonResponse({'unread': qs.filter(read=False).count(), 'items': items})
+
+
+@login_required
+@require_http_methods(['POST'])
+def notifications_read(request):
+    """علامت‌گذاریِ خوانده‌شده — همه (پیش‌فرض) یا فهرستِ id‌های مشخص."""
+    from .models import Notification
+    try:
+        ids = json.loads(request.body or '{}').get('ids')
+    except json.JSONDecodeError:
+        ids = None
+    qs = Notification.objects.filter(user=request.user, read=False)
+    if ids:
+        qs = qs.filter(id__in=ids)
+    qs.update(read=True)
+    return JsonResponse({'ok': True})

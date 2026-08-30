@@ -168,3 +168,35 @@ class ColumnConfig(models.Model):
 
     def __str__(self):
         return f'{self.get_table_display()} — {self.get_scope_display()}'
+
+
+class Notification(models.Model):
+    """اعلانِ درون‌برنامه‌ای — per user (نه tenant). ساده و کاربردی: یک متن + لینک + آیکن.
+    ساخته می‌شود با `Notification.push(user, text, url, icon)` از نقاطِ کلیدیِ tasks/api.
+    عاملِ رویداد در متن می‌آید (بدونِ FKِ اضافه) تا مدل سبک بماند."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications')
+    text = models.CharField('متن', max_length=255)
+    url = models.CharField('لینک', max_length=300, blank=True)
+    icon = models.CharField('آیکن', max_length=8, blank=True)
+    read = models.BooleanField('خوانده‌شده', default=False, db_index=True)
+    created_at = models.DateTimeField('ایجاد', auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = 'اعلان'
+        verbose_name_plural = 'اعلان‌ها'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user_id} — {self.text[:40]}'
+
+    @classmethod
+    def push(cls, user, text, url='', icon='', actor=None):
+        """یک اعلان بساز. `user` می‌تواند User یا None باشد؛ اگر گیرنده = عاملِ رویداد
+        بود (کارِ خودش) اعلانی ساخته نمی‌شود. سبک و بی‌خطا (هرگز جریانِ اصلی را نمی‌شکند)."""
+        try:
+            if not user or (actor and getattr(actor, 'id', None) == getattr(user, 'id', None)):
+                return None
+            return cls.objects.create(user=user, text=text[:255], url=url or '', icon=icon or '')
+        except Exception:  # noqa: BLE001 — اعلان هرگز نباید عملیاتِ اصلی را خراب کند
+            return None

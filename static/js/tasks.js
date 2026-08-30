@@ -567,6 +567,14 @@
   }
   window.openTask = openTask;
 
+  // ── لینکِ عمیق: /tasks/?task=<id> مودالِ همان تسک را باز می‌کند (از اعلان‌ها) ──
+  (function () {
+    try {
+      const id = new URLSearchParams(location.search).get('task');
+      if (id) setTimeout(() => openTask(id), 60);
+    } catch (_) {}
+  })();
+
   // ── بازبینی: نوشتن موارد نیاز به اصلاح (TinyMCE) ──
   async function openFixModal(id) {
     // متنِ فعلیِ بازبینی را می‌گیریم تا مدیر بتواند ویرایشش کند (نه فقط از نو نوشتن)

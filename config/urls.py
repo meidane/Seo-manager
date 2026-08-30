@@ -4,13 +4,15 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
-from core.views import editor_upload
+from core.views import editor_upload, notifications_api, notifications_read
 from core.pwa import manifest as pwa_manifest, service_worker as pwa_sw
 from reports.views import PublicReportView as ReportPublicView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/editor/upload/', editor_upload, name='editor_upload'),
+    path('api/notifications/', notifications_api, name='notifications_api'),
+    path('api/notifications/read/', notifications_read, name='notifications_read'),
     path('manifest.webmanifest', pwa_manifest, name='pwa_manifest'),
     path('sw.js', pwa_sw, name='pwa_sw'),
     path('', include('dashboard.urls')),

@@ -23,6 +23,18 @@
     </select>
   {% endif %}
 
+  <div class="notif-wrap" id="notif-wrap" style="{% if my_orgs|length <= 1 %}margin-inline-start:auto;{% endif %}">
+    <button type="button" id="notif-btn" class="notif-btn" title="اعلان‌ها">🔔<span class="notif-badge" id="notif-badge"{% if not notif_unread %} hidden{% endif %}>{{ notif_unread }}</span></button>
+    <div class="notif-drop glass" id="notif-drop">
+      <div class="notif-h">اعلان‌ها</div>
+      <div class="notif-list" id="notif-list">
+        {% for n in notif_recent %}
+          <a class="notif-item{% if not n.read %} unread{% endif %}" href="{{ n.url|default:'#' }}"><span class="notif-ico">{{ n.icon|default:'•' }}</span><span class="notif-txt">{{ n.text }}</span></a>
+        {% empty %}<div class="notif-empty">اعلانی نیست</div>{% endfor %}
+      </div>
+    </div>
+  </div>
+
   <button type="button" id="profile-btn" style="background:0;border:0;padding:0;cursor:pointer;line-height:0" title="ویرایش پروفایل">
     {% if user.avatar %}
       <img class="avatar" src="{{ user.avatar.url }}" alt="">
@@ -32,6 +44,25 @@
   </button>
 </div>
 <script>
+/* ── زنگولهٔ اعلان‌ها ── سبک: باز/بسته + علامتِ خوانده‌شده هنگام باز شدن + پولینگِ ۶۰ثانیه‌ای */
+(function(){
+  var btn=document.getElementById('notif-btn'), drop=document.getElementById('notif-drop'),
+      badge=document.getElementById('notif-badge'), list=document.getElementById('notif-list');
+  if(!btn) return;
+  function setBadge(n){ if(n>0){ badge.textContent=n; badge.hidden=false; } else { badge.hidden=true; } }
+  async function markRead(){ try{ await App.fetchJSON("{% url 'notifications_read' %}",{method:'POST',body:{}}); }catch(_){}
+    setBadge(0); list.querySelectorAll('.notif-item.unread').forEach(function(el){el.classList.remove('unread');}); }
+  btn.onclick=function(e){ e.stopPropagation(); var open=drop.classList.toggle('open'); if(open && !badge.hidden) markRead(); };
+  document.addEventListener('click',function(e){ if(!e.target.closest('#notif-wrap')) drop.classList.remove('open'); });
+  async function refresh(){ try{ var d=await App.fetchJSON("{% url 'notifications_api' %}");
+    setBadge(d.unread);
+    list.innerHTML = d.items.length ? d.items.map(function(n){
+      return '<a class="notif-item'+(n.read?'':' unread')+'" href="'+(n.url||'#')+'"><span class="notif-ico">'+(n.icon||'•')+'</span><span class="notif-txt">'+
+        n.text.replace(/</g,'&lt;')+'</span></a>'; }).join('') : '<div class="notif-empty">اعلانی نیست</div>';
+  }catch(_){ } }
+  setInterval(refresh, 60000);   // هماهنگیِ دوره‌ای
+})();
+
 (function(){var s=document.getElementById('org-switch');if(!s)return;
  s.onchange=function(){App.fetchJSON("{% url 'accounts:switch_org' %}",{method:'POST',body:{organization:s.value}}).then(function(){location.href='/';});};})();
 

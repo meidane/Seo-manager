@@ -397,6 +397,24 @@ def _custom_fields_error(task):
     return None
 
 
+def _notify(request, colleague, text, task=None, icon=''):
+    """اعلان برای کاربرِ متصل به یک Colleague (اگر حساب دارد و خودِ عامل نیست).
+    لینک به تسک = `/tasks/?task=<id>` (tasks.js مودال را خودکار باز می‌کند)."""
+    from core.models import Notification
+    user = getattr(colleague, 'user', None) if colleague else None
+    url = f'/tasks/?task={task.id}' if task else ''
+    Notification.push(user, text, url, icon, actor=request.user)
+
+
+def _notify_pending_review(request, task):
+    """تسک به «تکمیل — در انتظارِ بازبینی» رفت → مدیرِ مستقیمِ مسئول را خبر کن
+    (بَجِ منوی «بازبینی» بقیهٔ ناظرها را پوشش می‌دهد؛ اعلان فقط برای مدیرِ مستقیم)."""
+    a = getattr(task, 'assignee', None)
+    mgr = getattr(a, 'manager', None) if a else None
+    if mgr:
+        _notify(request, mgr, f'آمادهٔ بازبینی: «{task.title}» ({a.full_name})', task, '🔎')
+
+
 @login_required
 @require_http_methods(['POST'])
 def task_create(request):
@@ -430,6 +448,9 @@ def task_create(request):
         return JsonResponse({'detail': err}, status=400)
     task.save()
     taskhistory.record(task, taskhistory.TaskHistory.CREATED, request.user)
+    # اعلان: تسک به کسِ دیگری واگذار شد
+    if task.assignee_id:
+        _notify(request, task.assignee, f'تسکِ جدید به شما واگذار شد: «{task.title}»', task, '📌')
     # تکرارشونده: قاعده را بساز و اولین پیش‌نما را تولید کن (تولید تنبل)
     rec = data.get('recurrence')
     if rec and rec.get('freq'):
@@ -507,6 +528,8 @@ def task_detail(request, pk):
         colleague = getattr(request.user, 'colleague', None)
         data['assignee'] = colleague.id if colleague else None
     was_done = task.status == Task.DONE
+    old_assignee_id = task.assignee_id
+    old_status = task.status
     before = taskhistory.snapshot(task)
     apply_fields(task, data)
     err = _publish_url_error(task) or _custom_fields_error(task)
@@ -516,6 +539,11 @@ def task_detail(request, pk):
     changes = taskhistory.diff(task, before)
     if changes:
         taskhistory.record(task, taskhistory.TaskHistory.UPDATED, request.user, changes)
+    # اعلان‌ها: واگذاریِ تسک به فردِ جدید + آماده‌شدنِ بازبینی
+    if task.assignee_id and task.assignee_id != old_assignee_id:
+        _notify(request, task.assignee, f'تسکِ «{task.title}» به شما واگذار شد', task, '📌')
+    if task.status == Task.PENDING and old_status != Task.PENDING:
+        _notify_pending_review(request, task)
     if not was_done and task.status == Task.DONE and task.recurrence_id and not task.is_placeholder:
         from .recurrence import advance
         advance(task)
@@ -562,6 +590,9 @@ def task_status(request, pk):
         taskhistory.record(task, taskhistory.TaskHistory.UPDATED, request.user,
                            {'وضعیت': [dict(Task.STATUS_CHOICES).get(old_status, old_status),
                                       dict(Task.STATUS_CHOICES).get(new_status, new_status)]})
+        # اعلانِ «آمادهٔ بازبینی» به مدیرِ مستقیم وقتی تسک به pending رفت
+        if new_status == Task.PENDING and old_status != Task.PENDING:
+            _notify_pending_review(request, task)
     # تکرارشونده: با ورود به «انجام‌شده» رخدادِ بعدی تولید می‌شود (یک‌بار)
     if not was_done and new_status == Task.DONE and task.recurrence_id and not task.is_placeholder:
         from .recurrence import advance
@@ -699,6 +730,11 @@ def task_review(request, pk):
     if status == Task.NEEDS_FIX and note_html:
         from .models import TaskReviewNote
         TaskReviewNote.objects.create(task=task, note=note_html, author=request.user)
+    # اعلان به مسئولِ تسک دربارهٔ نتیجهٔ بازبینی
+    if status == Task.NEEDS_FIX:
+        _notify(request, task.assignee, f'تسکِ «{task.title}» نیاز به اصلاح دارد', task, '⚠️')
+    elif status == Task.APPROVED:
+        _notify(request, task.assignee, f'تسکِ «{task.title}» تایید شد', task, '✅')
     return JsonResponse({'ok': True, 'review_status': task.review_status, 'status': task.status})
 
 
