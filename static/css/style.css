@@ -87,7 +87,7 @@
   --primary-soft:rgba(79,118,246,.12);
   --primary-ring:rgba(79,118,246,.34);
   --on-soft:#2F4FBF;
-  --ok-fg:#0E9F78; --bad-fg:#D64560; --info-fg:#1E88C7; --amber-fg:#B7791F;
+  --ok-fg:#0E9F78; --bad-fg:#D64560; --info-fg:#1E88C7; --amber-fg:#B7791F; --warn-fg:#C2591B;
   --card-solid:#FFFFFF;
   --text:#1B2233;
   --text-dim: #2e3542;

@@ -569,10 +569,13 @@
 
   // ── بازبینی: نوشتن موارد نیاز به اصلاح (TinyMCE) ──
   async function openFixModal(id) {
+    // متنِ فعلیِ بازبینی را می‌گیریم تا مدیر بتواند ویرایشش کند (نه فقط از نو نوشتن)
+    let cur = '';
+    try { const t = await App.fetchJSON(`/tasks/api/${id}/`); cur = t.review_note || ''; } catch (_) {}
     App.openModal(
       `<div class="modal-h"><h3>موارد نیاز به اصلاح</h3><button class="x" onclick="App.closeModal()">×</button></div>
        <div class="modal-b"><p style="color:var(--text-dim);font-size:12px;margin-bottom:8px">توضیح بده چه چیزی باید اصلاح شود (بولد و عکس هم می‌توانی بگذاری). با ثبت، تسک از حالت انجام‌شده خارج و برای اصلاح برمی‌گردد.</p>
-         <textarea id="fix-note" class="rich-editor" rows="5"></textarea></div>
+         <textarea id="fix-note" class="rich-editor" rows="5">${cur}</textarea></div>
        <div class="modal-f"><button class="btn btn-p" id="fix-save">ثبت و بازگرداندن برای اصلاح</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
     if (window.RichText) RichText.init('#fix-note');
     document.getElementById('fix-save').onclick = async () => {
@@ -722,6 +725,16 @@
   function renderAllTimerCells() { document.querySelectorAll('.timer-cell').forEach(renderTimerCell); }
   renderAllTimerCells();
   setInterval(renderAllTimerCells, 15000);
+
+  // وقتی تایمری از **ویجتِ سراسری** (یا جای دیگر) متوقف شد، سلولِ همان تسک در جدول هم
+  // بدونِ رفرش استاپ شود (باگِ «بعد از استوپ در ویجت، جدول رفرش می‌خواست»).
+  window.addEventListener('timer-changed', (e) => {
+    const id = e.detail && e.detail.id; if (!id) return;
+    const cell = document.querySelector(`.timer-cell[data-id="${id}"]`); if (!cell) return;
+    cell.dataset.running = '0'; cell.dataset.started = '';
+    if (e.detail.spent != null) cell.dataset.spent = e.detail.spent;
+    renderTimerCell(cell);
+  });
 
   document.addEventListener('click', async (e) => {
     const btn = e.target.closest('.timer-cell .tbtn'); if (!btn) return;

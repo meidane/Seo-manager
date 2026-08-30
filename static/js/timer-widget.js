@@ -44,9 +44,10 @@
   }
   box.addEventListener('click', async (e) => {
     const s = e.target.closest('.tw-stop'); if (!s) return;
-    try { await App.fetchJSON(`/tasks/api/${s.dataset.id}/timer/`, { method: 'POST', body: { action: 'stop' } });
+    try { const d = await App.fetchJSON(`/tasks/api/${s.dataset.id}/timer/`, { method: 'POST', body: { action: 'stop' } });
       items = items.filter((x) => String(x.id) !== String(s.dataset.id)); render();
-      window.dispatchEvent(new CustomEvent('timer-changed'));
+      // idِ متوقف‌شده + زمانِ نهایی را می‌فرستیم تا سلولِ همین تسک در جدول هم بدونِ رفرش استاپ شود
+      window.dispatchEvent(new CustomEvent('timer-changed', { detail: { id: s.dataset.id, spent: d.spent_minutes } }));
     } catch (_) {}
   });
   window.addEventListener('timer-changed', refresh);

@@ -553,7 +553,7 @@ def task_status(request, pk):
     # تکمیل/انجام‌شدنِ کار یعنی دیگر کاری روی آن در جریان نیست — تایمرِ فعال را استاپ کن
     if new_status in (Task.DONE, Task.PENDING):
         _stop_timer(task)
-        fields += ['spent_minutes', 'timer_started_at']
+        fields += ['spent_minutes', 'timer_started_at', 'timer_heartbeat']
     err = _publish_url_error(task) or _custom_fields_error(task)
     if err:
         return JsonResponse({'detail': err}, status=400)
@@ -693,7 +693,7 @@ def task_review(request, pk):
         if not task.done_date:
             task.done_date = date.today()
         _stop_timer(task)
-        fields += ['status', 'done_date', 'spent_minutes', 'timer_started_at']
+        fields += ['status', 'done_date', 'spent_minutes', 'timer_started_at', 'timer_heartbeat']
     task.save(update_fields=fields)
     # ثبت در تاریخچه‌ی نیاز به اصلاح (فقط وقتی needs_fix با یادداشت است)
     if status == Task.NEEDS_FIX and note_html:
