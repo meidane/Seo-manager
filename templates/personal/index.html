@@ -54,24 +54,30 @@
           <a class="nav-b" href="{{ cweek_next }}" title="هفته‌ی بعد">›</a>
         </div>
       </div>
-      <div class="week-grid" id="week-grid">
+      <div class="week-vgrid" id="week-grid">
         {% for col in week_grid %}
-          <div class="wgrid-col{% if col.is_sel %} sel{% endif %}{% if col.is_today %} today{% endif %}{% if col.is_future %} future{% endif %}" data-date="{{ col.iso }}">
-            <a class="wgrid-head" href="{{ col.nav }}" title="فوکوس روی این روز">
-              <b>{{ col.name|slice:':3' }}</b><span class="wgrid-num">{{ col.day_fa }}</span>
-              <span class="wgrid-count">{{ col.done|fa_digits }}/{{ col.tasks|length|fa_digits }}</span>
+          <div class="wday{% if col.is_sel %} sel{% endif %}{% if col.is_today %} today{% endif %}{% if col.is_future %} future{% endif %}" data-date="{{ col.iso }}">
+            <a class="wday-head" href="{{ col.nav }}" title="فوکوس روی این روز">
+              <b>{{ col.name }}</b>
+              <span class="wday-num">{{ col.day_fa }}</span>
+              {% if col.is_today %}<span class="wday-today">امروز</span>{% endif %}
+              <span class="wday-count">{{ col.done|fa_digits }}/{{ col.tasks|length|fa_digits }}</span>
             </a>
-            <div class="wgrid-list" data-date="{{ col.iso }}">
-              {% for t in col.tasks %}
-                <div class="wtask{% if t.is_done %} dim{% endif %}" data-id="{{ t.id }}" data-open-task="{{ t.id }}" draggable="true">
-                  <input type="checkbox" class="pt-done" {% if t.is_done %}checked{% endif %}>
-                  <span class="pt-title {% if t.is_done %}is-done{% endif %}">{{ t.title }}</span>
-                  {% if t.goal_color %}<i class="wtask-goal" style="background:{{ t.goal_color }}" title="متصل به هدف"></i>{% endif %}
-                  {% if t.timer_started_at %}<span class="wtask-run" title="تایمر فعال">●</span>{% endif %}
-                </div>
-              {% endfor %}
+            <div class="wday-body">
+              <div class="wday-list" data-date="{{ col.iso }}">
+                {% for t in col.tasks %}
+                  <div class="wtask{% if t.is_done %} dim{% endif %}" data-id="{{ t.id }}" data-open-task="{{ t.id }}" draggable="true">
+                    <span class="pt-grip" title="جابه‌جایی">⠿</span>
+                    <input type="checkbox" class="pt-done" {% if t.is_done %}checked{% endif %}>
+                    <span class="pt-title {% if t.is_done %}is-done{% endif %}">{{ t.title }}</span>
+                    {% if t.timer_started_at %}<span class="wtask-run" title="تایمر فعال">●</span>{% endif %}
+                    {% include "personal/_goal_select.html" with t=t %}
+                    <button class="pt-unplan" title="بازگشت به اینباکس (حذفِ تاریخ)">↩</button>
+                  </div>
+                {% endfor %}
+              </div>
+              <input type="text" class="wgrid-newtask" placeholder="＋ کار برای این روز…" data-date="{{ col.iso }}">
             </div>
-            <div class="wgrid-add"><input type="text" class="wgrid-newtask" placeholder="＋ کار…" data-date="{{ col.iso }}"></div>
           </div>
         {% endfor %}
       </div>
