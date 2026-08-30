@@ -94,6 +94,22 @@ class PersonalDashboardView(View):
             day_total = dq.count()
             day_done = dq.filter(status=Task.DONE).count()
 
+        # ── شبکهٔ ۷ روزِ هفته (برنامه‌ریزیِ شخصی، درگ‌ودراپ بینِ روزها) ──
+        # هر روز = ستونی از تسک‌های شخصیِ همان روز؛ روزِ انتخابی «فوکوس» است، بقیه کم‌رنگ‌تر.
+        grid_sat = week_saturday(day)
+        week_grid = []
+        for i in range(7):
+            d = grid_sat + timedelta(days=i)
+            dtasks = list(ptasks.filter(planned_date=d).order_by('board_order', 'id')) if (me and pproject) else []
+            for t in dtasks:
+                DailyPlan.objects.get_or_create(task=t, date=d, defaults={'user': user})
+            week_grid.append({
+                'date': d, 'iso': d.isoformat(), 'name': WEEKDAY_NAMES[i],
+                'day_fa': format_jalali(d, '%d', fa_digits=True), 'nav': nav(day=d.isoformat()),
+                'is_today': d == today, 'is_sel': d == day, 'is_future': d > today,
+                'tasks': dtasks, 'done': sum(1 for t in dtasks if t.is_done),
+            })
+
         # ── عادت‌ها (هفتگی، با ناوبری؛ همه‌ی روزها قابلِ‌کلیک، روزهای هدف پررنگ‌تر) ──
         hdays = []
         for i in range(7):
@@ -136,9 +152,10 @@ class PersonalDashboardView(View):
 
         # ── وصلِ تسک‌ها به هدف (آیکنِ 🎯 + انتخابگرِ ردیف) ──
         from .models import GoalLink
-        _ids = [t.id for t in inbox] + [t.id for t in daily]
+        grid_tasks = [t for col in week_grid for t in col['tasks']]
+        _ids = [t.id for t in inbox] + [t.id for t in daily] + [t.id for t in grid_tasks]
         gmap = {gl.task_id: gl.goal for gl in GoalLink.objects.filter(task_id__in=_ids).select_related('goal')}
-        for t in inbox + daily:
+        for t in inbox + daily + grid_tasks:
             g = gmap.get(t.id)
             t.goal_id = g.id if g else ''
             t.goal_color = g.color if g else ''
@@ -167,7 +184,7 @@ class PersonalDashboardView(View):
             'is_this_week': wk == week_saturday(today),
             'inbox_prev': nav(week=(wk - timedelta(days=7)).isoformat()),
             'inbox_next': nav(week=(wk + timedelta(days=7)).isoformat()),
-            'daily': daily, 'system_tasks': system_tasks,
+            'daily': daily, 'system_tasks': system_tasks, 'week_grid': week_grid,
             'day_done': day_done, 'day_total': day_total, 'day_pct': _pct(day_done, day_total),
             'day_fa': jalali_long(day), 'is_today': day == today,
             'day_prev': nav(day=(day - timedelta(days=1)).isoformat()),
@@ -183,6 +200,8 @@ class PersonalDashboardView(View):
             'hweek_prev': nav(hweek=(hsat - timedelta(days=7)).isoformat()),
             'hweek_next': nav(hweek=(hsat + timedelta(days=7)).isoformat()),
             'goals': goals,
+            # تاریخِ شروعِ هفتهٔ بعد (برای دکمهٔ «هفتهٔ بعد»ِ اینباکس)
+            'next_week_iso': (week_saturday(today) + timedelta(days=7)).isoformat(),
             'life': {'birth_iso': birth.isoformat(), 'death_iso': death.isoformat(),
                      'age_now': LIFE_AGE_NOW, 'expectancy': LIFE_EXPECTANCY},
         }

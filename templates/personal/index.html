@@ -31,6 +31,7 @@
             <span class="pt-title {% if t.is_done %}is-done{% endif %}">{{ t.title }}</span>
             {% include "personal/_goal_select.html" with t=t %}
             <input type="text" class="pt-date jdate" dir="ltr" readonly placeholder="📅 برنامه" value="{% if t.planned_date %}{{ t.planned_date|jalali }}{% endif %}" title="تعیینِ تاریخِ برنامه">
+            <button class="pt-nextweek" data-next="{{ next_week_iso }}" title="انتقال به هفتهٔ بعد">» بعد</button>
             <button class="pt-x" title="حذف">×</button>
           </div>
         {% empty %}
@@ -43,59 +44,50 @@
       </div>
     </section>
 
-    {# ── باکس ۲: تسک‌های روزانه (روزِ انتخابی) ── #}
-    <section class="card glass pers-box" id="daily-box">
+    {# ── باکس ۲: برنامهٔ هفته (۷ روز، درگ‌ودراپ بینِ روزها؛ روزِ انتخابی فوکوس) ── #}
+    <section class="card glass pers-box" id="week-box">
       <div class="pers-head">
-        <h3>تسک‌های روز</h3>
+        <h3>برنامهٔ هفته</h3>
         <div class="pers-week">
-          <a class="nav-b" href="{{ day_prev }}" title="روز قبل">‹</a>
-          <span class="pers-week-lab">{{ day_fa }}{% if is_today %} · امروز{% endif %}</span>
-          <a class="nav-b" href="{{ day_next }}" title="روز بعد">›</a>
-        </div>
-      </div>
-      {# نمودارِ هفتگی: برنامه‌ریزی/انجام/درصد/ساعت #}
-      <div class="pchart">
-        <div class="pchart-nav">
           <a class="nav-b" href="{{ cweek_prev }}" title="هفته‌ی قبل">‹</a>
-          <span class="pchart-lab">{{ cweek_fa }}</span>
+          <span class="pers-week-lab">{{ cweek_fa }}</span>
           <a class="nav-b" href="{{ cweek_next }}" title="هفته‌ی بعد">›</a>
         </div>
-        <div class="pchart-bars">
-          {% for c in chart %}
-            <div class="pchart-col{% if c.is_today %} today{% endif %}{% if c.is_sel %} sel{% endif %}{% if c.is_future %} future{% endif %}"
-                 title="{{ c.name }}: {{ c.done|fa_digits }} از {{ c.planned|fa_digits }} · {{ c.hours|fa_digits }} ساعت">
-              <span class="pchart-val">{{ c.done|fa_digits }}/{{ c.planned|fa_digits }}</span>
-              <div class="pchart-track"><i style="height:{{ c.pct }}%"></i></div>
-              <span class="pchart-hr">{{ c.hours|fa_digits }}س</span>
-              <span class="pchart-dname">{{ c.name|slice:':1' }}</span>
+      </div>
+      <div class="week-grid" id="week-grid">
+        {% for col in week_grid %}
+          <div class="wgrid-col{% if col.is_sel %} sel{% endif %}{% if col.is_today %} today{% endif %}{% if col.is_future %} future{% endif %}" data-date="{{ col.iso }}">
+            <a class="wgrid-head" href="{{ col.nav }}" title="فوکوس روی این روز">
+              <b>{{ col.name|slice:':3' }}</b><span class="wgrid-num">{{ col.day_fa }}</span>
+              <span class="wgrid-count">{{ col.done|fa_digits }}/{{ col.tasks|length|fa_digits }}</span>
+            </a>
+            <div class="wgrid-list" data-date="{{ col.iso }}">
+              {% for t in col.tasks %}
+                <div class="wtask{% if t.is_done %} dim{% endif %}" data-id="{{ t.id }}" data-open-task="{{ t.id }}" draggable="true">
+                  <input type="checkbox" class="pt-done" {% if t.is_done %}checked{% endif %}>
+                  <span class="pt-title {% if t.is_done %}is-done{% endif %}">{{ t.title }}</span>
+                  {% if t.goal_color %}<i class="wtask-goal" style="background:{{ t.goal_color }}" title="متصل به هدف"></i>{% endif %}
+                  {% if t.timer_started_at %}<span class="wtask-run" title="تایمر فعال">●</span>{% endif %}
+                </div>
+              {% endfor %}
+            </div>
+            <div class="wgrid-add"><input type="text" class="wgrid-newtask" placeholder="＋ کار…" data-date="{{ col.iso }}"></div>
+          </div>
+        {% endfor %}
+      </div>
+      {# تسک‌های سیستمیِ روزِ انتخابی (فقط‌خواندنی) زیرِ شبکه #}
+      {% if system_tasks %}
+        <div class="wgrid-sys">
+          <div class="wgrid-sys-h">تسک‌های کاریِ {{ day_fa }}</div>
+          {% for t in system_tasks %}
+            <div class="pers-row pers-sys" data-open-task="{{ t.id }}" title="تسکِ سیستمی — برای ویرایش کلیک کن">
+              <span class="pt-sysdot" style="background:rgb({{ t.color_rgb }})"></span>
+              <span class="pt-title">{{ t.title }}</span>
+              <span class="pt-proj">{{ t.project.name }}</span>
             </div>
           {% endfor %}
         </div>
-      </div>
-      <div class="pers-list" id="daily-list">
-        {% for t in daily %}
-          <div class="pers-row pers-drag{% if t.is_done %} dim{% endif %}" data-id="{{ t.id }}" data-open-task="{{ t.id }}" draggable="true">
-            <span class="pt-grip" title="جابه‌جایی">⋮⋮</span>
-            <button class="pt-play {% if t.timer_started_at %}on{% endif %}" title="پلی">{% if t.timer_started_at %}⏸{% else %}▶{% endif %}</button>
-            <span class="pt-time" title="زمانِ صرف‌شده / تخمین" dir="ltr">{{ t.spent_minutes|hm }}{% if t.estimate_minutes %} / {{ t.estimate_minutes|hm }}{% endif %}</span>
-            <input type="checkbox" class="pt-done" {% if t.is_done %}checked{% endif %}>
-            <span class="pt-title {% if t.is_done %}is-done{% endif %}">{{ t.title }}</span>
-            {% include "personal/_goal_select.html" with t=t %}
-            <button class="pt-move" title="انتقال به فردا">→ فردا</button>
-            <button class="pt-unplan" title="بازگشت به اینباکس (حذفِ تاریخ)">↩</button>
-          </div>
-        {% endfor %}
-        {% for t in system_tasks %}
-          <div class="pers-row pers-sys" data-open-task="{{ t.id }}" title="تسکِ سیستمی — برای ویرایش کلیک کن">
-            <span class="pt-sysdot" style="background:rgb({{ t.color_rgb }})"></span>
-            <span class="pt-title">{{ t.title }}</span>
-            <span class="pt-proj">{{ t.project.name }}</span>
-          </div>
-        {% endfor %}
-        {% if not daily and not system_tasks %}
-          <div class="zero" id="daily-empty">برای این روز کاری نیست.</div>
-        {% endif %}
-      </div>
+      {% endif %}
     </section>
   </div>
 

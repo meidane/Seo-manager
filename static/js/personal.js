@@ -69,6 +69,11 @@
       if (e.target.classList.contains('pt-unplan')) {  // بازگشت به اینباکس (حذفِ تاریخ)
         e.stopPropagation();
         try { await api(`/personal/api/tasks/${id}/plan/`, 'PATCH', { date: '' }); location.reload(); } catch (_) {}
+        return;
+      }
+      if (e.target.classList.contains('pt-nextweek')) {  // انتقال به هفتهٔ بعد
+        e.stopPropagation();
+        try { await api(`/personal/api/tasks/${id}/plan/`, 'PATCH', { date: e.target.dataset.next }); row.remove(); refreshPct(box); } catch (_) {}
       }
     });
     // done (change روی چک‌باکس) — از endpointِ شخصی (هم وضعیتِ تسک، هم DailyPlanِ آن روز)
@@ -145,6 +150,60 @@
   }
   if (addInput) addInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addInbox(); } });
   const plus = document.getElementById('inbox-plus'); if (plus) plus.onclick = addInbox;
+
+  // ── برنامهٔ هفته: شبکهٔ ۷ روز با درگ‌ودراپِ بینِ روزها ──
+  const weekGrid = document.getElementById('week-grid');
+  if (weekGrid) {
+    let wdrag = null;
+    function updateCounts() {
+      weekGrid.querySelectorAll('.wgrid-col').forEach((col) => {
+        const total = col.querySelectorAll('.wtask').length;
+        const done = col.querySelectorAll('.wtask.dim').length;
+        const c = col.querySelector('.wgrid-count'); if (c) c.textContent = done + '/' + total;
+      });
+    }
+    weekGrid.addEventListener('dragstart', (e) => { wdrag = e.target.closest('.wtask'); if (wdrag) wdrag.classList.add('dragging'); });
+    weekGrid.addEventListener('dragend', () => { if (wdrag) wdrag.classList.remove('dragging'); wdrag = null; document.querySelectorAll('.wgrid-col.drop-hi').forEach((c) => c.classList.remove('drop-hi')); });
+    weekGrid.querySelectorAll('.wgrid-list').forEach((list) => {
+      const col = list.closest('.wgrid-col');
+      list.addEventListener('dragover', (e) => { if (wdrag) { e.preventDefault(); col.classList.add('drop-hi'); } });
+      list.addEventListener('dragleave', () => col.classList.remove('drop-hi'));
+      list.addEventListener('drop', async (e) => {
+        e.preventDefault(); col.classList.remove('drop-hi');
+        if (!wdrag) return;
+        const from = wdrag.closest('.wgrid-list');
+        if (from === list) return;
+        list.appendChild(wdrag); updateCounts();
+        try { await api(`/personal/api/tasks/${wdrag.dataset.id}/plan/`, 'PATCH', { date: list.dataset.date }); } catch (_) { location.reload(); }
+      });
+    });
+    // تیکِ انجام
+    weekGrid.addEventListener('change', async (e) => {
+      const cb = e.target.closest('.pt-done'); if (!cb) return;
+      const t = cb.closest('.wtask'); const done = cb.checked;
+      try {
+        await api(`/personal/api/tasks/${t.dataset.id}/done/`, 'PATCH', { done });
+        t.classList.toggle('dim', done); t.querySelector('.pt-title').classList.toggle('is-done', done); updateCounts();
+      } catch (_) { cb.checked = !done; }
+    });
+    // کلیک روی تسک (نه چک‌باکس) → مودالِ کاملِ تسک
+    weekGrid.addEventListener('click', (e) => {
+      if (e.target.closest('.pt-done') || e.target.closest('.wgrid-head') || e.target.closest('.wgrid-newtask')) return;
+      const t = e.target.closest('.wtask'); if (t && window.openTask) window.openTask(t.dataset.openTask);
+    });
+    // افزودنِ کار به یک روزِ خاص (Enter در اینپوتِ ته ستون)
+    weekGrid.addEventListener('keydown', async (e) => {
+      const inp = e.target.closest('.wgrid-newtask'); if (!inp || e.key !== 'Enter') return;
+      e.preventDefault(); const title = inp.value.trim(); if (!title) return;
+      try {
+        const t = await api('/personal/api/tasks/', 'POST', { title });
+        await api(`/personal/api/tasks/${t.id}/plan/`, 'PATCH', { date: inp.dataset.date });
+        const list = inp.closest('.wgrid-col').querySelector('.wgrid-list');
+        list.insertAdjacentHTML('beforeend', `<div class="wtask" data-id="${t.id}" data-open-task="${t.id}" draggable="true"><input type="checkbox" class="pt-done"><span class="pt-title">${title.replace(/</g, '&lt;')}</span></div>`);
+        inp.value = ''; updateCounts();
+      } catch (_) {}
+    });
+  }
 
   // ── هبیت ترکر ──
   const WD = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];

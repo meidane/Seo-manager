@@ -32,6 +32,17 @@
   به `page_obj` نیاز دارد (`{% querystring %}` بقیه‌ی پارامترها را حفظ می‌کند، `elided_pages`
   بازه را می‌سازد). در هر لیستِ صفحه‌بندی‌شده `{% include %}`اش کن؛ CSS: `.pagi/.pg` در `style.css`.
 
+## اعلان‌ها (`Notification` + `context_processors.notifications`)
+مدلِ سبکِ per-user (نه tenant): `user, text, url, icon, read, created_at`. ساخت با
+`Notification.push(user, text, url, icon, actor=None)` (بی‌خطا؛ اگر گیرنده=عامل باشد یا
+`user=None` چیزی نمی‌سازد). نقاطِ ساخت در `tasks/api.py`: واگذاریِ تسک، needs_fix، approved،
+و «آمادهٔ بازبینی» به مدیرِ مستقیم (`_notify`/`_notify_pending_review`). هر اعلان به
+`/tasks/?task=<id>` لینک می‌دهد (tasks.js مودال را خودکار باز می‌کند). UI: زنگولهٔ هدر
+(`components/header.html`، بَج + دراپ‌داون + پولینگِ ۶۰ثانیه، بازکردن=خوانده‌شدنِ همه) +
+بَجِ کنارِ لینکِ «بازبینی» در سایدبار (`review_pending_count`). API:
+`/api/notifications/` (GET) و `/api/notifications/read/` (POST). context processor
+هر دو شمار (`notif_unread`, `notif_recent`, `review_pending_count`) را بارِ اول می‌دهد.
+
 ## PWA / کشِ آپدیت (`pwa.py`) — «کاربران آپدیت‌ها را نمی‌بینند»
 `core/pwa.py` مانیفست + سرویس‌ورکر (`/sw.js`) را می‌سازد. **قانونِ ضدِ کشِ کهنه:**
 - **نسخه از محتوا مشتق می‌شود:** `_asset_version()` = هشِ بایت‌های `style.css/app.js/tasks.js`.
