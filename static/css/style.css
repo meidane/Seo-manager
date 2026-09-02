@@ -1544,34 +1544,44 @@ input[type=checkbox]:disabled{opacity:.5;cursor:default}
 .nav-badge{display:inline-grid;place-items:center;min-width:17px;height:17px;padding:0 4px;margin-inline-start:6px;
   border-radius:99px;background:var(--danger);color:#fff;font-size:10px;font-weight:700;line-height:1}
 
-/* ── برنامهٔ هفته (فضای شخصی): فهرستِ عمودیِ ۷ روز، درگ‌ودراپ بینِ روزها ── */
-.week-vgrid{display:flex;flex-direction:column;gap:6px}
-.wday{display:flex;align-items:stretch;gap:10px;background:var(--fill);border:1px solid var(--stroke-soft);
-  border-radius:var(--r-sm);padding:6px 8px;opacity:.6;transition:opacity .15s,border-color .15s,background .15s}
-.wday.sel{opacity:1;border-color:var(--primary-ring);box-shadow:0 0 0 1px var(--primary-ring)}   /* روزِ فوکوس */
-.wday.future{opacity:.5}
+/* ── برنامهٔ هفته (فضای شخصی): فهرستِ عمودیِ ۷ روز، درگ‌ودراپ بینِ روزها ──
+   طراحیِ تمیز: روزهای غیرِفوکوس بی‌بوردر و کم‌رنگ (فقط جداکنندهٔ نازک)، فقط روزِ
+   فوکوس بوردرِ primary می‌گیرد؛ اینپوتِ «＋کار» فقط روی روزِ فوکوس/هاور دیده می‌شود
+   تا ۷ اینپوتِ خالی صفحه را شلوغ نکنند. */
+.week-vgrid{display:flex;flex-direction:column}
+.wday{display:flex;align-items:stretch;gap:10px;border-radius:8px;padding:5px 8px;opacity:.5;
+  border:1px solid transparent;border-bottom-color:var(--stroke-soft);
+  transition:opacity .15s,border-color .15s,background .15s}
+.wday:last-child{border-bottom-color:transparent}
+.wday.today{opacity:.72}
+.wday.sel{opacity:1;background:var(--fill);border-color:var(--primary-ring)}   /* روزِ فوکوس */
+.wday.future{opacity:.42}
 .wday.drop-hi{opacity:1;background:var(--glass-hover);border-color:var(--primary)}
-.wday-head{flex:none;width:118px;display:flex;flex-direction:column;gap:2px;justify-content:center;
+.wday-head{flex:none;width:92px;display:flex;flex-direction:column;gap:1px;justify-content:center;
   text-decoration:none;color:var(--text);padding-inline-end:9px;border-inline-end:1px solid var(--stroke-soft)}
-.wday-head b{font-size:12.5px}
+.wday-head b{font-size:12px}
 .wday.today .wday-head b{color:var(--primary-400)}
-.wday-num{font-size:11px;color:var(--text-faint);font-variant-numeric:tabular-nums}
-.wday-today{font-size:9.5px;background:var(--primary-soft);color:var(--on-soft);padding:1px 7px;border-radius:99px;width:fit-content}
-.wday-count{font-size:10px;color:var(--text-faint);font-variant-numeric:tabular-nums}
-.wday-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
-.wday-list{display:flex;flex-direction:column;gap:3px;min-height:24px}
-.wtask{display:flex;align-items:center;gap:6px;padding:4px 7px;border-radius:6px;background:var(--card-solid);
+.wday-num{font-size:10.5px;color:var(--text-faint);font-variant-numeric:tabular-nums}
+.wday-today{font-size:9px;background:var(--primary-soft);color:var(--on-soft);padding:1px 6px;border-radius:99px;width:fit-content}
+.wday-count{font-size:9.5px;color:var(--text-faint);font-variant-numeric:tabular-nums}
+.wday-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;justify-content:center}
+.wday-list{display:flex;flex-direction:column;gap:2px}
+.wtask{display:flex;align-items:center;gap:6px;padding:3px 7px;border-radius:6px;background:var(--card-solid);
   border:1px solid var(--stroke-soft);font-size:12px}
 .wtask.dragging{opacity:.45}
 .wtask.dim{opacity:.55}
-.wtask .pt-grip{cursor:grab;color:var(--text-faint);font-size:11px;flex:none;user-select:none}
+.wtask .pt-grip{cursor:grab;color:transparent;font-size:11px;flex:none;user-select:none;transition:color .12s}
+.wday:hover .wtask .pt-grip,.wtask:hover .pt-grip{color:var(--text-faint)}
 .wtask .pt-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
 .wtask .pt-title.is-done{text-decoration:line-through;color:var(--text-faint)}
 .wtask .pt-done{width:auto;flex:none}
-.wtask .pt-unplan{border:0;background:transparent;color:var(--text-faint);cursor:pointer;font-size:12px;flex:none;padding:2px}
+.wtask .pt-unplan{border:0;background:transparent;color:var(--text-faint);cursor:pointer;font-size:12px;flex:none;padding:2px;opacity:0;transition:opacity .12s}
+.wtask:hover .pt-unplan{opacity:1}
 .wtask .pt-unplan:hover{color:var(--primary-400)}
 .wtask-run{color:var(--ok-fg);font-size:9px;flex:none}
-.wgrid-newtask{width:100%;border:0;background:transparent;color:var(--text);font-family:inherit;font-size:11px;padding:3px 4px;outline:none}
+/* اینپوتِ «＋کار» فقط روی روزِ فوکوس یا هاور — تا روزهای دیگر خالی و تمیز بمانند */
+.wgrid-newtask{width:100%;border:0;background:transparent;color:var(--text);font-family:inherit;font-size:11px;padding:2px 4px;outline:none;display:none}
+.wday.sel .wgrid-newtask,.wday:hover .wgrid-newtask{display:block}
 .wgrid-newtask::placeholder{color:var(--text-faint)}
 .wgrid-sys{margin-top:12px;border-top:1px dashed var(--stroke-soft);padding-top:8px}
 .wgrid-sys-h{font-size:11px;color:var(--text-faint);margin-bottom:5px}

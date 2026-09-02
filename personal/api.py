@@ -11,7 +11,9 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_http_methods
 
-from core.jalali import parse_jalali
+from datetime import date as _date
+
+from core.jalali import parse_jalali, to_en_digits
 
 from .access import admin_only
 from .models import Goal, Habit, HabitLog
@@ -45,9 +47,19 @@ def _body(request):
 
 
 def _pdate(value):
+    """تاریخِ ورودی را به میلادی برمی‌گرداند. دو منبع دارد:
+    - دیت‌پیکرِ inline → شمسی «۱۴۰۵/۰۶/۰۲» (سالِ ~۱۴۰۰).
+    - شبکهٔ هفته (درگ/کوییک‌ادد/«» بعد») → ISOِ میلادی «2026-09-05» (سالِ >۱۵۰۰).
+    سالِ چهاررقمیِ بزرگ‌تر از ۱۵۰۰ = میلادی است (نه شمسی) و مستقیم خوانده می‌شود؛
+    وگرنه شمسی فرض و با parse_jalali تبدیل می‌شود. (باگِ قبلی: ISO میلادی را شمسی
+    می‌خواند و تاریخ را ۶۰۰ سال به آینده می‌بُرد.)"""
     if not value:
         return None
     try:
+        s = to_en_digits(str(value).strip()).replace('-', '/')
+        parts = s.split('/')
+        if len(parts) == 3 and int(parts[0]) > 1500:
+            return _date(int(parts[0]), int(parts[1]), int(parts[2]))
         return parse_jalali(value)
     except (ValueError, TypeError):
         return None
@@ -115,7 +127,9 @@ def ptask_plan(request, pk):
     task.save(update_fields=['planned_date', 'updated_at'])
     if d:
         _ensure_plan(task, d, request.user)
-    return JsonResponse({'ok': True, 'planned_date': d.isoformat() if d else None})
+    from core.jalali import format_jalali
+    return JsonResponse({'ok': True, 'planned_date': d.isoformat() if d else None,
+                         'planned_jalali': format_jalali(d) if d else ''})
 
 
 @admin_only

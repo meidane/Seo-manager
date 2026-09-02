@@ -71,9 +71,16 @@
         try { await api(`/personal/api/tasks/${id}/plan/`, 'PATCH', { date: '' }); location.reload(); } catch (_) {}
         return;
       }
-      if (e.target.classList.contains('pt-nextweek')) {  // انتقال به هفتهٔ بعد
+      if (e.target.classList.contains('pt-nextweek')) {  // انتقال به هفتهٔ بعد (تاریخِ برنامه = شروعِ هفتهٔ بعد)
         e.stopPropagation();
-        try { await api(`/personal/api/tasks/${id}/plan/`, 'PATCH', { date: e.target.dataset.next }); row.remove(); refreshPct(box); } catch (_) {}
+        try {
+          const r = await api(`/personal/api/tasks/${id}/plan/`, 'PATCH', { date: e.target.dataset.next });
+          const dinp = row.querySelector('.pt-date');
+          if (dinp) dinp.value = r.planned_jalali || '';
+          row.classList.add('dim');
+          App.toast('به هفتهٔ بعد منتقل شد', 'ok');
+          refreshPct(box);
+        } catch (_) {}
       }
     });
     // done (change روی چک‌باکس) — از endpointِ شخصی (هم وضعیتِ تسک، هم DailyPlanِ آن روز)
