@@ -6,7 +6,7 @@
   <div class="page-h">
     <h1>{% if invoice %}فاکتور #{{ invoice.number|fa_digits }}{% else %}فاکتور جدید{% endif %}</h1>
     <div class="side-c">
-      <a href="{% url 'finance:invoices' %}" class="btn">بازگشت</a>
+      <a href="{% url 'finance:invoices' %}" class="btn js-back">بازگشت</a>
     </div>
   </div>
   {% include "finance/_nav.html" %}
@@ -80,7 +80,7 @@
 
   {# ── نوارِ اکشنِ پایینِ صفحه ── #}
   <div class="form-actions">
-    <a href="{% url 'finance:invoices' %}" class="btn">بازگشت</a>
+    <a href="{% url 'finance:invoices' %}" class="btn js-back">بازگشت</a>
     <button class="btn" id="inv-save-new">ذخیره و جدید</button>
     <button class="btn btn-p" id="inv-save">ذخیره فاکتور</button>
   </div>
@@ -162,15 +162,24 @@
   const enD=s=>String(s).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
   function jFmt(a){return faD(a[0])+'/'+faD(String(a[1]).padStart(2,'0'))+'/'+faD(String(a[2]).padStart(2,'0'));}
   function addDaysJ(jstr,n){const p=enD(jstr).split('/').map(Number);if(p.length!==3||!p[0])return '';const g=jToG(p[0],p[1],p[2]);const dt=new Date(g[0],g[1]-1,g[2]);dt.setDate(dt.getDate()+n);return jFmt(gToJ(dt.getFullYear(),dt.getMonth()+1,dt.getDate()));}
+  function daysBetweenJ(a,b){const pa=enD(a).split('/').map(Number),pb=enD(b).split('/').map(Number);if(pa.length!==3||!pa[0]||pb.length!==3||!pb[0])return null;const ga=jToG(pa[0],pa[1],pa[2]),gb=jToG(pb[0],pb[1],pb[2]);return Math.round((new Date(gb[0],gb[1]-1,gb[2])-new Date(ga[0],ga[1]-1,ga[2]))/86400000);}
   const issueEl=document.getElementById('inv-issue'), dueEl=document.getElementById('inv-due');
-  let dueManual = !!dueEl.value;  // اگر از قبل مقدار داشت، دستی فرض کن (ویرایشِ فاکتورِ موجود)
-  dueEl.addEventListener('input', ()=>{ dueManual=true; });
-  function syncDue(){ if(!dueManual && issueEl.value.trim()){ dueEl.value=addDaysJ(issueEl.value,10); } }
+  // فاصلهٔ روزِ «ثبت→پرداخت» را نگه می‌داریم؛ با تغییرِ تاریخِ ثبت، تاریخِ پرداخت اتومات
+  // با همان فاصله جابه‌جا می‌شود (پیش‌فرضِ ۱۰ روز). دستکاریِ دستیِ پرداخت فقط فاصله را عوض می‌کند.
+  let dueOffset = 10;
+  if(issueEl.value.trim() && dueEl.value.trim()){ const d=daysBetweenJ(issueEl.value, dueEl.value); if(d!=null) dueOffset=d; }
+  dueEl.addEventListener('change', ()=>{ if(issueEl.value.trim() && dueEl.value.trim()){ const d=daysBetweenJ(issueEl.value, dueEl.value); if(d!=null) dueOffset=d; } });
+  function syncDue(){ if(issueEl.value.trim()){ dueEl.value=addDaysJ(issueEl.value, dueOffset); } }
   issueEl.addEventListener('change', syncDue);
   if(!INV_ID){ // فاکتورِ جدید: پیش‌فرض تاریخِ ثبت=امروز، پرداخت=+۱۰ روز
     if(!issueEl.value){ const t=new Date(); issueEl.value=jFmt(gToJ(t.getFullYear(),t.getMonth()+1,t.getDate())); }
-    syncDue();
+    if(!dueEl.value) syncDue();
   }
+
+  // ── بازگشت: اگر از فهرستِ فاکتورها (با فیلترِ فعال) آمده‌ایم، به همان صفحه/فیلتر برگرد ──
+  document.querySelectorAll('.js-back').forEach(a=>a.addEventListener('click', e=>{
+    try{ if(document.referrer && document.referrer.indexOf(location.origin+'/finance/invoices')===0 && history.length>1){ e.preventDefault(); history.back(); } }catch(_){}
+  }));
 
   function collect(){
     return [...body.querySelectorAll('.inv-row')].map(r=>({

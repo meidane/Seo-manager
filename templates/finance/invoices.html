@@ -30,7 +30,10 @@
               {% if inv.project_id %}{% with bal=project_bal|dictkey:inv.project_id %}
                 <td class="num-c"><a href="{% url 'finance:ledger' %}?project={{ inv.project_id }}" class="lnk" onclick="event.stopPropagation()" title="مشاهده‌ی گردش حساب" style="font-weight:700;{% if bal > 0 %}color:var(--warning){% elif bal < 0 %}color:var(--danger){% endif %}">{{ bal|money }} ↗</a></td>
               {% endwith %}{% else %}<td class="num-c">—</td>{% endif %}
-              <td><button class="mini inv-del" data-id="{{ inv.id }}" onclick="event.stopPropagation()">حذف</button></td>
+              <td style="white-space:nowrap">
+                <a class="mini" href="{% url 'finance:invoice_edit_page' inv.pk %}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="بازکردن در تبِ جدید">↗</a>
+                <button class="mini inv-del" data-id="{{ inv.id }}">حذف</button>
+              </td>
             </tr>
           {% endfor %}
         </tbody>
@@ -46,12 +49,18 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('click',async e=>{
-  const b=e.target.closest('.inv-del'); if(!b)return;
-  if(await App.confirm('این فاکتور حذف شود؟')){
-    await App.fetchJSON(`/finance/api/invoices/${b.dataset.id}/`,{method:'DELETE'});
-    b.closest('tr').remove(); App.toast('حذف شد','ok');
-  }
+// حذفِ فاکتور — هندلر مستقیم روی دکمه (نه دلیگیتِ document)، چون کلیکِ ردیف با
+// stopPropagation قطع می‌شد و دلیگیت هرگز اجرا نمی‌شد (باگِ «حذف کار نمی‌کند»).
+document.querySelectorAll('.inv-del').forEach(b=>{
+  b.addEventListener('click',async e=>{
+    e.stopPropagation();
+    if(await App.confirm('این فاکتور حذف شود؟')){
+      try{
+        await App.fetchJSON(`/finance/api/invoices/${b.dataset.id}/`,{method:'DELETE'});
+        b.closest('tr').remove(); App.toast('حذف شد','ok');
+      }catch(_){}
+    }
+  });
 });
 </script>
 {% endblock %}

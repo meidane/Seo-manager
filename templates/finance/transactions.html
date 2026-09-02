@@ -75,12 +75,17 @@
             <td class="chk-col"><input type="checkbox" class="row-check" data-id="{{ t.id }}"></td>
             <td>{{ t.date|jalali }}</td>
             <td><span class="tag t-mute" style="white-space:nowrap">{{ t.bank_account.name }}</span></td>
-            <td style="text-align:right;max-width:220px"><span style="display:inline-block;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle" title="{{ t.description }}">{{ t.description }}</span> <button type="button" class="mini tx-split-btn" data-id="{{ t.id }}" title="تفکیک این تراکنش">⑂</button></td>
+            <td style="text-align:right;max-width:220px"><span style="display:inline-block;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle" title="{{ t.description }}">{{ t.description }}</span> <button type="button" class="mini tx-split-btn" data-id="{{ t.id }}" data-amount="{{ t.deposit|add:t.withdrawal }}" title="تفکیک این تراکنش">⑂</button></td>
             <td class="num {% if t.deposit %}dep{% endif %}">{% if t.deposit %}{{ t.deposit|money }}{% else %}—{% endif %}</td>
             <td class="num {% if t.withdrawal %}wd{% endif %}">{% if t.withdrawal %}{{ t.withdrawal|money }}{% else %}—{% endif %}</td>
             <td class="num">{% if t.balance != None %}{{ t.balance|money }}{% else %}—{% endif %}</td>
-            <td class="edit"><select class="tx-f rich-select" data-f="project"><option value="">—</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if t.project_id == p.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></td>
-            <td class="edit txcat-cell" data-id="{{ t.id }}"><div class="txcat-wrap">{% for c in t.categories.all %}<span class="tag txcat-chip" data-cid="{{ c.id }}" style="background:color-mix(in srgb,{{ c.color }} 18%,transparent);color:{{ c.color }}">{{ c.name }}<i class="txcat-x">×</i></span>{% endfor %}<input class="txcat-add" list="tx-cats-dl" placeholder="＋بابت" autocomplete="off"></div></td>
+            {% if t.splits.all %}
+              <td class="edit"><span class="tag t-mute" title="این تراکنش تفکیک شده — پروژه/بابت از ردیف‌های تفکیک می‌آید">تفکیک‌شده ⑂</span></td>
+              <td class="edit"><span class="tag t-mute" title="این تراکنش تفکیک شده — بابت از ردیف‌های تفکیک می‌آید">تفکیک‌شده ⑂</span></td>
+            {% else %}
+              <td class="edit"><select class="tx-f rich-select" data-f="project"><option value="">—</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if t.project_id == p.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></td>
+              <td class="edit txcat-cell" data-id="{{ t.id }}"><div class="txcat-wrap">{% for c in t.categories.all %}<span class="tag txcat-chip" data-cid="{{ c.id }}" style="background:color-mix(in srgb,{{ c.color }} 18%,transparent);color:{{ c.color }}">{{ c.name }}<i class="txcat-x">×</i></span>{% endfor %}<input class="txcat-add" list="tx-cats-dl" placeholder="＋بابت" autocomplete="off"></div></td>
+            {% endif %}
             <td class="edit"><input class="tx-f" data-f="note" value="{{ t.note }}" placeholder="—"></td>
           </tr>
           {% for s in t.splits.all %}
@@ -249,25 +254,46 @@
     if(s.note) d.querySelector('.sp-note').value=s.note;
     return d;
   }
-  async function openSplit(id){
+  const toNum = v => { const s=String(v==null?'':v).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[^\d.\-]/g,''); const n=parseFloat(s); return isNaN(n)?0:Math.abs(Math.round(n)); };
+  const faGroup = n => Math.round(n).toLocaleString('en-US');
+  async function openSplit(id, txTotal){
+    txTotal = txTotal||0;
     let data={splits:[]};
     try{ data=await App.fetchJSON(`/finance/api/tx/${id}/split/`); }catch(_){}
     App.openModal(`<div class="modal-h"><h3>تفکیک تراکنش</h3><button class="x" onclick="App.closeModal()">×</button></div>
       <div class="modal-b">
-        <p style="color:var(--text-faint);font-size:12px;margin-bottom:8px">مبلغِ کلِ تراکنش یک‌بار در مانده می‌شمارد؛ این‌ها فقط تفکیکِ نمایشیِ زیرِ همان تراکنش‌اند.</p>
+        <p style="color:var(--text-faint);font-size:12px;margin-bottom:8px">مبلغِ کلِ تراکنش یک‌بار در مانده می‌شمارد؛ این‌ها فقط تفکیکِ نمایشیِ زیرِ همان تراکنش‌اند. جمعِ تفکیک‌ها نباید از مبلغِ اصلی بیشتر شود.</p>
         <div id="sp-items"></div>
         <button class="mini" id="sp-add" style="margin-top:4px">＋ افزودن ردیف</button>
+        <div id="sp-summary" style="margin-top:10px;display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;border-top:1px solid var(--stroke-soft);padding-top:10px">
+          <span>مبلغِ اصلی: <b>${faGroup(txTotal)}</b></span>
+          <span>جمعِ تفکیک: <b id="sp-sum">0</b></span>
+          <span>باقی‌مانده: <b id="sp-remain">${faGroup(txTotal)}</b></span>
+        </div>
       </div>
       <div class="modal-f"><button class="btn btn-p" id="sp-save">ذخیره</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
     const items=document.getElementById('sp-items');
     const rows=(data.splits&&data.splits.length)?data.splits:[{}];
     rows.forEach(r=>items.appendChild(splitRow(r)));
     if(window.App&&App.initMoney) App.initMoney(items);
-    function addRow(){ const r=splitRow({}); items.appendChild(r); r.querySelector('.sp-amt').focus(); }
+    const sumEl=document.getElementById('sp-sum'), remainEl=document.getElementById('sp-remain'), saveBtn=document.getElementById('sp-save');
+    function recalc(){
+      const sum=[...items.querySelectorAll('.sp-amt')].reduce((a,el)=>a+toNum(el.value),0);
+      const remain=txTotal-sum;
+      sumEl.textContent=faGroup(sum);
+      remainEl.textContent=faGroup(remain);
+      const over = txTotal && sum>txTotal;
+      remainEl.style.color = over ? 'var(--danger)' : (remain===0 ? 'var(--ok-fg)' : 'var(--text)');
+      saveBtn.disabled = !!over;
+      saveBtn.title = over ? 'جمعِ تفکیک از مبلغِ اصلی بیشتر است' : '';
+    }
+    function addRow(){ const r=splitRow({}); items.appendChild(r); r.querySelector('.sp-amt').focus(); recalc(); }
     document.getElementById('sp-add').onclick=addRow;
+    items.addEventListener('input', e=>{ if(e.target.matches('.sp-amt')) recalc(); });
     items.addEventListener('keydown', e=>{ if(e.key==='Enter'&&e.target.matches('.sp-note')){ e.preventDefault(); addRow(); } });
-    items.addEventListener('click', e=>{ const d=e.target.closest('.sp-del'); if(d&&items.children.length>1) d.closest('.sp-row').remove(); });
-    document.getElementById('sp-save').onclick=async()=>{
+    items.addEventListener('click', e=>{ const d=e.target.closest('.sp-del'); if(d&&items.children.length>1){ d.closest('.sp-row').remove(); recalc(); } });
+    recalc();
+    saveBtn.onclick=async()=>{
       const splits=[...items.querySelectorAll('.sp-row')].map(r=>({
         amount:r.querySelector('.sp-amt').value,
         project:r.querySelector('.sp-proj').value,
@@ -277,7 +303,7 @@
       try{ await App.fetchJSON(`/finance/api/tx/${id}/split/`,{method:'POST',body:{splits}}); App.toast('ذخیره شد','ok'); location.reload(); }catch(_){}
     };
   }
-  document.addEventListener('click', e=>{ const b=e.target.closest('.tx-split-btn'); if(b){ e.preventDefault(); e.stopPropagation(); openSplit(b.dataset.id); } });
+  document.addEventListener('click', e=>{ const b=e.target.closest('.tx-split-btn'); if(b){ e.preventDefault(); e.stopPropagation(); openSplit(b.dataset.id, +b.dataset.amount||0); } });
 })();
 </script>
 {% endblock %}

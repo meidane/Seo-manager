@@ -141,11 +141,13 @@ class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
         if bank_ids:
             qs = qs.filter(bank_account_id__in=bank_ids)
         if g.get('project'):
-            qs = qs.filter(project_id=g['project'])
+            # تراکنشِ split‌شده پروژه‌اش را از دست می‌دهد (تخصیص در اسپلیت‌هاست) — پس
+            # تراکنش‌هایی که یک اسپلیتِ همان پروژه دارند هم باید بیایند.
+            qs = qs.filter(Q(project_id=g['project']) | Q(splits__project_id=g['project'])).distinct()
         # بابت: چندانتخابی
         cat_ids = [c for c in g.getlist('category') if c]
         if cat_ids:
-            qs = qs.filter(categories__in=cat_ids).distinct()
+            qs = qs.filter(Q(categories__in=cat_ids) | Q(splits__category_id__in=cat_ids)).distinct()
         if g.get('unassigned') == '1':
             qs = qs.filter(project__isnull=True, categories__isnull=True)
         # جستجو روی شرح سند + توضیحات
@@ -346,51 +348,99 @@ class LedgerView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateV
 
         rows = []
 
+        def _tx_cats(t):
+            return '، '.join(c.name for c in t.categories.all())
+
         if project_id:
             ctx['mode'] = 'project'
             ctx['selected_project'] = Project.objects.filter(id=project_id).first()
-            # فاکتورهای پروژه → برداشت
-            inv_qs = Invoice.objects.filter(project_id=project_id)
+            # فاکتورهای پروژه → برداشت (با ریزِ ردیف‌ها برای بازشدن = «ریز فاکتور»)
+            inv_qs = Invoice.objects.filter(project_id=project_id).prefetch_related('lines__category')
             if start and end:
                 inv_qs = inv_qs.filter(issue_date__range=(start, end))
             for inv in inv_qs:
+                lines = list(inv.lines.all())
+                cats = sorted({li.category.name for li in lines if li.category_id})
                 rows.append({
                     'date': inv.issue_date,
                     'title': f'فاکتور #{inv.number}' + (f' — {inv.description}' if inv.description else ''),
                     'kind': 'invoice', 'ref_id': inv.id,
                     'deposit': 0, 'withdrawal': inv.grand_total, 'bank': '',
+                    'cat': '، '.join(cats),
+                    'lines': [{'cat': (li.category.name if li.category_id else '—'),
+                               'desc': li.description, 'qty': li.qty,
+                               'unit': li.unit_price, 'total': li.total} for li in lines],
                 })
-            # تراکنش‌های پروژه → واریز/برداشت
-            tx = Transaction.objects.select_related('bank_account').filter(project_id=project_id)
+            # تراکنش‌های پروژه یا اسپلیت‌های همین پروژه → واریز/برداشت
+            # تراکنشِ split‌شده تخصیصش در اسپلیت‌هاست؛ خودِ تراکنش (پروژه/بابتش) دوباره شمرده نمی‌شود.
+            tx = (Transaction.objects.select_related('bank_account')
+                  .prefetch_related('categories', 'splits__category')
+                  .filter(Q(project_id=project_id) | Q(splits__project_id=project_id)).distinct())
             if start and end:
                 tx = tx.filter(date__range=(start, end))
             if bank_ids:
                 tx = tx.filter(bank_account_id__in=bank_ids)
             for t in tx:
-                rows.append({
-                    'date': t.date, 'title': t.description or '—',
-                    'kind': 'tx', 'ref_id': t.id,
-                    'deposit': t.deposit or 0, 'withdrawal': t.withdrawal or 0,
-                    'bank': t.bank_account.name if t.bank_account_id else '',
-                })
+                splits = list(t.splits.all())
+                if splits:
+                    for s in splits:
+                        if str(s.project_id) != str(project_id):
+                            continue
+                        amt = int(s.amount or 0)
+                        rows.append({
+                            'date': t.date, 'title': (s.note or t.description or '—') + ' — تفکیک',
+                            'kind': 'tx', 'ref_id': t.id, 'split': True,
+                            'deposit': amt if t.deposit else 0,
+                            'withdrawal': amt if t.withdrawal else 0,
+                            'bank': t.bank_account.name if t.bank_account_id else '',
+                            'cat': s.category.name if s.category_id else '',
+                        })
+                elif str(t.project_id) == str(project_id):
+                    rows.append({
+                        'date': t.date, 'title': t.description or '—',
+                        'kind': 'tx', 'ref_id': t.id,
+                        'deposit': t.deposit or 0, 'withdrawal': t.withdrawal or 0,
+                        'bank': t.bank_account.name if t.bank_account_id else '',
+                        'cat': _tx_cats(t),
+                    })
 
         else:  # category_id
             ctx['mode'] = 'category'
             cat = Category.objects.filter(id=category_id).select_related('colleague').first()
             ctx['selected_category'] = cat
-            # تراکنش‌های این بابت → واریز/برداشت
-            tx = Transaction.objects.select_related('bank_account').filter(categories__id=category_id)
+            cat_name = cat.name if cat else ''
+            # تراکنش‌های این بابت یا اسپلیت‌های همین بابت → واریز/برداشت
+            tx = (Transaction.objects.select_related('bank_account')
+                  .prefetch_related('categories', 'splits')
+                  .filter(Q(categories__id=category_id) | Q(splits__category_id=category_id)).distinct())
             if start and end:
                 tx = tx.filter(date__range=(start, end))
             if bank_ids:
                 tx = tx.filter(bank_account_id__in=bank_ids)
             for t in tx:
-                rows.append({
-                    'date': t.date, 'title': t.description or '—',
-                    'kind': 'tx', 'ref_id': t.id,
-                    'deposit': t.deposit or 0, 'withdrawal': t.withdrawal or 0,
-                    'bank': t.bank_account.name if t.bank_account_id else '',
-                })
+                splits = list(t.splits.all())
+                if splits:
+                    # تراکنشِ تفکیک‌شده: فقط اسپلیت‌های همین بابت (بابتِ خودِ تراکنش غیرفعال است)
+                    for s in splits:
+                        if str(s.category_id) != str(category_id):
+                            continue
+                        amt = int(s.amount or 0)
+                        rows.append({
+                            'date': t.date, 'title': (s.note or t.description or '—') + ' — تفکیک',
+                            'kind': 'tx', 'ref_id': t.id, 'split': True,
+                            'deposit': amt if t.deposit else 0,
+                            'withdrawal': amt if t.withdrawal else 0,
+                            'bank': t.bank_account.name if t.bank_account_id else '',
+                            'cat': cat_name,
+                        })
+                else:
+                    rows.append({
+                        'date': t.date, 'title': t.description or '—',
+                        'kind': 'tx', 'ref_id': t.id,
+                        'deposit': t.deposit or 0, 'withdrawal': t.withdrawal or 0,
+                        'bank': t.bank_account.name if t.bank_account_id else '',
+                        'cat': cat_name,
+                    })
             # بابتِ حقوق → حقوق‌های همکار (تاریخ = اولِ ماهِ ثبت) به‌عنوان واریز؛ اجزای هر
             # حقوق به‌صورتِ ردیف‌های فرزند (children) نمایش داده می‌شوند (گزارشِ بااجزا).
             if cat and cat.colleague_id:
@@ -403,11 +453,11 @@ class LedgerView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateV
                         rows.append({
                             'date': d, 'title': f'حقوق {p.month_name} {p.year}',
                             'kind': 'payroll', 'ref_id': p.id,
-                            'deposit': p.total, 'withdrawal': 0, 'bank': '',
+                            'deposit': p.total, 'withdrawal': 0, 'bank': '', 'cat': cat_name,
                             'children': [{'title': it.title, 'amount': it.amount} for it in p.items.all()],
                         })
 
-        # مرتب‌سازی بر اساس تاریخ (پایدار) + مانده‌ی تجمعی
+        # مانده‌ی تجمعی به ترتیبِ تاریخِ صعودی محاسبه می‌شود (پایدار)، سپس نمایش نزول (جدید→قدیم)
         rows.sort(key=lambda r: r['date'])
         bal = 0
         tot_d = tot_w = 0
@@ -417,6 +467,7 @@ class LedgerView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateV
             r['date_fa'] = format_jalali(r['date'])
             tot_d += r['deposit']
             tot_w += r['withdrawal']
+        rows.reverse()  # جدید به قدیم (مانده‌ی تجمعیِ هر ردیف حفظ می‌شود)
 
         ctx['rows'] = rows
         ctx['total_deposit'] = tot_d
@@ -553,16 +604,26 @@ def tx_split(request, pk):
             {'amount': str(s.amount), 'project': s.project_id, 'category': s.category_id, 'note': s.note}
             for s in t.splits.all()]})
     d = _body(request)
-    t.splits.all().delete()
-    for i, s in enumerate(d.get('splits', [])):
+    # مبلغِ مؤثرِ تراکنش (یا واریز یا برداشت) — سقفِ مجازِ جمعِ اسپلیت‌ها
+    tx_total = int(t.deposit or 0) + int(t.withdrawal or 0)
+    incoming = []
+    for s in d.get('splits', []):
         amt = parse_amount(s.get('amount', 0))
         if not amt and not (s.get('project') or s.get('category') or s.get('note')):
             continue
+        incoming.append((amt, s))
+    # جمعِ اسپلیت‌ها نباید از مبلغِ اصلیِ تراکنش بیشتر باشد
+    split_sum = sum(abs(int(a)) for a, _ in incoming)
+    if tx_total and split_sum > tx_total:
+        return JsonResponse({'detail': 'جمعِ تفکیک‌ها از مبلغِ اصلیِ تراکنش بیشتر است.'}, status=400)
+    t.splits.all().delete()
+    for i, (amt, s) in enumerate(incoming):
         TransactionSplit.objects.create(
             transaction=t, amount=amt, order=i,
             project_id=s.get('project') or None, category_id=s.get('category') or None,
             note=(s.get('note') or '').strip())
-    return JsonResponse({'ok': True, 'count': t.splits.count()})
+    remaining = tx_total - split_sum if tx_total else 0
+    return JsonResponse({'ok': True, 'count': t.splits.count(), 'remaining': remaining, 'tx_total': tx_total})
 
 
 def _tx_anomaly_warning(t):

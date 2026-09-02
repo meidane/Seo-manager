@@ -58,6 +58,7 @@
           <th style="width:38px"></th>
           <th style="width:110px">تاریخ</th>
           <th>شرح</th>
+          <th style="width:150px">بابت</th>
           <th style="width:120px">بانک</th>
           <th style="width:130px">واریز</th>
           <th style="width:130px">برداشت</th>
@@ -65,12 +66,14 @@
         </tr></thead>
         <tbody>
           {% for r in rows %}
-            <tr>
+            <tr{% if r.lines %} class="lg-inv-row" data-inv="{{ r.ref_id }}" style="cursor:pointer" title="کلیک برای دیدنِ ریزِ فاکتور"{% endif %}>
               <td class="num-c">{{ forloop.counter|fa_digits }}</td>
               <td class="num-c">{{ r.date_fa }}</td>
               <td style="text-align:right">
-                {% if r.kind == 'invoice' %}<span class="tag t-warn" style="margin-inline-end:4px">فاکتور</span>{% elif r.kind == 'payroll' %}<span class="tag t-ok" style="margin-inline-end:4px">حقوق</span>{% endif %}{{ r.title }}
+                {% if r.kind == 'invoice' %}<span class="tag t-warn" style="margin-inline-end:4px">فاکتور</span>{% elif r.kind == 'payroll' %}<span class="tag t-ok" style="margin-inline-end:4px">حقوق</span>{% elif r.split %}<span class="tag t-mute" style="margin-inline-end:4px">تفکیک</span>{% endif %}{% if r.lines %}<span class="lg-caret">▸</span> {% endif %}{{ r.title }}
+                {% if r.kind == 'invoice' %}<a href="{% url 'finance:invoice_edit_page' r.ref_id %}" target="_blank" rel="noopener" class="lnk" onclick="event.stopPropagation()" title="بازکردنِ فاکتور در تبِ جدید" style="margin-inline-start:6px">↗</a>{% endif %}
               </td>
+              <td>{% if r.cat %}<span style="color:var(--text-dim);font-size:12px">{{ r.cat }}</span>{% else %}—{% endif %}</td>
               <td>{% if r.bank %}<span class="tag t-mute" style="white-space:nowrap">{{ r.bank }}</span>{% else %}—{% endif %}</td>
               <td class="num {% if r.deposit %}dep{% endif %}">{% if r.deposit %}{{ r.deposit|money }}{% else %}—{% endif %}</td>
               <td class="num {% if r.withdrawal %}wd{% endif %}">{% if r.withdrawal %}{{ r.withdrawal|money }}{% else %}—{% endif %}</td>
@@ -81,16 +84,28 @@
             <tr class="split-child">
               <td></td><td></td>
               <td style="text-align:right;color:var(--text-dim)"><span class="split-mark">└</span> {{ ch.title }}</td>
-              <td></td>
+              <td></td><td></td>
               <td class="num dep" style="opacity:.75">{{ ch.amount|money }}</td>
               <td></td><td></td>
+            </tr>
+            {% endfor %}
+            {# ریزِ ردیف‌های فاکتور (بازشونده با کلیک روی ردیفِ فاکتور) #}
+            {% for li in r.lines %}
+            <tr class="split-child lg-inv-line lg-inv-line-{{ r.ref_id }}" hidden>
+              <td></td><td></td>
+              <td style="text-align:right;color:var(--text-dim)"><span class="split-mark">└</span> {{ li.desc|default:'—' }} <span style="opacity:.7">× {{ li.qty|floatformat:'-2'|fa_digits }}</span></td>
+              <td style="color:var(--text-dim);font-size:12px">{{ li.cat }}</td>
+              <td></td>
+              <td></td>
+              <td class="num wd" style="opacity:.75">{{ li.total|money }}</td>
+              <td></td>
             </tr>
             {% endfor %}
           {% endfor %}
         </tbody>
         <tfoot>
           <tr style="border-top:2px solid var(--stroke);font-weight:700">
-            <td></td><td></td><td style="text-align:right">جمع</td><td></td>
+            <td></td><td></td><td style="text-align:right">جمع</td><td></td><td></td>
             <td class="num dep">{{ total_deposit|money }}</td>
             <td class="num wd">{{ total_withdrawal|money }}</td>
             <td class="num-c" style="{% if final_balance < 0 %}color:var(--danger){% else %}color:var(--info){% endif %}">{{ final_balance|money }}</td>
@@ -117,6 +132,18 @@
   catS.addEventListener('input', syncCat);
   catS.addEventListener('change', ()=>{ syncCat(); if(catH.value) document.getElementById('ledger-filters').submit(); });
   proj.addEventListener('change', ()=>{ if(proj.value){ catS.value=''; catH.value=''; } document.getElementById('ledger-filters').submit(); });
+
+  // بازکردن/بستنِ ریزِ فاکتور با کلیک روی ردیفِ فاکتور
+  document.querySelectorAll('.lg-inv-row').forEach(row=>{
+    row.addEventListener('click', e=>{
+      if(e.target.closest('a')) return;  // کلیک روی لینکِ ↗ فاکتور را باز کند نه ریز
+      const id=row.dataset.inv;
+      const caret=row.querySelector('.lg-caret');
+      const open=row.classList.toggle('open');
+      if(caret) caret.textContent = open ? '▾' : '▸';
+      document.querySelectorAll('.lg-inv-line-'+id).forEach(li=>{ li.hidden = !open; });
+    });
+  });
 
   // دراپ‌داونِ بانکِ چندانتخابی
   const bT=document.getElementById('lg-bank-toggle'), bB=document.getElementById('lg-bank-box');
