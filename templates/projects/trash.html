@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}سطلِ زباله‌ی پروژه‌ها{% endblock %}
+
+{% block content %}
+  <div class="page-h">
+    <h1>سطلِ زباله‌ی پروژه‌ها</h1>
+    <span class="range-note">پروژه‌های حذف‌شده تا {{ trash_days|fa_digits }} روز اینجا می‌مانند، سپس برای همیشه پاک می‌شوند.</span>
+    <div class="side-c"><a href="{% url 'projects:list' %}" class="btn">بازگشت به پروژه‌ها</a></div>
+  </div>
+
+  <section class="card glass">
+    {% if projects %}
+      <div class="tscroll">
+      <table>
+        <thead><tr><th>پروژه</th><th>دامنه</th><th>حذف‌شده در</th><th>حذف‌کننده</th><th>مهلتِ بازیابی</th><th></th></tr></thead>
+        <tbody>
+          {% for p in projects %}
+            <tr>
+              <td><div class="assignee-cell">{% include "projects/_logo.html" with project=p %}<span>{{ p.name }}</span></div></td>
+              <td dir="ltr" style="text-align:right">{{ p.domain|default:'—' }}</td>
+              <td class="num-c">{{ p.deleted_at|jalali }}</td>
+              <td>{{ p.deleted_by.get_full_name|default:p.deleted_by.username|default:'—' }}</td>
+              <td class="num-c">{% if p.days_left_in_trash %}{{ p.days_left_in_trash|fa_digits }} روز{% else %}<span style="color:var(--danger)">امروز پاک می‌شود</span>{% endif %}</td>
+              <td style="white-space:nowrap">
+                <form method="post" action="{% url 'projects:restore_deleted' p.pk %}" style="display:inline">
+                  {% csrf_token %}<button class="mini" style="color:var(--success)">بازگرداندن</button>
+                </form>
+                <form method="post" action="{% url 'projects:purge' p.pk %}" style="display:inline" onsubmit="return confirm('«{{ p.name|escapejs }}» برای همیشه حذف شود؟ این عمل قابلِ بازگشت نیست و همه‌ی تسک‌ها/فاکتورهای این پروژه هم پاک می‌شوند.')">
+                  {% csrf_token %}<button class="mini" style="color:var(--danger)">حذفِ کامل</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    {% else %}
+      <div class="empty"><div class="ico">🗑</div><h4>سطلِ زباله خالی است</h4></div>
+    {% endif %}
+  </section>
+{% endblock %}

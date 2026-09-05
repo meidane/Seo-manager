@@ -12,6 +12,10 @@ urlpatterns = [
     path('<int:pk>/edit/', views.ProjectUpdateView.as_view(), name='edit'),
     path('<int:pk>/archive/', views.ProjectArchiveView.as_view(), name='archive'),
     path('<int:pk>/restore/', views.ProjectRestoreView.as_view(), name='restore'),
+    path('trash/', views.ProjectTrashView.as_view(), name='trash'),
+    path('<int:pk>/delete/', views.ProjectDeleteView.as_view(), name='delete'),
+    path('<int:pk>/restore-deleted/', views.ProjectRestoreDeletedView.as_view(), name='restore_deleted'),
+    path('<int:pk>/purge/', views.ProjectPurgeView.as_view(), name='purge'),
 
     # API دسترسی‌ها
     path('api/<int:pk>/credentials/', views.credential_create, name='credential_create'),

@@ -3,6 +3,7 @@
 انواع پروژه به‌صورت رشته‌ی جداشده با ویرگول ذخیره می‌شوند. پسورد دسترسی‌ها
 با Fernet رمزنگاری و در `password_enc` نگه داشته می‌شود.
 """
+from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 from django.urls import reverse
@@ -40,6 +41,9 @@ class Project(TimeStampedModel):
     project_types = models.CharField('نوع پروژه', max_length=100, blank=True)
     status = models.CharField('وضعیت', max_length=10, choices=STATUS_CHOICES, default=ACTIVE)
     archived_at = models.DateTimeField('زمان غیرفعال‌سازی', null=True, blank=True)
+    # حذفِ نرم (سطلِ زباله، ۳۰ روز قابلِ‌بازگردانی، بعد پاک‌سازیِ کامل با دستور)
+    deleted_at = models.DateTimeField('زمان حذف', null=True, blank=True, db_index=True)
+    deleted_by = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name='حذف‌کننده', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     # اولویتِ دستیِ نمایش (۱ = بالاترین). خالی = بدونِ اولویت (ته لیست). مرتب‌سازیِ
     # صفحهٔ پروژه‌ها و داشبورد از این می‌خوانند: F('priority').asc(nulls_last=True).
     priority = models.PositiveSmallIntegerField('اولویت', null=True, blank=True)
@@ -119,6 +123,31 @@ class Project(TimeStampedModel):
         self.status = self.ACTIVE
         self.archived_at = None
         self.save(update_fields=['status', 'archived_at', 'updated_at'])
+
+    # ── حذفِ نرم (سطلِ زباله) ──
+    TRASH_DAYS = 30
+
+    @property
+    def is_deleted(self):
+        return self.deleted_at is not None
+
+    def soft_delete(self, user=None):
+        self.deleted_at = timezone.now()
+        self.deleted_by = user if (user and user.is_authenticated) else None
+        self.save(update_fields=['deleted_at', 'deleted_by', 'updated_at'])
+
+    def restore_deleted(self):
+        self.deleted_at = None
+        self.deleted_by = None
+        self.save(update_fields=['deleted_at', 'deleted_by', 'updated_at'])
+
+    @property
+    def days_left_in_trash(self):
+        """روزهای باقی‌مانده تا پاک‌سازیِ کاملِ خودکار (۰ یعنی مهلت تمام)."""
+        if not self.deleted_at:
+            return None
+        gone = (timezone.now() - self.deleted_at).days
+        return max(0, self.TRASH_DAYS - gone)
 
 
 class Credential(models.Model):

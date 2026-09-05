@@ -32,6 +32,11 @@
             {% csrf_token %}<button class="btn">غیرفعال‌سازی</button>
           </form>
         {% endif %}
+        {% if not project.is_personal %}
+          <form method="post" action="{% url 'projects:delete' project.pk %}" onsubmit="return confirm('این پروژه به سطلِ زباله برود؟ تا ۳۰ روز قابلِ بازگرداندن است.')">
+            {% csrf_token %}<button class="btn" style="color:var(--danger)">حذف</button>
+          </form>
+        {% endif %}
       </div>
     {% endif %}
   </section>

@@ -78,6 +78,20 @@
 - تبِ «دسترسی به همکاران» در سینگلِ پروژه (`project_members` API، PATCH) این فهرست را
   می‌سازد؛ نیازمندِ `project_colleagues_access`.
 
+## حذفِ نرمِ پروژه (سطلِ زباله، ۳۰ روز)
+- **`Project.deleted_at`/`deleted_by`** + `soft_delete(user)`/`restore_deleted()`/`is_deleted`/
+  `days_left_in_trash` (`TRASH_DAYS=30`). **enforcement تک‌نقطه‌ای:** `access.py:
+  accessible_project_ids` علاوه بر پروژه‌ی شخصی، `deleted_at__isnull=True` را هم فیلتر می‌کند
+  → پروژه‌ی حذف‌شده از همه‌جا (لیست/تسک/تقویم/داشبورد) ناپدید می‌شود، فقط صفحهٔ سطلِ زباله
+  مستقیم می‌خواندش. پروژه‌ی «شخصی» حذف نمی‌شود (گاردِ `is_personal`).
+- **ویوها** (گیت `edit_project`): `ProjectDeleteView` (POST، حذفِ نرم → سطلِ زباله)،
+  `ProjectTrashView` (`/projects/trash/`)، `ProjectRestoreDeletedView` (بازگرداندن)،
+  `ProjectPurgeView` (حذفِ کاملِ فوری). دامنهٔ دیدِ سطلِ زباله = `_deleted_projects_qs`
+  (مالک/`view_all_projects` همه؛ بقیه فقط عضو). UI: دکمهٔ «حذف» در سینگل + لینکِ «🗑 سطلِ
+  زباله» در لیست.
+- **پاک‌سازیِ خودکار:** `python manage.py purge_deleted_projects` (پیش‌فرض >۳۰ روز؛
+  `--days`/`--dry-run`) — hard-delete با cascade. روی cron روزانه بگذار.
+
 ## فایل‌ها / URLها
 - `views.py` — List (جدولی، بازه، آخرین‌گزارش، محدودشده با `accessible_project_ids`) ·
   Detail (تب‌ها، `get_object` اگر پروژه در فهرستِ دسترسی نباشد `PermissionDenied`) ·

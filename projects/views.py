@@ -1,6 +1,7 @@
 """ویوهای پروژه‌ها — CRUD + سینگل با تب‌ها + API دسترسی‌های رمزنگاری‌شده."""
 import json
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
@@ -8,7 +9,8 @@ from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.http import require_http_methods
-from django.views.generic import CreateView, DetailView, ListView, UpdateView, View
+from django.views.generic import (CreateView, DetailView, ListView, TemplateView,
+                                  UpdateView, View)
 
 from accounts.access import has_perm, require_perm
 from core.columns import get_columns
@@ -377,6 +379,73 @@ class ProjectRestoreView(LoginRequiredMixin, View):
             raise PermissionDenied('به این پروژه دسترسی نداری')
         project.restore()
         return redirect(project.get_absolute_url())
+
+
+# ── حذفِ نرمِ پروژه (سطلِ زباله، ۳۰ روز قابلِ‌بازگردانی) ──
+def _deleted_projects_qs(request):
+    """پروژه‌های حذف‌شده‌ی قابلِ‌دیدنِ کاربر (دامنه مثلِ accessible ولی روی حذف‌شده‌ها)."""
+    m = getattr(request, 'membership', None)
+    colleague = getattr(request.user, 'colleague', None)
+    qs = Project.objects.filter(deleted_at__isnull=False, personal_owner__isnull=True)
+    if not (m and (m.role == 'owner' or m.can('view_all_projects'))):
+        if not colleague:
+            return qs.none()
+        qs = qs.filter(members=colleague)
+    return qs.order_by('-deleted_at')
+
+
+class ProjectDeleteView(LoginRequiredMixin, View):
+    """حذفِ نرم — به سطلِ زباله می‌رود (۳۰ روز قابلِ‌بازگردانی)."""
+
+    def post(self, request, pk):
+        require_perm(request, 'edit_project')
+        project = get_object_or_404(Project, pk=pk)
+        if project.is_personal:
+            raise PermissionDenied('پروژه‌ی شخصی حذف نمی‌شود')
+        if not _project_access_ok(request, project.id):
+            raise PermissionDenied('به این پروژه دسترسی نداری')
+        project.soft_delete(request.user)
+        messages.success(request, f'«{project.name}» به سطلِ زباله رفت — تا ۳۰ روز قابلِ بازگرداندن است.')
+        return redirect('projects:trash')
+
+
+class ProjectTrashView(LoginRequiredMixin, TemplateView):
+    template_name = 'projects/trash.html'
+
+    def get_context_data(self, **kwargs):
+        require_perm(self.request, 'edit_project')
+        ctx = super().get_context_data(**kwargs)
+        ctx['projects'] = list(_deleted_projects_qs(self.request))
+        ctx['trash_days'] = Project.TRASH_DAYS
+        ctx['page_title'] = 'سطلِ زباله‌ی پروژه‌ها'
+        return ctx
+
+
+class ProjectRestoreDeletedView(LoginRequiredMixin, View):
+    """بازگرداندن از سطلِ زباله."""
+
+    def post(self, request, pk):
+        require_perm(request, 'edit_project')
+        project = get_object_or_404(Project, pk=pk, deleted_at__isnull=False)
+        if project.id not in {p.id for p in _deleted_projects_qs(request)}:
+            raise PermissionDenied('به این پروژه دسترسی نداری')
+        project.restore_deleted()
+        messages.success(request, f'«{project.name}» بازگردانده شد.')
+        return redirect('projects:trash')
+
+
+class ProjectPurgeView(LoginRequiredMixin, View):
+    """حذفِ کاملِ فوری (غیرقابلِ‌بازگشت) از سطلِ زباله."""
+
+    def post(self, request, pk):
+        require_perm(request, 'edit_project')
+        project = get_object_or_404(Project, pk=pk, deleted_at__isnull=False)
+        if project.id not in {p.id for p in _deleted_projects_qs(request)}:
+            raise PermissionDenied('به این پروژه دسترسی نداری')
+        name = project.name
+        project.delete()   # hard delete — cascade تسک/فاکتور/دسترسی‌ها
+        messages.success(request, f'«{name}» برای همیشه حذف شد.')
+        return redirect('projects:trash')
 
 
 @login_required

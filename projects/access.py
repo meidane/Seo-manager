@@ -38,4 +38,7 @@ def accessible_project_ids(request):
     else:
         qs = qs.exclude(personal_owner__isnull=False)
 
+    # پروژه‌های حذف‌شده (سطلِ زباله) هیچ‌جا دیده نمی‌شوند — فقط صفحهٔ سطلِ زباله جدا می‌خواند
+    qs = qs.filter(deleted_at__isnull=True)
+
     return list(qs.values_list('id', flat=True))
