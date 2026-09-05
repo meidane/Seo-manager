@@ -24,6 +24,7 @@ from tasks.models import KPIChecklistItem, TaskTypeDef, TaskTypeField, TaskTypeK
 
 TAGS = TaskTypeField.TAGS
 TEXT = TaskTypeField.TEXT
+TEXTAREA = TaskTypeField.TEXTAREA
 NUMBER = TaskTypeField.NUMBER
 URL = TaskTypeField.URL
 
@@ -66,16 +67,13 @@ SEO_TYPES = [
     # بی‌اثر بشود. اگر یک روز «فنی» نیاز به فیلدِ سئوی خودش پیدا کرد، همان رکورد را
     # ویرایش کن (`/settings/task-types/`)، رکوردِ دومِ هم‌نام نساز.
     {
+        # رپورتاژ ساده‌شد (خواستِ کاربر): فقط انکر + لینکِ چندخطی — بدونِ کلمه/مترادف/
+        # عنوان سئو/تعداد کلمه/لینک صفحه/کلمه کلیدی هدف/لینک هدف.
         'name': 'رپورتاژ', 'color': '#F472B6', 'icon': '📰', 'review': True, 'order': 23,
-        'fields': _KEYWORD_FIELDS + [
-            # مثلِ «انتشار» ولی لینکِ صفحه اصلاً الزامی نیست (حتی موقعِ تکمیل) — رپورتاژ
-            # ممکن است روی رسانه‌ای بیرونی منتشر شود که لینکش را کمی دیرتر می‌گیریم.
-            {'label': 'لینک صفحه', 'kind': URL, 'required': False, 'is_page_link': True},
-            # هدفِ تبلیغیِ رپورتاژ — کلمه/لینکِ صفحه‌ای *دیگر* که این رپورتاژ برایش
-            # کار شده؛ فقط برای جستجوی «چه تسک‌هایی برای این کلمه/لینک انجام شده»،
-            # بدونِ ردیابیِ رتبه (چون به تسکِ دیگری تعلق دارد).
-            {'label': 'کلمه کلیدی هدف', 'kind': TAGS, 'required': False, 'is_keyword_source': True},
-            {'label': 'لینک هدف', 'kind': URL, 'required': False, 'is_link_source': True},
+        'fields': [
+            {'label': 'انکر', 'kind': TEXT, 'required': False},
+            {'label': 'لینک', 'kind': TEXTAREA, 'required': False,
+             'placeholder': 'هر لینک در یک خط'},
         ],
         'kpis': [],
     },

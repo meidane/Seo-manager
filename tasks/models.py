@@ -209,6 +209,23 @@ class Task(TimeStampedModel):
         return self.published_url or ''
 
     @property
+    def missing_required(self):
+        """برچسبِ فیلدهای سفارشیِ الزامیِ خالی — اخطارِ نرمِ قرمز روی ردیف/مودال.
+        ذخیره را بلاک نمی‌کند (خواستِ کاربر: اجازهٔ سیو حتی با فیلدِ الزامیِ خالی)."""
+        if not self.type_def_id:
+            return []
+        custom = self.custom if isinstance(self.custom, dict) else {}
+        out = []
+        for f in self.type_def.fields.all():   # با prefetchِ type_def__fields، بدونِ N+1
+            if not f.required:
+                continue
+            v = custom.get(f.key)
+            empty = (not isinstance(v, list) or not v) if f.kind == f.TAGS else v in (None, '', [])
+            if empty:
+                out.append(f.label)
+        return out
+
+    @property
     def type_label(self):
         if self.type_def_id:  # نوع سفارشی
             return self.type_def.name

@@ -9,5 +9,5 @@
   <th class="nowrap-c">تاریخ برنامه</th>
   <th class="nowrap-c">وضعیت</th>
   <th class="nowrap-c">زمان / تخمین</th>
-  {% if editable %}{% for c in extra_columns %}<th class="nowrap-c">{{ c.label }}</th>{% endfor %}<th style="width:26px" class="chk-col">{% if can_edit_task %}<input type="checkbox" class="check-all">{% endif %}</th>{% endif %}
+  {% if editable %}{% for c in extra_columns %}<th class="nowrap-c">{{ c.label }}</th>{% endfor %}<th class="nowrap-c">توضیحات</th><th style="width:26px" class="chk-col">{% if can_edit_task %}<input type="checkbox" class="check-all">{% endif %}</th>{% endif %}
 </tr>

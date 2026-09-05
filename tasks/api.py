@@ -380,18 +380,16 @@ def _field_is_empty(field, value):
 
 
 def _custom_fields_error(task):
-    """فیلدهای سفارشیِ الزامیِ نوعِ تسک را چک می‌کند — `required`(همیشه) و
-    `required_on_done`(فقط وقتی وضعیت done است). منبعِ واحدِ این اعتبارسنجی؛ در
-    `task_create`/`task_detail` PATCH/`task_status` هر سه صدا زده می‌شود (مثلِ
-    `_publish_url_error`، همان الگو)."""
+    """فقط `required_on_done` (موقعِ done) ذخیره را بلاک می‌کند. فیلدِ `required`
+    دیگر مانعِ ذخیره نیست — خواستِ کاربر: اجازهٔ سیو (و سیوِ اتوماتِ inline) حتی با
+    فیلدِ الزامیِ خالی؛ به‌جایش اخطارِ نرمِ قرمز (`Task.missing_required`) روی ردیف/مودال
+    نشان داده می‌شود. `required_on_done` چون گیتِ «تکمیل» است، همچنان می‌ماند."""
     if not task.type_def_id:
         return None
     custom = task.custom or {}
     for f in task.type_def.fields.all():
         value = custom.get(f.key)
         empty = _field_is_empty(f, value)
-        if f.required and empty:
-            return f'فیلدِ «{f.label}» الزامی است.'
         if f.required_on_done and task.status == Task.DONE and empty:
             return f'برای تکمیلِ این تسک، «{f.label}» الزامی است.'
     return None
@@ -455,7 +453,9 @@ def task_create(request):
     rec = data.get('recurrence')
     if rec and rec.get('freq'):
         _attach_recurrence(task, rec)
-    return JsonResponse(task.to_dict(), status=201)
+    resp = task.to_dict()
+    resp['warnings'] = task.missing_required   # اخطارِ نرمِ فیلدهای الزامیِ خالی
+    return JsonResponse(resp, status=201)
 
 
 def _attach_recurrence(task, rec):
@@ -547,7 +547,9 @@ def task_detail(request, pk):
     if not was_done and task.status == Task.DONE and task.recurrence_id and not task.is_placeholder:
         from .recurrence import advance
         advance(task)
-    return JsonResponse(task.to_dict())
+    resp = task.to_dict()
+    resp['warnings'] = task.missing_required   # اخطارِ نرمِ فیلدهای الزامیِ خالی
+    return JsonResponse(resp)
 
 
 @login_required

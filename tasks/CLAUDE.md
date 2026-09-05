@@ -158,15 +158,22 @@
   یک‌بار در `wireTagboxes` (`box.dataset.tagWired` گارد) است تا با تعویضِ نوع در مودال
   چندبار سیم‌کشی نشود. `collect()` برای `.cf[data-kind="tags"]` مقدار را از
   `.tagbox-chip[data-w]`ها جمع می‌کند، نه `.value`.
-- **`required` در برابرِ `required_on_done`**: قبلاً `required` فقط تزئینی بود (فقط `*`
-  کنارِ برچسبِ مودال)، هرگز سرورساید چک نمی‌شد. الان دو حالتِ اجبارِ جداگانه هست:
-  `required` = همیشه اجباری (ساختِ تسک هم شاملش می‌شود)؛ `required_on_done` = فقط وقتی
-  تسک به `done` می‌رود اجباری است (مثلِ «لینک صفحه»ی نوعِ «انتشار» — موقعِ ساختن هنوز
-  لینک نداریم، ولی برای تکمیل باید داشته باشیم). **منبعِ واحدِ اعتبارسنجی:**
-  `tasks/api.py: _custom_fields_error(task)` — از `task_create`، `task_detail` PATCH و
-  `task_status` صدا زده می‌شود (کنارِ `_publish_url_error` قدیمی، برای تسک‌های
-  built-inِ سئوِ قدیمی). `_field_is_empty(field, value)` برای `tags` یعنی لیستِ خالی،
-  برای بقیه یعنی `None/''/[]`.
+- **`required` در برابرِ `required_on_done`**: `required` **دیگر ذخیره را بلاک نمی‌کند**
+  (خواستِ کاربر: اجازهٔ سیو — و سیوِ اتوماتِ inline — حتی با فیلدِ الزامیِ خالی). به‌جایش
+  یک **اخطارِ نرمِ قرمز** نشان داده می‌شود: `Task.missing_required` (property، برچسبِ
+  فیلدهای `required`ِ خالی) → بَجِ «⚠ ناقص» کنارِ عنوان در `_rows.html` (هر دو حالت) با
+  `title` هاوردار؛ + پاسخِ `task_create`/`task_detail` PATCH کلیدِ `warnings` (همان لیست)
+  را می‌دهد و `tasks.js` آن را toast می‌کند و بَجِ ردیف را زنده به‌روز می‌کند
+  (`updateMissReq`). `required_on_done` همچنان **بلاک می‌کند** (فقط موقعِ `done`) چون
+  گیتِ «تکمیل» است. **منبعِ واحدِ بلاک:** `tasks/api.py: _custom_fields_error(task)`
+  (فقط `required_on_done`+done) + `_publish_url_error` (سئوِ built-inِ قدیمی).
+  `_field_is_empty(field, value)` برای `tags` یعنی لیستِ خالی، بقیه یعنی `None/''/[]`.
+- **توضیحاتِ inline در جدولِ ویرایشی:** حالتِ `editable` علاوه بر `extra_columns` یک
+  ستونِ **«توضیحات»** هم دارد — `<textarea class="tx-inline cf-desc" data-f="description">`
+  (متن ساده، بدونِ ابزارِ TinyMCE؛ از همان هندلرِ `.tx-inline` ذخیره می‌شود). مودال
+  همچنان ادیتورِ غنی دارد؛ این فقط برای ویرایشِ سریعِ درون‌جدولی است.
+- **جداکنندهٔ تگ = فقط ویرگولِ لاتین `,`** (نه فارسیِ `،`): هم مودال (`tagboxAddWords`)
+  هم اینلاین (`ctag` popover) فقط روی `,` می‌شکنند؛ `،` بخشی از کلمه می‌ماند (خواستِ کاربر).
 - **چهار فلگِ اتصال به بستهٔ `seo/`** (بدونِ رفتار در هستهٔ تسک؛ فقط `seo/signals.py` و
   `seo/rank.py` می‌خوانندشان): `is_keyword_source`, `track_keyword_rank`,
   `is_link_source`, `is_page_link` — توضیحِ کاملشان در `seo/CLAUDE.md`.

@@ -546,10 +546,14 @@
       const btns = ['t-save', 't-save-next'].map((i) => document.getElementById(i)).filter(Boolean);
       btns.forEach((b) => { b.disabled = true; b.classList.add('loading'); });
       try {
-        let savedId = id;
-        if (id) await App.fetchJSON(`/tasks/api/${id}/`, { method: 'PATCH', body: payload });
-        else { const r = await App.fetchJSON('/tasks/api/', { method: 'POST', body: payload }); savedId = r.id; }
+        let savedId = id, resp;
+        if (id) resp = await App.fetchJSON(`/tasks/api/${id}/`, { method: 'PATCH', body: payload });
+        else { resp = await App.fetchJSON('/tasks/api/', { method: 'POST', body: payload }); savedId = resp.id; }
         App.toast('ذخیره شد', 'ok');
+        // اخطارِ نرمِ فیلدهای الزامیِ خالی (ذخیره انجام شد، فقط هشدار)
+        if (resp && resp.warnings && resp.warnings.length) {
+          App.toast('⚠ فیلدهای الزامیِ خالی: ' + resp.warnings.join('، '), 'warn', 6000);
+        }
         if (again) { openTask(null); return; }
         App.closeModal();
         // بدونِ رفرش: ردیفِ لیستِ تسک‌ها را درجا به‌روز/درج می‌کنیم؛ اگر نشد، رفرشِ نرم
@@ -623,9 +627,23 @@
     } else if (el.dataset.f) {
       body = { [el.dataset.f]: el.value };
     } else { return; }
-    try { await App.fetchJSON(`/tasks/api/${tr.dataset.id}/`, { method: 'PATCH', body }); App.toast('ذخیره شد', 'ok'); }
-    catch (_) {}
+    try {
+      const r = await App.fetchJSON(`/tasks/api/${tr.dataset.id}/`, { method: 'PATCH', body });
+      App.toast('ذخیره شد', 'ok');
+      updateMissReq(tr, r && r.warnings);   // بَجِ «⚠ ناقص» را زنده به‌روز کن
+    } catch (_) {}
   });
+
+  // بَجِ اخطارِ «فیلدهای الزامیِ خالی» را روی ردیف زنده می‌سازد/به‌روز می‌کند (بدونِ رفرش)
+  function updateMissReq(tr, warnings) {
+    if (!tr) return;
+    const cell = tr.querySelector('.tcell'); if (!cell) return;
+    let badge = cell.querySelector('.miss-req');
+    if (warnings && warnings.length) {
+      if (!badge) { badge = document.createElement('span'); badge.className = 'tag miss-req'; badge.textContent = '⚠ ناقص'; cell.appendChild(badge); }
+      badge.title = 'فیلدهای الزامیِ خالی: ' + warnings.join('، ');
+    } else if (badge) { badge.remove(); }
+  }
 
   // ── تگ‌باکسِ درون‌جدولی (کلمات کلیدی/مترادف): + برای افزودن، × برای حذف ──
   function ctagPatch(box) {
@@ -660,8 +678,8 @@
       const list = box.querySelector('.ctag-list');
       const commit = () => {
         const raw = inp.value.trim(); if (!raw) { pop.remove(); return; }
-        // ویرگول → چند کلمه
-        raw.replace(/،/g, ',').split(',').map((w) => w.trim()).filter(Boolean).forEach((w) => {
+        // فقط ویرگولِ لاتین «,» جدا می‌کند؛ ویرگولِ فارسی «،» بخشی از کلمه می‌ماند (خواستِ کاربر)
+        raw.split(',').map((w) => w.trim()).filter(Boolean).forEach((w) => {
           if (![...box.querySelectorAll('.ctag')].some((c) => c.dataset.w === w))
             list.appendChild(ctagChip(w));
         });

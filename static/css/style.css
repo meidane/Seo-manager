@@ -1251,6 +1251,15 @@ table.sheet td:not(.edit){padding:6px 9px}
 .dcell{min-width:150px;max-width:240px}
 .dcell .cf-inline{width:100%;min-width:90px}
 .dcell input.cf-inline[type=checkbox]{width:auto;min-width:0}
+/* توضیحاتِ inline (متن ساده، بدونِ ابزارِ ادیتور) در جدولِ ویرایشیِ تسک */
+.cf-desc{width:100%;min-width:150px;min-height:30px;max-height:88px;resize:vertical;
+  background:transparent;border:1px solid transparent;border-radius:6px;color:inherit;
+  font:inherit;font-size:12px;padding:4px 6px;line-height:1.5}
+.cf-desc:hover{border-color:var(--stroke-soft)}
+.cf-desc:focus{border-color:var(--primary-ring);background:var(--fill);outline:none}
+/* اخطارِ نرمِ «فیلدهای الزامیِ خالی» — قرمز، هاور=جزئیات (ذخیره را بلاک نمی‌کند) */
+.miss-req{background:color-mix(in srgb,var(--danger) 16%,transparent);color:var(--danger);
+  cursor:help;white-space:nowrap;margin-inline-start:4px}
 
 /* ── تگ‌باکسِ درون‌جدولی (کلمات کلیدی/مترادف) — تک‌خطی، ارتفاعِ ردیف را زیاد نمی‌کند ── */
 .cf-tags{display:flex;align-items:center;gap:4px;position:relative;max-width:100%}
