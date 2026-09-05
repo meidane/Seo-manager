@@ -1260,6 +1260,19 @@ table.sheet td:not(.edit){padding:6px 9px}
 /* اخطارِ نرمِ «فیلدهای الزامیِ خالی» — قرمز، هاور=جزئیات (ذخیره را بلاک نمی‌کند) */
 .miss-req{background:color-mix(in srgb,var(--danger) 16%,transparent);color:var(--danger);
   cursor:help;white-space:nowrap;margin-inline-start:4px}
+/* فیلدِ کلمهٔ کلیدی/مترادف — تک‌فیلد، جدا با «-»، جداکنندهٔ رنگی (مودال + اینلاین) */
+.kwfield{min-height:36px;background:var(--fill);border:1px solid var(--stroke-soft);border-radius:8px;
+  padding:7px 10px;color:var(--text);font:inherit;font-size:13px;line-height:2;
+  white-space:pre-wrap;word-break:break-word;outline:none;cursor:text;width:100%}
+.kwfield:focus{border-color:var(--primary-ring);background:var(--fill-strong)}
+.kwfield:empty:before{content:attr(data-ph);color:var(--text-faint);pointer-events:none}
+/* جداکنندهٔ «-» رنگی + فاصلهٔ دو طرف تا کلمه‌ها موقعِ تایپ واضح جدا دیده شوند */
+.kw-sep{color:var(--primary-400);font-weight:800;padding:0 8px;user-select:none}
+/* نسخهٔ فشردهٔ درون‌جدولیِ کلمهٔ کلیدی */
+.cf-kw{min-height:30px;padding:4px 7px;font-size:12px;line-height:1.9;min-width:170px;
+  background:transparent;border-color:transparent}
+.cf-kw:hover{border-color:var(--stroke-soft)}
+.cf-kw:focus{border-color:var(--primary-ring);background:var(--fill)}
 
 /* ── تگ‌باکسِ درون‌جدولی (کلمات کلیدی/مترادف) — تک‌خطی، ارتفاعِ ردیف را زیاد نمی‌کند ── */
 .cf-tags{display:flex;align-items:center;gap:4px;position:relative;max-width:100%}

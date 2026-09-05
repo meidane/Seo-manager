@@ -45,6 +45,7 @@
       else tbody.insertAdjacentHTML('afterbegin', d.html);
       const nw = tbody.querySelector(`tr[data-id="${id}"]`);
       if (window.RichSelect && nw) RichSelect.init(nw);
+      if (nw) kwHighlightAll(nw);   // جداکنندهٔ رنگیِ فیلدهای کلمهٔ کلیدیِ ردیفِ تازه
       if (nw && typeof renderAllTimerCells === 'function') renderAllTimerCells();
       return true;
     } catch (_) { return false; }
@@ -286,47 +287,68 @@
     return `<div class="hist-box"><button type="button" class="hist-toggle" id="hist-toggle">🕐 تاریخچهٔ تسک (${faNum})</button><div class="hist-list" id="hist-list" style="display:none">${body}</div></div>`;
   }
 
-  // ── چیپ‌های کلمه/برچسب (Enter یا دکمه‌ی + اضافه می‌کند؛ ویرگول خودکار جدا می‌شود) ──
-  function tagChip(word) {
-    // data-w روی خودِ چیپ (span) — چون collect()/dedup از `.tagbox-chip`.dataset.w می‌خوانند،
-    // نه از آیکنِ ×. (باگِ قبلی: data-w روی <i> بود → collect همیشه undefined→[None] ذخیره می‌کرد
-    // و بعدِ ذخیره چیپِ خالی فقط با × می‌ماند.)
-    return `<span class="tag t-mute tagbox-chip" data-w="${esc(word)}">${esc(word)}<i class="tagbox-x">×</i></span>`;
+  // ── فیلدِ کلمهٔ کلیدی/مترادف: تک‌فیلدِ ساده، جدا با «-»، جداکننده رنگی ──
+  //   (به‌جای چیپِ دونه‌دونه؛ خواستِ کاربر). مقدار = رشته؛ بک‌اند با «-» به لیست می‌شکند.
+  const KW_SEP = '-';
+  function kwCaretOffset(el) {
+    const sel = window.getSelection(); if (!sel || !sel.rangeCount) return null;
+    const r = sel.getRangeAt(0); if (!el.contains(r.endContainer)) return null;
+    const pre = r.cloneRange(); pre.selectNodeContents(el); pre.setEnd(r.endContainer, r.endOffset);
+    return pre.toString().length;
   }
-  function tagboxHtml(key, words, placeholder) {
-    const chips = (words || []).map(tagChip).join('');
-    return `<div class="tagbox cf" data-key="${key}" data-kind="tags">
-      <div class="tagbox-chips">${chips}</div>
-      <div class="tagbox-field"><input type="text" class="tagbox-input" placeholder="${esc(placeholder || 'بنویس و Enter بزن…')}"><button type="button" class="tagbox-add" title="افزودن">＋</button></div>
-    </div>`;
+  function kwSetCaret(el, off) {
+    if (off == null) return;
+    const sel = window.getSelection(); const range = document.createRange(); let cur = 0, done = false;
+    (function walk(n) {
+      if (done) return;
+      if (n.nodeType === 3) { if (cur + n.length >= off) { range.setStart(n, off - cur); range.collapse(true); done = true; } else cur += n.length; }
+      else n.childNodes.forEach(walk);
+    })(el);
+    if (done) { sel.removeAllRanges(); sel.addRange(range); }
   }
-  function tagboxAddWords(box, raw) {
-    const chipsWrap = box.querySelector('.tagbox-chips');
-    const existing = new Set([...box.querySelectorAll('.tagbox-chip')].map((c) => c.dataset.w));
-    raw.split(',').map((w) => w.trim()).filter((w) => w && !existing.has(w)).forEach((w) => {
-      existing.add(w);
-      chipsWrap.insertAdjacentHTML('beforeend', tagChip(w));
-    });
+  // متنِ خام را با هایلایتِ جداکننده («-») دوباره می‌سازد، بدونِ پریدنِ نشانگر
+  function kwHighlight(el) {
+    const text = el.textContent;
+    const off = document.activeElement === el ? kwCaretOffset(el) : null;
+    const frag = document.createDocumentFragment(); let buf = '';
+    const flush = () => { if (buf) { frag.appendChild(document.createTextNode(buf)); buf = ''; } };
+    for (const ch of text) {
+      if (ch === KW_SEP) { flush(); const s = document.createElement('span'); s.className = 'kw-sep'; s.textContent = KW_SEP; frag.appendChild(s); }
+      else buf += ch;
+    }
+    flush();
+    el.innerHTML = ''; el.appendChild(frag);
+    el.dataset.kwinit = '1';
+    if (off != null) kwSetCaret(el, off);
   }
-  // یک‌بار روی #custom-fields سیم‌کشی می‌شود (نه هر renderCustom، چون innerHTML عوض می‌شود
-  // ولی خودِ نودِ box ثابت می‌ماند — الگوی delegation مثل بقیه‌ی مودال).
-  function wireTagboxes(box) {
-    if (box.dataset.tagWired) return;
-    box.dataset.tagWired = '1';
-    box.addEventListener('keydown', (e) => {
-      if (e.key !== 'Enter' || !e.target.matches('.tagbox-input')) return;
-      e.preventDefault();
-      const tb = e.target.closest('.tagbox');
-      if (e.target.value.trim()) { tagboxAddWords(tb, e.target.value); e.target.value = ''; }
-    });
-    box.addEventListener('click', (e) => {
-      const add = e.target.closest('.tagbox-add');
-      if (add) { const tb = add.closest('.tagbox'); const inp = tb.querySelector('.tagbox-input');
-        if (inp.value.trim()) { tagboxAddWords(tb, inp.value); inp.value = ''; } return; }
-      const x = e.target.closest('.tagbox-x');
-      if (x) x.closest('.tagbox-chip').remove();
-    });
+  function kwHighlightAll(root) {
+    (root || document).querySelectorAll('.kwfield:not([data-kwinit])').forEach(kwHighlight);
   }
+  window.kwHighlightAll = kwHighlightAll;
+  // مقدارِ اولیه = لیست را با « - » به هم می‌چسباند (نمایشِ خوانا)
+  function kwFieldHtml(key, words, placeholder, inline) {
+    const attr = inline ? `data-cf="${key}"` : `data-key="${key}" data-kind="tags"`;
+    const cls = inline ? 'kwfield cf-kw' : 'kwfield cf';
+    const text = (Array.isArray(words) ? words : (words ? [words] : [])).join(' ' + KW_SEP + ' ');
+    return `<div class="${cls}" ${attr} contenteditable="true" dir="rtl" spellcheck="false" data-ph="${esc(placeholder || 'کلمه‌ها را با «-» جدا کن')}">${esc(text)}</div>`;
+  }
+  // هایلایتِ زندهٔ همهٔ فیلدهای کلمهٔ کلیدی (مودال + اینلاین) هنگامِ تایپ
+  document.addEventListener('input', (e) => {
+    const kw = e.target.closest && e.target.closest('.kwfield');
+    if (kw) kwHighlight(kw);
+  });
+  // ذخیرهٔ اینلاین (فقط فیلدِ کلمهٔ کلیدیِ درون‌جدولی، با data-cf) هنگامِ خروجِ فوکوس
+  document.addEventListener('focusout', async (e) => {
+    const kw = e.target.closest && e.target.closest('.kwfield.cf-kw'); if (!kw) return;
+    const tr = kw.closest('tr'); if (!tr) return;
+    try {
+      const r = await App.fetchJSON(`/tasks/api/${tr.dataset.id}/`, { method: 'PATCH', body: { custom_patch: { [kw.dataset.cf]: kw.textContent } } });
+      App.toast('ذخیره شد', 'ok');
+      updateMissReq(tr, r && r.warnings);
+    } catch (_) {}
+  });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => kwHighlightAll());
+  else kwHighlightAll();
 
   // عرضِ فیلدِ سفارشی در گریدِ ۱۲ستونه (از تنظیماتِ نوعِ تسک)
   const CF_SPAN = { full: 12, half: 6, third: 4, quarter: 3 };
@@ -337,12 +359,11 @@
     if (!t || !t.fields || !t.fields.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
     values = values || {};
     box.style.display = 'grid';
-    wireTagboxes(box);
     box.innerHTML = t.fields.map((f) => {
       const span = CF_SPAN[f.width] || 12;
       const v = values[f.key] != null ? values[f.key] : '';
       let input;
-      if (f.kind === 'tags') input = tagboxHtml(f.key, Array.isArray(v) ? v : [], f.placeholder);
+      if (f.kind === 'tags') input = kwFieldHtml(f.key, v, f.placeholder, false);
       else if (f.kind === 'textarea') input = `<textarea class="cf" data-key="${f.key}" rows="2" placeholder="${esc(f.placeholder)}">${esc(v)}</textarea>`;
       else if (f.kind === 'checkbox') input = `<label style="display:flex;align-items:center;gap:8px;margin:0"><input type="checkbox" class="cf" data-key="${f.key}" ${v ? 'checked' : ''}> ${esc(f.label)}</label>`;
       else if (f.kind === 'select') input = `<select class="cf" data-key="${f.key}"><option value="">—</option>${f.options.map((o) => opt(o, o, v)).join('')}</select>`;
@@ -352,6 +373,7 @@
       const req = f.required ? ' *' : (f.required_on_done ? ' (برای تکمیل الزامی)' : '');
       return `<div class="field" data-cf style="grid-column:span ${span}"><label>${esc(f.label)}${req}</label>${input}</div>`;
     }).join('');
+    kwHighlightAll(box);   // جداکنندهٔ رنگیِ فیلدهای کلمهٔ کلیدی
   }
 
   // مقادیرِ فعلیِ فیلدهای سفارشی را از DOM می‌خواند (منبعِ واحد؛ collect و تعویضِ نوع
@@ -360,10 +382,8 @@
     const custom = {};
     document.querySelectorAll('#custom-fields .cf').forEach((el) => {
       if (el.dataset.kind === 'tags') {
-        const pend = el.querySelector('.tagbox-input');
-        if (pend && pend.value.trim()) { tagboxAddWords(el, pend.value); pend.value = ''; }
-        custom[el.dataset.key] = [...el.querySelectorAll('.tagbox-chip')]
-          .map((c) => c.dataset.w).filter((w) => w && w.trim());
+        // تک‌فیلدِ کلمهٔ کلیدی → رشتهٔ خام (بک‌اند با «-» به لیست می‌شکند)
+        custom[el.dataset.key] = el.textContent.trim();
       } else {
         custom[el.dataset.key] = el.type === 'checkbox' ? el.checked : el.value;
       }

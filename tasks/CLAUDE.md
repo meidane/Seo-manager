@@ -151,13 +151,18 @@
 
 ## فیلدِ سفارشیِ نوعِ `tags` («چندتایی») + الزام/اجبار
 - **`TaskTypeField.KIND_CHOICES`** یک نوعِ `tags` هم دارد (کنارِ text/number/url/...):
-  مقدارش در `Task.custom` همیشه **لیستِ رشته** است، نه رشته‌ی تخت. ویجتِ مودال
-  («tagbox»، `static/js/tasks.js: tagboxHtml/wireTagboxes/tagboxAddWords`) با اینتر یا
-  دکمه‌ی + کلمه اضافه می‌کند، ویرگول را خودکار می‌شکند، × هر تگ را حذف می‌کند.
-  `renderCustom()` هر بار `innerHTML` را دوباره می‌سازد؛ سیم‌کشیِ رویداد delegated و
-  یک‌بار در `wireTagboxes` (`box.dataset.tagWired` گارد) است تا با تعویضِ نوع در مودال
-  چندبار سیم‌کشی نشود. `collect()` برای `.cf[data-kind="tags"]` مقدار را از
-  `.tagbox-chip[data-w]`ها جمع می‌کند، نه `.value`.
+  مقدارش در `Task.custom` همیشه **لیستِ رشته** است. **ورودی حالا تک‌فیلدِ ساده است، نه
+  چیپِ دونه‌دونه** (خواستِ کاربر): یک `contenteditable`ِ `.kwfield` که کلمه‌ها را با
+  **«-»** جدا می‌کند؛ جداکننده با `.kw-sep` رنگی (ایندیگو) + فاصلهٔ دوطرفه نشان داده
+  می‌شود (وضوحِ بصریِ موقعِ تایپ). منبعِ واحدِ ویجت در `static/js/tasks.js`:
+  `kwFieldHtml/kwHighlight/kwHighlightAll` (هایلایتِ زنده با حفظِ نشانگر، delegated روی
+  `input`؛ مودال و اینلاین یکی). **ذخیره = رشتهٔ خام** (نه لیست): مودال در `collect()`/
+  `readCustomValues()` `.kwfield.textContent` را می‌فرستد، اینلاین در `focusout` همان را
+  `custom_patch` می‌کند؛ **بک‌اند (`apply_fields`) هر فیلدِ `tags`ِ رشته‌ای را با «-» به
+  لیست می‌شکند** (تا `seo/signals.py` و word_count که لیست می‌خواهند دست‌نخورده بمانند؛
+  کلمهٔ دارای فاصله مثل «بهینه سازی» یک کلمه می‌ماند چون فقط روی «-» می‌شکنیم).
+  اینلاین در `templates/tasks/_cf_cell.html` همان `.kwfield.cf-kw` را رندر می‌کند.
+  ردیف‌های داینامیک (seo add / refreshTaskRow) با `kwHighlightAll(row)` رنگی می‌شوند.
 - **`required` در برابرِ `required_on_done`**: `required` **دیگر ذخیره را بلاک نمی‌کند**
   (خواستِ کاربر: اجازهٔ سیو — و سیوِ اتوماتِ inline — حتی با فیلدِ الزامیِ خالی). به‌جایش
   یک **اخطارِ نرمِ قرمز** نشان داده می‌شود: `Task.missing_required` (property، برچسبِ
@@ -172,8 +177,8 @@
   ستونِ **«توضیحات»** هم دارد — `<textarea class="tx-inline cf-desc" data-f="description">`
   (متن ساده، بدونِ ابزارِ TinyMCE؛ از همان هندلرِ `.tx-inline` ذخیره می‌شود). مودال
   همچنان ادیتورِ غنی دارد؛ این فقط برای ویرایشِ سریعِ درون‌جدولی است.
-- **جداکنندهٔ تگ = فقط ویرگولِ لاتین `,`** (نه فارسیِ `،`): هم مودال (`tagboxAddWords`)
-  هم اینلاین (`ctag` popover) فقط روی `,` می‌شکنند؛ `،` بخشی از کلمه می‌ماند (خواستِ کاربر).
+- **جداکنندهٔ تگ = «-»** (تک‌فیلدِ `.kwfield`، بالا). ویجتِ چیپیِ قدیمی (`tagbox`/`ctag`
+  با جداسازیِ ویرگول) برداشته شد.
 - **چهار فلگِ اتصال به بستهٔ `seo/`** (بدونِ رفتار در هستهٔ تسک؛ فقط `seo/signals.py` و
   `seo/rank.py` می‌خوانندشان): `is_keyword_source`, `track_keyword_rank`,
   `is_link_source`, `is_page_link` — توضیحِ کاملشان در `seo/CLAUDE.md`.

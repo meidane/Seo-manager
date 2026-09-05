@@ -162,6 +162,15 @@ def apply_fields(task: Task, data: dict):
     # ویرایشِ inlineِ یک فیلدِ سفارشیِ تنها در جدول (بدونِ بازنویسیِ کلِ custom) — merge
     if 'custom_patch' in data and isinstance(data['custom_patch'], dict):
         task.custom = {**(task.custom or {}), **data['custom_patch']}
+    # فیلدهای `tags` (کلمهٔ کلیدی/مترادف) حالا تک‌فیلدِ رشته‌ای‌اند که با «-» جدا می‌شوند
+    # (خواستِ کاربر). اگر رشته آمد، سرورساید به لیست می‌شکنیم تا تحلیل/ردیابیِ رتبه
+    # (seo/signals.py که لیست می‌خواند) و word_count دست‌نخورده بمانند. لیستِ قدیمی حفظ می‌شود.
+    if task.type_def_id and isinstance(task.custom, dict):
+        cust = task.custom
+        for f in task.type_def.fields.all():
+            if f.kind == f.TAGS and isinstance(cust.get(f.key), str):
+                cust[f.key] = [w.strip() for w in cust[f.key].split('-') if w.strip()]
+        task.custom = cust
     # اگر نوعِ سفارشی یک فیلد را «منبع تعداد کلمه» علامت زده باشد، word_count را از آن پر کن
     if task.type_def_id and isinstance(task.custom, dict):
         src = task.type_def.fields.filter(is_word_source=True).first()
