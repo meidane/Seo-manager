@@ -15,6 +15,10 @@
   (کلاس `.tk.virtual`، غیرقابل‌کلیک). تاریخ‌هایی که تسکِ واقعی دارند رد می‌شوند.
 - `static/js/calendar-page.js` — رندر سلول‌ها، آواتار نویسنده، دکمه‌ی + (hover → `openTask(null,{planned_date_fa})`),
   درگ‌ودراپ بین روزها (`PATCH planned_date_iso`).
+- **چیپِ تسک (`_cells.html: .tk`)**: آواتارِ مسئول + **ساعتِ برنامه** (`.tk-time`، از `to_dict.time`)
+  + متن؛ `title` کاملِ «نوع: عنوان — مسئول — ساعت» برای هاور. بوردرِ راستِ ۴px با
+  **رنگِ خودِ پروژه** (`project_color`) روی همهٔ چیپ‌ها (حتی done) + پس‌زمینهٔ نیمه‌شفافِ همان رنگ
+  — برای تفکیکِ بصریِ پروژه‌ها.
 - `static/js/calendar-embed.js` — تقویم قابل‌جاسازی در تب‌ها (`data-project`/`data-assignee`).
 - `static/js/datepicker.js` — دیت‌پیکر شمسی برای هر `input.jdate` (تعطیلات قرمز).
 

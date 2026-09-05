@@ -19,7 +19,7 @@
       <section class="card glass rev-card" id="rev-{{ t.id }}" data-id="{{ t.id }}">
         <div class="rev-top">
           <span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span>
-          <h3>{{ t.seo_title|default:t.title }}</h3>
+          <h3>{{ t.seo_title|default:t.title }}{% if t.page_link %} <a class="lnk-icon" href="{{ t.page_link }}" target="_blank" rel="noopener" title="{{ t.page_link }}">🔗</a>{% endif %}</h3>
           {% if t.is_my_scope %}<span class="tag t-info" title="مسئولِ این تسک زیرمجموعه‌ی شماست">مسئولیتِ شما</span>{% endif %}
           <span class="tag t-{% if t.status == 'pending' %}warn{% else %}ok{% endif %} rev-status">{{ t.get_status_display }}</span>
           {% if t.review_status == 'needs_fix' %}<span class="tag t-warn">⚠ اصلاحِ قبلی</span>{% endif %}
@@ -37,8 +37,8 @@
         {% if t.description %}<div class="rev-desc">{{ t.description|safe|truncatewords_html:40 }}</div>{% endif %}
         {% if t.keywords %}<div class="rev-kw"><span class="tag t-mute">{{ t.keywords }}</span></div>{% endif %}
         <div class="rev-actions">
-          {% if t.published_url %}<a href="{{ t.published_url }}" target="_blank" rel="noopener" class="btn btn-p">باز کردن مطلب ↗</a>{% endif %}
-          <button class="btn" onclick="window.openTask({{ t.id }})">باز کردن تسک</button>
+          {% if t.page_link %}<a href="{{ t.page_link }}" target="_blank" rel="noopener" class="btn btn-p">باز کردن مطلب ↗</a>{% endif %}
+          <button class="btn" onclick="window.openTask({{ t.id }})">✏️ باز کردن / ویرایشِ تسک</button>
           <button class="btn" onclick="window.scoreKpis({{ t.id }})" style="border-color:var(--primary-ring);color:var(--primary-400)">★ امتیاز کیفیت</button>
           <button class="btn rev-ok" data-id="{{ t.id }}" style="border-color:rgba(45,212,167,.4);color:var(--ok-fg)">✓ تایید</button>
           <button class="btn" onclick="window.openFixModal({{ t.id }})" style="border-color:rgba(249,115,22,.4);color:var(--warn-fg)">⚠ نیاز به اصلاح</button>
