@@ -508,6 +508,7 @@ def task_detail(request, pk):
             'link_type': task.link_type, 'link_count': task.link_count,
             'review_status': task.review_status, 'review_note': task.review_note,
             'review_notes': _review_notes(task),
+            'review_can_edit': _can_review_task(request, task),
             'type_def': task.type_def_id, 'custom': task.custom or {},
             'checklist': task.checklist or [],
             'recurrence': task.recurrence_id, 'report_month': task.report_month,
@@ -784,11 +785,50 @@ def _review_notes(task):
     for n in task.review_notes.select_related('author'):
         lt = _tz.localtime(n.created_at)
         out.append({
+            'id': n.id,
             'note': n.note,
             'author': n.author.get_full_name() or n.author.get_username() if n.author else '',
             'when': format_jalali(lt) + ' ' + lt.strftime('%H:%M'),
         })
     return out
+
+
+def _can_review_task(request, task):
+    """آیا کاربرِ جاری اجازهٔ بازبینی/ویرایشِ یادداشتِ بازبینیِ این تسک را دارد؟
+    (دسترسیِ سازمانیِ review یا در زنجیرهٔ مدیریتیِ مسئولِ تسک)."""
+    from colleagues.access import all_subordinate_ids
+    m = getattr(request, 'membership', None)
+    if m and m.can('review'):
+        return True
+    my = getattr(request.user, 'colleague', None)
+    return bool(task.assignee_id and task.assignee_id in all_subordinate_ids(my))
+
+
+@login_required
+@require_http_methods(['PATCH', 'DELETE'])
+def review_note_edit(request, pk):
+    """ویرایش/حذفِ یک یادداشتِ بازبینی (فقط نویسنده یا بازبینِ مجاز)."""
+    from core.htmlsan import clean_html
+
+    from .models import TaskReviewNote
+    n = get_object_or_404(TaskReviewNote.objects.select_related('task'), pk=pk)
+    is_author = n.author_id == request.user.id
+    if not (is_author or _can_review_task(request, n.task)):
+        return JsonResponse({'detail': 'دسترسیِ ویرایشِ این یادداشت را نداری'}, status=403)
+    if request.method == 'DELETE':
+        n.delete()
+        return JsonResponse({'ok': True})
+    note = clean_html(_body(request).get('note', ''))
+    if not note.strip():
+        return JsonResponse({'detail': 'متن خالی است'}, status=400)
+    n.note = note
+    n.save(update_fields=['note'])
+    # آخرین یادداشت = مقدارِ نمایشیِ review_note تسک را هم هم‌گام کن
+    latest = n.task.review_notes.first()
+    if latest and latest.id == n.id:
+        n.task.review_note = note
+        n.task.save(update_fields=['review_note', 'updated_at'])
+    return JsonResponse({'ok': True, 'note': note})
 
 
 # ── API: KPI (نمایش به کارمند + امتیازدهیِ مدیر) ───────────────────────────

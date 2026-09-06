@@ -839,7 +839,8 @@ body.nav-open .nav-backdrop{opacity:1;visibility:visible}
 .tsheet thead th{background:var(--fill);position:sticky;top:0;z-index:4;
   border:1px solid var(--stroke-soft);padding:8px 10px}
 .tsheet tbody td{border:1px solid var(--stroke-soft);height:38px}
-.tsheet tbody tr:nth-child(even) td{background:var(--row-alt)}
+/* راه‌راهِ even/odd برداشته شد — همهٔ ردیف‌ها یک‌رنگ (لایت: کاملاً سفید) — خواستِ کاربر */
+.tsheet tbody tr td{background:transparent}
 .tsheet tbody tr:hover td{background:var(--glass-hover)}
 .tcell{display:flex;align-items:center;gap:6px}
 .tx-inline{max-width:100%;background:transparent;border:1px solid transparent;border-radius:6px;color:inherit;font:inherit;font-size:12.5px;padding:4px 6px}
@@ -879,6 +880,8 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .timer-cell.running .tval{color:var(--ok-fg)}
 /* تخمینِ زمان کنارِ صرف‌شده (کم‌رنگ‌تر، برای تمایز: صرف‌شده / تخمین) */
 .t-est{font-variant-numeric:tabular-nums;font-size:11px;color:var(--text-faint)}
+.t-est.est-edit{cursor:pointer;border-radius:4px}
+.t-est.est-edit:hover{color:var(--primary-400);background:var(--fill)}
 /* «تکمیل — امروز/دیروز» کنارِ وضعیت */
 .done-when{font-size:10.5px;color:var(--text-faint)}
 /* آیکنِ ویرایشِ زمان فقط با هاور روی سلولِ زمان دیده می‌شود (نه همیشه) */
@@ -1256,12 +1259,14 @@ table.sheet td:not(.edit){padding:6px 9px}
 .dcell{min-width:150px;max-width:240px}
 .dcell .cf-inline{width:100%;min-width:90px}
 .dcell input.cf-inline[type=checkbox]{width:auto;min-width:0}
-/* توضیحاتِ inline (متن ساده، بدونِ ابزارِ ادیتور) در جدولِ ویرایشیِ تسک */
-.cf-desc{width:100%;min-width:150px;min-height:30px;max-height:88px;resize:vertical;
+/* توضیحاتِ inline + هر فیلدِ textareaِ سفارشی: ارتفاعِ ~۳ خط، قابلِ کشیدن */
+.cf-desc,.cf-ta{width:100%;min-width:170px;min-height:58px;max-height:200px;resize:vertical;
   background:transparent;border:1px solid transparent;border-radius:6px;color:inherit;
-  font:inherit;font-size:12px;padding:4px 6px;line-height:1.5}
-.cf-desc:hover{border-color:var(--stroke-soft)}
-.cf-desc:focus{border-color:var(--primary-ring);background:var(--fill);outline:none}
+  font:inherit;font-size:12px;padding:4px 6px;line-height:1.6;white-space:pre-wrap}
+.cf-desc:hover,.cf-ta:hover{border-color:var(--stroke-soft)}
+.cf-desc:focus,.cf-ta:focus{border-color:var(--primary-ring);background:var(--fill);outline:none}
+/* سلولِ فیلدِ سفارشیِ textarea کمی عریض‌تر تا ۳ خط جا شود */
+.dcell:has(.cf-ta){min-width:200px}
 /* اخطارِ نرمِ «فیلدهای الزامیِ خالی» — قرمز، هاور=جزئیات (ذخیره را بلاک نمی‌کند) */
 .miss-req{background:color-mix(in srgb,var(--danger) 16%,transparent);color:var(--danger);
   cursor:help;white-space:nowrap;margin-inline-start:4px}
@@ -1312,7 +1317,8 @@ table.sheet td:not(.edit){padding:6px 9px}
 .rel-hint{font-size:11px;color:var(--primary-400);margin-inline-start:8px}
 
 /* ── جداکنندهٔ روز در جدولِ تسک (چند پیکسل فاصله بینِ روزهای مختلف) ── */
-.tsheet tr.day-gap>td{height:7px!important;padding:0!important;border:0!important;background:transparent!important}
+/* فاصلهٔ بینِ روزهای تسک: ۱۰px، هم‌رنگِ بکگراندِ کلِ سایت (لایت و دارک هر دو از --bg) */
+.tsheet tr.day-gap>td{height:10px!important;padding:0!important;border:0!important;background:var(--bg)!important}
 
 /* ── ردیف‌های فرزند (اجزای حقوق در گزارش / اسپلیتِ تراکنش) ── */
 .split-child td{background:color-mix(in srgb,var(--primary) 4%,transparent);font-size:12px}

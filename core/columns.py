@@ -97,14 +97,25 @@ def get_columns(table, scope):
 
 
 def visible_task_columns(active_type_def_id=None):
-    """ستون‌های اضافیِ جدولِ تسک‌ها. **قاعدهٔ ساده‌شده:** بدونِ فیلترِ نوع → هیچ ستونِ
-    اضافه‌ای (فقط ستون‌های اصلیِ مشترک، فقط‌خواندنی). با انتخابِ یک نوع → **همهٔ**
-    فیلدهای سفارشیِ همان نوع (و حالتِ ویرایشِ inline). منبعِ واحد — لیستِ تسک‌ها، لودِ
-    تنبل و بردِ سئو همه از همین می‌خوانند تا جدولِ تسک همه‌جا یکسان باشد."""
+    """ستون‌های اضافیِ جدولِ تسک‌ها. بدونِ فیلترِ نوع → هیچ ستونِ اضافه‌ای. با انتخابِ
+    یک نوع → **همهٔ** فیلدهای سفارشیِ همان نوع، بدونِ استثنا (شاملِ «لینکِ صفحه» و «تعداد
+    کلمه» که در کاتالوگِ تنظیمات حذف می‌شوند ولی اینجا باید ویرایش‌پذیر باشند — خواستِ
+    کاربر: «همهٔ فیلدها را نشان بده»). منبعِ واحد — لیست/لودِ تنبل/بردِ سئو از همین می‌خوانند."""
     if not active_type_def_id:
         return []
-    tid = str(active_type_def_id)
-    return [c for c in custom_field_columns() if c['key'].split(':')[1] == tid]
+    from tasks.models import TaskTypeDef
+    td = (TaskTypeDef.objects.filter(id=active_type_def_id)
+          .prefetch_related('fields').first())
+    if not td:
+        return []
+    return [{
+        'key': f'cf:{td.id}:{f.key}',
+        'label': f.label,
+        'display': _FIELD_KIND_TO_DISPLAY.get(f.kind, 'text'),
+        'kind': f.kind,
+        'cf_key': f.key,
+        'options': f.options,
+    } for f in td.fields.all()]
 
 
 def cell_value(obj, col):

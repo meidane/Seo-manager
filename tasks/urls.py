@@ -22,6 +22,7 @@ urlpatterns = [
     path('api/<int:pk>/review/', api.task_review, name='api_review'),
     path('api/<int:pk>/comments/', api.task_comments, name='api_comments'),
     path('api/comment/<int:pk>/', api.task_comment_edit, name='api_comment_edit'),
+    path('api/review-note/<int:pk>/', api.review_note_edit, name='api_review_note_edit'),
     path('api/<int:pk>/kpis/', api.task_kpis, name='api_kpis'),
     path('api/<int:pk>/kpi-score/', api.task_kpi_score, name='api_kpi_score'),
     path('api/<int:pk>/quality-score/', api.task_quality_score, name='api_quality_score'),

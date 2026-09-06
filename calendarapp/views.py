@@ -105,10 +105,13 @@ class CalendarView(LoginRequiredMixin, TemplateView):
         qs = _filtered_tasks(self.request, start, end)
         cells = build_month(jyear, jmonth, _merge_virtual(_tasks_by_date(qs), start, end), _holiday_map(start, end))
 
+        from core.jalali import MONTH_NAMES
         ctx['cells'] = cells
         ctx['jyear'] = jyear
         ctx['jmonth'] = jmonth
         ctx['month_title'] = month_title(jyear, jmonth)
+        ctx['months'] = list(enumerate(MONTH_NAMES, 1))   # [(1,'فروردین'),…]
+        ctx['years'] = list(range(jyear - 3, jyear + 4))   # بازهٔ انتخابِ سال
         ids = accessible_project_ids(self.request)
         visible = Project.objects.filter(id__in=ids) if ids is not None else Project.objects.all()
         ctx['projects'] = visible.filter(status=Project.ACTIVE)

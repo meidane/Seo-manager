@@ -23,7 +23,10 @@ def reviewable_q(request):
     m = getattr(request, 'membership', None)
     my_colleague = getattr(request.user, 'colleague', None)
     sub_ids = all_subordinate_ids(my_colleague)
-    q = Q(needs_review=True, assignee_id__in=sub_ids)
+    # مدیرِ زنجیره‌ای: تسکِ زیرمجموعه که **یا** خودش needs_review است **یا** نوعش
+    # requires_review — قبلاً فقط needs_review بود، پس تسکِ نوعِ «نیاز به بازبینی»ِ
+    # زیرمجموعه (بدونِ needs_reviewِ فردی) برای مدیرِ بدونِ پرمیشنِ سازمانیِ review نمی‌آمد.
+    q = Q(assignee_id__in=sub_ids) & (Q(needs_review=True) | Q(type_def__requires_review=True))
     if m and m.can('review'):
         q |= Q(needs_review=True) | Q(type_def__requires_review=True)
     return q

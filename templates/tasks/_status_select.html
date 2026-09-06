@@ -5,8 +5,10 @@
 {% endcomment %}
 <select class="row-status st-{{ t.status }}" data-id="{{ t.id }}" style="padding:3px 8px;font-size:12px">
   {% for v,l in status_choices %}
-    {% if v == 'pending' and not t.needs_review %}
-    {% elif v == 'done' and t.needs_review %}
+    {% comment %}گزینهٔ نامعتبر را پنهان کن، مگر همان وضعیتِ فعلیِ تسک باشد (وگرنه تسکِ
+    needs_reviewِ تاییدشده = done، چون done پنهان می‌شد، به‌اشتباه «در انتظار» نشان داده می‌شد).{% endcomment %}
+    {% if v == 'pending' and not t.needs_review and t.status != 'pending' %}
+    {% elif v == 'done' and t.needs_review and t.status != 'done' %}
     {% else %}<option value="{{ v }}" {% if t.status == v %}selected{% endif %}>{{ l }}</option>{% endif %}
   {% endfor %}
 </select>

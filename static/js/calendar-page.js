@@ -58,10 +58,27 @@
   async function load() {
     try {
       const d = await App.fetchJSON('/calendar/api/?' + q());
-      title.textContent = d.title;
+      if (title) title.textContent = d.title;
       grid.innerHTML = d.days.map(cellHtml).join('');
+      syncNav();
       bindDnd();
     } catch (_) {}
+  }
+
+  const monthSel = document.getElementById('cal-month');
+  const yearSel = document.getElementById('cal-year');
+  // دراپ‌داونِ ماه/سال را با year/month فعلی هم‌گام کن (سالِ خارج از بازه را اضافه می‌کند)
+  function syncNav() {
+    if (monthSel) monthSel.value = String(month);
+    if (yearSel) {
+      if (![...yearSel.options].some((o) => +o.value === year)) {
+        const o = document.createElement('option');
+        o.value = year; o.textContent = String(year).replace(/[0-9]/g, (x) => '۰۱۲۳۴۵۶۷۸۹'[x]);
+        yearSel.appendChild(o);
+        [...yearSel.options].sort((a, b) => +a.value - +b.value).forEach((op) => yearSel.appendChild(op));
+      }
+      yearSel.value = String(year);
+    }
   }
 
   function prev() { month--; if (month < 1) { month = 12; year--; } load(); }
@@ -69,6 +86,8 @@
   document.getElementById('cal-prev').onclick = prev;
   document.getElementById('cal-next').onclick = next;
   document.getElementById('cal-today').onclick = () => { year = window.CAL_INIT.year; month = window.CAL_INIT.month; load(); };
+  if (monthSel) monthSel.onchange = () => { month = +monthSel.value; load(); };
+  if (yearSel) yearSel.onchange = () => { year = +yearSel.value; load(); };
   ['cal-f-project', 'cal-f-assignee', 'cal-f-type_def'].forEach((id) => { const el = document.getElementById(id); if (el) el.onchange = load; });
 
   // ── دکمه‌ی + هر روز → مودال تسک با تاریخ پرشده ──

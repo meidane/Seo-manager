@@ -20,12 +20,14 @@ def simplify(apps, schema_editor):
         existing = set(td.fields.values_list('label', flat=True))
         order = td.fields.count()
         if 'انکر' not in existing:
-            TaskTypeField.objects.create(type_def=td, label='انکر', kind='text', order=order)
+            f = TaskTypeField.objects.create(type_def=td, label='انکر', kind='text', order=order)
+            f.key = f'f{f.pk}'; f.save(update_fields=['key'])   # save()ِ سفارشی در migration اجرا نمی‌شود
             order += 1
         if 'لینک' not in existing:
-            TaskTypeField.objects.create(
+            f = TaskTypeField.objects.create(
                 type_def=td, label='لینک', kind='textarea',
                 placeholder='هر لینک در یک خط', order=order)
+            f.key = f'f{f.pk}'; f.save(update_fields=['key'])
 
 
 def noop(apps, schema_editor):

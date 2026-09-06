@@ -20,8 +20,8 @@
     {# ── زمان: صرف‌شده / تخمین (یک ستون) ── #}
     <td class="timer-cell nowrap-c{% if t.is_done %} done{% endif %}" data-id="{{ t.id }}" data-spent="{{ t.spent_minutes }}" data-running="{% if t.timer_started_at %}1{% else %}0{% endif %}" data-started="{% if t.timer_started_at %}{{ t.timer_started_at|date:'c' }}{% endif %}" title="صرف‌شده / تخمین">
       {% if not t.is_done and t.assignee_id == my_colleague_id %}<button class="tbtn" title="شروع/توقف تایمر">▶</button>{% endif %}
-      <span class="tval">{{ t.spent_minutes|hm }}</span><span class="t-est">{% if t.estimate_minutes %} / {{ t.estimate_minutes|hm }}{% else %} / —{% endif %}</span>
-      {% if can_edit_time %}<i class="tedit" title="ویرایش زمان (مدیر)">✏️</i>{% endif %}
+      <span class="tval">{{ t.spent_minutes|hm }}</span><span class="t-est{% if editable %} est-edit{% endif %}"{% if editable %} title="کلیک: تعیینِ تخمینِ زمان"{% endif %}>{% if t.estimate_minutes %} / {{ t.estimate_minutes|hm }}{% else %} / —{% endif %}</span>
+      {% if can_edit_time %}<i class="tedit" title="ویرایش زمانِ کارکرد (مدیر)">✏️</i>{% endif %}
     </td>
     {% if editable %}
     {% for c in extra_columns %}<td class="dcell nowrap-c">{% include "tasks/_cf_cell.html" with t=t c=c %}</td>{% endfor %}

@@ -264,10 +264,11 @@
   function reviewNotesHtml(t) {
     const ns = (t && t.review_notes) || [];
     if (!ns.length) return '';
+    const canEdit = !!(t && t.review_can_edit);
     // note از سرور با clean_html پاکسازی شده؛ درج مستقیم HTML امن است
-    const item = (n, i) => `<div class="fixnote-item" data-fix-item${i > 0 ? ' style="display:none"' : ''}>
-        <div class="fixnote-meta">${esc(n.author)}${n.author ? ' · ' : ''}${esc(n.when)}${i === 0 ? ' <b>(آخرین)</b>' : ''}</div>
-        <div class="rich">${n.note}</div></div>`;
+    const item = (n, i) => `<div class="fixnote-item" data-fix-item${i > 0 ? ' style="display:none"' : ''} data-note-id="${n.id}">
+        <div class="fixnote-meta">${esc(n.author)}${n.author ? ' · ' : ''}${esc(n.when)}${i === 0 ? ' <b>(آخرین)</b>' : ''}${canEdit ? ` <i class="fixnote-edit" data-note-edit="${n.id}" title="ویرایشِ یادداشت">✏️</i>` : ''}</div>
+        <div class="rich" data-note-body="${n.id}">${n.note}</div></div>`;
     const more = ns.length > 1
       ? `<button type="button" class="mini" id="fix-hist-toggle" style="margin-top:6px">نمایش سوابق قبلی (${ns.length - 1})</button>` : '';
     return `<div class="fixnote-box"><div class="fixnote-h">⚠ موارد نیاز به اصلاح</div>${ns.map(item).join('')}${more}</div>`;
@@ -600,14 +601,13 @@
   })();
 
   // ── بازبینی: نوشتن موارد نیاز به اصلاح (TinyMCE) ──
+  //   هر بار «نیاز به اصلاح» یک اصلاحِ *جدید* است → مودال همیشه خالی باز می‌شود (اصلاحاتِ
+  //   قبلی در تاریخچهٔ TaskReviewNote می‌مانند و از آنجا قابلِ ویرایش‌اند).
   async function openFixModal(id) {
-    // متنِ فعلیِ بازبینی را می‌گیریم تا مدیر بتواند ویرایشش کند (نه فقط از نو نوشتن)
-    let cur = '';
-    try { const t = await App.fetchJSON(`/tasks/api/${id}/`); cur = t.review_note || ''; } catch (_) {}
     App.openModal(
       `<div class="modal-h"><h3>موارد نیاز به اصلاح</h3><button class="x" onclick="App.closeModal()">×</button></div>
        <div class="modal-b"><p style="color:var(--text-dim);font-size:12px;margin-bottom:8px">توضیح بده چه چیزی باید اصلاح شود (بولد و عکس هم می‌توانی بگذاری). با ثبت، تسک از حالت انجام‌شده خارج و برای اصلاح برمی‌گردد.</p>
-         <textarea id="fix-note" class="rich-editor" rows="5">${cur}</textarea></div>
+         <textarea id="fix-note" class="rich-editor" rows="5"></textarea></div>
        <div class="modal-f"><button class="btn btn-p" id="fix-save">ثبت و بازگرداندن برای اصلاح</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
     if (window.RichText) RichText.init('#fix-note');
     document.getElementById('fix-save').onclick = async () => {
@@ -620,6 +620,31 @@
     };
   }
   window.openFixModal = openFixModal;
+
+  // ── ویرایشِ یک یادداشتِ بازبینیِ موجود (مدیر/نویسنده) ──
+  function openReviewNoteEdit(noteId, curHtml) {
+    App.openModal(
+      `<div class="modal-h"><h3>ویرایشِ یادداشتِ بازبینی</h3><button class="x" onclick="App.closeModal()">×</button></div>
+       <div class="modal-b"><textarea id="rn-edit" class="rich-editor" rows="5">${curHtml || ''}</textarea></div>
+       <div class="modal-f"><button class="btn btn-p" id="rn-save">ذخیره</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+    if (window.RichText) RichText.init('#rn-edit');
+    document.getElementById('rn-save').onclick = async () => {
+      if (window.RichText) RichText.save();
+      const note = document.getElementById('rn-edit').value;
+      try {
+        await App.fetchJSON(`/tasks/api/review-note/${noteId}/`, { method: 'PATCH', body: { note } });
+        App.toast('ذخیره شد', 'ok'); App.closeModal();
+        const body = document.querySelector(`[data-note-body="${noteId}"]`);
+        if (body) body.innerHTML = note;
+      } catch (_) {}
+    };
+  }
+  document.addEventListener('click', (e) => {
+    const ed = e.target.closest('[data-note-edit]'); if (!ed) return;
+    e.stopPropagation(); e.preventDefault();
+    const body = document.querySelector(`[data-note-body="${ed.dataset.noteEdit}"]`);
+    openReviewNoteEdit(ed.dataset.noteEdit, body ? body.innerHTML : '');
+  });
 
   // ── کلیک روی تگ «نیاز به اصلاح» → مودالِ تسک باز می‌شود؛ موارد و تاریخچه بالای همان مودال
   //    نمایش داده می‌شوند (دیگر مودال‌روی‌مودال نداریم). ──
@@ -809,6 +834,21 @@
     const cur = prompt('زمان کارکرد (H:MM):', fmtMin(+cell.dataset.spent || 0));
     if (cur === null) return;
     try { const d = await App.fetchJSON(`/tasks/api/${id}/timer/`, { method: 'PATCH', body: { minutes: parseHM(cur) } }); cell.dataset.spent = d.spent_minutes; renderTimerCell(cell); } catch (_) {}
+  });
+
+  // ── تعیینِ «تخمینِ زمان» با کلیک روی بخشِ تخمین (فقط جدولِ ویرایشی) ──
+  document.addEventListener('click', async (e) => {
+    const est = e.target.closest('.timer-cell .t-est.est-edit'); if (!est) return;
+    e.stopPropagation();
+    const cell = est.closest('.timer-cell'); const id = cell.dataset.id;
+    const cur = prompt('تخمینِ زمان (H:MM):', '');
+    if (cur === null) return;
+    const mn = parseHM(cur);
+    try {
+      await App.fetchJSON(`/tasks/api/${id}/`, { method: 'PATCH', body: { estimate_minutes: mn } });
+      est.textContent = ' / ' + (mn ? fmtMin(mn) : '—');
+      App.toast('تخمین ذخیره شد', 'ok');
+    } catch (_) {}
   });
 
   // ── لودِ تنبل: اسکرول برای صفحه‌بندیِ جعبه‌ی «انجام‌شده‌ها» (بیش از ۵۰ ردیف) ──

@@ -8,9 +8,11 @@
       {% comment %}RTL: «قبل» سمتِ راست (‹) و «بعد» سمتِ چپ (›) — هماهنگ با صفحه‌بندی/دیت‌پیکر.
       کامنتِ چندخطی حتماً {% comment %} باشد نه {# #} (تلهٔ ۲۶: {# #}ِ چندخطی لو می‌رود).{% endcomment %}
       <button class="nav-b" id="cal-prev">‹</button>
-      <h3 id="cal-title">{{ month_title }}</h3>
+      <select id="cal-month" class="input" style="width:auto;padding:5px 8px;font-size:13px">{% for mnum,mname in months %}<option value="{{ mnum }}" {% if mnum == jmonth %}selected{% endif %}>{{ mname }}</option>{% endfor %}</select>
+      <select id="cal-year" class="input" style="width:auto;padding:5px 8px;font-size:13px">{% for y in years %}<option value="{{ y }}" {% if y == jyear %}selected{% endif %}>{{ y|fa_digits }}</option>{% endfor %}</select>
+      <h3 id="cal-title" hidden>{{ month_title }}</h3>
       <button class="nav-b" id="cal-next">›</button>
-      <button class="btn btn-sm" id="cal-today">برو به امروز</button>
+      <button class="btn btn-sm" id="cal-today">امروز</button>
       <div class="side-c" style="margin-inline-start:auto;display:flex;gap:6px;flex-wrap:wrap">
         <select id="cal-f-project" class="rich-select" style="max-width:150px"><option value="">همه‌ی پروژه‌ها</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %}>{{ p.name }}</option>{% endfor %}</select>
         <select id="cal-f-assignee" class="rich-select" style="max-width:150px"><option value="">همه‌ی همکاران</option>{% for c in colleagues %}<option value="{{ c.id }}" data-color="{{ c.color }}"{% if c.avatar %} data-img="{{ c.avatar.url }}"{% endif %}>{{ c.full_name }}</option>{% endfor %}</select>
