@@ -10,4 +10,5 @@ urlpatterns = [
     path('api/', views.calendar_api, name='api'),
     path('api/picker/', views.picker_api, name='picker'),
     path('api/workload/', views.workload_api, name='workload'),
+    path('api/day/', views.day_api, name='day'),
 ]

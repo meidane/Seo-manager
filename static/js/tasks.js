@@ -45,7 +45,7 @@
       else tbody.insertAdjacentHTML('afterbegin', d.html);
       const nw = tbody.querySelector(`tr[data-id="${id}"]`);
       if (window.RichSelect && nw) RichSelect.init(nw);
-      if (nw) kwHighlightAll(nw);   // جداکنندهٔ رنگیِ فیلدهای کلمهٔ کلیدیِ ردیفِ تازه
+      if (nw) { kwHighlightAll(nw); initAllGutters(nw); }   // کلمهٔ کلیدی + شماره‌گذاریِ خطوط
       if (nw && typeof renderAllTimerCells === 'function') renderAllTimerCells();
       return true;
     } catch (_) { return false; }
@@ -348,8 +348,26 @@
       updateMissReq(tr, r && r.warnings);
     } catch (_) {}
   });
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => kwHighlightAll());
-  else kwHighlightAll();
+  // ── شماره‌گذاریِ خودکارِ خطوط (۱-۲-۳) کنارِ textareaهای «هر مورد در یک خط» (لینک/انکرِ رپورتاژ) ──
+  function initLineGutter(ta) {
+    if (ta.dataset.gut) return; ta.dataset.gut = '1';
+    const wrap = document.createElement('div'); wrap.className = 'ta-wrap';
+    ta.parentNode.insertBefore(wrap, ta); wrap.appendChild(ta);
+    const gut = document.createElement('div'); gut.className = 'ta-gut'; wrap.insertBefore(gut, ta);
+    const upd = () => {
+      const n = Math.max(1, (ta.value.match(/\n/g) || []).length + 1);
+      let s = ''; for (let i = 1; i <= n; i++) s += i + '\n';
+      gut.textContent = s; gut.scrollTop = ta.scrollTop;
+    };
+    ta.addEventListener('input', upd);
+    ta.addEventListener('scroll', () => { gut.scrollTop = ta.scrollTop; });
+    upd();
+  }
+  function initAllGutters(root) { (root || document).querySelectorAll('textarea.cf-ta:not([data-gut])').forEach(initLineGutter); }
+  window.initAllGutters = initAllGutters;
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { kwHighlightAll(); initAllGutters(); });
+  else { kwHighlightAll(); initAllGutters(); }
 
   // عرضِ فیلدِ سفارشی در گریدِ ۱۲ستونه (از تنظیماتِ نوعِ تسک)
   const CF_SPAN = { full: 12, half: 6, third: 4, quarter: 3 };
@@ -365,7 +383,7 @@
       const v = values[f.key] != null ? values[f.key] : '';
       let input;
       if (f.kind === 'tags') input = kwFieldHtml(f.key, v, f.placeholder, false);
-      else if (f.kind === 'textarea') input = `<textarea class="cf" data-key="${f.key}" rows="2" placeholder="${esc(f.placeholder)}">${esc(v)}</textarea>`;
+      else if (f.kind === 'textarea') input = `<textarea class="cf cf-ta" data-key="${f.key}" rows="3" placeholder="${esc(f.placeholder)}">${esc(v)}</textarea>`;
       else if (f.kind === 'checkbox') input = `<label style="display:flex;align-items:center;gap:8px;margin:0"><input type="checkbox" class="cf" data-key="${f.key}" ${v ? 'checked' : ''}> ${esc(f.label)}</label>`;
       else if (f.kind === 'select') input = `<select class="cf" data-key="${f.key}"><option value="">—</option>${f.options.map((o) => opt(o, o, v)).join('')}</select>`;
       else if (f.kind === 'number') input = `<input type="number" class="cf input" data-key="${f.key}" value="${esc(v)}" placeholder="${esc(f.placeholder)}">`;
@@ -375,6 +393,7 @@
       return `<div class="field" data-cf style="grid-column:span ${span}"><label>${esc(f.label)}${req}</label>${input}</div>`;
     }).join('');
     kwHighlightAll(box);   // جداکنندهٔ رنگیِ فیلدهای کلمهٔ کلیدی
+    initAllGutters(box);    // شماره‌گذاریِ خطوطِ textareaها
   }
 
   // مقادیرِ فعلیِ فیلدهای سفارشی را از DOM می‌خواند (منبعِ واحد؛ collect و تعویضِ نوع

@@ -71,9 +71,12 @@ SEO_TYPES = [
         # عنوان سئو/تعداد کلمه/لینک صفحه/کلمه کلیدی هدف/لینک هدف.
         'name': 'رپورتاژ', 'color': '#F472B6', 'icon': '📰', 'review': True, 'order': 23,
         'fields': [
-            {'label': 'انکر', 'kind': TEXT, 'required': False},
+            # انکر و لینک هر دو چندخطی (هر مورد در یک خط)؛ خط‌به‌خط جفت می‌شوند و به
+            # تبِ «کلمات کلیدی»ِ پروژه می‌روند (seo/signals: الگوی ۲).
+            {'label': 'انکر', 'kind': TEXTAREA, 'required': False,
+             'is_keyword_source': True, 'placeholder': 'هر انکر در یک خط'},
             {'label': 'لینک', 'kind': TEXTAREA, 'required': False,
-             'placeholder': 'هر لینک در یک خط'},
+             'is_link_source': True, 'placeholder': 'هر لینک در یک خط'},
         ],
         'kpis': [],
     },

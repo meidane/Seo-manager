@@ -9,8 +9,14 @@
   const toEn = (s) => String(s).replace(/[۰-۹]/g, (d) => FA.indexOf(d));
 
   let pop = null, target = null, y = 0, m = 0;
+  let preview = null, hoverTimer = null;
+  const dayCache = {};   // کشِ تسک‌های هر روز (به‌ازای jdate) تا هاورِ مکرر دوباره فچ نکند
 
-  function close() { if (pop) { pop.remove(); pop = null; target = null; } }
+  function killPreview() {
+    if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; }
+    if (preview) { preview.remove(); preview = null; }
+  }
+  function close() { killPreview(); if (pop) { pop.remove(); pop = null; target = null; } }
 
   async function render() {
     const params = new URLSearchParams();
@@ -37,6 +43,7 @@
     if (v.length === 3 && +v[0] > 1300) { y = +v[0]; m = +v[1]; } else { y = 0; m = 0; }
     pop = document.createElement('div');
     pop.className = 'dp-pop';
+    pop.addEventListener('mouseleave', killPreview);   // خروجِ موس از تقویم → بستنِ پیش‌نمایش
     document.body.appendChild(pop);
     const r = input.getBoundingClientRect();
     pop.style.top = (window.scrollY + r.bottom + 4) + 'px';
@@ -70,4 +77,43 @@
     if (day && target) { target.value = toFa(day.dataset.jdate); target.dispatchEvent(new Event('change', { bubbles: true })); close(); }
   });
   window.addEventListener('resize', close);
+
+  // ── پیش‌نمایشِ سلولِ تقویمِ همان روز روی هاورِ یک روز (کنارِ پاپ‌آور) ──
+  const FA2 = (s) => String(s).replace(/[0-9]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]);
+  function renderPreview(jdate, data) {
+    if (!pop) return;
+    if (!preview) { preview = document.createElement('div'); preview.className = 'dp-preview glass'; document.body.appendChild(preview); }
+    const tasks = (data && data.tasks) || [];
+    const chips = tasks.slice(0, 8).map((t) => {
+      const pc = t.project_color || t.color || '143,160,184';
+      const av = t.avatar
+        ? `<img class="dpp-av" src="${t.avatar}">`
+        : `<span class="dpp-av" style="background:${t.a_color || '#8FA0B8'}">${(t.initials || '').replace(/"/g, '')}</span>`;
+      const tl = `${t.type_label ? t.type_label + ': ' : ''}${t.title || ''}`.replace(/</g, '&lt;');
+      return `<div class="dpp-tk${t.done ? ' done' : ''}" style="border-right:3px solid rgb(${pc})" title="${tl.replace(/"/g, '&quot;')}">${av}<span class="dpp-tx">${tl}</span>${t.time ? `<span class="dpp-t">${t.time}</span>` : ''}</div>`;
+    }).join('');
+    const more = tasks.length > 8 ? `<div class="dpp-more">+${FA2(tasks.length - 8)} مورد دیگر</div>` : '';
+    preview.innerHTML = `<div class="dpp-h">${FA2(jdate)}${tasks.length ? ` · ${FA2(tasks.length)} تسک` : ''}</div>` +
+      (tasks.length ? chips + more : '<div class="dpp-empty">تسکی برای این روز نیست</div>');
+    // کنارِ پاپ‌آور (سمتِ چپش)، هم‌ترازِ بالای پاپ‌آور
+    const r = pop.getBoundingClientRect();
+    let left = window.scrollX + r.left - 246;                 // ۲۳۰px عرض + کمی فاصله
+    if (left < window.scrollX + 6) left = window.scrollX + r.right + 8;  // اگر جا نبود، سمتِ راست
+    preview.style.top = (window.scrollY + r.top) + 'px';
+    preview.style.left = left + 'px';
+  }
+  document.addEventListener('mouseover', (e) => {
+    const day = e.target.closest && e.target.closest('.dp-day');
+    if (!day || !pop || !pop.contains(day) || day.classList.contains('dim')) { return; }
+    const jdate = day.dataset.jdate;
+    if (hoverTimer) clearTimeout(hoverTimer);
+    hoverTimer = setTimeout(async () => {
+      if (jdate in dayCache) { renderPreview(jdate, dayCache[jdate]); return; }
+      try { const d = await App.fetchJSON('/calendar/api/day/?date=' + encodeURIComponent(jdate)); dayCache[jdate] = d; renderPreview(jdate, d); } catch (_) {}
+    }, 220);
+  });
+  document.addEventListener('mouseout', (e) => {
+    const day = e.target.closest && e.target.closest('.dp-day');
+    if (day) { if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; } }
+  });
 })();

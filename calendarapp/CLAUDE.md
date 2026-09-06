@@ -26,6 +26,9 @@
   یک‌جا رندرش می‌کنند.
 - `static/js/calendar-embed.js` — تقویم قابل‌جاسازی در تب‌ها (`data-project`/`data-assignee`).
 - `static/js/datepicker.js` — دیت‌پیکر شمسی برای هر `input.jdate` (تعطیلات قرمز).
+  **پیش‌نمایشِ روز:** هاور روی یک روزِ پاپ‌آور → پنلِ `.dp-preview` کنارش، تسک‌های همان
+  روز (از `GET /calendar/api/day/?date=` → `views.day_api`، با همان گیتِ دسترسیِ تقویم).
+  دیبونس ۲۲۰ms + کشِ per-day؛ با خروجِ موس از پاپ‌آور بسته می‌شود.
 
 ## استایل
 همه‌ی کلاس‌های تقویم (`.grid7 .cell .tk .tk-av .cell-add .dp-*` …) در `static/css/style.css`

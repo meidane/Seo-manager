@@ -696,6 +696,7 @@
       const newRow = addRow.previousElementSibling;
       if(window.RichSelect) RichSelect.init(newRow);       // دراپ‌داونِ غنیِ ردیفِ تازه (دیت‌پیکر delegated است)
       if(window.kwHighlightAll) kwHighlightAll(newRow);    // جداکنندهٔ رنگیِ کلمهٔ کلیدی
+      if(window.initAllGutters) initAllGutters(newRow);    // شماره‌گذاریِ خطوطِ textarea
       inp.value=''; inp.focus();
       App.toast('اضافه شد','ok');
     }catch(_){}

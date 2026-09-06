@@ -1,5 +1,6 @@
 """ویوهای تقویم — رندر اولیه سمت سرور، سپس ناوبری ماه با AJAX."""
 from collections import defaultdict
+from datetime import date
 
 import jdatetime
 from django.contrib.auth.decorators import login_required
@@ -145,6 +146,22 @@ def picker_api(request):
         'holiday_title': c['holiday_title'],
     } for c in cells]
     return JsonResponse({'year': jyear, 'month': jmonth, 'title': month_title(jyear, jmonth), 'days': days})
+
+
+@login_required
+def day_api(request):
+    """تسک‌های یک روز — برای پیش‌نمایشِ سلولِ تقویم روی هاورِ دیت‌پیکر.
+    GET ?date=<میلادیِ ISO یا شمسیِ «۱۴۰۵/۰۶/۰۱»> → {date, tasks:[to_dict,...]}"""
+    from core.jalali import parse_jalali
+    raw = (request.GET.get('date') or '').strip()
+    try:
+        d = date.fromisoformat(raw) if '-' in raw else parse_jalali(raw)
+    except (ValueError, TypeError):
+        return JsonResponse({'tasks': []})
+    qs = _filtered_tasks(request, d, d)
+    tasks = [t.to_dict() for t in qs]
+    tasks.sort(key=lambda x: (x['done'], x['time']))
+    return JsonResponse({'date': d.isoformat(), 'tasks': tasks})
 
 
 @login_required

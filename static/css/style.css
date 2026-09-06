@@ -656,6 +656,20 @@ table.sheet tr:hover td{background:var(--row-alt)}
 /* ── دیت‌پیکر شمسی ── */
 .dp-pop{position:absolute;z-index:300;width:250px;padding:10px;border-radius:var(--r);
   background:var(--card-solid);border:1px solid var(--stroke);box-shadow:var(--shadow-lg)}
+/* پیش‌نمایشِ سلولِ روز کنارِ دیت‌پیکر (روی هاورِ یک روز) */
+.dp-preview{position:absolute;z-index:301;width:230px;max-height:320px;overflow-y:auto;padding:9px;
+  border-radius:var(--r);background:var(--card-solid);border:1px solid var(--stroke);box-shadow:var(--shadow-lg)}
+.dp-preview .dpp-h{font-size:11.5px;font-weight:700;color:var(--text-dim);margin-bottom:7px;
+  padding-bottom:5px;border-bottom:1px solid var(--stroke-soft);font-variant-numeric:tabular-nums}
+.dpp-tk{display:flex;align-items:center;gap:5px;padding:4px 6px;margin-bottom:3px;border-radius:6px;
+  background:var(--fill);font-size:11px;color:var(--text)}
+.dpp-tk.done{opacity:.55;text-decoration:line-through}
+.dpp-av{width:15px;height:15px;border-radius:50%;flex:none;object-fit:cover;display:grid;place-items:center;
+  font-size:8px;color:#fff;font-weight:700;border:1px solid rgba(255,255,255,.25)}
+.dpp-tx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dpp-t{flex:none;font-size:9px;color:var(--text-faint);font-variant-numeric:tabular-nums;direction:ltr}
+.dpp-more{font-size:10px;color:var(--text-faint);text-align:center;margin-top:2px}
+.dpp-empty{font-size:11px;color:var(--text-faint);text-align:center;padding:6px}
 .dp-head{display:flex;align-items:center;gap:6px;margin-bottom:8px}
 .dp-head h4{flex:1;text-align:center;font-size:13px;font-weight:500}
 .dp-nav{width:24px;height:24px;border-radius:6px;border:1px solid var(--stroke-soft);background:transparent;color:var(--text-dim);cursor:pointer}
@@ -1266,7 +1280,15 @@ table.sheet td:not(.edit){padding:6px 9px}
 .cf-desc:hover,.cf-ta:hover{border-color:var(--stroke-soft)}
 .cf-desc:focus,.cf-ta:focus{border-color:var(--primary-ring);background:var(--fill);outline:none}
 /* سلولِ فیلدِ سفارشیِ textarea کمی عریض‌تر تا ۳ خط جا شود */
-.dcell:has(.cf-ta){min-width:200px}
+.dcell:has(.cf-ta){min-width:210px}
+/* شماره‌گذاریِ خودکارِ خطوط (۱-۲-۳) کنارِ textareaهای «هر مورد در یک خط» */
+.ta-wrap{position:relative;width:100%}
+.ta-wrap .cf-ta{padding-inline-start:26px}
+.ta-gut{position:absolute;top:0;inset-inline-start:0;width:22px;height:100%;overflow:hidden;
+  box-sizing:border-box;padding:4px 3px;font:inherit;font-size:12px;line-height:1.6;
+  text-align:center;color:var(--text-faint);background:var(--fill);
+  border-inline-end:1px solid var(--stroke-soft);white-space:pre;pointer-events:none;
+  direction:ltr;border-radius:6px 0 0 6px;user-select:none}
 /* اخطارِ نرمِ «فیلدهای الزامیِ خالی» — قرمز، هاور=جزئیات (ذخیره را بلاک نمی‌کند) */
 .miss-req{background:color-mix(in srgb,var(--danger) 16%,transparent);color:var(--danger);
   cursor:help;white-space:nowrap;margin-inline-start:4px}
