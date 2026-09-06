@@ -112,6 +112,13 @@ class ReportDetailView(LoginRequiredMixin, DetailView):
         ctx['invoices'] = Invoice.objects.select_related('project')
         ctx['invoice_ctx'] = _invoice_ctx(self.object)
         ctx['client_balance'] = project_balance(self.object.project_id)
+        # ماه‌های گزارشِ تعریف‌شده (برای فیلترِ «ایمپورت بر اساسِ ماهِ گزارش»)
+        from core.jalali import MONTH_NAMES
+        from tasks.models import ReportPeriod
+        ctx['report_periods'] = [
+            {'value': f'{p.year}-{p.month}', 'label': f'{MONTH_NAMES[p.month - 1]} {p.year}'}
+            for p in ReportPeriod.objects.all().order_by('-year', '-month')
+        ]
         ctx['page_title'] = self.object.title
         return ctx
 
@@ -183,6 +190,14 @@ def pull_tasks(request, pk):
             Q(status=Task.DONE, done_date__range=(d_from, d_to))
             | (Q(planned_date__range=(d_from, d_to)) & ~Q(status=Task.DONE))
         )
+    # فیلترِ اختیاریِ «ماهِ گزارش» (value = «سال-ماه»، مثلِ مودالِ تسک)
+    period = (g.get('period') or '').strip()
+    if period and '-' in period:
+        try:
+            py, pm = period.split('-')
+            qs = qs.filter(report_year=int(py), report_month=int(pm))
+        except (ValueError, TypeError):
+            pass
     qs = qs.order_by('-done_date', '-planned_date', '-id')
 
     groups = []

@@ -144,7 +144,8 @@ class ReportItem(models.Model):
 
     @property
     def eff_url(self):
-        return (self.task.published_url if self.task else '') or self.manual_url
+        # page_link = فیلدِ سفارشیِ is_page_link (سئوِ جدید) یا published_urlِ هسته — منبعِ واحد
+        return (self.task.page_link if self.task else '') or self.manual_url
 
     def field_value(self, key):
         """مقدار یک فیلد برای نمایش (تاریخ‌ها شمسی می‌شوند)."""

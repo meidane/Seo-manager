@@ -85,10 +85,11 @@
   {# ── ایمپورتِ تسک از پروژه ── #}
   <section class="card glass">
     <div class="card-h"><h3>ایمپورت تسک‌ها</h3>
-      <div class="side-c" style="gap:8px">
+      <div class="side-c" style="gap:8px;flex-wrap:wrap">
         <span style="color:var(--text-faint);font-size:11px">بازه (اختیاری):</span>
         <input class="input jdate" id="p-from" style="max-width:120px" dir="ltr" placeholder="از (اختیاری)">
         <input class="input jdate" id="p-to" style="max-width:120px" dir="ltr" placeholder="تا (اختیاری)">
+        <select class="input" id="p-period" style="max-width:150px"><option value="">— ماهِ گزارش —</option>{% for p in report_periods %}<option value="{{ p.value }}">{{ p.label }}</option>{% endfor %}</select>
         <button class="btn btn-sm btn-p" id="p-fetch">ایمپورت تسک‌ها</button>
         <button class="btn btn-sm" id="p-manual">＋ ردیف دستی</button>
       </div>
@@ -136,16 +137,22 @@ document.getElementById('r-final').onclick=async()=>{
 // ── واکشی تسک‌ها (شاملِ انجام‌نشده‌ها هم — با برچسبِ ⏳ فقط برای خودمان، هیچ‌وقت در
 // گزارشِ نهایی/عمومی چاپ نمی‌شود) ──
 document.getElementById('p-fetch').onclick=async()=>{
-  const d=await App.fetchJSON(`/reports/api/${RID}/pull-tasks/?from=${document.getElementById('p-from').value}&to=${document.getElementById('p-to').value}`);
+  const qs=`from=${document.getElementById('p-from').value}&to=${document.getElementById('p-to').value}&period=${document.getElementById('p-period').value}`;
+  const d=await App.fetchJSON(`/reports/api/${RID}/pull-tasks/?${qs}`);
   const box=document.getElementById('pull-results');
-  if(!d.groups.length){box.innerHTML='<div class="empty" style="padding:20px">تسکِ جدیدی در این بازه نیست</div>';document.getElementById('pull-actions').style.display='none';return;}
-  box.innerHTML=d.groups.map(g=>`<div style="margin-bottom:10px"><b style="font-size:12px;color:var(--text-dim)">${g.label}</b>`+
+  if(!d.groups.length){box.innerHTML='<div class="empty" style="padding:20px">تسکِ جدیدی مطابقِ این فیلتر نیست</div>';document.getElementById('pull-actions').style.display='none';return;}
+  const total=d.groups.reduce((s,g)=>s+g.tasks.length,0);
+  box.innerHTML=`<label class="pull-all"><input type="checkbox" id="pick-all"> <b>انتخابِ همه (${total} مورد)</b></label>`+
+    d.groups.map(g=>`<div class="pull-group"><b class="pull-glabel">${g.label} <span class="chip">${g.tasks.length}</span></b>`+
     g.tasks.map(t=>`<label class="pull-row">
       <input type="checkbox" class="pick" value="${t.id}">
       <span class="ttype" style="background:rgba(${t.color},.16);color:rgb(${t.color})">${t.type_label}</span>
-      <span>${t.title}</span><span style="color:var(--text-faint);font-size:11px">${t.assignee} · ${t.done_date_fa}</span>
+      <span class="pull-title">${t.title}</span>
+      <span class="pull-meta">${t.assignee||'—'}${t.done_date_fa?' · '+t.done_date_fa:''}</span>
       ${t.done?'':`<span class="pull-not-done">⏳ ${t.status_label}</span>`}</label>`).join('')+`</div>`).join('');
   document.getElementById('pull-actions').style.display='block';
+  const all=document.getElementById('pick-all');
+  all.onchange=()=>box.querySelectorAll('.pick').forEach(c=>{c.checked=all.checked;});
 };
 document.getElementById('p-add').onclick=async()=>{
   const ids=[...document.querySelectorAll('.pick:checked')].map(c=>+c.value);

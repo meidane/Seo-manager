@@ -1103,9 +1103,18 @@ select.tx-inline{cursor:pointer;max-width:150px}
 
 /* ── صفحه‌ی ادیتِ گزارش — فاصله‌ی یکدست بینِ بخش‌ها ── */
 [data-report] > section{margin-bottom:14px}
-[data-report] .pull-row{display:flex;align-items:center;gap:8px;padding:6px 4px;margin:0;cursor:pointer;border-radius:var(--r-sm);transition:var(--ease)}
+/* ردیف‌های «ایمپورت تسک» — گرید تا نوع/عنوان/مسئول در ستون‌های هم‌راستا بیایند */
+[data-report] .pull-all{display:flex;align-items:center;gap:8px;padding:8px 8px;margin-bottom:6px;
+  cursor:pointer;border-radius:var(--r-sm);background:var(--fill);font-size:12.5px}
+[data-report] .pull-group{margin-bottom:12px}
+[data-report] .pull-glabel{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim);margin:0 0 5px 2px}
+[data-report] .pull-row{display:grid;grid-template-columns:20px 92px 1fr auto auto;align-items:center;gap:10px;
+  padding:6px 8px;margin:0;cursor:pointer;border-radius:var(--r-sm);transition:var(--ease)}
 [data-report] .pull-row:hover{background:var(--glass-hover)}
-[data-report] .pull-not-done{margin-inline-start:auto;font-size:10.5px;color:#FDBA8C;background:rgba(249,115,22,.12);padding:1px 8px;border-radius:var(--r-full);flex:none}
+[data-report] .pull-row .ttype{justify-self:start;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:92px}
+[data-report] .pull-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+[data-report] .pull-meta{color:var(--text-faint);font-size:11px;white-space:nowrap}
+[data-report] .pull-not-done{font-size:10.5px;color:var(--amber-fg);background:color-mix(in srgb,var(--warning) 14%,transparent);padding:1px 8px;border-radius:var(--r-full);flex:none;white-space:nowrap}
 
 /* صفحه‌بندیِ شماره‌دار (۱ ۲ ۳ … ۲۰) — finance/_pagination.html */
 .pagi{display:flex;gap:6px;align-items:center;justify-content:center;margin:16px 0;flex-wrap:wrap}
