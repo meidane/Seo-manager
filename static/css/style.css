@@ -641,7 +641,11 @@ table.sheet tr:hover td{background:var(--row-alt)}
 .tk-av{width:15px;height:15px;border-radius:50%;flex:none;object-fit:cover;display:grid;place-items:center;font-size:8px;color:#fff;font-weight:700;border:1px solid rgba(255,255,255,.25)}
 .tk-tx{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
 .tk-t{font-size:9px;opacity:.75;flex:none}
-.tk-time{font-size:9px;flex:none;font-variant-numeric:tabular-nums;color:var(--text-dim);direction:ltr}
+/* نوارِ «جمعِ زمانِ هر فرد» بالای سلولِ روز (آواتار + ساعت) */
+.cell-people{display:flex;flex-wrap:wrap;gap:3px 6px;margin:2px 0 4px;padding-bottom:3px;border-bottom:1px dashed var(--stroke-soft)}
+.cp{display:inline-flex;align-items:center;gap:3px;font-size:10px;color:var(--text-dim);cursor:default}
+.cp-av{width:16px;height:16px;border-radius:50%;flex:none;object-fit:cover;display:grid;place-items:center;font-size:8px;color:#fff;font-weight:700;border:1px solid rgba(255,255,255,.25)}
+.cp-h{font-variant-numeric:tabular-nums;color:var(--text);font-weight:700;direction:ltr}
 .tk.done{background:rgba(143,160,184,.12);color:var(--text-faint);border-right:3px solid var(--slate);text-decoration:line-through}
 .tk.done .tk-av{filter:grayscale(1);opacity:.7}
 .more{font-size:10.5px;color:var(--text-faint);padding:1px 6px;cursor:pointer}

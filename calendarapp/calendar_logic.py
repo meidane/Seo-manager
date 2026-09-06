@@ -57,6 +57,27 @@ def build_month(jyear: int, jmonth: int, tasks_by_date: dict, holiday_map: dict)
     return cells
 
 
+def _people_totals(day_tasks):
+    """جمعِ زمانِ تخمینیِ هر فرد در این روز (برای نوارِ بالای سلول). آواتار + دقیقه.
+    تسک‌های مجازیِ تکرار شمرده نمی‌شوند؛ ترتیب: بیشترین زمان اول."""
+    agg, order = {}, []
+    for t in day_tasks:
+        if t.get('virtual'):
+            continue
+        aid = t.get('assignee_id')
+        if not aid:
+            continue
+        p = agg.get(aid)
+        if not p:
+            p = agg[aid] = {'name': t.get('assignee') or '', 'avatar': t.get('avatar') or '',
+                            'initials': t.get('initials') or '', 'a_color': t.get('a_color') or '#8FA0B8',
+                            'minutes': 0, 'count': 0}
+            order.append(aid)
+        p['minutes'] += t.get('estimate_minutes') or 0
+        p['count'] += 1
+    return sorted((agg[a] for a in order), key=lambda p: (-p['minutes'], -p['count']))
+
+
 def _cell(jd, dim_flag, tasks_by_date, holiday_map, today_g):
     g = jd.togregorian()
     is_friday = jd.weekday() == 6
@@ -75,6 +96,8 @@ def _cell(jd, dim_flag, tasks_by_date, holiday_map, today_g):
         'tasks': day_tasks,
         # جمعِ زمانِ تخمینیِ تسک‌های این روز (دقیقه) — با فیلترِ جاری (فرد/پروژه) خودکار سازگار است
         'minutes': sum((t.get('estimate_minutes') or 0) for t in day_tasks),
+        # جمعِ زمانِ هر فرد (آواتار + دقیقه) برای نوارِ بالای سلول
+        'people': _people_totals(day_tasks),
     }
 
 

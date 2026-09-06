@@ -20,19 +20,35 @@
       ? `<img class="tk-av" src="${t.avatar}" alt="">`
       : `<span class="tk-av" style="background:${t.a_color}">${t.initials || ''}</span>`;
   }
+  const esc = (v) => (v == null ? '' : String(v)).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const hrs = (mn) => Math.round(mn / 60 * 10) / 10;
   function chip(t, extra) {
     const pc = t.project_color || t.color;  // رنگ‌بندی بر اساسِ پروژه (نه نوعِ تسک)
-    const style = t.done ? '' : `style="background:rgba(${pc},.14);border-right:3px solid rgb(${pc})"`;
+    const style = `style="${t.done ? '' : `background:rgba(${pc},.20);`}border-right:4px solid rgb(${pc})"`;
     const attrs = t.virtual ? '' : ` draggable="true" data-id="${t.id}" data-open-task="${t.id}"`;
-    return `<span class="tk${extra ? ' tk-extra' : ''}${t.done ? ' done' : ''}${t.is_placeholder ? ' placeholder' : ''}${t.virtual ? ' virtual' : ''}"${attrs} ${style}>` +
+    const title = `${t.type_label}: ${t.title}${t.assignee ? ' — ' + t.assignee : ''}`;
+    return `<span class="tk${extra ? ' tk-extra' : ''}${t.done ? ' done' : ''}${t.is_placeholder ? ' placeholder' : ''}${t.virtual ? ' virtual' : ''}"${attrs} title="${esc(title)}" ${style}>` +
       `${av(t)}<span class="tk-tx">${t.type_label}: ${t.title}</span></span>`;
+  }
+  // نوارِ «جمعِ زمانِ هر فرد» بالای سلول (آواتار + ساعت)
+  function peopleRow(c) {
+    if (!c.people || !c.people.length) return '';
+    const one = (p) => {
+      const a = p.avatar
+        ? `<img class="cp-av" src="${p.avatar}" alt="">`
+        : `<span class="cp-av" style="background:${p.a_color}">${esc(p.initials || '')}</span>`;
+      const t = `${esc(p.name)} — ${p.count} تسک${p.minutes ? ' · ' + hrs(p.minutes) + ' ساعت' : ''}`;
+      return `<span class="cp" title="${t}">${a}${p.minutes ? `<b class="cp-h">${hrs(p.minutes)}h</b>` : ''}</span>`;
+    };
+    return `<div class="cell-people">${c.people.map(one).join('')}</div>`;
   }
   function cellHtml(c) {
     let h = `<div class="cell${c.is_holiday && !c.dim ? ' off' : ''}${c.dim ? ' dim' : ''}${c.is_today ? ' today' : ''}" data-date="${c.gdate}" data-jdate="${c.jdate}">` +
       `<div class="cell-h"><span class="dnum">${c.jday_fa}</span>` +
       `${c.holiday_title && !c.dim ? `<span class="hol">${c.holiday_title}</span>` : ''}` +
       `${c.tasks.length ? `<span class="cnt">${c.tasks.length.toLocaleString('en-US')}</span>` : ''}` +
-      (() => { const mn = c.tasks.reduce((s, t) => s + (t.estimate_minutes || 0), 0); return mn ? `<span class="cnt-h" title="جمعِ زمانِ تخمینیِ این روز">${Math.round(mn / 60 * 10) / 10}h</span>` : ''; })() + `</div>`;
+      (() => { const mn = c.tasks.reduce((s, t) => s + (t.estimate_minutes || 0), 0); return mn ? `<span class="cnt-h" title="جمعِ زمانِ تخمینیِ این روز">${hrs(mn)}h</span>` : ''; })() + `</div>`;
+    h += peopleRow(c);
     if (!c.dim && canCreateTask) h += `<button class="cell-add" data-jdate="${c.jdate}" title="تسک جدید در این روز">＋</button>`;
     c.tasks.forEach((t, i) => (h += chip(t, i >= 5)));
     if (c.tasks.length > 5) h += `<button type="button" class="more" data-more>+${(c.tasks.length - 5).toLocaleString('en-US')} مورد دیگر</button>`;

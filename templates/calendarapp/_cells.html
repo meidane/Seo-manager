@@ -5,13 +5,15 @@
     {% if c.tasks %}<span class="cnt">{{ c.tasks|length|fa_digits }}</span>{% endif %}
     {% if c.minutes %}<span class="cnt-h" title="جمعِ زمانِ تخمینیِ این روز">{{ c.minutes|hours }}h</span>{% endif %}
   </div>
+  {% if c.people %}<div class="cell-people">
+    {% for p in c.people %}<span class="cp" title="{{ p.name }} — {{ p.count|fa_digits }} تسک{% if p.minutes %} · {{ p.minutes|hours }} ساعت{% endif %}">{% if p.avatar %}<img class="cp-av" src="{{ p.avatar }}" alt="">{% else %}<span class="cp-av" style="background:{{ p.a_color }}">{{ p.initials }}</span>{% endif %}{% if p.minutes %}<b class="cp-h">{{ p.minutes|hours }}h</b>{% endif %}</span>{% endfor %}
+  </div>{% endif %}
   {% if not c.dim and can_create_task %}<button class="cell-add" data-jdate="{{ c.jdate }}" title="تسک جدید در این روز">＋</button>{% endif %}
   {% for t in c.tasks %}
     <span class="tk{% if forloop.counter > 5 %} tk-extra{% endif %}{% if t.done %} done{% endif %}{% if t.is_placeholder %} placeholder{% endif %}{% if t.virtual %} virtual{% endif %}"{% if not t.virtual %} draggable="true" data-id="{{ t.id }}" data-open-task="{{ t.id }}"{% endif %}
-      title="{{ t.type_label }}: {{ t.title }}{% if t.assignee %} — {{ t.assignee }}{% endif %}{% if t.time %} — ساعت {{ t.time }}{% endif %}"
+      title="{{ t.type_label }}: {{ t.title }}{% if t.assignee %} — {{ t.assignee }}{% endif %}"
       style="{% if not t.done %}background:rgba({{ t.project_color }},.20);{% endif %}border-right:4px solid rgb({{ t.project_color }})">
       {% if t.avatar %}<img class="tk-av" src="{{ t.avatar }}" alt="" title="{{ t.assignee }}">{% else %}<span class="tk-av" style="background:{{ t.a_color }}" title="{{ t.assignee }}">{{ t.initials }}</span>{% endif %}
-      {% if t.time %}<span class="tk-time">{{ t.time }}</span>{% endif %}
       <span class="tk-tx">{{ t.type_label }}: {{ t.title }}</span></span>
   {% endfor %}
   {% if c.tasks|length > 5 %}<button type="button" class="more" data-more>+{{ c.tasks|length|add:"-5"|fa_digits }} مورد دیگر</button>{% endif %}
