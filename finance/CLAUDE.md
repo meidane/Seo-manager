@@ -170,10 +170,11 @@ context می‌گذارد؛ تمپلیت‌ها (`invoices.html`, `invoice_form.
 فرمِ فاکتور را read-only (اینپوت‌ها disabled) می‌کنند. کاربرِ فقط-بیننده در سایدبار لینکِ
 «فاکتورها» (نه «حسابداری») می‌گیرد.
 
-## BankAccount: شبا + نمایش زیرِ فاکتور
-`BankAccount.sheba` (شماره شبا) + `show_on_invoice` (bool). در نسخهٔ عمومیِ گزارش **فقط**
-حساب‌های `show_on_invoice=True` زیرِ فاکتور نشان داده می‌شوند (نه همهٔ حساب‌ها — معمولاً یک
-کارت)، با شماره کارت + شبا و دکمهٔ کپی. تیک/شبا در مودالِ `banks.html` + `bank_create/edit`.
+## اطلاعاتِ حسابِ زیرِ فاکتورِ گزارش = هاردکد (نه حسابداری)
+اطلاعاتِ حسابِ واریز که به مشتری نشان داده می‌شود **هاردکد** است (`reports/views.py:
+PAYMENT_INFO`)، به `BankAccount` وصل نیست. فیلدهای `BankAccount.sheba`/`show_on_invoice`
+که قبلاً برای این کار بودند **حذف شدند** (مهاجرتِ `finance/0011`؛ `docs/CLEANUP.md`).
+`Invoice.receipt` هم حذف شد — رسید روی `reports.Report.receipt` است.
 
 ## گزارشِ مالیِ پروژه (ویجتِ مشترک)
 منبعِ واحدِ ردیف‌های گردشِ حسابِ پروژه = **`finance/ledger_data.py: project_ledger(project_id,

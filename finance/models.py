@@ -19,12 +19,8 @@ class BankAccount(TimeStampedModel):
     bank = models.CharField('بانک', max_length=60, blank=True)
     color = models.CharField('رنگ', max_length=7, default='#4183F2')
     card_number = models.CharField('شماره کارت/حساب', max_length=40, blank=True)
-    sheba = models.CharField('شماره شبا', max_length=34, blank=True, help_text='بدونِ IR هم مجاز است')
     initial_balance = models.DecimalField('مانده‌ی اولیه', max_digits=16, decimal_places=0, default=0)
     is_active = models.BooleanField('فعال', default=True)
-    # فقط حساب‌هایی که این تیک را دارند زیرِ فاکتورِ مشتری (نسخهٔ عمومی) نشان داده می‌شوند —
-    # نه همهٔ حساب‌ها. معمولاً یک حساب.
-    show_on_invoice = models.BooleanField('نمایش زیرِ فاکتورِ مشتری', default=False)
 
     organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
     objects = TenantManager()
@@ -170,7 +166,6 @@ class Invoice(TimeStampedModel):
     project = models.ForeignKey('projects.Project', verbose_name='پروژه', on_delete=models.SET_NULL, null=True, blank=True, related_name='invoices')
     description = models.TextField('توضیحات فاکتور', blank=True)
     due_date = models.DateField('تاریخ پرداخت', null=True, blank=True)
-    receipt = models.FileField('رسیدِ پرداخت', upload_to='receipts/', null=True, blank=True)
 
     organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
     objects = TenantManager()

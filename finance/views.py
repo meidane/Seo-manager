@@ -530,8 +530,7 @@ def bank_create(request):
         return JsonResponse({'detail': 'نام لازم است'}, status=400)
     b = BankAccount.objects.create(
         name=d['name'], bank=d.get('bank', ''), color=d.get('color', '#4183F2'),
-        card_number=d.get('card_number', ''), sheba=d.get('sheba', ''),
-        show_on_invoice=bool(d.get('show_on_invoice')),
+        card_number=d.get('card_number', ''),
         initial_balance=parse_amount(d.get('initial_balance', 0)),
         created_by=request.user)
     return JsonResponse({'id': b.id}, status=201)
@@ -546,15 +545,13 @@ def bank_edit(request, pk):
         b.delete()
         return JsonResponse({'ok': True})
     d = _body(request)
-    for f in ('name', 'bank', 'color', 'card_number', 'sheba'):
+    for f in ('name', 'bank', 'color', 'card_number'):
         if f in d:
             setattr(b, f, d[f])
     if 'initial_balance' in d:
         b.initial_balance = parse_amount(d['initial_balance'])
     if 'is_active' in d:
         b.is_active = bool(d['is_active'])
-    if 'show_on_invoice' in d:
-        b.show_on_invoice = bool(d['show_on_invoice'])
     b.save()
     return JsonResponse({'ok': True})
 

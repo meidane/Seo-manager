@@ -93,14 +93,10 @@ project_balance(report.project_id)` (همان منبعِ واحدِ ستونِ �
 ## نمایشِ مشتری (`public.html`) — بازطراحی
 - عنوان خودش لینک است (`.it-title-link`)، بَجِ نوع کوچک پشتش (`.it-type`)، توضیحاتِ هر آیتم
   زیرِ عنوان با کلمپِ ۲خطی + دکمهٔ «بیشتر» (`.it-desc`/`.it-more`، جاوااسکریپتِ toggle).
-- ستونِ **زمان** (`{{ it.eff_estimate|hours }} ساعت`) به همهٔ سکشن‌ها اضافه شد.
-- **شماره‌حساب‌ها برای واریز:** فقط وقتی فاکتور به گزارش وصل باشد، زیرِ جدولِ فاکتور
-  (`bank_accounts` در context = `BankAccount.all_objects.filter(organization_id=…,
-  is_active=True)`)؛ هر ردیف نقطهٔ رنگی + شماره + دکمهٔ کپی (`.banks/.bank-row/.bank-copy`).
-- **رسیدِ پرداخت (اختیاری، کم‌رنگ):** `finance.Invoice.receipt` (FileField، مهاجرت
-  `finance/0009`)؛ آپلود از `detail.html` (کنترلِ `#r-receipt` → `reports:receipt` =
-  POST/DELETE `/reports/api/<pk>/receipt/`، روی `report.invoice.receipt`). در `public.html`
-  یک بخشِ ریزِ اختیاری (`.receipt`) فقط اگر رسید آپلود شده باشد.
+- ستونِ **زمان** (`{{ it.eff_estimate|hoursmin }}`، «H:MM») در سکشن‌ها.
+- **اطلاعاتِ حساب + رسید:** جزئیاتِ به‌روز پایین‌تر در «نمایشِ گزارشِ عمومی» و «رسیدِ
+  پرداختِ مشتری» — کارتِ حساب **هاردکد** است و رسید روی **`Report.receipt`** (نه فاکتور).
+  (نسخهٔ قدیمیِ `bank_accounts`/`Invoice.receipt` حذف شد — `docs/CLEANUP.md`.)
 - منبعِ واحدِ contextِ عمومی: `reports/views.py: _public_report_ctx(report, ctx)` — هم
   `PublicReportView` هم `ReportPreviewView` از آن می‌خوانند (groups/visible/fields/
   invoice_ctx/bank_accounts).
@@ -157,7 +153,7 @@ project_balance(report.project_id)` (همان منبعِ واحدِ ستونِ �
   جدول فقط **شرح + مبلغ** (بدونِ تعداد/مالیات/تخفیف) + یک ردیفِ **جمعِ کل** در tfoot.
 - **اطلاعاتِ حساب هاردکد است، به حسابداری وصل نیست:** `reports/views.py: PAYMENT_INFO`
   (بانک/نام/کارت/شبا) — برای تغییر فقط همان‌جا. کارتِ `.paycard` با دکمهٔ کپیِ کارت/شبا.
-  (فیلدهای `BankAccount.sheba`/`show_on_invoice` ماندند ولی نمایشِ گزارش دیگر از آن‌ها نمی‌خواند.)
+  (فیلدهای `BankAccount.sheba`/`show_on_invoice` حذف شدند — `docs/CLEANUP.md`.)
 
 ## رسیدِ پرداختِ مشتری (`Report.receipt`)
 روی خودِ گزارش است (نه فاکتور). **مشتری** از نسخهٔ عمومی/پیش‌نمایش کنارِ کارتِ حساب آپلود
