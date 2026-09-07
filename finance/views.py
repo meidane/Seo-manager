@@ -19,7 +19,7 @@ from core.daterange import (PRESET_LABELS, PRESETS, DateRangeMixin,
 from core.jalali import format_jalali, parse_jalali
 from projects.models import Project
 
-from .access import (FinancePermMixin, InvoiceViewPermMixin, can_view_invoices,
+from .access import (FinancePermMixin, InvoiceViewPermMixin,
                      require_finance, require_invoice_view)
 from .models import (BankAccount, Category, Invoice, InvoiceLine, Payroll,
                      PayrollItem, Transaction)

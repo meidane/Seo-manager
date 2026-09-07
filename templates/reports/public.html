@@ -84,6 +84,8 @@ td a:hover{text-decoration:underline}
 .pc-up{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--primary);color:var(--primary);border-radius:10px;padding:8px 16px;font-size:13px;cursor:pointer;font-weight:600}
 .pc-up:hover{background:color-mix(in srgb,var(--primary) 8%,transparent)}
 .pc-up svg{width:16px;height:16px}
+.pc-del{border:1px solid var(--stroke);background:var(--card);color:var(--dim);border-radius:10px;padding:8px 14px;font-size:12.5px;cursor:pointer;font-family:inherit}
+.pc-del:hover{border-color:var(--pink);color:var(--pink)}
 .pc-hint{font-size:12px;color:var(--dim);margin-top:10px;line-height:1.9}
 .foot{text-align:center;color:var(--faint);font-size:12px;margin-top:34px}
 /* ریسپانسیو — هدرِ گزارش ستونی شود، همه‌چیز توهم‌نرود */
@@ -201,6 +203,7 @@ td a:hover{text-decoration:underline}
       <div class="pc-receipt-row">
         <label class="pc-up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>آپلودِ رسید<input type="file" id="pc-receipt" accept="image/*,application/pdf" hidden></label>
         <a id="pc-receipt-link" href="{% if report.receipt %}{{ report.receipt.url }}{% endif %}" target="_blank" rel="noopener" {% if not report.receipt %}hidden{% endif %}>مشاهدهٔ رسیدِ آپلودشده ↗</a>
+        <button type="button" id="pc-receipt-del" class="pc-del" {% if not report.receipt %}hidden{% endif %}>حذفِ رسید</button>
       </div>
       <div class="pc-hint">در صورتِ تمایل می‌توانید رسیدِ پرداختِ خود را این‌جا آپلود کنید تا مستقیماً در سیستمِ حسابداریِ ما ثبت شود. با تشکر.</div>
     </div>
@@ -234,19 +237,29 @@ td a:hover{text-decoration:underline}
     try{ navigator.clipboard.writeText(b.dataset.copy); var t=b.textContent; b.textContent='کپی شد ✓'; b.classList.add('ok');
       setTimeout(function(){b.textContent=t;b.classList.remove('ok');},1300); }catch(_){}
   });
-  // آپلودِ رسیدِ پرداخت توسطِ مشتری
+  // آپلود/حذفِ رسیدِ پرداخت توسطِ مشتری
+  var csrf=(document.querySelector('[name=csrfmiddlewaretoken]')||{}).value||'';
+  var RURL='{% url 'reports:receipt' report.pk %}';
   var rc=document.getElementById('pc-receipt');
   if(rc){ rc.addEventListener('change', function(){
     var f=rc.files[0]; if(!f) return;
-    var csrf=(document.querySelector('[name=csrfmiddlewaretoken]')||{}).value||'';
     var fd=new FormData(); fd.append('receipt', f);
     var lbl=document.querySelector('.pc-up'); var old=lbl.textContent; lbl.textContent='در حالِ آپلود…';
-    fetch('{% url 'reports:receipt' report.pk %}', {method:'POST', headers:{'X-CSRFToken':csrf}, body:fd})
+    fetch(RURL, {method:'POST', headers:{'X-CSRFToken':csrf}, body:fd})
       .then(function(r){ return r.json().then(function(d){ return {ok:r.ok,d:d}; }); })
       .then(function(res){ lbl.textContent=old;
-        if(res.ok){ var lk=document.getElementById('pc-receipt-link'); lk.href=res.d.url; lk.hidden=false; alert('رسید آپلود شد. سپاس!'); }
+        if(res.ok){ var lk=document.getElementById('pc-receipt-link'); lk.href=res.d.url; lk.hidden=false;
+          var db=document.getElementById('pc-receipt-del'); if(db) db.hidden=false; alert('رسید آپلود شد. سپاس!'); }
         else alert(res.d.detail||'خطا در آپلود'); })
       .catch(function(){ lbl.textContent=old; alert('خطا در آپلود'); });
+  }); }
+  var rd=document.getElementById('pc-receipt-del');
+  if(rd){ rd.addEventListener('click', function(){
+    if(!confirm('رسیدِ آپلودشده حذف شود؟')) return;
+    fetch(RURL, {method:'DELETE', headers:{'X-CSRFToken':csrf}})
+      .then(function(r){ if(r.ok){ var lk=document.getElementById('pc-receipt-link'); lk.hidden=true; rd.hidden=true; rc.value=''; }
+        else alert('حذف نشد'); })
+      .catch(function(){ alert('حذف نشد'); });
   }); }
 })();
 </script>

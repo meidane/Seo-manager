@@ -1,7 +1,6 @@
 """ویوهای گزارش‌دهی — صفحه‌ی ساخت (login) + نسخه‌ی عمومی مشتری (بدون login)."""
 import json
 import re
-from datetime import date
 
 import bleach
 from django.contrib.auth.decorators import login_required
@@ -18,7 +17,7 @@ from core.models import Attachment
 from projects.models import Project
 from tasks.models import Task
 
-from .models import (BUCKETS, CLIENT_FIELDS, TYPE_TO_BUCKET, Report, ReportItem,
+from .models import (BUCKETS, CLIENT_FIELDS, Report, ReportItem,
                      ReportKeyword, ReportSection)
 
 # پاکسازی HTML ادیتور توضیحات
@@ -528,13 +527,13 @@ def report_receipt(request, pk):
     آپلود می‌کند؛ صاحبِ گزارش هم از پیش‌نمایش (login). فقط تصویر/PDF، حداکثر ۱۰MB.
     """
     report = get_object_or_404(Report, pk=pk)
-    # گیت: کاربرِ لاگین‌شده (صاحب) یا گزارشِ عمومی (مشتری، capability = توکنِ لینک)
+    # گیت: کاربرِ لاگین‌شده (پنلِ ما) یا گزارشِ عمومی (مشتری، capability = توکنِ لینک) —
+    # هم آپلود هم حذف. حذف هم برای مشتری و هم برای ما.
     if not (request.user.is_authenticated or report.is_public):
         return JsonResponse({'detail': 'اجازه نیست'}, status=403)
     if request.method == 'DELETE':
-        if not request.user.is_authenticated:
-            return JsonResponse({'detail': 'حذف فقط توسطِ صاحبِ گزارش'}, status=403)
-        report.receipt.delete(save=False)
+        if report.receipt:
+            report.receipt.delete(save=False)
         report.receipt = None
         report.save(update_fields=['receipt', 'updated_at'])
         return JsonResponse({'ok': True})

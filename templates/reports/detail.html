@@ -46,7 +46,8 @@
         </select>
         {% if report.project_id %}<a class="btn btn-sm btn-p" href="{% url 'finance:invoice_new' %}?project={{ report.project_id }}&report={{ report.id }}" title="ساختِ فاکتورِ جدید برای این پروژه و اتصالِ خودکار به این گزارش">＋ فاکتور جدید</a>{% endif %}
         {% if report.invoice_id %}<a class="btn btn-sm" href="{% url 'finance:invoice_edit_page' report.invoice_id %}" target="_blank" rel="noopener">ویرایشِ فاکتور ↗</a>{% endif %}
-        {% if report.receipt %}<a class="lnk" href="{{ report.receipt.url }}" target="_blank" rel="noopener" style="font-size:12px" title="رسیدی که مشتری آپلود کرده">رسیدِ مشتری ↗</a>{% endif %}
+        {% if report.receipt %}<a class="lnk" id="r-receipt-link" href="{{ report.receipt.url }}" target="_blank" rel="noopener" style="font-size:12px" title="رسیدی که مشتری آپلود کرده">رسیدِ مشتری ↗</a>
+        <button type="button" class="btn btn-sm" id="r-receipt-del" title="حذفِ رسید">حذفِ رسید</button>{% endif %}
         {% if report.project_id %}<span style="flex:1"></span>
         <button type="button" class="btn btn-sm" id="r-fin-toggle" aria-expanded="false">📊 گزارشِ مالیِ پروژه</button>
         <span class="tag {% if client_balance < 0 %}t-bad{% elif client_balance > 0 %}t-ok{% else %}t-mute{% endif %}" title="مانده‌ی کلِ پروژه">مانده: {{ client_balance|money }}</span>{% endif %}
@@ -211,6 +212,14 @@ document.getElementById('r-copy').onclick=()=>{navigator.clipboard.writeText(doc
 
 // ── فاکتور متصل ──
 document.getElementById('r-invoice').onchange=e=>App.fetchJSON(`/reports/api/${RID}/update/`,{method:'PATCH',body:{invoice:e.target.value}}).then(()=>App.toast('فاکتور به‌روزرسانی شد','ok'));
+
+// ── حذفِ رسیدِ مشتری از پنلِ ما ──
+(function(){ const db=document.getElementById('r-receipt-del'); if(!db) return;
+  db.onclick=async()=>{ if(!await App.confirm('رسیدِ مشتری حذف شود؟')) return;
+    await App.fetchJSON(`/reports/api/${RID}/receipt/`,{method:'DELETE'});
+    const lk=document.getElementById('r-receipt-link'); if(lk) lk.remove(); db.remove(); App.toast('رسید حذف شد','ok');
+  };
+})();
 
 // ── گزارشِ مالیِ پروژه (تنبل: بارِ اول با کلیک لود می‌شود) ──
 (function(){ const btn=document.getElementById('r-fin-toggle'), panel=document.getElementById('r-fin-panel');
