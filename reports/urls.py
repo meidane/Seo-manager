@@ -18,6 +18,7 @@ urlpatterns = [
     path('api/<int:pk>/reorder/', views.reorder, name='reorder'),
     path('api/<int:pk>/update/', views.report_update, name='update'),
     path('api/<int:pk>/upload-image/', views.upload_image, name='upload_image'),
+    path('api/<int:pk>/receipt/', views.report_receipt, name='receipt'),
     path('api/items/<int:pk>/', views.item_edit, name='item_edit'),
     path('api/<int:pk>/delete/', views.report_delete, name='delete'),
 ]

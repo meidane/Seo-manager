@@ -123,6 +123,21 @@ class ReportDetailView(LoginRequiredMixin, DetailView):
         return ctx
 
 
+def _public_report_ctx(report, ctx):
+    """context مشترکِ نسخه‌ی عمومی/پیش‌نمایش (گروه‌ها، فیلدهای مجاز، فاکتور، حساب‌های
+    بانکی برای مشتری، رسید)."""
+    from finance.models import BankAccount
+    ctx['groups'] = report.grouped_items()
+    ctx['visible'] = report.visible_fields or []
+    ctx['fields'] = [(k, lbl) for k, lbl in CLIENT_FIELDS if report.sees(k)]
+    inv_ctx = _invoice_ctx(report)
+    ctx['invoice_ctx'] = inv_ctx
+    # حساب‌های بانکیِ سازمان (فقط وقتی فاکتور هست) — برای واریزِ مشتری، با دکمهٔ کپی
+    ctx['bank_accounts'] = (list(BankAccount.all_objects.filter(
+        organization_id=report.organization_id, is_active=True)) if inv_ctx else [])
+    return ctx
+
+
 class PublicReportView(DetailView):
     """نسخه‌ی عمومی مشتری — بدون login، فقط فیلدهای مجاز."""
 
@@ -137,10 +152,7 @@ class PublicReportView(DetailView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx['groups'] = self.object.grouped_items()
-        # فقط فیلدهای مجاز، به‌ترتیب تعریف
-        ctx['fields'] = [(k, lbl) for k, lbl in CLIENT_FIELDS if self.object.sees(k)]
-        ctx['invoice_ctx'] = _invoice_ctx(self.object)
+        _public_report_ctx(self.object, ctx)
         return ctx
 
 
@@ -153,9 +165,7 @@ class ReportPreviewView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx['groups'] = self.object.grouped_items()
-        ctx['fields'] = [(k, lbl) for k, lbl in CLIENT_FIELDS if self.object.sees(k)]
-        ctx['invoice_ctx'] = _invoice_ctx(self.object)
+        _public_report_ctx(self.object, ctx)
         ctx['is_preview'] = True
         return ctx
 
@@ -317,3 +327,26 @@ def upload_image(request, pk):
         uploaded_by=request.user,
     )
     return JsonResponse({'url': att.file.url})
+
+
+@login_required
+@require_http_methods(['POST', 'DELETE'])
+def report_receipt(request, pk):
+    """آپلود/حذفِ رسیدِ پرداختِ فاکتورِ متصل به گزارش (اختیاری؛ در نسخهٔ مشتری زیرِ فاکتور دیده می‌شود)."""
+    report = get_object_or_404(Report, pk=pk)
+    if not report.invoice_id:
+        return JsonResponse({'detail': 'فاکتوری به این گزارش متصل نیست'}, status=400)
+    inv = report.invoice
+    if request.method == 'DELETE':
+        inv.receipt.delete(save=False)
+        inv.receipt = None
+        inv.save(update_fields=['receipt', 'updated_at'])
+        return JsonResponse({'ok': True})
+    f = request.FILES.get('receipt')
+    if not f:
+        return JsonResponse({'detail': 'فایلی انتخاب نشد'}, status=400)
+    if f.size > 20 * 1024 * 1024:
+        return JsonResponse({'detail': 'حجم بیش از ۲۰ مگابایت'}, status=400)
+    inv.receipt = f
+    inv.save(update_fields=['receipt', 'updated_at'])
+    return JsonResponse({'ok': True, 'url': inv.receipt.url})

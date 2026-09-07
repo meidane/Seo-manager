@@ -43,7 +43,9 @@
           <option value="">— بدون فاکتور —</option>
           {% for inv in invoices %}<option value="{{ inv.id }}" {% if report.invoice_id == inv.id %}selected{% endif %}>فاکتور #{{ inv.number|fa_digits }}{% if inv.project %} · {{ inv.project.name }}{% endif %} · {{ inv.grand_total|money }}</option>{% endfor %}
         </select>
-        {% if report.invoice_id %}<a class="btn btn-sm" href="{% url 'finance:invoice_edit_page' report.invoice_id %}" target="_blank" rel="noopener">ویرایشِ فاکتور ↗</a>{% endif %}
+        {% if report.invoice_id %}<a class="btn btn-sm" href="{% url 'finance:invoice_edit_page' report.invoice_id %}" target="_blank" rel="noopener">ویرایشِ فاکتور ↗</a>
+        <label class="btn btn-sm" style="cursor:pointer" title="آپلودِ رسیدِ پرداخت (اختیاری — به مشتری نشان داده می‌شود)">📎 رسید<input type="file" id="r-receipt" hidden></label>
+        <a id="r-receipt-link" class="lnk" href="{% if report.invoice.receipt %}{{ report.invoice.receipt.url }}{% endif %}" target="_blank" rel="noopener" style="font-size:12px{% if not report.invoice.receipt %};display:none{% endif %}">رسیدِ فعلی ↗</a>{% endif %}
       </div>
       {% if invoice_ctx %}
         <div class="tsheet-wrap" style="margin-top:14px">
@@ -126,6 +128,17 @@ document.getElementById('r-copy').onclick=()=>{navigator.clipboard.writeText(doc
 
 // ── فاکتور متصل ──
 document.getElementById('r-invoice').onchange=e=>App.fetchJSON(`/reports/api/${RID}/update/`,{method:'PATCH',body:{invoice:e.target.value}}).then(()=>App.toast('فاکتور به‌روزرسانی شد','ok'));
+
+// ── آپلودِ رسیدِ پرداخت (اختیاری) ──
+(function(){ const rc=document.getElementById('r-receipt'); if(!rc) return;
+  rc.onchange=async()=>{ const f=rc.files[0]; if(!f) return;
+    const fd=new FormData(); fd.append('receipt',f);
+    try{ const d=await App.fetchJSON(`/reports/api/${RID}/receipt/`,{method:'POST',body:fd});
+      const lk=document.getElementById('r-receipt-link'); if(lk){ lk.href=d.url; lk.style.display=''; }
+      App.toast('رسید آپلود شد','ok');
+    }catch(_){}
+  };
+})();
 
 // ── نهایی‌سازی ──
 document.getElementById('r-final').onclick=async()=>{

@@ -39,6 +39,18 @@ BUCKETS = [
     ('other', 'سایر', ['other']),
 ]
 TYPE_TO_BUCKET = {t: key for key, _, types in BUCKETS for t in types}
+# انواعِ سئوِ جدید `task_type='other'` دارند؛ سطلِ درست از **نامِ نوعِ سفارشی** می‌آید.
+BUCKET_BY_TYPE_NAME = {'انتشار': 'publish', 'آپدیت': 'update', 'فنی': 'tech',
+                       'رپورتاژ': 'promo', 'لینک‌سازی': 'promo'}
+# ستون‌های هر سکشنِ گزارش (خواستِ کاربر): فقط انتشار/آپدیت «تعداد کلمه» و «لینک انتشار»
+# دارند؛ رپورتاژ لینک دارد ولی تعداد کلمه نه؛ فنی/سایر هیچ‌کدام.
+BUCKET_COLS = {
+    'publish': {'word': True, 'link': True},
+    'update': {'word': True, 'link': True},
+    'promo': {'word': False, 'link': True},
+    'tech': {'word': False, 'link': False},
+    'other': {'word': False, 'link': False},
+}
 
 
 class Report(TimeStampedModel):
@@ -89,13 +101,14 @@ class Report(TimeStampedModel):
         return field_key in (self.visible_fields or [])
 
     def grouped_items(self):
-        """آیتم‌ها را در سطل‌های نوع برمی‌گرداند: [(bucket_key, label, [items])]."""
-        items = list(self.items.select_related('task', 'task__assignee').all())
+        """آیتم‌ها را در سطل‌های نوع برمی‌گرداند: dictهای {key,label,items,cols}."""
+        items = list(self.items.select_related('task', 'task__assignee', 'task__type_def').all())
         out = []
         for key, label, _types in BUCKETS:
             bucket = [it for it in items if it.bucket == key]
             if bucket:
-                out.append((key, label, bucket))
+                out.append({'key': key, 'label': label, 'items': bucket,
+                            'cols': BUCKET_COLS.get(key, {'word': False, 'link': False})})
         return out
 
 
@@ -140,7 +153,23 @@ class ReportItem(models.Model):
 
     @property
     def bucket(self):
+        # نوعِ سفارشی (سئوی جدید) از **نامِ نوع** سطل‌بندی می‌شود، نه task_type='other'
+        t = self.task
+        if t and t.type_def_id and t.type_def.name in BUCKET_BY_TYPE_NAME:
+            return BUCKET_BY_TYPE_NAME[t.type_def.name]
         return TYPE_TO_BUCKET.get(self.eff_type, 'other')
+
+    @property
+    def eff_type_label(self):
+        """برچسبِ نوع برای بَجِ کنارِ عنوان (نوعِ سفارشی یا built-in)."""
+        t = self.task
+        if t:
+            return t.type_label
+        return self.manual_type or ''
+
+    @property
+    def eff_estimate(self):
+        return self.task.estimate_minutes if self.task else None
 
     @property
     def eff_url(self):

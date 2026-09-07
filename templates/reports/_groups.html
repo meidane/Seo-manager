@@ -1,11 +1,11 @@
 {% load seo_extras %}
-{% for key, label, items in groups %}
+{% for g in groups %}
   <section class="card glass" style="margin-bottom:14px">
-    <div class="card-h"><h3>{{ label }}</h3><span class="chip">{{ items|length|fa_digits }} مورد</span></div>
+    <div class="card-h"><h3>{{ g.label }}</h3><span class="chip">{{ g.items|length|fa_digits }} مورد</span></div>
     <table>
       <thead><tr><th>عنوان</th><th>مسئول</th><th>تاریخ انجام</th><th>لینک</th><th style="width:80px"></th></tr></thead>
       <tbody>
-        {% for it in items %}
+        {% for it in g.items %}
           <tr>
             <td><span contenteditable="true" data-item-title="{{ it.id }}" style="outline:none">{{ it.eff_title }}</span>
               {% if it.task and it.task.status != 'done' %}<span class="tag t-warn" title="این تسک هنوز انجام‌نشده — فقط برای خودِ ما، در گزارشِ مشتری دیده نمی‌شود">⏳ {{ it.task.get_status_display }}</span>{% endif %}</td>

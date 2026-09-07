@@ -166,6 +166,7 @@ class Invoice(TimeStampedModel):
     project = models.ForeignKey('projects.Project', verbose_name='پروژه', on_delete=models.SET_NULL, null=True, blank=True, related_name='invoices')
     description = models.TextField('توضیحات فاکتور', blank=True)
     due_date = models.DateField('تاریخ پرداخت', null=True, blank=True)
+    receipt = models.FileField('رسیدِ پرداخت', upload_to='receipts/', null=True, blank=True)
 
     organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
     objects = TenantManager()

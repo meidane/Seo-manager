@@ -37,6 +37,35 @@ td a{color:var(--primary);text-decoration:none;font-weight:600}
 td a:hover{text-decoration:underline}
 .inv-totals{display:flex;justify-content:flex-end;gap:22px;background:var(--card);border:1px solid var(--stroke);border-top:0;border-radius:0 0 12px 12px;padding:12px 16px;font-size:13px;color:var(--dim)}
 .inv-totals b{color:var(--text)}
+/* توضیحاتِ گزارش: پاراگراف‌ها فاصله بگیرند (تگِ p چسبیده نباشند) */
+.desc.rich p{margin:0 0 11px}
+.desc.rich p:last-child{margin-bottom:0}
+.desc.rich ul,.desc.rich ol{margin:6px 22px 11px}
+.desc.rich h1,.desc.rich h2,.desc.rich h3{margin:14px 0 7px}
+/* شمارندهٔ سکشن + عنوانِ ردیف (نوع پشتِ عنوان + لینک روی عنوان) */
+.gcount{background:var(--th-bg);color:var(--dim);font-size:11px;font-weight:700;padding:1px 9px;border-radius:99px}
+.it-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.it-type{font-size:10.5px;font-weight:700;color:var(--primary);background:color-mix(in srgb,var(--primary) 12%,transparent);padding:1px 8px;border-radius:99px;flex:none}
+.it-title-link,.it-title{font-weight:600;color:var(--text);text-decoration:none}
+.it-title-link:hover{color:var(--primary);text-decoration:underline}
+.it-desc{font-size:12px;color:var(--dim);line-height:1.85;margin-top:5px;overflow:hidden;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.it-desc.open{-webkit-line-clamp:unset;display:block}
+.it-desc p{margin:0 0 5px}
+.it-more{border:0;background:none;color:var(--primary);font-family:inherit;font-size:11.5px;cursor:pointer;padding:2px 0;margin-top:2px}
+/* شماره‌حساب‌ها + رسید */
+.banks{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:14px 16px;margin-top:16px;box-shadow:0 4px 18px rgba(20,28,54,.05)}
+.banks-h{font-size:13px;font-weight:700;margin-bottom:9px;color:var(--text)}
+.bank-row{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px dashed var(--stroke)}
+.bank-row:last-child{border-bottom:0}
+.bank-dot{width:10px;height:10px;border-radius:50%;flex:none}
+.bank-info{flex:1;min-width:0;font-size:13px}
+.bank-bank{color:var(--dim);font-size:11.5px}
+.bank-num{font-family:monospace;font-size:14px;letter-spacing:1px;color:var(--text)}
+.bank-copy{border:1px solid var(--stroke);background:var(--card);border-radius:8px;cursor:pointer;padding:4px 8px;font-size:13px}
+.bank-copy:hover{border-color:var(--primary)}
+.receipt{margin-top:12px;font-size:12.5px;color:var(--dim);display:flex;gap:8px;align-items:center}
+.receipt a{color:var(--primary);font-weight:600;text-decoration:none}
 .foot{text-align:center;color:var(--faint);font-size:12px;margin-top:34px}
 @media print{:root{--bg:#fff;--card:#fff;--text:#1F2937;--dim:#6B7280;--faint:#9CA3AF;--stroke:#ddd;--th-bg:#F3F4F6}.print,.theme-toggle{display:none}}
 </style>
@@ -56,25 +85,34 @@ td a:hover{text-decoration:underline}
     </div>
   </div>
 
-  {% if report.description %}<div class="desc">{{ report.description|safe }}</div>{% endif %}
+  {% if report.description %}<div class="desc rich">{{ report.description|safe }}</div>{% endif %}
 
-  {% for key, label, items in groups %}
-    <h2 class="group">{{ label }}</h2>
+  {% for g in groups %}
+    <h2 class="group">{{ g.label }} <span class="gcount">{{ g.items|length|fa_digits }}</span></h2>
     <table>
       <thead><tr>
         <th>عنوان</th>
-        {% for fk, fl in fields %}<th>{{ fl }}</th>{% endfor %}
+        {% if 'assignee' in visible %}<th style="width:130px">مسئول</th>{% endif %}
+        {% if 'done_date' in visible %}<th style="width:110px">تاریخ انجام</th>{% endif %}
+        <th style="width:90px">زمان</th>
+        {% if g.cols.word and 'word_count' in visible %}<th style="width:90px">تعداد کلمه</th>{% endif %}
+        {% if g.cols.link %}<th style="width:80px">لینک</th>{% endif %}
       </tr></thead>
       <tbody>
-        {% for it in items %}
+        {% for it in g.items %}
           <tr>
-            <td>{{ it.eff_title }}</td>
-            {% for fk, fl in fields %}
-              <td>
-                {% if fk == 'published_url' %}{% with u=it|repfield:fk %}{% if u %}<a href="{{ u }}" target="_blank" rel="noopener">مشاهده ↗</a>{% else %}—{% endif %}{% endwith %}
-                {% else %}{{ it|repfield:fk|default:"—" }}{% endif %}
-              </td>
-            {% endfor %}
+            <td>
+              <div class="it-top">
+                {% if it.eff_type_label %}<span class="it-type">{{ it.eff_type_label }}</span>{% endif %}
+                {% if it.eff_url %}<a href="{{ it.eff_url }}" target="_blank" rel="noopener" class="it-title-link">{{ it.eff_title }}</a>{% else %}<span class="it-title">{{ it.eff_title }}</span>{% endif %}
+              </div>
+              {% if it.eff_description %}<div class="it-desc rich" data-desc>{{ it.eff_description|safe }}</div><button type="button" class="it-more" data-more hidden>بیشتر…</button>{% endif %}
+            </td>
+            {% if 'assignee' in visible %}<td>{{ it.task.assignee.full_name|default:'—' }}</td>{% endif %}
+            {% if 'done_date' in visible %}<td class="num-c">{{ it.eff_done_date|jalali|default:'—' }}</td>{% endif %}
+            <td class="num-c">{% if it.eff_estimate %}{{ it.eff_estimate|hours }} ساعت{% else %}—{% endif %}</td>
+            {% if g.cols.word and 'word_count' in visible %}<td class="num-c">{{ it|repfield:'word_count'|default:'—' }}</td>{% endif %}
+            {% if g.cols.link %}<td class="num-c">{% if it.eff_url %}<a href="{{ it.eff_url }}" target="_blank" rel="noopener">مشاهده ↗</a>{% else %}—{% endif %}</td>{% endif %}
           </tr>
         {% endfor %}
       </tbody>
@@ -105,6 +143,29 @@ td a:hover{text-decoration:underline}
       <span>تخفیف: <b>{{ invoice_ctx.invoice.discount_total|money }}</b></span>
       <span>جمعِ کل: <b>{{ invoice_ctx.invoice.grand_total|money }} ریال</b></span>
     </div>
+
+    {# ── شماره‌حساب‌ها برای واریز (با دکمهٔ کپی) ── #}
+    {% if bank_accounts %}
+      <div class="banks">
+        <div class="banks-h">شماره‌حساب‌ها برای واریز</div>
+        {% for b in bank_accounts %}
+          <div class="bank-row">
+            <span class="bank-dot" style="background:{{ b.color }}"></span>
+            <div class="bank-info"><b>{{ b.name }}</b>{% if b.bank %} <span class="bank-bank">{{ b.bank }}</span>{% endif %}</div>
+            {% if b.card_number %}<span class="bank-num" dir="ltr">{{ b.card_number }}</span>
+            <button type="button" class="bank-copy" data-copy="{{ b.card_number }}" title="کپی">📋</button>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {# ── رسیدِ پرداخت (اختیاری، فقط اگر آپلود شده) ── #}
+    {% if invoice_ctx.invoice.receipt %}
+      <div class="receipt">
+        <span>رسیدِ پرداخت:</span>
+        <a href="{{ invoice_ctx.invoice.receipt.url }}" target="_blank" rel="noopener">مشاهدهٔ رسید ↗</a>
+      </div>
+    {% endif %}
   {% endif %}
 
   <div class="foot">این گزارش توسط سئوپنل تولید شده است.</div>
@@ -118,6 +179,18 @@ td a:hover{text-decoration:underline}
   btn.addEventListener('click', function(){
     var next = root.getAttribute('data-theme')==='light' ? 'dark' : 'light';
     apply(next); try{ localStorage.setItem('report-theme', next); }catch(e){}
+  });
+  // دکمهٔ «بیشتر…» فقط وقتی متن واقعاً بریده شده نمایش داده شود
+  document.querySelectorAll('[data-desc]').forEach(function(d){
+    var more=d.nextElementSibling;
+    if(more && d.scrollHeight>d.clientHeight+2){ more.hidden=false;
+      more.addEventListener('click', function(){ d.classList.toggle('open'); more.textContent=d.classList.contains('open')?'کمتر':'بیشتر…'; });
+    }
+  });
+  // کپیِ شماره‌حساب
+  document.addEventListener('click', function(e){
+    var b=e.target.closest('.bank-copy'); if(!b) return;
+    try{ navigator.clipboard.writeText(b.dataset.copy); b.textContent='✓'; setTimeout(function(){b.textContent='📋';},1200); }catch(_){}
   });
 })();
 </script>
