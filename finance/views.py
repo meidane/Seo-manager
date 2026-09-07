@@ -21,8 +21,8 @@ from projects.models import Project
 
 from .access import (FinancePermMixin, InvoiceViewPermMixin,
                      require_finance, require_invoice_view)
-from .models import (BankAccount, Category, Invoice, InvoiceLine, Payroll,
-                     PayrollItem, Transaction)
+from .models import (BankAccount, Category, FinanceNote, Invoice, InvoiceLine,
+                     Payroll, PayrollItem, Transaction)
 from .utils import parse_amount, parse_excel_date
 
 
@@ -470,6 +470,58 @@ class LedgerView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateV
             if sb < 0:
                 ctx['ledger_alert'] = 'پرداختِ حقوق بیش از تعهد است (اضافه‌پرداخت).'
         return ctx
+
+
+class FinanceNotesView(LoginRequiredMixin, FinancePermMixin, TemplateView):
+    """یادداشت‌های سریعِ حسابداری — عنوان + تاریخ + توضیح، برای یادداشتِ سریعِ پرداخت‌ها/
+    توضیحاتِ لازم برای حسابدار."""
+
+    template_name = 'finance/notes.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['notes'] = FinanceNote.objects.all()
+        ctx['today_fa'] = format_jalali(date.today())
+        ctx['page_title'] = 'یادداشت‌های حسابداری'
+        return ctx
+
+
+@login_required
+@require_finance
+@require_http_methods(['POST'])
+def note_create(request):
+    d = _body(request)
+    title = (d.get('title') or '').strip()
+    if not title:
+        return JsonResponse({'detail': 'عنوان لازم است'}, status=400)
+    dt = _pj(d.get('date')) or date.today()
+    n = FinanceNote.objects.create(
+        title=title[:200], date=dt, body=(d.get('body') or '').strip(),
+        created_by=request.user)
+    return JsonResponse({'id': n.id})
+
+
+@login_required
+@require_finance
+@require_http_methods(['PATCH', 'DELETE'])
+def note_edit(request, pk):
+    n = get_object_or_404(FinanceNote, pk=pk)
+    if request.method == 'DELETE':
+        n.delete()
+        return JsonResponse({'ok': True})
+    d = _body(request)
+    if 'title' in d:
+        n.title = (d['title'] or '').strip()[:200]
+    if 'date' in d:
+        dt = _pj(d['date'])
+        if dt:
+            n.date = dt
+    if 'body' in d:
+        n.body = (d['body'] or '').strip()
+    if 'done' in d:
+        n.done = bool(d['done'])
+    n.save()
+    return JsonResponse({'ok': True})
 
 
 # ── API: گزارشِ مالیِ پروژه (فقط-خواندن) ────────────────────────────────────

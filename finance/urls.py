@@ -13,6 +13,7 @@ urlpatterns = [
     path('payroll/', views.PayrollListView.as_view(), name='payroll'),
     path('ledger/', views.LedgerView.as_view(), name='ledger'),
     path('invoices/', views.InvoiceListView.as_view(), name='invoices'),
+    path('notes/', views.FinanceNotesView.as_view(), name='notes'),
     path('invoices/new/', views.InvoiceFormView.as_view(), name='invoice_new'),
     path('invoices/<int:pk>/', views.InvoiceFormView.as_view(), name='invoice_edit_page'),
 
@@ -31,4 +32,6 @@ urlpatterns = [
     path('api/invoices/', views.invoice_create, name='invoice_create'),
     path('api/invoices/<int:pk>/', views.invoice_edit, name='invoice_edit'),
     path('api/project-ledger/', views.project_ledger_api, name='project_ledger'),
+    path('api/notes/', views.note_create, name='note_create'),
+    path('api/notes/<int:pk>/', views.note_edit, name='note_edit'),
 ]

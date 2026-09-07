@@ -310,3 +310,30 @@ class PayrollItem(models.Model):
 
     def __str__(self):
         return f'{self.title}: {self.amount}'
+
+
+class FinanceNote(TimeStampedModel):
+    """یادداشتِ سریعِ حسابداری — برای نوشتنِ سریعِ «چه پرداختی شد / چه چیزی توضیح می‌خواهد»
+    برای حسابدار. عنوان + تاریخِ انتخابی + متن. tenant-scoped (مثلِ بقیهٔ finance)."""
+
+    date = models.DateField('تاریخ')
+    title = models.CharField('عنوان', max_length=200)
+    body = models.TextField('توضیحات', blank=True)
+    done = models.BooleanField('رسیدگی‌شده', default=False)
+
+    organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
+    objects = TenantManager()
+    all_objects = models.Manager()
+
+    class Meta:
+        verbose_name = 'یادداشتِ حسابداری'
+        verbose_name_plural = 'یادداشت‌های حسابداری'
+        ordering = ['-date', '-id']
+        base_manager_name = 'all_objects'
+
+    def save(self, *args, **kwargs):
+        stamp_org(self)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.title

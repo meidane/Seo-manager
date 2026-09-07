@@ -5,6 +5,8 @@
   {% endif %}
   <a href="{% url 'finance:invoices' %}" class="{% if request.resolver_match.url_name == 'invoices' or request.resolver_match.url_name == 'invoice_new' or request.resolver_match.url_name == 'invoice_edit_page' %}on{% endif %}">فاکتورها</a>
   {% if 'manage_finance' in org_perms %}
+  <a href="{% url 'finance:notes' %}" class="{% if request.resolver_match.url_name == 'notes' %}on{% endif %}">یادداشت‌ها</a>{% endif %}
+  {% if 'manage_finance' in org_perms %}
   <a href="{% url 'finance:ledger' %}" class="{% if request.resolver_match.url_name == 'ledger' %}on{% endif %}">گزارش</a>
   <a href="{% url 'finance:import' %}" class="{% if request.resolver_match.url_name == 'import' %}on{% endif %}">ورود اکسل</a>
   <a href="{% url 'finance:banks' %}" class="{% if request.resolver_match.url_name == 'banks' %}on{% endif %}">بانک‌ها و بابت‌ها</a>

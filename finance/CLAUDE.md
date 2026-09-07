@@ -155,6 +155,12 @@ payroll_create/edit, invoice_create/edit). فاکتور با فرمِ صفحه�
 - **جستجو** (`?q=`) روی `description`(شرح سند) + `note`(توضیحات).
 - ستونِ **بانک** (`bank_account.name`) کنارِ شرح سند نمایش داده می‌شود.
 
+## یادداشت‌های حسابداری (`FinanceNote`)
+تبِ «یادداشت‌ها» (`/finance/notes/`، `FinanceNotesView`) — ثبتِ سریعِ عنوان + تاریخِ
+انتخابی + توضیح، برای یادداشتِ پرداخت‌ها/توضیحاتِ لازم برای حسابدار. `FinanceNote`
+(tenant-scoped، `date/title/body/done`). API: `note_create` (POST)، `note_edit`
+(PATCH/DELETE، تیکِ `done` هم). ثبتِ سریع بالای صفحه (Enter در عنوان = ثبت)، فهرست جدید→قدیم.
+
 ## دسترسی
 اغلبِ اپ پشتِ پرمیشنِ سازمانیِ `manage_finance` است — `finance/access.py`
 (`FinancePermMixin` روی CBVها، `require_finance` روی FBVهای API)، به‌علاوه لینکِ
