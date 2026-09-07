@@ -196,10 +196,12 @@ document.getElementById('r-save-all').onclick=async()=>{
   const sections=[...document.querySelectorAll('.sec-item')].map(el=>({
     id:+el.dataset.sec, title:el.querySelector('.sec-title').value, description:el.querySelector('.sec-desc').value }));
   try{
-    await App.fetchJSON(`/reports/api/${RID}/save-all/`,{method:'POST',body:{
+    const res=await App.fetchJSON(`/reports/api/${RID}/save-all/`,{method:'POST',body:{
       title:document.getElementById('r-title').textContent.trim(), description:desc.value,
       items, keywords, sections }});
-    App.toast('گزارش ذخیره شد','ok'); setTimeout(()=>location.reload(),400);
+    if(res && res.content_total>0) App.toast('گزارش ذخیره شد — هزینهٔ تولید محتوا در فاکتور: '+res.content_total.toLocaleString('fa-IR')+' ریال','ok');
+    else App.toast('گزارش ذخیره شد','ok');
+    setTimeout(()=>location.reload(),700);
   }catch(_){}
 };
 

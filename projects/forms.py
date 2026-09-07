@@ -42,12 +42,16 @@ class ProjectForm(forms.ModelForm):
             if self.instance.contract_end:
                 self.fields['contract_end'].initial = format_jalali(self.instance.contract_end, fa_digits=False)
         self.fields['description'].widget.attrs.update({'class': 'rich-editor'})
-        # مبلغِ قرارداد: ویرگولِ زنده (app.js کلاسِ money؛ روی submit ویرگول‌ها پاک می‌شوند)
-        self.fields['amount'].widget.attrs.update({'class': 'input money', 'dir': 'ltr'})
-        # نرخِ تولید محتوا (هزینهٔ خودکارِ گزارش/فاکتور) — ویرگولِ زنده، ۰ = محاسبه نشود
-        for f in ('content_hourly_rate', 'content_word_rate'):
-            self.fields[f].widget.attrs.update({'class': 'input money', 'dir': 'ltr'})
+        # مبالغ: ویجتِ **متنی** (نه number) چون کلاسِ `money` ویرگول می‌گذارد و اینپوتِ
+        # type=number بعد از ۳ رقم مقدارِ ویرگول‌دار را نامعتبر می‌کند (باگِ «بیش از ۳ رقم
+        # نمی‌شود تایپ کرد»). ویرگول‌ها روی submit با app.js پاک می‌شوند تا Django بخواند.
+        for f in ('amount', 'content_hourly_rate', 'content_word_rate'):
+            self.fields[f].widget = forms.TextInput(attrs={
+                'class': 'input money', 'dir': 'ltr', 'inputmode': 'numeric', 'placeholder': '0'})
             self.fields[f].required = False
+            # مقدارِ ۰ را خالی نشان بده (وگرنه با تایپ می‌شود «0,750,000»)
+            if not (self.instance and self.instance.pk and getattr(self.instance, f)):
+                self.initial[f] = ''
 
     def clean_description(self):
         from core.htmlsan import clean_html
