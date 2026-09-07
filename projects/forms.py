@@ -57,6 +57,14 @@ class ProjectForm(forms.ModelForm):
         from core.htmlsan import clean_html
         return clean_html(self.cleaned_data.get('description', ''))
 
+    # نرخِ تولید محتوا NOT NULL است (default=0)؛ فیلدِ خالی → None می‌دهد و ذخیره ارور
+    # می‌شود. اغلب فقط یکی از دو نرخ پر می‌شود، پس خالی = ۰ (نه خطا).
+    def clean_content_hourly_rate(self):
+        return self.cleaned_data.get('content_hourly_rate') or 0
+
+    def clean_content_word_rate(self):
+        return self.cleaned_data.get('content_word_rate') or 0
+
     def _clean_jdate(self, field):
         value = (self.cleaned_data.get(field) or '').strip()
         if not value:
