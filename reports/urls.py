@@ -16,6 +16,7 @@ urlpatterns = [
     path('api/<int:pk>/items/', views.add_items, name='add_items'),
     path('api/<int:pk>/manual/', views.add_manual, name='add_manual'),
     path('api/<int:pk>/reorder/', views.reorder, name='reorder'),
+    path('api/<int:pk>/save-all/', views.save_all, name='save_all'),
     path('api/<int:pk>/update/', views.report_update, name='update'),
     path('api/<int:pk>/upload-image/', views.upload_image, name='upload_image'),
     path('api/<int:pk>/receipt/', views.report_receipt, name='receipt'),

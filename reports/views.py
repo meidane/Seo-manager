@@ -162,16 +162,24 @@ def _public_report_ctx(report, ctx):
 
 
 class PublicReportView(DetailView):
-    """نسخه‌ی عمومی مشتری — بدون login، فقط فیلدهای مجاز."""
+    """نسخه‌ی عمومی مشتری — بدون login، فقط فیلدهای مجاز.
+
+    آدرس با کدِ کوتاهِ `public_code` (مرتب) یا `public_token`ِ UUID (سازگاریِ قدیمی)."""
 
     model = Report
     template_name = 'reports/public.html'
     context_object_name = 'report'
-    slug_field = 'public_token'
-    slug_url_kwarg = 'token'
 
-    def get_queryset(self):
-        return Report.objects.filter(is_public=True)
+    def get_object(self, queryset=None):
+        import uuid as _uuid
+
+        from django.shortcuts import get_object_or_404
+        token = self.kwargs.get('token')
+        qs = Report.objects.filter(is_public=True)
+        try:  # اگر UUIDِ معتبر بود، لینکِ قدیمی است
+            return get_object_or_404(qs, public_token=_uuid.UUID(str(token)))
+        except (ValueError, TypeError):
+            return get_object_or_404(qs, public_code=token)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -292,14 +300,20 @@ def add_items(request, pk):
 @login_required
 @require_http_methods(['POST'])
 def add_manual(request, pk):
+    from django.template.loader import render_to_string
+
+    from colleagues.models import Colleague
     report = get_object_or_404(Report, pk=pk)
     d = _body(request)
-    ReportItem.objects.create(
+    item = ReportItem.objects.create(
         report=report, order=report.items.count(),
         override_title=d.get('title', 'ردیف دستی'),
         manual_type=d.get('type', 'other'), manual_url=d.get('url', ''),
     )
-    return JsonResponse({'ok': True})
+    # ردیفِ رندرشده را برمی‌گردانیم تا فرانت بدونِ رفرش اضافه‌اش کند (اجاکسی)
+    html = render_to_string('reports/_item_row.html', {
+        'it': item, 'colleagues': Colleague.objects.filter(status=Colleague.ACTIVE)})
+    return JsonResponse({'ok': True, 'id': item.id, 'html': html})
 
 
 @login_required
@@ -330,6 +344,64 @@ def item_edit(request, pk):
     item.save()
     return JsonResponse({'ok': True, 'title': item.eff_title,
                          'done_date': _fa(item.eff_done_date)})
+
+
+@login_required
+@require_http_methods(['POST'])
+def save_all(request, pk):
+    """ذخیرهٔ یکجای کلِ گزارش (تک‌دکمه) — عنوان/توضیحات + همهٔ آیتم‌ها/کلمات/سکشن‌ها،
+    سپس همگام‌سازیِ ردیفِ «تولید محتوا» روی فاکتور. جایگزینِ اتوسیوهای تک‌فیلدی."""
+    report = get_object_or_404(Report, pk=pk)
+    d = _body(request)
+    if 'title' in d and (d['title'] or '').strip():
+        report.title = d['title'].strip()
+    if 'description' in d:
+        report.description = clean_html(d['description'])
+    report.save()
+
+    items = {it.id: it for it in report.items.all()}
+    for row in d.get('items', []):
+        it = items.get(row.get('id'))
+        if not it:
+            continue
+        if 'title' in row:
+            it.override_title = (row['title'] or '')[:255]
+        if 'description' in row:
+            it.override_description = clean_html(row['description'])
+        if 'done_date' in row:
+            try:
+                it.override_done_date = parse_jalali(row['done_date']) if row['done_date'] else None
+            except (ValueError, TypeError):
+                pass
+        if 'estimate' in row:
+            it.override_estimate = _parse_hmm(row['estimate'])
+        if 'word_count' in row:
+            wc = str(row['word_count'] or '').strip()
+            it.override_word_count = int(wc) if wc.isdigit() else None
+        if 'assignee' in row:
+            it.override_assignee_id = row['assignee'] or None
+        it.save()
+
+    kws = {k.id: k for k in report.keywords.all()}
+    for row in d.get('keywords', []):
+        kw = kws.get(row.get('id'))
+        if kw:
+            kw.keyword = (row.get('keyword') or '')[:200]
+            kw.position = (row.get('position') or '')[:30]
+            kw.save()
+
+    secs = {s.id: s for s in report.sections.all()}
+    for row in d.get('sections', []):
+        s = secs.get(row.get('id'))
+        if s:
+            s.title = (row.get('title') or 'سکشن')[:200]
+            s.description = clean_html(row.get('description', ''))
+            s.save()
+
+    # همگام‌سازیِ ردیفِ تولید محتوا روی فاکتور (ساخت/آپدیت/حذف اگر ۰)
+    from .content_cost import sync_content_invoice_line
+    content_total = sync_content_invoice_line(report)
+    return JsonResponse({'ok': True, 'content_total': content_total})
 
 
 @login_required

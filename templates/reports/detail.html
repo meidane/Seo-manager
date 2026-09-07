@@ -9,9 +9,10 @@
     <h1 contenteditable="true" id="r-title" style="outline:none;border-bottom:1px dashed transparent" onfocus="this.style.borderColor='var(--stroke)'" onblur="this.style.borderColor='transparent'">{{ report.title }}</h1>
     <span class="tag {% if report.status == 'final' %}t-ok{% else %}t-warn{% endif %}" id="r-status">{{ report.get_status_display }}</span>
     <div class="side-c">
+      <button class="btn btn-p" id="r-save-all">ذخیرهٔ گزارش</button>
       <button class="btn" id="r-settings">تنظیمات نمایش مشتری</button>
       <a class="btn" href="{% url 'reports:preview' report.pk %}" target="_blank" rel="noopener">پیش‌نمایش مشتری ↗</a>
-      <button class="btn btn-p" id="r-final">{% if report.status == 'final' %}بازگشت به پیش‌نویس{% else %}نهایی‌سازی{% endif %}</button>
+      <button class="btn" id="r-final">{% if report.status == 'final' %}بازگشت به پیش‌نویس{% else %}نهایی‌سازی{% endif %}</button>
     </div>
   </div>
 
@@ -86,9 +87,7 @@
 
   {# ── توضیحات (ادیتور غنی TinyMCE + کشیدن‌ورهاکردن مستقیم عکس) ── #}
   <section class="card glass">
-    <div class="card-h"><h3>توضیحات</h3>
-      <div class="side-c"><button class="btn btn-sm btn-p" id="r-desc-save">ذخیره توضیحات</button></div>
-    </div>
+    <div class="card-h"><h3>توضیحات</h3></div>
     <div style="padding:12px 14px"><textarea id="r-desc" class="rich-editor" rows="6">{{ report.description }}</textarea></div>
   </section>
 
@@ -121,7 +120,6 @@
       <div class="sec-item" data-sec="{{ s.id }}" style="border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:10px;margin-bottom:10px">
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
           <input class="input sec-title" value="{{ s.title }}" placeholder="عنوانِ سکشن" style="flex:1">
-          <button class="btn btn-sm sec-save" type="button">ذخیره</button>
           <button class="mini sec-del" type="button">حذف</button>
         </div>
         <textarea class="input sec-desc rich-editor" id="sec-desc-{{ s.id }}" rows="4" placeholder="توضیحات…">{{ s.description }}</textarea>
@@ -130,18 +128,18 @@
     </div>
   </section>
 
-  {# ── هزینهٔ تولید محتوا (اسنپ‌شاتِ نرخِ پروژه) ── #}
-  {% if stats.content_cost.total or report.content_hourly_rate or report.content_word_rate %}
+  {# ── هزینهٔ تولید محتوا (نرخِ مؤثر: اسنپ‌شاتِ گزارش یا نرخِ فعلیِ پروژه) ── #}
+  {% if stats.content_cost.hourly or stats.content_cost.word_rate %}
   <section class="card glass">
     <div class="card-h"><h3>هزینهٔ تولید محتوا</h3>
-      <div class="side-c"><span class="tag t-mute" title="نرخ از پروژه در لحظهٔ ساختِ گزارش snapshot شده؛ تغییرِ بعدیِ نرخ این گزارش را عوض نمی‌کند">اسنپ‌شات</span></div>
+      <div class="side-c"><span class="tag t-mute" title="ساعتِ آیتم‌های انتشار/آپدیت/رپورتاژ × نرخِ ساعتی + تعدادِ کلمه × نرخِ کلمه">انتشار/آپدیت/رپورتاژ</span></div>
     </div>
     <div style="padding:12px 16px;display:flex;gap:26px;flex-wrap:wrap;font-size:13px">
-      <span>زمان: <b>{{ stats.content_cost.minutes|hours }} ساعت</b> × {{ report.content_hourly_rate|money }} = <b style="color:var(--info)">{{ stats.content_cost.time|money }}</b></span>
-      <span>کلمه: <b>{{ stats.content_cost.words|fa_digits }}</b> × {{ report.content_word_rate|money }} = <b style="color:var(--info)">{{ stats.content_cost.word|money }}</b></span>
+      <span>زمان: <b>{{ stats.content_cost.minutes|hoursmin }}</b> × {{ stats.content_cost.hourly|money }} = <b style="color:var(--info)">{{ stats.content_cost.time|money }}</b></span>
+      <span>کلمه: <b>{{ stats.content_cost.words|fa_digits }}</b> × {{ stats.content_cost.word_rate|money }} = <b style="color:var(--info)">{{ stats.content_cost.word|money }}</b></span>
       <span>جمعِ تولید محتوا: <b style="color:#6FE3C4">{{ stats.content_cost.total|money }} ریال</b></span>
     </div>
-    <div style="padding:0 16px 12px;color:var(--text-faint);font-size:11.5px">با اتصالِ فاکتور به گزارش، این مبلغ به‌صورتِ یک ردیفِ خودکار به فاکتور اضافه می‌شود (۰ = اضافه نمی‌شود).</div>
+    <div style="padding:0 16px 12px;color:var(--text-faint);font-size:11.5px">اگر فاکتوری به این گزارش وصل باشد، با «ذخیرهٔ گزارش» این مبلغ به‌صورتِ یک ردیفِ «تولید محتوا» در فاکتور ساخته/به‌روزرسانی می‌شود (۰ = ردیفی اضافه/به‌روز نمی‌شود).</div>
   </section>
   {% endif %}
 
@@ -178,11 +176,32 @@ const RID = {{ report.pk }};
 const CLIENT_FIELDS = [{% for k,l in client_fields %}["{{ k }}","{{ l|escapejs }}"]{% if not forloop.last %},{% endif %}{% endfor %}];
 const VISIBLE = {{ visible_fields|safe }};
 
-// ── عنوان و توضیحات (TinyMCE) ──
-document.getElementById('r-title').addEventListener('blur',e=>App.fetchJSON(`/reports/api/${RID}/update/`,{method:'PATCH',body:{title:e.target.textContent.trim()}}));
 const desc=document.getElementById('r-desc');
-function saveDesc(){ if(window.RichText)RichText.save(); return App.fetchJSON(`/reports/api/${RID}/update/`,{method:'PATCH',body:{description:desc.value}}); }
-document.getElementById('r-desc-save').onclick=()=>saveDesc().then(()=>App.toast('توضیحات ذخیره شد','ok'));
+
+// ── ذخیرهٔ یکجای کلِ گزارش (تک‌دکمه، بدونِ اتوسیو) ──
+document.getElementById('r-save-all').onclick=async()=>{
+  if(window.RichText) RichText.save();   // سینکِ همهٔ ادیتورهای TinyMCE به textarea
+  const items=[...document.querySelectorAll('tr[data-row]')].map(tr=>{
+    const id=+tr.dataset.row; const ta=document.getElementById('idesc-'+id);
+    return { id,
+      title:(tr.querySelector('[data-item-title]')||{}).textContent?.trim()||'',
+      estimate:(tr.querySelector('[data-item-est]')||{}).value||'',
+      word_count:(tr.querySelector('[data-item-word]')||{}).value||'',
+      assignee:(tr.querySelector('[data-item-assignee]')||{}).value||'',
+      done_date:(tr.querySelector('[data-item-date]')||{}).value||'',
+      description: ta?ta.value:'' };
+  });
+  const keywords=[...document.querySelectorAll('tr[data-kw]')].map(tr=>({
+    id:+tr.dataset.kw, keyword:tr.querySelector('.kw-word').value, position:tr.querySelector('.kw-pos').value }));
+  const sections=[...document.querySelectorAll('.sec-item')].map(el=>({
+    id:+el.dataset.sec, title:el.querySelector('.sec-title').value, description:el.querySelector('.sec-desc').value }));
+  try{
+    await App.fetchJSON(`/reports/api/${RID}/save-all/`,{method:'POST',body:{
+      title:document.getElementById('r-title').textContent.trim(), description:desc.value,
+      items, keywords, sections }});
+    App.toast('گزارش ذخیره شد','ok'); setTimeout(()=>location.reload(),400);
+  }catch(_){}
+};
 
 // ── لینک عمومی ──
 document.getElementById('r-public').onchange=e=>App.fetchJSON(`/reports/api/${RID}/update/`,{method:'PATCH',body:{is_public:e.target.checked}}).then(()=>App.toast(e.target.checked?'لینک فعال شد':'لینک غیرفعال شد','ok'));
@@ -232,55 +251,35 @@ document.getElementById('p-add').onclick=async()=>{
   await App.fetchJSON(`/reports/api/${RID}/items/`,{method:'POST',body:{task_ids:ids}});
   App.toast('افزوده شد','ok'); location.reload();
 };
-document.getElementById('p-manual').onclick=async()=>{
-  await App.fetchJSON(`/reports/api/${RID}/manual/`,{method:'POST',body:{title:'ردیف دستی جدید',type:'other'}});
-  location.reload();
-};
+document.getElementById('p-manual').onclick=()=>addManual('other', null);
 
-// ── ویرایش inline ردیف‌ها ──
-document.addEventListener('blur',async e=>{
-  if(e.target.matches('[data-item-title]')){
-    await App.fetchJSON(`/reports/api/items/${e.target.dataset.itemTitle}/`,{method:'PATCH',body:{override_title:e.target.textContent.trim()}});
-    App.toast('ذخیره شد','ok');
+// ── افزودنِ ردیفِ دستی (اجاکسی، بدونِ رفرش) ──
+async function addManual(type, sectionEl){
+  const d=await App.fetchJSON(`/reports/api/${RID}/manual/`,{method:'POST',body:{title:'ردیف جدید',type}});
+  const tmp=document.createElement('tbody'); tmp.innerHTML=d.html.trim();
+  const rows=[...tmp.children];
+  let body = sectionEl ? sectionEl.querySelector('.grp-body') : null;
+  if(!body){ // اگر سکشنِ این نوع هنوز وجود ندارد (گزارشِ خالی) → رفرش لازم است
+    location.reload(); return;
   }
-},true);
-document.addEventListener('change',async e=>{
-  if(e.target.matches('[data-item-date]')){
-    await App.fetchJSON(`/reports/api/items/${e.target.dataset.itemDate}/`,{method:'PATCH',body:{override_done_date:e.target.value}});
-    App.toast('تاریخ ذخیره شد','ok');
-  }
-  if(e.target.matches('[data-item-est]')){
-    await App.fetchJSON(`/reports/api/items/${e.target.dataset.itemEst}/`,{method:'PATCH',body:{override_estimate:e.target.value}});
-    App.toast('زمان ذخیره شد','ok');
-  }
-  if(e.target.matches('[data-item-word]')){
-    await App.fetchJSON(`/reports/api/items/${e.target.dataset.itemWord}/`,{method:'PATCH',body:{override_word_count:e.target.value}});
-    App.toast('تعداد کلمه ذخیره شد','ok');
-  }
-  if(e.target.matches('[data-item-assignee]')){
-    await App.fetchJSON(`/reports/api/items/${e.target.dataset.itemAssignee}/`,{method:'PATCH',body:{override_assignee:e.target.value}});
-    App.toast('مسئول ذخیره شد','ok');
-  }
-});
+  rows.forEach(r=>body.appendChild(r));
+  const t=body.querySelector('tr[data-row="'+d.id+'"] [data-item-title]'); if(t) t.focus();
+  App.toast('ردیف اضافه شد — یادت نره «ذخیرهٔ گزارش» را بزنی','ok');
+}
+
+// ── حذفِ ردیف / بازکردنِ توضیح / افزودنِ ردیفِ سکشن (بدونِ اتوسیو) ──
 document.addEventListener('click',async e=>{
   const del=e.target.closest('[data-item-del]');
-  if(del){ if(await App.confirm('این ردیف از گزارش حذف شود؟')){await App.fetchJSON(`/reports/api/items/${del.dataset.itemDel}/`,{method:'DELETE'});del.closest('tr').remove();App.toast('حذف شد','ok');} return; }
-  // بازکردنِ توضیح + init کردنِ TinyMCE (تا بشود عکس گذاشت)
+  if(del){ if(await App.confirm('این ردیف از گزارش حذف شود؟')){await App.fetchJSON(`/reports/api/items/${del.dataset.itemDel}/`,{method:'DELETE'});
+    const tr=del.closest('tr'); const drow=document.getElementById('desc-'+del.dataset.itemDel);
+    if(drow) drow.remove(); tr.remove(); App.toast('حذف شد','ok');} return; }
   const ed=e.target.closest('[data-toggle-desc]');
   if(ed){ const id=ed.dataset.toggleDesc; const row=document.getElementById('desc-'+id);
     if(row){ const open=row.style.display==='none'; row.style.display=open?'':'none';
       if(open && window.RichText){ RichText.init('#idesc-'+id); } }
     return; }
-  // ذخیرهٔ توضیحِ آیتم (از textareaِ TinyMCE)
-  const sv=e.target.closest('.idesc-save');
-  if(sv){ const id=sv.dataset.item; if(window.RichText) RichText.save();
-    const ta=document.getElementById('idesc-'+id);
-    await App.fetchJSON(`/reports/api/items/${id}/`,{method:'PATCH',body:{override_description:ta.value}});
-    App.toast('توضیح ذخیره شد','ok'); return; }
-  // افزودنِ ردیفِ دستی به همین سکشن (با نوعِ همان گروه)
   const ga=e.target.closest('.grp-add');
-  if(ga){ await App.fetchJSON(`/reports/api/${RID}/manual/`,{method:'POST',body:{title:'ردیف جدید',type:ga.dataset.addType}});
-    location.reload(); return; }
+  if(ga){ addManual(ga.dataset.addType, ga.closest('.grp-sec')); return; }
 });
 
 // ── تنظیمات نمایش مشتری ──
@@ -306,13 +305,6 @@ document.getElementById('r-settings').onclick=()=>{
     tr.innerHTML=`<td><input class="input cf-inline kw-word" value=""></td><td><input class="input cf-inline kw-pos" dir="ltr" value=""></td><td><button class="mini kw-del" type="button">×</button></td>`;
     body.appendChild(tr); tr.querySelector('.kw-word').focus();
   };
-  body.addEventListener('change',async e=>{
-    const tr=e.target.closest('tr[data-kw]'); if(!tr)return;
-    if(e.target.matches('.kw-word,.kw-pos')){
-      await App.fetchJSON(`/reports/api/keywords/${tr.dataset.kw}/`,{method:'PATCH',body:{keyword:tr.querySelector('.kw-word').value,position:tr.querySelector('.kw-pos').value}});
-      App.toast('ذخیره شد','ok');
-    }
-  });
   body.addEventListener('click',async e=>{
     const del=e.target.closest('.kw-del'); if(!del)return;
     const tr=del.closest('tr[data-kw]');
@@ -329,7 +321,6 @@ document.getElementById('r-settings').onclick=()=>{
     div.style.cssText='border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:10px;margin-bottom:10px';
     div.innerHTML=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
       <input class="input sec-title" value="سکشنِ جدید" placeholder="عنوانِ سکشن" style="flex:1">
-      <button class="btn btn-sm sec-save" type="button">ذخیره</button>
       <button class="mini sec-del" type="button">حذف</button></div>
       <textarea class="input sec-desc rich-editor" id="sec-desc-${d.id}" rows="4" placeholder="توضیحات…"></textarea>`;
     list.appendChild(div);
@@ -338,11 +329,6 @@ document.getElementById('r-settings').onclick=()=>{
   };
   list.addEventListener('click',async e=>{
     const item=e.target.closest('.sec-item'); if(!item)return;
-    if(e.target.closest('.sec-save')){
-      if(window.RichText) RichText.save();   // sync iframe → textarea قبلِ خواندن
-      await App.fetchJSON(`/reports/api/sections/${item.dataset.sec}/`,{method:'PATCH',body:{title:item.querySelector('.sec-title').value,description:item.querySelector('.sec-desc').value}});
-      App.toast('سکشن ذخیره شد','ok');
-    }
     if(e.target.closest('.sec-del')){
       if(await App.confirm('این سکشن حذف شود؟')){
         if(window.RichText) RichText.remove('#sec-desc-'+item.dataset.sec);

@@ -7,6 +7,7 @@ ReportItem یک **مرجع زنده** به Task است؛ اما هر فیلدی 
 نمایش به مشتری کاملاً قابل‌تنظیم است: `Report.visible_fields` فهرست کلید فیلدهایی
 است که در نسخه‌ی عمومی دیده می‌شوند (عنوان همیشه دیده می‌شود).
 """
+import secrets
 import uuid
 
 from django.db import models
@@ -14,6 +15,13 @@ from django.urls import reverse
 
 from accounts.tenancy import TenantManager, stamp_org
 from core.models import TimeStampedModel
+
+# الفبای کدِ عمومیِ کوتاه (بدونِ کاراکترهای گیج‌کننده l/1/o/0)
+_CODE_ALPHABET = 'abcdefghijkmnpqrstuvwxyz23456789'
+
+
+def gen_public_code(n=8):
+    return ''.join(secrets.choice(_CODE_ALPHABET) for _ in range(n))
 
 # فیلدهایی که در نسخه‌ی عمومی قابل نمایش/مخفی‌شدن‌اند (عنوان همیشه هست)
 CLIENT_FIELDS = [
@@ -67,6 +75,8 @@ class Report(TimeStampedModel):
     status = models.CharField('وضعیت', max_length=10, choices=STATUS_CHOICES, default=DRAFT)
 
     public_token = models.UUIDField('توکن عمومی', default=uuid.uuid4, unique=True, editable=False)
+    # کدِ کوتاهِ لینکِ عمومی (مرتب‌تر از UUID) — /r/<code>/
+    public_code = models.CharField('کدِ عمومی', max_length=16, unique=True, null=True, blank=True, editable=False)
     is_public = models.BooleanField('لینک عمومی فعال', default=False)
     visible_fields = models.JSONField('فیلدهای قابل‌نمایش به مشتری', default=list, blank=True)
 
@@ -100,6 +110,11 @@ class Report(TimeStampedModel):
         # گزارشِ قبلی را عوض نکند.
         if self._state.adding and not (self.content_hourly_rate or self.content_word_rate):
             self.snapshot_content_rates()
+        if not self.public_code:
+            code = gen_public_code()
+            while Report.all_objects.filter(public_code=code).exists():
+                code = gen_public_code()
+            self.public_code = code
         stamp_org(self)
         super().save(*args, **kwargs)
 
@@ -107,7 +122,7 @@ class Report(TimeStampedModel):
         return reverse('reports:detail', args=[self.pk])
 
     def public_url(self):
-        return reverse('report_public', args=[self.public_token])
+        return reverse('report_public', args=[self.public_code or self.public_token])
 
     def sees(self, field_key):
         return field_key in (self.visible_fields or [])
@@ -130,19 +145,31 @@ class Report(TimeStampedModel):
             self.content_hourly_rate = self.project.content_hourly_rate or 0
             self.content_word_rate = self.project.content_word_rate or 0
 
-    def content_cost(self):
-        """هزینهٔ تولید محتوا با نرخِ اسنپ‌شات‌شدهٔ همین گزارش.
+    # سطل‌هایی که ساعتشان در هزینهٔ تولید محتوا شمرده می‌شود: انتشار/آپدیت/رپورتاژ
+    CONTENT_TIME_BUCKETS = ('publish', 'update', 'promo')
 
-        فقط آیتم‌های «انتشار/تولید محتوا» و «آپدیت» شمرده می‌شوند.
-        `time` = Σ(ساعتِ تخمینی × نرخِ ساعتی)، `word` = Σ(تعدادِ کلمه × نرخِ هر کلمه).
-        نرخِ ۰ → آن بخش ۰ (هیچ محاسبه). `total = time + word`.
-        """
+    def content_rates(self):
+        """(نرخِ ساعتی، نرخِ کلمه) مؤثر — اسنپ‌شاتِ گزارش، و اگر ۰ بود، نرخِ فعلیِ پروژه
+        (fallback برای گزارش‌هایی که قبل از تنظیمِ نرخ ساخته شده‌اند)."""
         hourly = self.content_hourly_rate or 0
         word_rate = self.content_word_rate or 0
+        if not hourly and not word_rate and self.project_id:
+            hourly = self.project.content_hourly_rate or 0
+            word_rate = self.project.content_word_rate or 0
+        return hourly, word_rate
+
+    def content_cost(self):
+        """هزینهٔ تولید محتوا.
+
+        ساعت فقط از آیتم‌های «انتشار/تولید محتوا»، «آپدیت» و «رپورتاژ» (`CONTENT_TIME_BUCKETS`).
+        `time` = Σ(ساعتِ تخمینی × نرخِ ساعتی)، `word` = Σ(تعدادِ کلمه × نرخِ هر کلمه).
+        نرخِ ۰ → آن بخش ۰. `total = time + word`.
+        """
+        hourly, word_rate = self.content_rates()
         time_cost = word_cost = 0
         total_min = total_words = 0
         for it in self.items.select_related('task', 'task__type_def').all():
-            if it.bucket not in ('publish', 'update'):
+            if it.bucket not in self.CONTENT_TIME_BUCKETS:
                 continue
             total_min += it.eff_estimate or 0
             total_words += it.eff_word_count or 0
@@ -151,7 +178,8 @@ class Report(TimeStampedModel):
         if word_rate:
             word_cost = int(total_words * word_rate)
         return {'time': time_cost, 'word': word_cost, 'total': time_cost + word_cost,
-                'minutes': total_min, 'words': total_words}
+                'minutes': total_min, 'words': total_words,
+                'hourly': hourly, 'word_rate': word_rate}
 
     def stats(self):
         """آمارِ خلاصهٔ گزارش: تعداد هر سطل + جمعِ زمان/کلمه + هزینهٔ تولید محتوا."""

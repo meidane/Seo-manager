@@ -1,0 +1,20 @@
+{% load seo_extras %}
+<tr data-row="{{ it.id }}">
+  <td><span contenteditable="true" data-item-title="{{ it.id }}" style="outline:none">{{ it.eff_title }}</span>
+    {% if it.eff_url %}<a class="lnk it-linkicon" href="{{ it.eff_url }}" target="_blank" rel="noopener" title="لینک">↗</a>{% endif %}
+    {% if it.task and it.task.status != 'done' %}<span class="tag t-warn" title="این تسک هنوز انجام‌نشده — فقط برای خودِ ما، در گزارشِ مشتری دیده نمی‌شود">⏳ {{ it.task.get_status_display }}</span>{% endif %}</td>
+  <td><input class="input cf-inline" dir="ltr" style="max-width:64px;text-align:center" data-item-est="{{ it.id }}" value="{% if it.eff_estimate %}{{ it.eff_estimate|hoursmin }}{% endif %}" placeholder="0:00" title="ساعت:دقیقه"></td>
+  <td><input class="input cf-inline" dir="ltr" style="max-width:66px;text-align:center" data-item-word="{{ it.id }}" value="{% if it.eff_word_count %}{{ it.eff_word_count }}{% endif %}" placeholder="—"></td>
+  <td><select class="input cf-inline" data-item-assignee="{{ it.id }}"><option value="">—</option>{% for co in colleagues %}<option value="{{ co.id }}" {% if it.eff_assignee.id == co.id %}selected{% endif %}>{{ co.full_name }}</option>{% endfor %}</select></td>
+  <td><input class="input jdate" style="max-width:110px;padding:5px 8px" dir="ltr" data-item-date="{{ it.id }}" value="{{ it.eff_done_date|jalali:'%Y/%m/%d' }}"></td>
+  <td style="white-space:nowrap">
+    <button class="mini" data-toggle-desc="{{ it.id }}">✎ توضیح</button>
+    <button class="mini" data-item-del="{{ it.id }}">حذف</button>
+  </td>
+</tr>
+<tr id="desc-{{ it.id }}" style="display:none">
+  <td colspan="6" style="background:var(--fill)">
+    <textarea class="input idesc rich-editor" id="idesc-{{ it.id }}" data-item-desc="{{ it.id }}" rows="4">{{ it.eff_description }}</textarea>
+    <div style="margin-top:4px"><small style="color:var(--text-faint)">می‌توانی عکس هم بگذاری؛ با «ذخیرهٔ گزارش» ذخیره می‌شود.</small></div>
+  </td>
+</tr>
