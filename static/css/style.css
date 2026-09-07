@@ -1276,11 +1276,20 @@ table.sheet td:not(.edit){padding:6px 9px}
 /* آیکنِ لینکِ صفحه/انتشار در انتهای عنوان (به‌جای ستونِ جدا) */
 .lnk-icon{flex:none;text-decoration:none;font-size:12px;opacity:.7;transition:opacity .12s}
 .lnk-icon:hover{opacity:1}
-/* وضعیت: دراپ‌داون + «— امروز» همیشه یک‌خطی */
+/* وضعیت: دراپ‌داون + «— امروز» همیشه یک‌خطی و کاملاً خوانا (بدونِ بریدنِ «در انتظار») */
 .status-wrap{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.tsheet .row-status{min-width:104px}
+.done-when{white-space:nowrap}
+/* همهٔ سلول‌های جدولِ تسک وسط‌چینِ عمودی — تا عنوان/زمان با فیلدهای بلندتر هم‌ارتفاع دیده شوند */
+.tsheet tbody td{vertical-align:middle}
 /* سلولِ فیلدِ سفارشیِ ویرایشی (وقتی نوع انتخاب شده) */
-.dcell{min-width:150px;max-width:240px}
-.dcell .cf-inline{width:100%;min-width:90px}
+.dcell{min-width:130px;max-width:240px}
+.dcell .cf-inline{width:100%;min-width:80px}
+/* «تعداد کلمه» و اعدادِ سفارشی: باریک، نه تمام‌عرضِ سلول */
+.dcell input.cf-inline[type=number]{max-width:96px}
+.dcell:has(input.cf-inline[type=number]){min-width:0;max-width:110px}
+/* نوعِ تسک فشرده‌تر تا ستونِ عنوان بی‌جهت عریض نشود */
+.ttype-sel{max-width:64px}
 .dcell input.cf-inline[type=checkbox]{width:auto;min-width:0}
 /* توضیحاتِ inline + هر فیلدِ textareaِ سفارشی: ارتفاعِ ~۳ خط، قابلِ کشیدن */
 .cf-desc,.cf-ta{width:100%;min-width:170px;min-height:58px;max-height:200px;resize:vertical;

@@ -26,7 +26,7 @@
     {% if editable %}
     {% for c in extra_columns %}<td class="dcell nowrap-c">{% include "tasks/_cf_cell.html" with t=t c=c %}</td>{% endfor %}
     {# توضیحات inline (متن ساده، بدونِ ابزارِ ادیتور) — خواستِ کاربر: همهٔ فیلدها در inline #}
-    <td class="dcell nowrap-c"><textarea class="tx-inline cf-desc" data-f="description" rows="1" placeholder="توضیحات…">{{ t.description }}</textarea></td>
+    <td class="dcell nowrap-c"><textarea class="tx-inline cf-desc" data-f="description" rows="1" placeholder="توضیحات…">{{ t.description|striptags }}</textarea></td>
     <td class="chk-col">{% if can_edit_task %}<input type="checkbox" class="row-check" data-id="{{ t.id }}">{% endif %}</td>
     {% endif %}
   </tr>

@@ -38,6 +38,17 @@ def is_manager_tier(request):
         m.can('review') or m.can('manage_people') or m.can('view_all_projects')))
 
 
+def is_supervisor(request):
+    """سرپرستِ **واقعی** (برای «تکمیلِ مستقیمِ تسک» / بازبینی): زیرمجموعهٔ مستقیم دارد
+    یا پرمیشنِ `review`/`manage_people`. **`view_all_projects` عمداً اینجا نیست** — آن فقط
+    پرمیشنِ دیدنِ همهٔ پروژه‌هاست، نه سرپرستی؛ کارمندی که فقط برای دیدن `view_all_projects`
+    دارد نباید بتواند تسکِ needs_reviewِ خودش را مستقیم تکمیل کند (خودتاییدی)."""
+    m = getattr(request, 'membership', None)
+    my_colleague = getattr(request.user, 'colleague', None)
+    has_reports = bool(my_colleague and my_colleague.reports.exists())
+    return has_reports or bool(m and (m.can('review') or m.can('manage_people')))
+
+
 def can_manage_colleague(request, target):
     """می‌تواند پروفایلِ این همکارِ مشخص را ویرایش/آرشیو/دسترسی‌دار کند؟ دسترسیِ
     سازمانیِ `manage_people` (همه) یا مدیرِ مستقیم/غیرمستقیمِ همین فرد بودن (فقط

@@ -20,6 +20,11 @@ from . import history as taskhistory
 from .models import Task, TaskComment
 
 
+def _is_manager_tier(request):
+    from colleagues.access import is_supervisor
+    return is_supervisor(request)
+
+
 def _stop_timer(task):
     """اگر تایمرِ تسک در حالِ اجراست، متوقفش کن (زمانِ سپری‌شده را به spent_minutes
     اضافه کن) — روی نمونه اعمال می‌شود، بدونِ save (فراخوان خودش ذخیره می‌کند).
@@ -117,8 +122,17 @@ def _pdate(value):
         return None
 
 
-def apply_fields(task: Task, data: dict):
-    """اعمال فیلدهای مجاز از dict روی نمونه‌ی تسک (بدون save)."""
+def _can_complete_directly(request, task):
+    """مدیر/ناظر (سرپرست‌رده) می‌تواند تسکِ needs_review را مستقیم «انجام‌شده» کند —
+    خودش یا زیرمجموعه‌اش، بدونِ کلمپ به «تکمیل/در انتظارِ بازبینی». **کارمندِ عادی نه**
+    (وگرنه خودتاییدی می‌شد — `all_subordinate_ids` فرد را زیرمجموعهٔ خودش هم می‌شمارد)."""
+    from colleagues.access import is_supervisor
+    return bool(request) and is_supervisor(request)
+
+
+def apply_fields(task: Task, data: dict, request=None):
+    """اعمال فیلدهای مجاز از dict روی نمونه‌ی تسک (بدون save). `request` برای تصمیمِ
+    «آیا این کاربر می‌تواند مستقیم تسک را تکمیل کند» لازم است (مدیر/ناظر)."""
     for f in TEXT_FIELDS + CHOICE_FIELDS:
         if f in data:
             setattr(task, f, data[f] or '')
@@ -193,15 +207,19 @@ def apply_fields(task: Task, data: dict):
         task.planned_time = data['planned_time']
     if 'done_date' in data:
         task.done_date = _pdate(data['done_date'])
-    # تسکِ نیازمندِ بازبینی نمی‌تواند مستقیم «انجام‌شده» شود — فقط «تکمیل/در انتظارِ
-    # بازبینی»؛ فقط تاییدِ مدیر (task_review) آن را DONE می‌کند (پایینِ همین فایل).
-    if task.needs_review and task.status == Task.DONE:
-        task.status = Task.PENDING
-    # اگر وضعیت به «انجام شده» رفت و done_date خالی بود، امروز را بگذار
+    # کلمپِ needs_review→pending **فقط وقتی وضعیت صریحاً در همین درخواست تغییر کرده باشد**
+    # (ویرایشِ فیلدِ دیگرِ تسکِ انجام‌شده نباید تکمیل را از بین ببرد — باگِ رفع‌شده) و
+    # کاربر اجازهٔ تکمیلِ مستقیم نداشته باشد (مدیر/ناظر می‌تواند مستقیم انجام‌شده کند).
+    status_changed = 'status' in data
+    if status_changed and task.needs_review and task.status == Task.DONE:
+        if not _can_complete_directly(request, task):
+            task.status = Task.PENDING
     if task.status == Task.DONE and not task.done_date:
         task.done_date = date.today()
-    # تسکِ «نیاز به اصلاح» که دوباره انجام شد → «بررسی‌نشده» (برای بازبینی مجدد مدیر)
-    if task.status in (Task.DONE, Task.PENDING) and task.review_status == Task.NEEDS_FIX:
+    # تکمیلِ (دوبارهٔ) کار با تغییرِ صریحِ وضعیت → «بررسی‌نشده» تا دوباره در صفِ بازبینی بیاید
+    # (باگِ رفع‌شده: تسکِ approved/needs_fix که دوباره تکمیل می‌شد به صف برنمی‌گشت).
+    if status_changed and task.status in (Task.DONE, Task.PENDING) \
+            and task.review_status in (Task.NEEDS_FIX, Task.APPROVED):
         task.review_status = Task.UNREVIEWED
     # تکمیل/انجام‌شدنِ کار یعنی دیگر کاری روی آن در جریان نیست — تایمرِ فعال را استاپ کن
     if task.status in (Task.DONE, Task.PENDING):
@@ -330,6 +348,7 @@ def task_rows_page(request):
         'extra_columns': visible_task_columns(filters.get('type_def')),
         'editable': bool(m and m.can('edit_task')) and bool(filters.get('type_def')),
         'status_choices': Task.STATUS_CHOICES,
+        'can_complete': _is_manager_tier(request),
         'all_projects': visible_projects.order_by('status', 'name'),
         'all_colleagues': Colleague.objects.order_by('status', 'full_name'),
         'all_types': TaskTypeDef.objects.filter(is_active=True),
@@ -366,6 +385,7 @@ def task_row(request, pk):
         'editable': bool(m and m.can('edit_task')) and bool(request.GET.get('type_def')),
         'hide_project': request.GET.get('hide_project') == '1',
         'status_choices': Task.STATUS_CHOICES,
+        'can_complete': _is_manager_tier(request),
         'all_projects': visible_projects.order_by('status', 'name'),
         'all_colleagues': Colleague.objects.order_by('status', 'full_name'),
         'all_types': TaskTypeDef.objects.filter(is_active=True),
@@ -449,7 +469,7 @@ def task_create(request):
         if assignee:
             data['needs_review'] = assignee.needs_review
     task = Task(created_by=request.user, planned_date=date.today())
-    apply_fields(task, data)
+    apply_fields(task, data, request)
     err = _publish_url_error(task) or _custom_fields_error(task)
     if err:
         return JsonResponse({'detail': err}, status=400)
@@ -541,7 +561,7 @@ def task_detail(request, pk):
     old_assignee_id = task.assignee_id
     old_status = task.status
     before = taskhistory.snapshot(task)
-    apply_fields(task, data)
+    apply_fields(task, data, request)
     err = _publish_url_error(task) or _custom_fields_error(task)
     if err:
         return JsonResponse({'detail': err}, status=400)
@@ -576,8 +596,9 @@ def task_status(request, pk):
     new_status = data.get('status')
     if new_status not in dict(Task.STATUS_CHOICES):
         return JsonResponse({'detail': 'وضعیت نامعتبر'}, status=400)
-    # تسکِ نیازمندِ بازبینی مستقیم «انجام‌شده» نمی‌شود — فقط «تکمیل/در انتظارِ بازبینی»
-    if task.needs_review and new_status == Task.DONE:
+    # تسکِ نیازمندِ بازبینی مستقیم «انجام‌شده» نمی‌شود — فقط «تکمیل/در انتظارِ بازبینی»؛
+    # مگر کاربر مدیر/ناظرِ همین تسک باشد (می‌تواند مستقیم تکمیل کند — خواستِ کاربر).
+    if task.needs_review and new_status == Task.DONE and not _can_complete_directly(request, task):
         new_status = Task.PENDING
     old_status = task.status
     was_done = task.status == Task.DONE
@@ -585,9 +606,9 @@ def task_status(request, pk):
     fields = ['status', 'done_date', 'updated_at']
     if new_status == Task.DONE and not task.done_date:
         task.done_date = date.today()
-    # تسکی که «نیاز به اصلاح» بوده، با انجام‌شدنِ دوباره به «بررسی‌نشده» برمی‌گردد
-    # تا مدیر دوباره بازبینی کند.
-    if new_status in (Task.DONE, Task.PENDING) and task.review_status == Task.NEEDS_FIX:
+    # تکمیلِ (دوبارهٔ) کار → «بررسی‌نشده» تا دوباره در صفِ بازبینی بیاید (needs_fix یا approvedِ قبلی).
+    if new_status in (Task.DONE, Task.PENDING) and task.review_status in (Task.NEEDS_FIX, Task.APPROVED) \
+            and old_status not in (Task.DONE, Task.PENDING):
         task.review_status = Task.UNREVIEWED
         fields.append('review_status')
     # تکمیل/انجام‌شدنِ کار یعنی دیگر کاری روی آن در جریان نیست — تایمرِ فعال را استاپ کن

@@ -76,6 +76,8 @@ class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
         ctx['task_types'] = TaskTypeDef.objects.filter(is_active=True)
         ctx['all_types'] = ctx['task_types']
         ctx['status_choices'] = Task.STATUS_CHOICES
+        from colleagues.access import is_supervisor
+        ctx['can_complete'] = is_supervisor(self.request)   # مدیر گزینهٔ «انجام‌شده» را حتی برای needs_review می‌بیند
         ctx['report_months'] = Task.REPORT_MONTH_CHOICES
         # ستون‌های اضافیِ قابل‌سفارشی‌سازی (بعد از ستون‌های ثابت جدول) — /settings/columns/.
         # عمومی همیشه؛ فیلدهای سفارشیِ نوع فقط وقتی همان نوع فیلتر شده (وگرنه جدول شلوغ می‌شود).

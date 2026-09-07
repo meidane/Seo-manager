@@ -270,6 +270,8 @@ class ProjectDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
         ctx['all_types'] = active_types
         ctx['seo_type'] = seo_type
         ctx['status_choices'] = Task.STATUS_CHOICES
+        from colleagues.access import is_supervisor
+        ctx['can_complete'] = is_supervisor(self.request)
         # ستون‌های سفارشی — بدونِ نوع هیچ ستونِ اضافه‌ای (فقط اصلی، فقط‌خواندنی)
         from core.columns import visible_task_columns
         ctx['seo_cols'] = ctx['extra_columns'] = visible_task_columns(seo_type)
@@ -714,6 +716,7 @@ def seo_task_add(request, pk):
         'all_colleagues': Colleague.objects.filter(status=Colleague.ACTIVE),
         'all_projects': [],
         'status_choices': Task.STATUS_CHOICES,
+        'can_complete': __import__('colleagues.access',fromlist=['is_supervisor']).is_supervisor(request),
         'my_colleague_id': my_c.id if my_c else None,
         'can_manage_any_timer': can_manage_any_timer(mm),
         'can_edit_time': bool(mm and mm.can('edit_time')),
