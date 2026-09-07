@@ -17,6 +17,8 @@
   {# تمِ روشن/تیره: قبل از رنگ‌آمیزی اعمال شود تا پرش (flash) نداشته باشد #}
   <script>try{var t=localStorage.getItem('theme');if(t!=='dark')document.documentElement.setAttribute('data-theme','light');}catch(e){document.documentElement.setAttribute('data-theme','light');}</script>
   {% block head %}{% endblock %}
+  {# کدهای اضافهٔ سازمان (تنظیمات ← کدهای اضافه) — قبل از بسته‌شدنِ head #}
+  {% if current_org.custom_head_html %}{{ current_org.custom_head_html|safe }}{% endif %}
 </head>
 <body>
 <div class="nav-backdrop" id="nav-backdrop"></div>

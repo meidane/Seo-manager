@@ -19,4 +19,7 @@
   {% if 'manage_api_tokens' in org_perms %}
     <a href="{% url 'accounts:api_tokens' %}" class="{% if request.resolver_match.url_name == 'api_tokens' %}on{% endif %}">توکن‌های API</a>
   {% endif %}
+  {% if 'manage_org' in org_perms %}
+    <a href="{% url 'accounts:custom_code' %}" class="{% if request.resolver_match.url_name == 'custom_code' %}on{% endif %}">کدهای اضافه</a>
+  {% endif %}
 </div>

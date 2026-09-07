@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}کدهای اضافه{% endblock %}
+
+{% block content %}
+  {% include "settings/_nav.html" %}
+  <div class="page-h">
+    <h1>کدهای اضافه</h1>
+    <div class="side-c"><button class="btn btn-p" id="cc-save">ذخیره</button></div>
+  </div>
+
+  <section class="card glass">
+    <div style="padding:16px 18px">
+      <p style="color:var(--text-dim);font-size:13px;line-height:1.9;margin-bottom:12px">
+        کدِ HTML زیر <b>قبل از بسته‌شدنِ تگِ <code>&lt;/head&gt;</code></b> در همهٔ صفحه‌ها و
+        در نسخهٔ عمومیِ گزارش‌ها قرار می‌گیرد — مناسبِ کدِ آنالیتیکس، پیکسل، تگِ متا و مانندِ آن.
+        <br><span style="color:var(--danger)">توجه: این کد خام اجرا می‌شود؛ فقط کدِ مطمئن بگذار.</span>
+      </p>
+      <textarea id="cc-code" class="input" dir="ltr" spellcheck="false" rows="16"
+        style="font-family:ui-monospace,Menlo,monospace;font-size:13px;line-height:1.7"
+        placeholder="&lt;!-- مثلاً: --&gt;&#10;&lt;script&gt;...&lt;/script&gt;">{{ org.custom_head_html }}</textarea>
+    </div>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('cc-save').onclick=async()=>{
+  const fd=new FormData(); fd.append('custom_head_html', document.getElementById('cc-code').value);
+  try{ await App.fetchJSON("{% url 'accounts:custom_code_save' %}",{method:'POST',body:fd});
+    App.toast('ذخیره شد','ok'); }catch(_){}
+};
+</script>
+{% endblock %}

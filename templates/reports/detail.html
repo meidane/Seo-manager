@@ -52,7 +52,7 @@
       </div>
       {% if report.project_id %}
       <section id="r-fin-panel" class="pl-panel" hidden style="margin-top:14px">
-        {% include 'finance/_project_ledger.html' with pledger_project_id=report.project_id pledger_lazy=1 %}
+        {% include 'finance/_project_ledger.html' with pledger_project_id=ledger_project_id pledger_lazy=1 %}
       </section>
       {% endif %}
       {% if invoice_ctx %}
@@ -62,7 +62,7 @@
             <tbody>
               {% for li in invoice_ctx.lines %}
                 <tr>
-                  <td>{{ li.category.name|default:"—" }}</td>
+                  <td>{% if li.category %}{{ li.category.name }}{% else %}—{% endif %}</td>
                   <td>{{ li.description|default:"—" }}</td>
                   <td class="num-c">{{ li.qty|fa_digits }}</td>
                   <td class="num-c">{{ li.unit_price|money }}</td>
@@ -248,6 +248,18 @@ document.addEventListener('change',async e=>{
   if(e.target.matches('[data-item-date]')){
     await App.fetchJSON(`/reports/api/items/${e.target.dataset.itemDate}/`,{method:'PATCH',body:{override_done_date:e.target.value}});
     App.toast('تاریخ ذخیره شد','ok');
+  }
+  if(e.target.matches('[data-item-est]')){
+    await App.fetchJSON(`/reports/api/items/${e.target.dataset.itemEst}/`,{method:'PATCH',body:{override_estimate:e.target.value}});
+    App.toast('زمان ذخیره شد','ok');
+  }
+  if(e.target.matches('[data-item-word]')){
+    await App.fetchJSON(`/reports/api/items/${e.target.dataset.itemWord}/`,{method:'PATCH',body:{override_word_count:e.target.value}});
+    App.toast('تعداد کلمه ذخیره شد','ok');
+  }
+  if(e.target.matches('[data-item-assignee]')){
+    await App.fetchJSON(`/reports/api/items/${e.target.dataset.itemAssignee}/`,{method:'PATCH',body:{override_assignee:e.target.value}});
+    App.toast('مسئول ذخیره شد','ok');
   }
 });
 document.addEventListener('click',async e=>{

@@ -26,6 +26,9 @@ class Organization(models.Model):
     slug = models.SlugField('شناسه', max_length=160, unique=True, blank=True)
     is_active = models.BooleanField('فعال', default=True)
     created_at = models.DateTimeField('تاریخ ایجاد', auto_now_add=True)
+    # کدِ HTML دلخواه که **قبل از بسته‌شدنِ <head>** تزریق می‌شود (آنالیتیکس، پیکسل، متا…).
+    # ادمین می‌نویسد؛ خام رندر می‌شود (اعتماد به ادمین) — `core.context_processors`.
+    custom_head_html = models.TextField('کدهای اضافه (قبل از </head>)', blank=True)
 
     class Meta:
         verbose_name = 'سازمان'

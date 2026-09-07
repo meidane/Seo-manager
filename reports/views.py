@@ -121,6 +121,12 @@ class ReportDetailView(LoginRequiredMixin, DetailView):
         ctx['sections'] = list(self.object.sections.all())
         ctx['keywords'] = list(self.object.keywords.all())
         ctx['stats'] = self.object.stats()
+        from colleagues.models import Colleague
+        ctx['colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)
+        # ویجتِ گزارشِ مالی: پروژهٔ فاکتورِ متصل (اگر هست) وگرنه پروژهٔ گزارش — تا آنچه در
+        # کارتِ فاکتور می‌بیند با گردشِ حساب یکی باشد (فاکتورِ cross-projectـ متصل هم دیده شود).
+        ctx['ledger_project_id'] = (self.object.invoice.project_id
+                                    if self.object.invoice_id else self.object.project_id)
         # ماه‌های گزارشِ تعریف‌شده (برای فیلترِ «ایمپورت بر اساسِ ماهِ گزارش»)
         from core.jalali import MONTH_NAMES
         from tasks.models import ReportPeriod
@@ -245,6 +251,28 @@ def _fa(d):
     return format_jalali(d) if d else ''
 
 
+def _parse_hmm(val):
+    """«H:MM» یا «H» یا دقیقهٔ خام → دقیقه (int) یا None اگر خالی/نامعتبر."""
+    s = str(val or '').strip().replace('۰', '0').replace('۱', '1').replace('۲', '2') \
+        .replace('۳', '3').replace('۴', '4').replace('۵', '5').replace('۶', '6') \
+        .replace('۷', '7').replace('۸', '8').replace('۹', '9')
+    if not s:
+        return None
+    if ':' in s:
+        parts = s.split(':')
+        try:
+            h = int(parts[0] or 0)
+            m = int(parts[1] or 0)
+            return h * 60 + m
+        except (ValueError, TypeError):
+            return None
+    try:
+        # عدد تنها = ساعت (مثلِ «2» یا «2.5») → دقیقه
+        return int(round(float(s) * 60))
+    except (ValueError, TypeError):
+        return None
+
+
 @login_required
 @require_http_methods(['POST'])
 def add_items(request, pk):
@@ -292,6 +320,13 @@ def item_edit(request, pk):
             item.override_done_date = parse_jalali(val) if val else None
         except (ValueError, TypeError):
             pass
+    if 'override_estimate' in d:
+        item.override_estimate = _parse_hmm(d['override_estimate'])
+    if 'override_word_count' in d:
+        wc = str(d['override_word_count'] or '').strip()
+        item.override_word_count = int(wc) if wc.isdigit() else None
+    if 'override_assignee' in d:
+        item.override_assignee_id = d['override_assignee'] or None
     item.save()
     return JsonResponse({'ok': True, 'title': item.eff_title,
                          'done_date': _fa(item.eff_done_date)})

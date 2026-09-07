@@ -15,6 +15,8 @@ urlpatterns = [
     # هابِ تنظیمات (تکِ لینکِ سایدبار) + ویرایشِ نامِ سازمان
     path('settings/', views.SettingsHomeView.as_view(), name='settings_home'),
     path('settings/api/organization/', views.organization_edit, name='organization_edit'),
+    path('settings/custom-code/', views.CustomCodeView.as_view(), name='custom_code'),
+    path('settings/custom-code/save/', views.custom_code_save, name='custom_code_save'),
 
     # تیم‌ها و نقش‌ها — دو تبِ جدا (خودِ «افراد» به colleagues:list منتقل شده)
     path('settings/teams/', views.TeamsView.as_view(), name='teams'),

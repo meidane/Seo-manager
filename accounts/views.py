@@ -86,6 +86,31 @@ def organization_edit(request):
     return JsonResponse({'ok': True, 'name': org.name})
 
 
+class CustomCodeView(LoginRequiredMixin, TemplateView):
+    """تبِ «کدهای اضافه» — کدِ HTML دلخواه که قبل از بسته‌شدنِ <head> تزریق می‌شود
+    (آنالیتیکس، پیکسل، متا…). گیت: `manage_org`."""
+
+    template_name = 'accounts/custom_code.html'
+
+    def get_context_data(self, **kwargs):
+        _require(self.request, 'manage_org')
+        ctx = super().get_context_data(**kwargs)
+        ctx['org'] = self.request.organization
+        ctx['page_title'] = 'کدهای اضافه'
+        return ctx
+
+
+@login_required
+@require_http_methods(['POST'])
+def custom_code_save(request):
+    org = _require(request, 'manage_org')
+    # خام ذخیره می‌شود (اعتماد به ادمین) — این فیلد عمداً پاکسازی نمی‌شود چون هدفش
+    # قراردادنِ اسکریپت/متایِ دلخواهِ خودِ ادمین است.
+    org.custom_head_html = request.POST.get('custom_head_html', '')
+    org.save(update_fields=['custom_head_html'])
+    return JsonResponse({'ok': True})
+
+
 @login_required
 @require_http_methods(['POST'])
 def profile_edit(request):

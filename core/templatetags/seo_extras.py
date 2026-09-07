@@ -74,6 +74,18 @@ def hours(minutes):
     return f'{m / 60:.1f}'.rstrip('0').rstrip('.')
 
 
+@register.filter(name='hoursmin')
+def hoursmin(minutes):
+    """دقیقه → «H:MM» (مثلاً 120→«2:00»، 150→«2:30»). صفر/خالی → «—»."""
+    try:
+        m = int(minutes or 0)
+    except (ValueError, TypeError):
+        return '—'
+    if not m:
+        return '—'
+    return f'{m // 60}:{m % 60:02d}'
+
+
 @register.filter(name='money')
 def money(value):
     """قالب‌بندی مبلغ با جداکننده‌ی هزارگان و ارقامِ لاتین (طبق درخواست)."""

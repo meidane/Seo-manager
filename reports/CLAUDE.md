@@ -150,6 +150,25 @@ project_balance(report.project_id)` (همان منبعِ واحدِ ستونِ �
 invoice_receipt_url` از `invoice.reports`). آپلودِ عمومی به CSRF نیاز دارد → `{% csrf_token %}`
 در `public.html` + هدرِ `X-CSRFToken`.
 
+## ویرایشگرِ آیتم: override زمان/کلمه/مسئول (این تغییر)
+`ReportItem` سه override جدید دارد: `override_estimate`(دقیقه)، `override_word_count`،
+`override_assignee`(FK Colleague) — با propertyهای `eff_estimate/eff_word_count/eff_assignee`
+(override اگر پر باشد وگرنه تسک). در `_groups.html` هر ردیف ستون‌های **زمان(H:MM)** + **کلمه**
++ **مسئول(select از `colleagues`)** + تاریخ دارد، همه inline قابلِ‌ویرایش و برای **ردیفِ دستی** هم
+کار می‌کنند. ذخیره: `item_edit` (زمان با `_parse_hmm`: «۲:۳۰»→۱۵۰ دقیقه، یا عددِ تنها=ساعت).
+نمایشِ زمان با فیلترِ `hoursmin`(دقیقه→«H:MM») و `.t-nowrap`. مسئول/تاریخ فقط اگر در
+`visible_fields` باشند به مشتری نشان داده می‌شوند.
+
+## گزارشِ مالیِ ویجت در صفحهٔ گزارش = پروژهٔ فاکتورِ متصل
+`ReportDetailView.ledger_project_id` = پروژهٔ **فاکتورِ متصل** (اگر هست) وگرنه پروژهٔ گزارش —
+تا اگر فاکتورِ cross-project وصل شده باشد، ویجت همان را نشان دهد (باگِ «در فاکتور درست، در
+گزارشِ پروژه خالی»).
+
+## کدهای اضافه (custom head)
+`Organization.custom_head_html` (خام، بدونِ پاکسازی — اعتماد به ادمین) از تبِ «کدهای اضافه»
+(`accounts:custom_code`، گیت `manage_org`) قبل از `</head>` در `base.html` (`current_org`) و
+`public.html` (`report.organization`) تزریق می‌شود — آنالیتیکس/پیکسل/متا.
+
 ## ردیفِ دستی در هر سکشن + ادیتورِ عکس‌دارِ آیتم
 - هر گروهِ `_groups.html` دکمهٔ **«＋ افزودن ردیف»** دارد که ردیفِ دستیِ **همان نوع** می‌سازد
   (`add_manual` با `type=g.add_type` که `grouped_items` می‌دهد — اولین task_typeِ سطل)؛

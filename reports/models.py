@@ -177,6 +177,10 @@ class ReportItem(models.Model):
     override_title = models.CharField('عنوان (override)', max_length=255, blank=True)
     override_done_date = models.DateField('تاریخ انجام (override)', null=True, blank=True)
     override_description = models.TextField('توضیحات (override)', blank=True)
+    override_estimate = models.PositiveIntegerField('زمان به دقیقه (override)', null=True, blank=True)
+    override_word_count = models.PositiveIntegerField('تعداد کلمه (override)', null=True, blank=True)
+    override_assignee = models.ForeignKey('colleagues.Colleague', verbose_name='مسئول (override)',
+        on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
 
     # برای ردیف دستی (بدون تسک)
     manual_type = models.CharField('نوع (ردیف دستی)', max_length=20, blank=True)
@@ -225,11 +229,19 @@ class ReportItem(models.Model):
 
     @property
     def eff_estimate(self):
+        if self.override_estimate is not None:
+            return self.override_estimate
         return self.task.estimate_minutes if self.task else None
 
     @property
     def eff_word_count(self):
+        if self.override_word_count is not None:
+            return self.override_word_count
         return (self.task.word_count if self.task else 0) or 0
+
+    @property
+    def eff_assignee(self):
+        return self.override_assignee or (self.task.assignee if self.task else None)
 
     @property
     def eff_url(self):
@@ -246,16 +258,18 @@ class ReportItem(models.Model):
             return format_jalali(self.eff_done_date)
         if key == 'published_url':
             return self.eff_url
+        # این‌ها برای ردیفِ دستی هم مقدارِ override دارند (t لازم نیست):
+        if key == 'assignee':
+            a = self.eff_assignee
+            return a.full_name if a else ''
+        if key == 'word_count':
+            return self.eff_word_count or ''
         if not t:
             return ''
         if key == 'planned_date':
             return format_jalali(t.planned_date)
-        if key == 'assignee':
-            return t.assignee.full_name if t.assignee else ''
         if key == 'status':
             return t.get_status_display()
-        if key == 'word_count':
-            return t.word_count
         if key == 'seo_title':
             return t.seo_title
         if key == 'keywords':
