@@ -17,7 +17,8 @@ from core.models import Attachment
 from projects.models import Project
 from tasks.models import Task
 
-from .models import BUCKETS, CLIENT_FIELDS, TYPE_TO_BUCKET, Report, ReportItem
+from .models import (BUCKETS, CLIENT_FIELDS, TYPE_TO_BUCKET, Report, ReportItem,
+                     ReportKeyword, ReportSection)
 
 # پاکسازی HTML ادیتور توضیحات
 ALLOWED_TAGS = ['p', 'br', 'b', 'strong', 'i', 'em', 'u', 'h2', 'h3', 'ul', 'ol',
@@ -112,6 +113,9 @@ class ReportDetailView(LoginRequiredMixin, DetailView):
         ctx['invoices'] = Invoice.objects.select_related('project')
         ctx['invoice_ctx'] = _invoice_ctx(self.object)
         ctx['client_balance'] = project_balance(self.object.project_id)
+        ctx['sections'] = list(self.object.sections.all())
+        ctx['keywords'] = list(self.object.keywords.all())
+        ctx['stats'] = self.object.stats()
         # ماه‌های گزارشِ تعریف‌شده (برای فیلترِ «ایمپورت بر اساسِ ماهِ گزارش»)
         from core.jalali import MONTH_NAMES
         from tasks.models import ReportPeriod
@@ -124,17 +128,21 @@ class ReportDetailView(LoginRequiredMixin, DetailView):
 
 
 def _public_report_ctx(report, ctx):
-    """context مشترکِ نسخه‌ی عمومی/پیش‌نمایش (گروه‌ها، فیلدهای مجاز، فاکتور، حساب‌های
-    بانکی برای مشتری، رسید)."""
+    """context مشترکِ نسخه‌ی عمومی/پیش‌نمایش (گروه‌ها، فیلدهای مجاز، سکشن‌ها، کلماتِ
+    کلیدی، آمار، فاکتور، حساب‌های بانکی، رسید)."""
     from finance.models import BankAccount
     ctx['groups'] = report.grouped_items()
     ctx['visible'] = report.visible_fields or []
     ctx['fields'] = [(k, lbl) for k, lbl in CLIENT_FIELDS if report.sees(k)]
+    ctx['sections'] = list(report.sections.all())
+    ctx['keywords'] = list(report.keywords.all())
+    ctx['stats'] = report.stats()
     inv_ctx = _invoice_ctx(report)
     ctx['invoice_ctx'] = inv_ctx
-    # حساب‌های بانکیِ سازمان (فقط وقتی فاکتور هست) — برای واریزِ مشتری، با دکمهٔ کپی
+    # فقط حساب‌هایی که «نمایش زیرِ فاکتورِ مشتری» تیک دارند (نه همهٔ حساب‌ها) — معمولاً یکی
     ctx['bank_accounts'] = (list(BankAccount.all_objects.filter(
-        organization_id=report.organization_id, is_active=True)) if inv_ctx else [])
+        organization_id=report.organization_id, is_active=True,
+        show_on_invoice=True)) if inv_ctx else [])
     return ctx
 
 
@@ -289,6 +297,66 @@ def reorder(request, pk):
     return JsonResponse({'ok': True})
 
 
+# ── سکشن‌های سفارشی (عنوان + توضیحات؛ «افزودن سکشن و نمودار») ──────────────
+
+@login_required
+@require_http_methods(['POST'])
+def section_add(request, pk):
+    report = get_object_or_404(Report, pk=pk)
+    d = _body(request)
+    s = ReportSection.objects.create(
+        report=report, order=report.sections.count(),
+        title=(d.get('title') or 'سکشنِ جدید')[:200],
+        description=clean_html(d.get('description', '')))
+    return JsonResponse({'ok': True, 'id': s.id, 'title': s.title})
+
+
+@login_required
+@require_http_methods(['PATCH', 'DELETE'])
+def section_edit(request, pk):
+    s = get_object_or_404(ReportSection, pk=pk)
+    if request.method == 'DELETE':
+        s.delete()
+        return JsonResponse({'ok': True})
+    d = _body(request)
+    if 'title' in d:
+        s.title = (d['title'] or '')[:200]
+    if 'description' in d:
+        s.description = clean_html(d['description'])
+    s.save()
+    return JsonResponse({'ok': True, 'title': s.title})
+
+
+# ── جایگاهِ کلماتِ کلیدی (فعلاً دستی؛ بعداً به بخشِ track وصل می‌شود) ─────────
+
+@login_required
+@require_http_methods(['POST'])
+def keyword_add(request, pk):
+    report = get_object_or_404(Report, pk=pk)
+    d = _body(request)
+    kw = ReportKeyword.objects.create(
+        report=report, order=report.keywords.count(),
+        keyword=(d.get('keyword') or '')[:200],
+        position=(d.get('position') or '')[:30])
+    return JsonResponse({'ok': True, 'id': kw.id})
+
+
+@login_required
+@require_http_methods(['PATCH', 'DELETE'])
+def keyword_edit(request, pk):
+    kw = get_object_or_404(ReportKeyword, pk=pk)
+    if request.method == 'DELETE':
+        kw.delete()
+        return JsonResponse({'ok': True})
+    d = _body(request)
+    if 'keyword' in d:
+        kw.keyword = (d['keyword'] or '')[:200]
+    if 'position' in d:
+        kw.position = (d['position'] or '')[:30]
+    kw.save()
+    return JsonResponse({'ok': True})
+
+
 @login_required
 @require_http_methods(['PATCH'])
 def report_update(request, pk):
@@ -305,10 +373,17 @@ def report_update(request, pk):
         report.is_public = bool(d['is_public'])
     if 'status' in d:
         report.status = d['status']
+    invoice_changed = 'invoice' in d and str(d.get('invoice') or '') != str(report.invoice_id or '')
     if 'invoice' in d:
         report.invoice_id = d['invoice'] or None
     report.save()
-    return JsonResponse({'ok': True, 'public_url': report.public_url(), 'is_public': report.is_public})
+    # با اتصالِ فاکتورِ جدید، ردیفِ خودکارِ «تولید محتوا» (اگر هزینه > ۰) اضافه شود
+    added_content_line = False
+    if invoice_changed and report.invoice_id:
+        from .content_cost import ensure_content_invoice_line
+        added_content_line = bool(ensure_content_invoice_line(report))
+    return JsonResponse({'ok': True, 'public_url': report.public_url(),
+                         'is_public': report.is_public, 'content_line_added': added_content_line})
 
 
 @login_required

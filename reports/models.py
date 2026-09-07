@@ -70,6 +70,11 @@ class Report(TimeStampedModel):
     is_public = models.BooleanField('لینک عمومی فعال', default=False)
     visible_fields = models.JSONField('فیلدهای قابل‌نمایش به مشتری', default=list, blank=True)
 
+    # اسنپ‌شاتِ نرخِ تولید محتوا (از پروژه، موقعِ ساخت) — تغییرِ بعدیِ نرخِ پروژه
+    # نباید این گزارش را عوض کند. ۰ = محاسبه نشود.
+    content_hourly_rate = models.BigIntegerField('نرخِ ساعتیِ تولید محتوا (اسنپ‌شات)', default=0)
+    content_word_rate = models.BigIntegerField('نرخِ هر کلمهٔ تولید محتوا (اسنپ‌شات)', default=0)
+
     organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
     objects = TenantManager()
     all_objects = models.Manager()
@@ -88,6 +93,10 @@ class Report(TimeStampedModel):
             self.visible_fields = list(DEFAULT_VISIBLE)
         if self.organization_id is None and self.project_id:
             self.organization_id = self.project.organization_id
+        # اسنپ‌شاتِ نرخِ تولید محتوا فقط موقعِ ساخت (نه ویرایش) — تغییرِ بعدیِ نرخِ پروژه
+        # گزارشِ قبلی را عوض نکند.
+        if self._state.adding and not (self.content_hourly_rate or self.content_word_rate):
+            self.snapshot_content_rates()
         stamp_org(self)
         super().save(*args, **kwargs)
 
@@ -110,6 +119,49 @@ class Report(TimeStampedModel):
                 out.append({'key': key, 'label': label, 'items': bucket,
                             'cols': BUCKET_COLS.get(key, {'word': False, 'link': False})})
         return out
+
+    def snapshot_content_rates(self):
+        """نرخِ تولید محتوا را از پروژه روی گزارش کپی می‌کند (اسنپ‌شات موقعِ ساخت)."""
+        if self.project_id:
+            self.content_hourly_rate = self.project.content_hourly_rate or 0
+            self.content_word_rate = self.project.content_word_rate or 0
+
+    def content_cost(self):
+        """هزینهٔ تولید محتوا با نرخِ اسنپ‌شات‌شدهٔ همین گزارش.
+
+        فقط آیتم‌های «انتشار/تولید محتوا» و «آپدیت» شمرده می‌شوند.
+        `time` = Σ(ساعتِ تخمینی × نرخِ ساعتی)، `word` = Σ(تعدادِ کلمه × نرخِ هر کلمه).
+        نرخِ ۰ → آن بخش ۰ (هیچ محاسبه). `total = time + word`.
+        """
+        hourly = self.content_hourly_rate or 0
+        word_rate = self.content_word_rate or 0
+        time_cost = word_cost = 0
+        total_min = total_words = 0
+        for it in self.items.select_related('task', 'task__type_def').all():
+            if it.bucket not in ('publish', 'update'):
+                continue
+            total_min += it.eff_estimate or 0
+            total_words += it.eff_word_count or 0
+        if hourly:
+            time_cost = int(round(total_min / 60 * hourly))
+        if word_rate:
+            word_cost = int(total_words * word_rate)
+        return {'time': time_cost, 'word': word_cost, 'total': time_cost + word_cost,
+                'minutes': total_min, 'words': total_words}
+
+    def stats(self):
+        """آمارِ خلاصهٔ گزارش: تعداد هر سطل + جمعِ زمان/کلمه + هزینهٔ تولید محتوا."""
+        groups = self.grouped_items()
+        total_min = total_words = 0
+        for it in self.items.all():
+            total_min += it.eff_estimate or 0
+            total_words += it.eff_word_count or 0
+        return {
+            'buckets': [{'key': g['key'], 'label': g['label'], 'count': len(g['items'])} for g in groups],
+            'item_count': sum(len(g['items']) for g in groups),
+            'minutes': total_min, 'words': total_words,
+            'content_cost': self.content_cost(),
+        }
 
 
 class ReportItem(models.Model):
@@ -172,6 +224,10 @@ class ReportItem(models.Model):
         return self.task.estimate_minutes if self.task else None
 
     @property
+    def eff_word_count(self):
+        return (self.task.word_count if self.task else 0) or 0
+
+    @property
     def eff_url(self):
         # page_link = فیلدِ سفارشیِ is_page_link (سئوِ جدید) یا published_urlِ هسته — منبعِ واحد
         return (self.task.page_link if self.task else '') or self.manual_url
@@ -203,3 +259,41 @@ class ReportItem(models.Model):
         if key == 'review_status':
             return t.get_review_status_display()
         return ''
+
+
+class ReportSection(models.Model):
+    """سکشنِ سفارشیِ گزارش («افزودن سکشن و نمودار») — عنوان + توضیحاتِ HTML، دلخواه."""
+    report = models.ForeignKey(Report, verbose_name='گزارش', on_delete=models.CASCADE, related_name='sections')
+    title = models.CharField('عنوان', max_length=200)
+    description = models.TextField('توضیحات', blank=True)  # HTML پاکسازی‌شده
+    order = models.PositiveIntegerField('ترتیب', default=0)
+
+    class Meta:
+        verbose_name = 'سکشنِ گزارش'
+        verbose_name_plural = 'سکشن‌های گزارش'
+        ordering = ['order', 'id']
+
+    def __str__(self):
+        return self.title
+
+
+class ReportKeyword(models.Model):
+    """جایگاهِ یک کلمهٔ کلیدی در گزارش (فعلاً دستی).
+
+    **اتصالِ آینده (خواستِ صریحِ کاربر):** این سکشن باید به بخشِ ردیابیِ کلماتِ کلیدی
+    (`seo/models.py` + افزونهٔ مرورگر `seo/api.py`) وصل شود — جایگاه‌های گزارش ↔ تسک‌ها
+    ↔ رپورتاژ ↔ اکستنشن با **هیستوریِ** جایگاه. فعلاً `position` دستی پر می‌شود؛ بعداً
+    از منبعِ واحدِ `seo/rank.py` می‌آید. جزئیات: `reports/CLAUDE.md`.
+    """
+    report = models.ForeignKey(Report, verbose_name='گزارش', on_delete=models.CASCADE, related_name='keywords')
+    keyword = models.CharField('کلمهٔ کلیدی', max_length=200)
+    position = models.CharField('جایگاه', max_length=30, blank=True)  # رشته: «۳» یا «۳ (+۲)» یا خالی
+    order = models.PositiveIntegerField('ترتیب', default=0)
+
+    class Meta:
+        verbose_name = 'کلمهٔ کلیدیِ گزارش'
+        verbose_name_plural = 'کلماتِ کلیدیِ گزارش'
+        ordering = ['order', 'id']
+
+    def __str__(self):
+        return f'{self.keyword} — {self.position}'

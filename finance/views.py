@@ -488,8 +488,11 @@ def project_ledger_api(request):
         return JsonResponse({'detail': 'پروژه یافت نشد'}, status=404)
     start = _pj(request.GET.get('from'))
     end = _pj(request.GET.get('to'))
-    default_range = not (start and end)
-    if default_range:
+    show_all = request.GET.get('all') == '1'
+    default_range = not (start and end) and not show_all
+    if show_all:
+        start = end = None            # کلِ تاریخ
+    elif default_range:
         start, end = last_3_months_range()
     data = project_ledger(project_id, start, end)
     rows = [{
@@ -500,8 +503,9 @@ def project_ledger_api(request):
     } for r in data['rows']]
     return JsonResponse({
         'project': proj.name,
-        'from': format_jalali(start), 'to': format_jalali(end),
-        'default_range': default_range,
+        'from': format_jalali(start) if start else 'ابتدا',
+        'to': format_jalali(end) if end else 'اکنون',
+        'default_range': default_range, 'show_all': show_all,
         'rows': rows,
         'total_deposit': data['total_deposit'],
         'total_withdrawal': data['total_withdrawal'],
@@ -521,7 +525,9 @@ def bank_create(request):
         return JsonResponse({'detail': 'نام لازم است'}, status=400)
     b = BankAccount.objects.create(
         name=d['name'], bank=d.get('bank', ''), color=d.get('color', '#4183F2'),
-        card_number=d.get('card_number', ''), initial_balance=parse_amount(d.get('initial_balance', 0)),
+        card_number=d.get('card_number', ''), sheba=d.get('sheba', ''),
+        show_on_invoice=bool(d.get('show_on_invoice')),
+        initial_balance=parse_amount(d.get('initial_balance', 0)),
         created_by=request.user)
     return JsonResponse({'id': b.id}, status=201)
 
@@ -535,13 +541,15 @@ def bank_edit(request, pk):
         b.delete()
         return JsonResponse({'ok': True})
     d = _body(request)
-    for f in ('name', 'bank', 'color', 'card_number'):
+    for f in ('name', 'bank', 'color', 'card_number', 'sheba'):
         if f in d:
             setattr(b, f, d[f])
     if 'initial_balance' in d:
         b.initial_balance = parse_amount(d['initial_balance'])
     if 'is_active' in d:
         b.is_active = bool(d['is_active'])
+    if 'show_on_invoice' in d:
+        b.show_on_invoice = bool(d['show_on_invoice'])
     b.save()
     return JsonResponse({'ok': True})
 
@@ -1068,8 +1076,13 @@ def invoice_create(request):
     _save_lines(inv, d.get('lines', []))
     # اتصالِ خودکار به گزارش (اگر از دکمه‌ی «＋ فاکتور جدید»ِ صفحه‌ی گزارش آمده‌ایم)
     if d.get('report'):
+        from reports.content_cost import ensure_content_invoice_line
         from reports.models import Report
-        Report.objects.filter(id=d['report']).update(invoice=inv)
+        rep = Report.objects.filter(id=d['report']).first()
+        if rep:
+            rep.invoice = inv
+            rep.save(update_fields=['invoice', 'updated_at'])
+            ensure_content_invoice_line(rep)  # ردیفِ خودکارِ تولید محتوا (اگر هزینه > ۰)
     return JsonResponse({'id': inv.id, 'number': inv.number}, status=201)
 
 

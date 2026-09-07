@@ -93,6 +93,59 @@
     <div style="padding:12px 14px"><textarea id="r-desc" class="rich-editor" rows="6">{{ report.description }}</textarea></div>
   </section>
 
+  {# ── جایگاهِ کلماتِ کلیدی (بعداً به بخشِ track وصل می‌شود) ── #}
+  <section class="card glass">
+    <div class="card-h"><h3>جایگاهِ کلماتِ کلیدی</h3>
+      <div class="side-c"><span class="tag t-mute" title="فعلاً دستی؛ بعداً به بخشِ ردیابیِ کلمات کلیدی و افزونهٔ کروم وصل می‌شود">دستی</span></div>
+    </div>
+    <div style="padding:10px 14px">
+      <table class="tsheet" id="kw-table"><thead><tr><th>کلمهٔ کلیدی</th><th style="width:130px">جایگاه</th><th style="width:44px"></th></tr></thead>
+        <tbody id="kw-body">
+          {% for kw in keywords %}
+          <tr data-kw="{{ kw.id }}"><td><input class="input cf-inline kw-word" value="{{ kw.keyword }}"></td>
+            <td><input class="input cf-inline kw-pos" dir="ltr" value="{{ kw.position }}"></td>
+            <td><button class="mini kw-del" type="button">×</button></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <button class="btn btn-sm" id="kw-add" style="margin-top:8px">＋ افزودن کلمه</button>
+    </div>
+  </section>
+
+  {# ── سکشن‌های سفارشی (عنوان + توضیحات؛ «افزودن سکشن و نمودار») ── #}
+  <section class="card glass">
+    <div class="card-h"><h3>افزودن سکشن و نمودار</h3>
+      <div class="side-c"><button class="btn btn-sm" id="sec-add">＋ سکشنِ جدید</button></div>
+    </div>
+    <div style="padding:10px 14px" id="sec-list">
+      {% for s in sections %}
+      <div class="sec-item" data-sec="{{ s.id }}" style="border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:10px;margin-bottom:10px">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+          <input class="input sec-title" value="{{ s.title }}" placeholder="عنوانِ سکشن" style="flex:1">
+          <button class="btn btn-sm sec-save" type="button">ذخیره</button>
+          <button class="mini sec-del" type="button">حذف</button>
+        </div>
+        <textarea class="input sec-desc rich-editor" id="sec-desc-{{ s.id }}" rows="4" placeholder="توضیحات…">{{ s.description }}</textarea>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  {# ── هزینهٔ تولید محتوا (اسنپ‌شاتِ نرخِ پروژه) ── #}
+  {% if stats.content_cost.total or report.content_hourly_rate or report.content_word_rate %}
+  <section class="card glass">
+    <div class="card-h"><h3>هزینهٔ تولید محتوا</h3>
+      <div class="side-c"><span class="tag t-mute" title="نرخ از پروژه در لحظهٔ ساختِ گزارش snapshot شده؛ تغییرِ بعدیِ نرخ این گزارش را عوض نمی‌کند">اسنپ‌شات</span></div>
+    </div>
+    <div style="padding:12px 16px;display:flex;gap:26px;flex-wrap:wrap;font-size:13px">
+      <span>زمان: <b>{{ stats.content_cost.minutes|hours }} ساعت</b> × {{ report.content_hourly_rate|money }} = <b style="color:var(--info)">{{ stats.content_cost.time|money }}</b></span>
+      <span>کلمه: <b>{{ stats.content_cost.words|fa_digits }}</b> × {{ report.content_word_rate|money }} = <b style="color:var(--info)">{{ stats.content_cost.word|money }}</b></span>
+      <span>جمعِ تولید محتوا: <b style="color:#6FE3C4">{{ stats.content_cost.total|money }} ریال</b></span>
+    </div>
+    <div style="padding:0 16px 12px;color:var(--text-faint);font-size:11.5px">با اتصالِ فاکتور به گزارش، این مبلغ به‌صورتِ یک ردیفِ خودکار به فاکتور اضافه می‌شود (۰ = اضافه نمی‌شود).</div>
+  </section>
+  {% endif %}
+
   {# ── ایمپورتِ تسک از پروژه ── #}
   <section class="card glass">
     <div class="card-h"><h3>ایمپورت تسک‌ها</h3>
@@ -232,5 +285,60 @@ document.getElementById('r-settings').onclick=()=>{
     App.closeModal(); App.toast('تنظیمات ذخیره شد','ok'); VISIBLE.length=0; sel.forEach(x=>VISIBLE.push(x));
   };
 };
+
+// ── جایگاهِ کلماتِ کلیدی ──
+(function(){
+  const body=document.getElementById('kw-body');
+  document.getElementById('kw-add').onclick=async()=>{
+    const d=await App.fetchJSON(`/reports/api/${RID}/keywords/`,{method:'POST',body:{keyword:'',position:''}});
+    const tr=document.createElement('tr'); tr.dataset.kw=d.id;
+    tr.innerHTML=`<td><input class="input cf-inline kw-word" value=""></td><td><input class="input cf-inline kw-pos" dir="ltr" value=""></td><td><button class="mini kw-del" type="button">×</button></td>`;
+    body.appendChild(tr); tr.querySelector('.kw-word').focus();
+  };
+  body.addEventListener('change',async e=>{
+    const tr=e.target.closest('tr[data-kw]'); if(!tr)return;
+    if(e.target.matches('.kw-word,.kw-pos')){
+      await App.fetchJSON(`/reports/api/keywords/${tr.dataset.kw}/`,{method:'PATCH',body:{keyword:tr.querySelector('.kw-word').value,position:tr.querySelector('.kw-pos').value}});
+      App.toast('ذخیره شد','ok');
+    }
+  });
+  body.addEventListener('click',async e=>{
+    const del=e.target.closest('.kw-del'); if(!del)return;
+    const tr=del.closest('tr[data-kw]');
+    await App.fetchJSON(`/reports/api/keywords/${tr.dataset.kw}/`,{method:'DELETE'}); tr.remove();
+  });
+})();
+
+// ── سکشن‌های سفارشی ──
+(function(){
+  const list=document.getElementById('sec-list');
+  document.getElementById('sec-add').onclick=async()=>{
+    const d=await App.fetchJSON(`/reports/api/${RID}/sections/`,{method:'POST',body:{title:'سکشنِ جدید',description:''}});
+    const div=document.createElement('div'); div.className='sec-item'; div.dataset.sec=d.id;
+    div.style.cssText='border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:10px;margin-bottom:10px';
+    div.innerHTML=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+      <input class="input sec-title" value="سکشنِ جدید" placeholder="عنوانِ سکشن" style="flex:1">
+      <button class="btn btn-sm sec-save" type="button">ذخیره</button>
+      <button class="mini sec-del" type="button">حذف</button></div>
+      <textarea class="input sec-desc rich-editor" id="sec-desc-${d.id}" rows="4" placeholder="توضیحات…"></textarea>`;
+    list.appendChild(div);
+    if(window.RichText) RichText.init('#sec-desc-'+d.id);   // ادیتورِ غنی روی سکشنِ جدید
+    div.querySelector('.sec-title').focus();
+  };
+  list.addEventListener('click',async e=>{
+    const item=e.target.closest('.sec-item'); if(!item)return;
+    if(e.target.closest('.sec-save')){
+      if(window.RichText) RichText.save();   // sync iframe → textarea قبلِ خواندن
+      await App.fetchJSON(`/reports/api/sections/${item.dataset.sec}/`,{method:'PATCH',body:{title:item.querySelector('.sec-title').value,description:item.querySelector('.sec-desc').value}});
+      App.toast('سکشن ذخیره شد','ok');
+    }
+    if(e.target.closest('.sec-del')){
+      if(await App.confirm('این سکشن حذف شود؟')){
+        if(window.RichText) RichText.remove('#sec-desc-'+item.dataset.sec);
+        await App.fetchJSON(`/reports/api/sections/${item.dataset.sec}/`,{method:'DELETE'});item.remove();App.toast('حذف شد','ok');
+      }
+    }
+  });
+})();
 </script>
 {% endblock %}

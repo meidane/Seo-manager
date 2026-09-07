@@ -9,6 +9,9 @@
   `F('priority').asc(nulls_last=True)` (بعد از `_personal`/`status`)، داشبورد با
   `key=(priority or 9999, state_order, -overdue)`. بی‌اولویت‌ها همیشه ته.
   `archive()/restore()` (غیرفعال، نه حذف). `types_list/types_display, is_active`.
+  **`content_hourly_rate`/`content_word_rate`** (نرخِ تولید محتوا، ریال، ۰=محاسبه نشود) —
+  موقعِ ساختِ گزارش روی خودِ گزارش snapshot می‌شوند و هزینهٔ خودکارِ فاکتور از آن می‌آید
+  (`reports/CLAUDE.md` بخشِ «هزینهٔ تولید محتوا»).
   **`members` صرفاً یک تب نیست — گیتِ دسترسیِ واقعی است** (`projects/access.py:
   accessible_project_ids`، جزئیات پایین‌تر).
 - **Credential** — پسورد با **Fernet** (`core/crypto.py`): `set_password/reveal_password`.

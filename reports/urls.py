@@ -21,4 +21,9 @@ urlpatterns = [
     path('api/<int:pk>/receipt/', views.report_receipt, name='receipt'),
     path('api/items/<int:pk>/', views.item_edit, name='item_edit'),
     path('api/<int:pk>/delete/', views.report_delete, name='delete'),
+    # سکشن‌های سفارشی + کلماتِ کلیدی
+    path('api/<int:pk>/sections/', views.section_add, name='section_add'),
+    path('api/sections/<int:pk>/', views.section_edit, name='section_edit'),
+    path('api/<int:pk>/keywords/', views.keyword_add, name='keyword_add'),
+    path('api/keywords/<int:pk>/', views.keyword_edit, name='keyword_edit'),
 ]

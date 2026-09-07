@@ -49,6 +49,11 @@ class Project(TimeStampedModel):
     priority = models.PositiveSmallIntegerField('اولویت', null=True, blank=True)
 
     amount = models.DecimalField('مبلغ قرارداد', max_digits=14, decimal_places=0, null=True, blank=True)
+    # هزینهٔ تولید محتوا (برای محاسبهٔ خودکارِ مبلغِ فاکتور/گزارش). ۰ = محاسبه نشود.
+    # موقعِ ساختِ گزارش، این نرخ‌ها روی خودِ گزارش snapshot می‌شوند تا تغییرِ بعدی،
+    # گزارش/فاکتورِ قبلی را عوض نکند.
+    content_hourly_rate = models.BigIntegerField('نرخِ ساعتیِ تولید محتوا (ریال)', default=0)
+    content_word_rate = models.BigIntegerField('نرخِ هر کلمهٔ تولید محتوا (ریال)', default=0)
     contract_start = models.DateField('شروع قرارداد', null=True, blank=True)
     contract_end = models.DateField('پایان قرارداد', null=True, blank=True)
     description = models.TextField('توضیحات', blank=True)

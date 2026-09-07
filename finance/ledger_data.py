@@ -3,8 +3,12 @@
 قبلاً فقط داخلِ `LedgerView` بود؛ حالا از این‌جا هم `LedgerView` (تبِ گزارشِ حسابداری)، هم
 `project_ledger_api` (JSON برای بخشِ «گزارشِ مالیِ پروژه» زیرِ فاکتور و در صفحه‌ی گزارش)
 می‌خوانند. منطق را جای دیگر تکرار نکن.
+
+**مانده همیشه کلی است، نه بازه‌ای:** مانده‌ی تجمعیِ هر ردیف و مانده‌ی نهایی روی **کلِ
+تاریخ** حساب می‌شوند (همان `balances.project_balance`)، حتی وقتی فقط بازه‌ای از ردیف‌ها
+نمایش داده می‌شود — تا با ماندهٔ فاکتور/گزارش یکی باشد (خواستِ کاربر).
 """
-from datetime import date
+from datetime import date, timedelta
 
 from django.db.models import Q
 
@@ -16,26 +20,17 @@ from .models import Invoice, Transaction
 def last_3_months_range(today=None):
     """بازه‌ی پیش‌فرضِ «۳ ماهِ اخیر» (میلادی) — امروز و ۹۰ روزِ قبلش."""
     today = today or date.today()
-    from datetime import timedelta
     return today - timedelta(days=90), today
 
 
-def project_ledger(project_id, start=None, end=None):
-    """ردیف‌های گردشِ حسابِ پروژه به‌همراهِ جمع‌ها.
-
-    برمی‌گرداند dict: `rows` (جدید→قدیم، هر ردیف `balance`/`date_fa` دارد)،
-    `total_deposit`, `total_withdrawal`, `final_balance`.
-    بازه اختیاری است؛ اگر داده نشود همه‌ی تاریخ می‌آید.
-    """
+def _all_rows(project_id):
+    """همه‌ی ردیف‌های گردشِ حسابِ پروژه (بدونِ فیلترِ بازه) — برای مانده‌ی تجمعیِ درست."""
     rows = []
 
     def _tx_cats(t):
         return '، '.join(c.name for c in t.categories.all())
 
-    # فاکتورهای پروژه → برداشت (با ریزِ ردیف‌ها برای بازشدن)
     inv_qs = Invoice.objects.filter(project_id=project_id).prefetch_related('lines__category')
-    if start and end:
-        inv_qs = inv_qs.filter(issue_date__range=(start, end))
     for inv in inv_qs:
         lines = list(inv.lines.all())
         cats = sorted({li.category.name for li in lines if li.category_id})
@@ -50,12 +45,9 @@ def project_ledger(project_id, start=None, end=None):
                        'unit': int(li.unit_price), 'total': int(li.total)} for li in lines],
         })
 
-    # تراکنش‌های پروژه یا اسپلیت‌های همین پروژه → واریز/برداشت
     tx = (Transaction.objects.select_related('bank_account')
           .prefetch_related('categories', 'splits__category')
           .filter(Q(project_id=project_id) | Q(splits__project_id=project_id)).distinct())
-    if start and end:
-        tx = tx.filter(date__range=(start, end))
     for t in tx:
         splits = list(t.splits.all())
         if splits:
@@ -79,17 +71,35 @@ def project_ledger(project_id, start=None, end=None):
                 'bank': t.bank_account.name if t.bank_account_id else '',
                 'cat': _tx_cats(t),
             })
+    return rows
 
-    # مانده‌ی تجمعی به ترتیبِ تاریخِ صعودی، سپس نمایش نزول (جدید→قدیم)
+
+def project_ledger(project_id, start=None, end=None):
+    """ردیف‌های گردشِ حسابِ پروژه به‌همراهِ جمع‌ها.
+
+    مانده‌ی تجمعی روی **کلِ تاریخ** حساب می‌شود (نه فقط بازه)؛ اگر بازه داده شود فقط
+    ردیف‌های همان بازه **نمایش** داده می‌شوند ولی ماندهٔ هر ردیف همان ماندهٔ واقعیِ
+    تجمعیِ کل است. برمی‌گرداند dict:
+    `rows` (جدید→قدیم، هر ردیف `balance`/`date_fa`)، `total_deposit`/`total_withdrawal`
+    (فقط ردیف‌های نمایش‌داده‌شده)، `final_balance` (**مانده‌ی کلیِ پروژه**، نه بازه‌ای).
+    """
+    rows = _all_rows(project_id)
     rows.sort(key=lambda r: r['date'])
-    bal = tot_d = tot_w = 0
+    bal = 0
     for r in rows:
         bal += r['deposit'] - r['withdrawal']
-        r['balance'] = bal
+        r['balance'] = bal            # مانده‌ی تجمعیِ کل (درست حتی در نمای بازه‌ای)
         r['date_fa'] = format_jalali(r['date'])
-        tot_d += r['deposit']
-        tot_w += r['withdrawal']
-    rows.reverse()
+    global_balance = bal              # = balances.project_balance
 
-    return {'rows': rows, 'total_deposit': tot_d,
-            'total_withdrawal': tot_w, 'final_balance': bal}
+    # فیلترِ نمایش به بازه (اختیاری) — مانده‌ها دست‌نخورده می‌مانند
+    if start and end:
+        disp = [r for r in rows if start <= r['date'] <= end]
+    else:
+        disp = list(rows)
+    tot_d = sum(r['deposit'] for r in disp)
+    tot_w = sum(r['withdrawal'] for r in disp)
+    disp.reverse()  # جدید → قدیم
+
+    return {'rows': disp, 'total_deposit': tot_d,
+            'total_withdrawal': tot_w, 'final_balance': global_balance}

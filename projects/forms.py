@@ -21,6 +21,7 @@ class ProjectForm(forms.ModelForm):
         model = Project
         fields = [
             'name', 'logo', 'domain', 'track_keyword_rank', 'color', 'status', 'priority', 'amount',
+            'content_hourly_rate', 'content_word_rate',
             'client_name', 'client_phone', 'manager', 'members', 'description',
         ]
         widgets = {
@@ -43,6 +44,10 @@ class ProjectForm(forms.ModelForm):
         self.fields['description'].widget.attrs.update({'class': 'rich-editor'})
         # مبلغِ قرارداد: ویرگولِ زنده (app.js کلاسِ money؛ روی submit ویرگول‌ها پاک می‌شوند)
         self.fields['amount'].widget.attrs.update({'class': 'input money', 'dir': 'ltr'})
+        # نرخِ تولید محتوا (هزینهٔ خودکارِ گزارش/فاکتور) — ویرگولِ زنده، ۰ = محاسبه نشود
+        for f in ('content_hourly_rate', 'content_word_rate'):
+            self.fields[f].widget.attrs.update({'class': 'input money', 'dir': 'ltr'})
+            self.fields[f].required = False
 
     def clean_description(self):
         from core.htmlsan import clean_html

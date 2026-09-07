@@ -50,6 +50,15 @@
         <div class="field"><label>وضعیت</label>{{ form.status }}</div>
       </div>
 
+      {# هزینهٔ تولید محتوا — برای محاسبهٔ خودکارِ مبلغِ گزارش/فاکتور (۰ = محاسبه نشود) #}
+      <div class="field" style="margin-top:2px"><label style="font-weight:600">هزینهٔ تولید محتوا</label>
+        <small style="color:var(--text-faint);display:block;margin:-2px 0 8px">برای محاسبهٔ خودکارِ مبلغِ «تولید محتوا» در گزارش/فاکتور. موقعِ ساختِ هر گزارش، این نرخ‌ها snapshot می‌شوند و تغییرِ بعدی گزارشِ قبلی را عوض نمی‌کند. ۰ = محاسبه نشود.</small>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="field"><label>نرخِ هر ساعت (ریال)</label>{{ form.content_hourly_rate }}</div>
+          <div class="field"><label>نرخِ هر کلمه (ریال)</label>{{ form.content_word_rate }}</div>
+        </div>
+      </div>
+
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
         <div class="field"><label>شروع قرارداد (شمسی)</label>{{ form.contract_start }}
           {% if form.contract_start.errors %}<small style="color:var(--danger)">{{ form.contract_start.errors|striptags }}</small>{% endif %}</div>
