@@ -24,7 +24,7 @@
   {% endif %}
 
   <div class="notif-wrap" id="notif-wrap" style="{% if my_orgs|length <= 1 %}margin-inline-start:auto;{% endif %}">
-    <button type="button" id="notif-btn" class="notif-btn" title="اعلان‌ها">🔔<span class="notif-badge" id="notif-badge"{% if not notif_unread %} hidden{% endif %}>{{ notif_unread }}</span></button>
+    <button type="button" id="notif-btn" class="notif-btn" title="اعلان‌ها"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="notif-badge" id="notif-badge"{% if not notif_unread %} hidden{% endif %}>{{ notif_unread }}</span></button>
     <div class="notif-drop glass" id="notif-drop">
       <div class="notif-h">اعلان‌ها</div>
       <div class="notif-list" id="notif-list">

@@ -118,12 +118,22 @@
     root.dataset.dirty = '';
     root.classList.add('open');
     initMoney(root);  // ویرگول‌دارکردنِ مقادیرِ اولیه‌ی اینپوت‌های مبلغ درونِ مودال
+    // یک state در history می‌گذاریم تا دکمه‌ی «بازگشت»ِ گوشی/مرورگر مودال را ببندد،
+    // نه اینکه صفحه را عوض کند. (فقط اگر از قبل نگذاشته‌ایم)
+    try { if (!(history.state && history.state.appModal)) history.pushState({ appModal: true }, ''); } catch (_) {}
     return root;
   }
   function closeModal() {
     const root = document.getElementById('modal-root');
     if (root) root.classList.remove('open');
+    // اگر با × / انصراف بستیم و stateِ مودال هنوز روی history است، آن را pop کن
+    try { if (history.state && history.state.appModal) history.back(); } catch (_) {}
   }
+  // دکمه‌ی بازگشتِ گوشی/مرورگر: اگر مودال باز است فقط ببندش (صفحه عوض نشود)
+  window.addEventListener('popstate', () => {
+    const root = document.getElementById('modal-root');
+    if (root && root.classList.contains('open')) root.classList.remove('open');
+  });
 
   /* ── تأیید ── جایگزین confirm بومی با ظاهر شیشه‌ای ── */
   function confirmDialog(message, { okText = 'تأیید', cancelText = 'انصراف' } = {}) {

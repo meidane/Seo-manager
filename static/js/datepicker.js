@@ -32,7 +32,9 @@
       d.days.map((c) => {
         const cls = ['dp-day', c.dim ? 'dim' : '', c.is_today ? 'today' : '', c.is_holiday ? 'hol' : '', cur === c.jdate ? 'sel' : ''].filter(Boolean).join(' ');
         return `<div class="${cls}" data-jdate="${c.jdate}" title="${c.holiday_title || ''}">${c.jday_fa}</div>`;
-      }).join('') + '</div>';
+      }).join('') + '</div>' +
+      // فقط نمای تقویم را به ماهِ امروز می‌برد (خودِ روز را انتخاب نمی‌کند)
+      `<div class="dp-foot"><button type="button" class="dp-today" data-today>برو به امروز</button></div>`;
   }
 
   function open(input) {
@@ -73,6 +75,8 @@
       if (nav.dataset.nav === 'prev') { m--; if (m < 1) { m = 12; y--; } } else { m++; if (m > 12) { m = 1; y++; } }
       render(); return;
     }
+    // «برو به امروز» — فقط نما را به ماهِ جاری می‌برد (بدونِ ست‌کردنِ مقدارِ فیلد)
+    if (e.target.closest('[data-today]')) { y = 0; m = 0; render(); return; }
     const day = e.target.closest('.dp-day');
     if (day && target) { target.value = toFa(day.dataset.jdate); target.dispatchEvent(new Event('change', { bubbles: true })); close(); }
   });
