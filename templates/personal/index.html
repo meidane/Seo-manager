@@ -153,6 +153,29 @@
       </div>
     </section>
 
+    {# ── باکس: یادداشت‌های شخصی (عنوانِ اختیاری + TinyMCE، جدید بالا، سرچ) ── #}
+    <section class="card glass pers-box" id="note-box" style="grid-column:1/-1">
+      <div class="pers-head"><h3>یادداشت‌های شخصی</h3>
+        <div style="display:flex;gap:8px;align-items:center;margin-inline-start:auto">
+          <input class="input" id="pn-search" placeholder="جستجو…" style="max-width:180px">
+          <button class="btn btn-sm btn-p" id="pn-new">＋ یادداشت</button>
+        </div>
+      </div>
+      <div id="pn-list" style="display:flex;flex-direction:column;gap:10px;margin-top:6px">
+        {% for n in notes %}
+        <div class="pn-item" data-note="{{ n.id }}" data-title="{{ n.title }}">
+          <div class="pn-item-h">
+            {% if n.title %}<b class="pn-title">{{ n.title }}</b>{% else %}<b class="pn-title zero">بدونِ عنوان</b>{% endif %}
+            <span class="pn-actions"><button class="mini pn-edit">ویرایش</button><button class="mini pn-del">حذف</button></span>
+          </div>
+          <div class="pn-body rich">{{ n.body|safe }}</div>
+        </div>
+        {% empty %}
+        <div class="zero" id="pn-empty">هنوز یادداشتی نداری — «＋ یادداشت» را بزن.</div>
+        {% endfor %}
+      </div>
+    </section>
+
     {% comment %} ── باکس ۵: عمر (فعلاً غیرفعال طبق درخواست) ──
     <section class="card glass pers-box pers-life" id="life-box">
       <div class="pers-head"><h3>عمر</h3></div>
@@ -172,4 +195,57 @@
 
 {% block scripts %}
 <script src="{% static 'js/personal.js' %}"></script>
+<style>
+  #note-box .pn-item{border:1px solid var(--stroke-soft);border-radius:var(--r-sm);padding:12px 14px;background:var(--fill)}
+  .pn-item-h{display:flex;align-items:center;gap:8px}
+  .pn-title{font-size:14px;flex:1;min-width:0}
+  .pn-actions{display:flex;gap:6px;flex:none}
+  .pn-body{font-size:13px;color:var(--text-dim);line-height:1.9;margin-top:6px}
+  .pn-body:empty{display:none}
+  .pn-body img{max-width:100%;border-radius:8px}
+  .pn-hidden{display:none!important}
+</style>
+<script>
+(function(){
+  const list=document.getElementById('pn-list');
+  const escAttr=s=>String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  const escTa=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  // ── مودالِ افزودن/ویرایش (TinyMCE) ──
+  function openEditor(note){
+    const t=note? note.dataset.title||'' : '';
+    const bodyHtml=note? note.querySelector('.pn-body').innerHTML : '';
+    App.openModal(`<div class="modal-h"><h3>${note?'ویرایشِ یادداشت':'یادداشتِ جدید'}</h3><button class="x" onclick="App.closeModal()">×</button></div>
+      <div class="modal-b">
+        <div class="field"><label>عنوان (اختیاری)</label><input class="input" id="pn-title" value="${escAttr(t)}" placeholder="عنوان…"></div>
+        <div class="field"><label>متن</label><textarea class="rich-editor" id="pn-editor" rows="8">${escTa(bodyHtml)}</textarea></div>
+      </div>
+      <div class="modal-f"><button class="btn btn-p" id="pn-save">ذخیره</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+    if(window.RichText) RichText.init('#pn-editor');
+    document.getElementById('pn-save').onclick=async()=>{
+      if(window.RichText) RichText.save();
+      const payload={title:document.getElementById('pn-title').value, body:document.getElementById('pn-editor').value};
+      if(note) await App.fetchJSON(`/personal/api/notes/${note.dataset.note}/`,{method:'PATCH',body:payload});
+      else await App.fetchJSON("{% url 'personal:note_add' %}",{method:'POST',body:payload});
+      App.closeModal(); App.toast('ذخیره شد','ok'); location.reload();
+    };
+  }
+  document.getElementById('pn-new').onclick=()=>openEditor(null);
+  list.addEventListener('click',async e=>{
+    const it=e.target.closest('.pn-item'); if(!it) return;
+    if(e.target.closest('.pn-edit')){ openEditor(it); return; }
+    if(e.target.closest('.pn-del')){
+      if(await App.confirm('این یادداشت حذف شود؟')){ await App.fetchJSON(`/personal/api/notes/${it.dataset.note}/`,{method:'DELETE'}); it.remove(); App.toast('حذف شد','ok'); }
+    }
+  });
+  // ── جستجو (سمتِ کلاینت روی عنوان + متن) ──
+  const search=document.getElementById('pn-search');
+  if(search) search.addEventListener('input',()=>{
+    const q=search.value.trim().toLowerCase();
+    list.querySelectorAll('.pn-item').forEach(it=>{
+      const txt=((it.dataset.title||'')+' '+it.querySelector('.pn-body').textContent).toLowerCase();
+      it.classList.toggle('pn-hidden', q && !txt.includes(q));
+    });
+  });
+})();
+</script>
 {% endblock %}

@@ -320,3 +320,36 @@ def goal_reorder(request, pk):
     for i, tid in enumerate(_body(request).get('ids') or []):
         GoalLink.objects.filter(goal=g, task_id=tid).update(order=i)
     return JsonResponse({'ok': True})
+
+
+# ── یادداشت‌های شخصی (چندتایی، TinyMCE) ──────────────────────────────────
+@admin_only
+@require_http_methods(['POST'])
+def note_add(request):
+    from core.htmlsan import clean_html
+
+    from .models import PersonalNote
+    d = _body(request)
+    n = PersonalNote.objects.create(
+        user=request.user, title=(d.get('title') or '')[:200],
+        body=clean_html(d.get('body', '')))
+    return JsonResponse({'id': n.id})
+
+
+@admin_only
+@require_http_methods(['PATCH', 'DELETE'])
+def note_edit(request, pk):
+    from core.htmlsan import clean_html
+
+    from .models import PersonalNote
+    n = get_object_or_404(PersonalNote, pk=pk, user=request.user)
+    if request.method == 'DELETE':
+        n.delete()
+        return JsonResponse({'ok': True})
+    d = _body(request)
+    if 'title' in d:
+        n.title = (d['title'] or '')[:200]
+    if 'body' in d:
+        n.body = clean_html(d['body'])
+    n.save()
+    return JsonResponse({'ok': True})

@@ -119,3 +119,22 @@ class GoalLink(models.Model):
 
     def __str__(self):
         return f'{self.task_id}→{self.goal_id}'
+
+
+class PersonalNote(models.Model):
+    """یادداشتِ شخصیِ آزاد (چندتایی) — عنوانِ اختیاری + متنِ HTMLِ TinyMCE. اسکوپِ `user`.
+    جدیدترین/تازه‌ویرایش‌شده بالاتر (`-updated_at`)."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='personal_notes')
+    title = models.CharField('عنوان', max_length=200, blank=True)
+    body = models.TextField('متن', blank=True)  # HTML پاکسازی‌شده (TinyMCE)
+    created_at = models.DateTimeField('ایجاد', auto_now_add=True)
+    updated_at = models.DateTimeField('به‌روزرسانی', auto_now=True)
+
+    class Meta:
+        verbose_name = 'یادداشتِ شخصی'
+        verbose_name_plural = 'یادداشت‌های شخصی'
+        ordering = ['-updated_at', '-id']
+
+    def __str__(self):
+        return self.title or f'note({self.id})'

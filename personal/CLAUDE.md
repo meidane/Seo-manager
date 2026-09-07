@@ -55,6 +55,14 @@
 - **اهداف**: تایم‌لاینِ «چند روز گذشته» + مودال. **عمر**: شمارشِ زندهٔ باقی‌مانده
   «Y سال و D روز و H ساعت و M دقیقه و S ثانیه» (هارد‌کد: ۲۸ تا ۷۵؛ کاملاً فرانت از `data-*`).
 
+## یادداشت‌های شخصی (`PersonalNote`)
+باکسِ «یادداشت‌های شخصی» در داشبورد: عنوانِ **اختیاری** + متنِ **TinyMCE** (پاکسازی
+`clean_html`)، چندتایی، **جدید/تازه‌ویرایش بالا** (`ordering=['-updated_at']`)، با **سرچِ
+سمتِ کلاینت** (روی عنوان+متن). افزودن/ویرایش با مودالِ سراسری (`App.openModal` + `RichText.
+init('#pn-editor')`). API: `note_add` (POST)، `note_edit` (PATCH/DELETE)، اسکوپِ `user`
+(`get_object_or_404(..., user=request.user)`). JS/استایلِ باکس درونِ `index.html`.
+
 ## فایل‌ها
-`views.py` (رندرِ اولیه) · `api.py` (ptask_add/reorder + habit/goal) · `templates/personal/
-index.html` · `static/js/personal.js` · استایل: بلوکِ «فضای شخصی» ته `static/css/style.css`.
+`views.py` (رندرِ اولیه) · `api.py` (ptask_add/reorder + habit/goal + note_add/edit) ·
+`templates/personal/index.html` · `static/js/personal.js` · استایل: بلوکِ «فضای شخصی» ته
+`static/css/style.css` (+ استایلِ inlineِ باکسِ یادداشت در index.html).

@@ -16,7 +16,7 @@ from projects.access import accessible_project_ids
 
 from .access import admin_only
 from .api import PERSONAL_TYPE_NAME, personal_context
-from .models import Goal, Habit, HabitLog, week_saturday
+from .models import Goal, Habit, HabitLog, PersonalNote, week_saturday
 
 # ثانیه‌شمارِ عمر (هارد‌کد طبق درخواست): الان ۲۸ ساله، احتمالِ عمر تا ۷۵ سالگی
 LIFE_AGE_NOW = 28
@@ -204,5 +204,6 @@ class PersonalDashboardView(View):
             'next_week_iso': (week_saturday(today) + timedelta(days=7)).isoformat(),
             'life': {'birth_iso': birth.isoformat(), 'death_iso': death.isoformat(),
                      'age_now': LIFE_AGE_NOW, 'expectancy': LIFE_EXPECTANCY},
+            'notes': PersonalNote.objects.filter(user=request.user),
         }
         return render(request, self.template_name, ctx)

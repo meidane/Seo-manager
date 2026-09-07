@@ -24,4 +24,6 @@ urlpatterns = [
     path('api/goals/<int:pk>/', api.goal_detail, name='goal_detail'),
     path('api/goals/<int:pk>/add-task/', api.goal_add_task, name='goal_add_task'),
     path('api/goals/<int:pk>/reorder/', api.goal_reorder, name='goal_reorder'),
+    path('api/notes/', api.note_add, name='note_add'),
+    path('api/notes/<int:pk>/', api.note_edit, name='note_edit'),
 ]
