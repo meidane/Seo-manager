@@ -1,0 +1,15 @@
+{% comment %}
+ویجتِ «گزارشِ مالیِ پروژه» (گردشِ حساب) — مشترکِ صفحه‌ی فاکتور و صفحه‌ی گزارش.
+نیاز: متغیرِ `pledger_project_id`. اسکریپتِ `finance_ledger.js` باید یک‌بار در صفحه لود شود.
+{% endcomment %}
+<div class="pledger" data-project="{{ pledger_project_id }}"{% if pledger_lazy %} data-lazy="1"{% endif %}>
+  <div class="pl-ctl">
+    <span class="pl-lbl">بازه:</span>
+    <input class="input jdate pl-from" dir="ltr" placeholder="از تاریخ">
+    <input class="input jdate pl-to" dir="ltr" placeholder="تا تاریخ">
+    <button type="button" class="btn btn-sm pl-apply">اعمال</button>
+    <button type="button" class="btn btn-sm pl-reset">۳ ماهِ اخیر</button>
+    <span class="pl-range zero"></span>
+  </div>
+  <div class="pl-body"></div>
+</div>

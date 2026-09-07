@@ -43,10 +43,19 @@
           <option value="">— بدون فاکتور —</option>
           {% for inv in invoices %}<option value="{{ inv.id }}" {% if report.invoice_id == inv.id %}selected{% endif %}>فاکتور #{{ inv.number|fa_digits }}{% if inv.project %} · {{ inv.project.name }}{% endif %} · {{ inv.grand_total|money }}</option>{% endfor %}
         </select>
+        {% if report.project_id %}<a class="btn btn-sm btn-p" href="{% url 'finance:invoice_new' %}?project={{ report.project_id }}&report={{ report.id }}" title="ساختِ فاکتورِ جدید برای این پروژه و اتصالِ خودکار به این گزارش">＋ فاکتور جدید</a>{% endif %}
         {% if report.invoice_id %}<a class="btn btn-sm" href="{% url 'finance:invoice_edit_page' report.invoice_id %}" target="_blank" rel="noopener">ویرایشِ فاکتور ↗</a>
         <label class="btn btn-sm" style="cursor:pointer" title="آپلودِ رسیدِ پرداخت (اختیاری — به مشتری نشان داده می‌شود)">📎 رسید<input type="file" id="r-receipt" hidden></label>
         <a id="r-receipt-link" class="lnk" href="{% if report.invoice.receipt %}{{ report.invoice.receipt.url }}{% endif %}" target="_blank" rel="noopener" style="font-size:12px{% if not report.invoice.receipt %};display:none{% endif %}">رسیدِ فعلی ↗</a>{% endif %}
+        {% if report.project_id %}<span style="flex:1"></span>
+        <button type="button" class="btn btn-sm" id="r-fin-toggle" aria-expanded="false">📊 گزارشِ مالیِ پروژه</button>
+        <span class="tag {% if client_balance < 0 %}t-bad{% elif client_balance > 0 %}t-ok{% else %}t-mute{% endif %}" title="مانده‌ی کلِ پروژه">مانده: {{ client_balance|money }}</span>{% endif %}
       </div>
+      {% if report.project_id %}
+      <section id="r-fin-panel" class="pl-panel" hidden style="margin-top:14px">
+        {% include 'finance/_project_ledger.html' with pledger_project_id=report.project_id pledger_lazy=1 %}
+      </section>
+      {% endif %}
       {% if invoice_ctx %}
         <div class="tsheet-wrap" style="margin-top:14px">
           <table class="tsheet">
@@ -111,6 +120,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{% static 'js/finance_ledger.js' %}?v={% asset_v %}"></script>
 <script>
 const RID = {{ report.pk }};
 const CLIENT_FIELDS = [{% for k,l in client_fields %}["{{ k }}","{{ l|escapejs }}"]{% if not forloop.last %},{% endif %}{% endfor %}];
@@ -128,6 +138,14 @@ document.getElementById('r-copy').onclick=()=>{navigator.clipboard.writeText(doc
 
 // ── فاکتور متصل ──
 document.getElementById('r-invoice').onchange=e=>App.fetchJSON(`/reports/api/${RID}/update/`,{method:'PATCH',body:{invoice:e.target.value}}).then(()=>App.toast('فاکتور به‌روزرسانی شد','ok'));
+
+// ── گزارشِ مالیِ پروژه (تنبل: بارِ اول با کلیک لود می‌شود) ──
+(function(){ const btn=document.getElementById('r-fin-toggle'), panel=document.getElementById('r-fin-panel');
+  if(!btn||!panel) return; let loaded=false;
+  btn.onclick=()=>{ const open=panel.hidden; panel.hidden=!open; btn.setAttribute('aria-expanded',open);
+    if(open && !loaded && window.ProjectLedger){ const box=panel.querySelector('.pledger'); if(box) window.ProjectLedger.init(box); loaded=true; }
+  };
+})();
 
 // ── آپلودِ رسیدِ پرداخت (اختیاری) ──
 (function(){ const rc=document.getElementById('r-receipt'); if(!rc) return;

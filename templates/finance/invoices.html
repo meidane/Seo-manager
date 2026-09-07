@@ -5,7 +5,7 @@
 {% block content %}
   <div class="page-h"><h1>فاکتورها</h1>
     {% if range_start_fa %}<span class="range-note">{{ range_start_fa }} تا {{ range_end_fa }} — {{ range_days|fa_digits }} روز</span>{% endif %}
-    <div class="side-c"><a href="{% url 'finance:invoice_new' %}" class="btn btn-p">＋ افزودن فاکتور</a></div>
+    <div class="side-c">{% if can_edit_finance %}<a href="{% url 'finance:invoice_new' %}" class="btn btn-p">＋ افزودن فاکتور</a>{% else %}<span class="tag t-mute">فقط-خواندنی</span>{% endif %}</div>
   </div>
   {% include "finance/_nav.html" %}
 
@@ -28,11 +28,11 @@
               <td class="num-c">{% if inv.due_date %}{{ inv.due_date|jalali }}{% else %}—{% endif %}</td>
               <td class="num-c" style="font-weight:700">{{ inv.grand_total|money }}</td>
               {% if inv.project_id %}{% with bal=project_bal|dictkey:inv.project_id %}
-                <td class="num-c"><a href="{% url 'finance:ledger' %}?project={{ inv.project_id }}" class="lnk" onclick="event.stopPropagation()" title="مشاهده‌ی گردش حساب" style="font-weight:700;{% if bal > 0 %}color:var(--warning){% elif bal < 0 %}color:var(--danger){% endif %}">{{ bal|money }} ↗</a></td>
+                <td class="num-c">{% if can_edit_finance %}<a href="{% url 'finance:ledger' %}?project={{ inv.project_id }}" class="lnk" onclick="event.stopPropagation()" title="مشاهده‌ی گردش حساب" style="font-weight:700;{% if bal > 0 %}color:var(--warning){% elif bal < 0 %}color:var(--danger){% endif %}">{{ bal|money }} ↗</a>{% else %}<b style="{% if bal > 0 %}color:var(--warning){% elif bal < 0 %}color:var(--danger){% endif %}">{{ bal|money }}</b>{% endif %}</td>
               {% endwith %}{% else %}<td class="num-c">—</td>{% endif %}
               <td style="white-space:nowrap">
                 <a class="mini" href="{% url 'finance:invoice_edit_page' inv.pk %}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="بازکردن در تبِ جدید">↗</a>
-                <button class="mini inv-del" data-id="{{ inv.id }}">حذف</button>
+                {% if can_edit_finance %}<button class="mini inv-del" data-id="{{ inv.id }}">حذف</button>{% endif %}
               </td>
             </tr>
           {% endfor %}
@@ -40,7 +40,7 @@
       </table>
       </div>
     {% else %}
-      <div class="empty"><div class="ico">🧾</div><h4>فاکتوری نیست</h4><a href="{% url 'finance:invoice_new' %}" class="btn btn-p" style="margin-top:12px">＋ افزودن فاکتور</a></div>
+      <div class="empty"><div class="ico">🧾</div><h4>فاکتوری نیست</h4>{% if can_edit_finance %}<a href="{% url 'finance:invoice_new' %}" class="btn btn-p" style="margin-top:12px">＋ افزودن فاکتور</a>{% endif %}</div>
     {% endif %}
   </section>
 

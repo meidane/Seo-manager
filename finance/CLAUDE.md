@@ -156,9 +156,37 @@ payroll_create/edit, invoice_create/edit). فاکتور با فرمِ صفحه�
 - ستونِ **بانک** (`bank_account.name`) کنارِ شرح سند نمایش داده می‌شود.
 
 ## دسترسی
-کلِ اپ پشتِ پرمیشنِ سازمانیِ `manage_finance` است — `finance/access.py`
+اغلبِ اپ پشتِ پرمیشنِ سازمانیِ `manage_finance` است — `finance/access.py`
 (`FinancePermMixin` روی CBVها، `require_finance` روی FBVهای API)، به‌علاوه لینکِ
 «حسابداری» در سایدبار هم با همین پرمیشن مخفی/نمایان می‌شود.
+
+**استثنا — `view_invoices` (فقط-خواندنِ فاکتور، برای مثلاً مدیرِ پروژهٔ سئو):** فهرست/صفحهٔ
+فاکتور و گزارشِ مالیِ پروژه با `manage_finance` **یا** `view_invoices` قابل‌دسترس‌اند
+(`InvoiceViewPermMixin`/`require_invoice_view`/`can_view_invoices`). ساخت/ویرایش/حذفِ
+فاکتور و بقیهٔ اپ (داشبورد/تراکنش/بانک/حقوق/گزارش/ایمپورت) همچنان `manage_finance`
+می‌خواهد. `InvoiceViewPermMixin` یک `can_edit_finance` (دارندهٔ `manage_finance`) هم به
+context می‌گذارد؛ تمپلیت‌ها (`invoices.html`, `invoice_form.html`, `_nav.html`, `sidebar.html`)
+با آن دکمه‌های ساخت/ویرایش/حذف و تب‌های حسابداری را برای کاربرِ فقط-بیننده پنهان می‌کنند و
+فرمِ فاکتور را read-only (اینپوت‌ها disabled) می‌کنند. کاربرِ فقط-بیننده در سایدبار لینکِ
+«فاکتورها» (نه «حسابداری») می‌گیرد.
+
+## گزارشِ مالیِ پروژه (ویجتِ مشترک)
+منبعِ واحدِ ردیف‌های گردشِ حسابِ پروژه = **`finance/ledger_data.py: project_ledger(project_id,
+start, end)`** (فاکتورها=برداشت، تراکنش/اسپلیت=واریز/برداشت، مانده‌ی تجمعی). `LedgerView`ِ
+حالتِ پروژه هم از همین می‌خواند (فقط فیلترِ بانک را بعد از ساخت اعمال می‌کند)؛ حالتِ بابت
+هنوز درجای خودش است.
+- **API:** `GET /finance/api/project-ledger/?project=&from=&to=` (`project_ledger_api`، گیت
+  `view_invoices`/`manage_finance`) — بازه اختیاری، **پیش‌فرض ۳ ماهِ اخیر** (`last_3_months_range`).
+- **ویجتِ فرانت:** `static/js/finance_ledger.js` + پارشالِ `templates/finance/_project_ledger.html`
+  (متغیرِ `pledger_project_id`؛ `pledger_lazy=1` = فقط با فراخوانیِ صریحِ `ProjectLedger.init`).
+  هر `.pledger[data-project]` خودکار مقداردهی می‌شود مگر `data-lazy` داشته باشد. CSS: `.pledger/
+  .pl-*` در `style.css`. کنترلِ بازه (دیت‌پیکرِ `jdate` + «۳ ماهِ اخیر») + جدولِ فاکتور/تراکنش
+  با ریزِ بازشونده‌ی فاکتور.
+- **دو جای مصرف:** (۱) پایینِ صفحهٔ فاکتور (`invoice_form.html`، فقط فاکتورِ موجود، `ledger_
+  project_id`/`ledger_project_balance` از ویو) — همیشه باز. (۲) صفحهٔ گزارش (`reports/detail.
+  html`) پشتِ دکمهٔ «📊 گزارشِ مالیِ پروژه» (تنبل، بارِ اول با کلیک لود می‌شود) + دکمهٔ
+  «＋ فاکتور جدید» (به `invoice_new?project=&report=` می‌رود؛ `invoice_create` با کلیدِ `report`
+  فاکتورِ نو را خودکار به گزارش وصل و به همان گزارش برمی‌گرداند).
 
 ## دستور
 `python manage.py seed_categories` — بابت‌های پیش‌فرض.

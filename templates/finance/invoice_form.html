@@ -21,7 +21,7 @@
         <div class="field"><label>تاریخ ثبت فاکتور</label>
           <input class="input jdate" id="inv-issue" dir="ltr" value="{% if invoice %}{{ invoice.issue_date|jalali }}{% endif %}" placeholder="1405/05/01"></div>
         <div class="field"><label>پروژه</label>
-          <select id="inv-project" class="rich-select"><option value="">—</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if invoice.project_id == p.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></div>
+          <select id="inv-project" class="rich-select"><option value="">—</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if invoice.project_id == p.id or p.id|stringformat:'s' == prefill_project_id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></div>
 
         <div class="field"><label>تاریخ پرداخت</label>
           <input class="input jdate" id="inv-due" dir="ltr" value="{% if invoice.due_date %}{{ invoice.due_date|jalali }}{% endif %}" placeholder="1405/06/01"></div>
@@ -34,7 +34,7 @@
   {# ── ردیف‌های فاکتور ── #}
   <section class="card glass">
     <div class="card-h"><h3>ردیف‌ها</h3>
-      <div class="side-c"><button class="btn btn-sm" id="inv-add-row">＋ افزودن ردیف</button></div>
+      <div class="side-c">{% if can_edit_finance %}<button class="btn btn-sm" id="inv-add-row">＋ افزودن ردیف</button>{% endif %}</div>
     </div>
     <div class="sheet-wrap">
       <table class="sheet" id="inv-lines">
@@ -78,15 +78,35 @@
     </div>
   </section>
 
+  {# ── گزارشِ مالیِ پروژه (گردشِ حساب، ۳ ماهِ اخیر پیش‌فرض) — فقط فاکتورِ موجود ── #}
+  {% if ledger_project_id %}
+  <section class="card glass">
+    <div class="card-h"><h3>گزارشِ مالیِ پروژه</h3>
+      <div class="side-c">
+        <span class="tag {% if ledger_project_balance < 0 %}t-bad{% elif ledger_project_balance > 0 %}t-ok{% else %}t-mute{% endif %}" title="مانده‌ی کلِ پروژه">مانده: {{ ledger_project_balance|money }}</span>
+      </div>
+    </div>
+    <div style="padding:12px 14px">
+      {% include 'finance/_project_ledger.html' with pledger_project_id=ledger_project_id %}
+    </div>
+  </section>
+  {% endif %}
+
   {# ── نوارِ اکشنِ پایینِ صفحه ── #}
   <div class="form-actions">
     <a href="{% url 'finance:invoices' %}" class="btn js-back">بازگشت</a>
+    {% if can_edit_finance %}
     <button class="btn" id="inv-save-new">ذخیره و جدید</button>
     <button class="btn btn-p" id="inv-save">ذخیره فاکتور</button>
+    {% else %}
+    <span class="tag t-mute">حالتِ فقط-خواندنی — برای ویرایش به دسترسیِ حسابداری نیاز است</span>
+    {% endif %}
   </div>
 {% endblock %}
 
 {% block scripts %}
+{% load static %}
+<script src="{% static 'js/finance_ledger.js' %}?v={% asset_v %}"></script>
 <style>
   .inv-sumrow{display:flex;justify-content:space-between;gap:24px;padding:6px 0;font-size:13px;border-bottom:1px solid var(--stroke-soft)}
   .inv-sumrow span{color:var(--text-dim)}
@@ -97,8 +117,12 @@
 <script>
 (function(){
   const INV_ID = "{{ invoice.pk|default:'' }}";
+  const CAN_EDIT = {% if can_edit_finance %}true{% else %}false{% endif %};
   const CATS = `{% for c in categories %}<option value="{{ c.id }}">{{ c.name|escapejs }}</option>{% endfor %}`;
   const body = document.getElementById('inv-body');
+  const params = new URLSearchParams(location.search);
+  const PREFILL_PROJECT = params.get('project') || '';
+  const REPORT_ID = params.get('report') || '';
 
   // fa/en اعداد → عدد
   const toNum = v => { if(v==null) return 0; const s=String(v).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[^\d.\-]/g,''); const n=parseFloat(s); return isNaN(n)?0:n; };
@@ -136,7 +160,7 @@
     document.getElementById('sum-grand').textContent=fa(sub+tax-disc);
   }
 
-  document.getElementById('inv-add-row').onclick=addRow;
+  const addBtn=document.getElementById('inv-add-row'); if(addBtn) addBtn.onclick=addRow;
   body.addEventListener('input', e=>{ if(e.target.matches('.li-qty,.li-unit,.li-tax,.li-disc')) recalc(); });
   body.addEventListener('click', e=>{ const d=e.target.closest('.li-del'); if(d){ d.closest('tr').remove(); recalc(); } });
 
@@ -202,6 +226,7 @@
     };
     if(!payload.issue_date){ App.toast('تاریخ ثبت را وارد کن','warn'); return; }
     if(!payload.project){ App.toast('پروژه را انتخاب کن','warn'); return; }
+    if(REPORT_ID) payload.report = REPORT_ID;  // اتصالِ خودکار به گزارش (از دکمه‌ی گزارش)
     const newUrl="{% url 'finance:invoice_new' %}";
     try{
       if(INV_ID){
@@ -211,12 +236,20 @@
       }else{
         const d=await App.fetchJSON("{% url 'finance:invoice_create' %}",{method:'POST',body:payload});
         App.toast('فاکتور ثبت شد','ok');
+        // اگر از گزارش آمده‌ایم، بعدِ ساخت به همان گزارش برگرد (فاکتور خودکار وصل شده)
+        if(REPORT_ID && !andNew){ location.href=`/reports/${REPORT_ID}/`; return; }
         location.href = andNew ? newUrl : `/finance/invoices/${d.id}/`;
       }
     }catch(_){}
   }
-  document.getElementById('inv-save').onclick=()=>save(false);
-  document.getElementById('inv-save-new').onclick=()=>save(true);
+  const saveBtn=document.getElementById('inv-save'); if(saveBtn) saveBtn.onclick=()=>save(false);
+  const saveNewBtn=document.getElementById('inv-save-new'); if(saveNewBtn) saveNewBtn.onclick=()=>save(true);
+
+  // ── حالتِ فقط-خواندنی (کاربرِ view_invoices بدونِ manage_finance) ──
+  if(!CAN_EDIT){
+    document.querySelectorAll('#inv-issue,#inv-due,#inv-desc,#inv-project,#inv-lines input,#inv-lines select,#inv-lines .li-del')
+      .forEach(el=>{ el.setAttribute('disabled','disabled'); el.style.pointerEvents='none'; el.style.opacity='.75'; });
+  }
 })();
 </script>
 {% endblock %}

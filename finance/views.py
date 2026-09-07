@@ -5,6 +5,7 @@ from datetime import date
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db.models import Max, Q, Sum
 from django.http import JsonResponse
@@ -12,12 +13,14 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_http_methods
 from django.views.generic import TemplateView
 
+from accounts.access import has_perm
 from core.daterange import (PRESET_LABELS, PRESETS, DateRangeMixin,
                             _resolve_preset)
 from core.jalali import format_jalali, parse_jalali
 from projects.models import Project
 
-from .access import FinancePermMixin, require_finance
+from .access import (FinancePermMixin, InvoiceViewPermMixin, can_view_invoices,
+                     require_finance, require_invoice_view)
 from .models import (BankAccount, Category, Invoice, InvoiceLine, Payroll,
                      PayrollItem, Transaction)
 from .utils import parse_amount, parse_excel_date
@@ -253,7 +256,7 @@ class PayrollListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
         return ctx
 
 
-class InvoiceListView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateView):
+class InvoiceListView(LoginRequiredMixin, InvoiceViewPermMixin, DateRangeMixin, TemplateView):
     template_name = 'finance/invoices.html'
 
     def get_context_data(self, **kwargs):
@@ -285,10 +288,20 @@ class InvoiceListView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, Temp
         return ctx
 
 
-class InvoiceFormView(LoginRequiredMixin, FinancePermMixin, TemplateView):
-    """صفحه‌ی ساخت/ویرایشِ فاکتور (فرمِ کامل با ردیف‌های پویا)."""
+class InvoiceFormView(LoginRequiredMixin, InvoiceViewPermMixin, TemplateView):
+    """صفحه‌ی ساخت/ویرایشِ فاکتور (فرمِ کامل با ردیف‌های پویا).
+
+    کاربرِ فقط-بیننده (`view_invoices` بدونِ `manage_finance`) صفحه را read-only می‌بیند
+    (دکمه‌های ذخیره پنهان، اینپوت‌ها غیرفعال) و فقط روی فاکتورِ موجود؛ ساختِ جدید نیاز به
+    `manage_finance` دارد."""
 
     template_name = 'finance/invoice_form.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        # ساختِ فاکتورِ جدید فقط با manage_finance
+        if not kwargs.get('pk') and not has_perm(request, 'manage_finance'):
+            raise PermissionDenied('برای ساختِ فاکتور به دسترسیِ حسابداری نیاز است')
+        return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -305,6 +318,14 @@ class InvoiceFormView(LoginRequiredMixin, FinancePermMixin, TemplateView):
             ctx['next_number'] = (last or 0) + 1
         ctx['projects'] = Project.objects.filter(status=Project.ACTIVE, personal_owner__isnull=True)
         ctx['categories'] = Category.objects.all()
+        # پیش‌انتخابِ پروژه برای فاکتورِ جدید که از دکمه‌ی «＋ فاکتور جدید»ِ گزارش آمده
+        if not invoice:
+            ctx['prefill_project_id'] = self.request.GET.get('project') or ''
+        # گزارشِ مالیِ پروژه (۳ ماهِ اخیر) — فقط برای فاکتورِ موجود
+        if invoice and invoice.project_id:
+            from .balances import project_balance
+            ctx['ledger_project_id'] = invoice.project_id
+            ctx['ledger_project_balance'] = project_balance(invoice.project_id)
         ctx['page_title'] = f'فاکتور #{invoice.number}' if invoice else 'فاکتور جدید'
         return ctx
 
@@ -348,61 +369,19 @@ class LedgerView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateV
 
         rows = []
 
-        def _tx_cats(t):
-            return '، '.join(c.name for c in t.categories.all())
-
         if project_id:
             ctx['mode'] = 'project'
             ctx['selected_project'] = Project.objects.filter(id=project_id).first()
-            # فاکتورهای پروژه → برداشت (با ریزِ ردیف‌ها برای بازشدن = «ریز فاکتور»)
-            inv_qs = Invoice.objects.filter(project_id=project_id).prefetch_related('lines__category')
-            if start and end:
-                inv_qs = inv_qs.filter(issue_date__range=(start, end))
-            for inv in inv_qs:
-                lines = list(inv.lines.all())
-                cats = sorted({li.category.name for li in lines if li.category_id})
-                rows.append({
-                    'date': inv.issue_date,
-                    'title': f'فاکتور #{inv.number}' + (f' — {inv.description}' if inv.description else ''),
-                    'kind': 'invoice', 'ref_id': inv.id,
-                    'deposit': 0, 'withdrawal': inv.grand_total, 'bank': '',
-                    'cat': '، '.join(cats),
-                    'lines': [{'cat': (li.category.name if li.category_id else '—'),
-                               'desc': li.description, 'qty': li.qty,
-                               'unit': li.unit_price, 'total': li.total} for li in lines],
-                })
-            # تراکنش‌های پروژه یا اسپلیت‌های همین پروژه → واریز/برداشت
-            # تراکنشِ split‌شده تخصیصش در اسپلیت‌هاست؛ خودِ تراکنش (پروژه/بابتش) دوباره شمرده نمی‌شود.
-            tx = (Transaction.objects.select_related('bank_account')
-                  .prefetch_related('categories', 'splits__category')
-                  .filter(Q(project_id=project_id) | Q(splits__project_id=project_id)).distinct())
-            if start and end:
-                tx = tx.filter(date__range=(start, end))
+            # ردیف‌های پروژه از منبعِ واحد (`ledger_data.project_ledger`) — بانک هم فیلترِ
+            # اختیاری است، ولی برای هم‌راستایی با API این‌جا بعد از ساخت اعمال می‌شود.
+            from .ledger_data import project_ledger
+            data = project_ledger(project_id, start if (start and end) else None,
+                                  end if (start and end) else None)
+            rows = data['rows']  # مانده/جمع در tailِ مشترکِ پایین دوباره حساب می‌شود
             if bank_ids:
-                tx = tx.filter(bank_account_id__in=bank_ids)
-            for t in tx:
-                splits = list(t.splits.all())
-                if splits:
-                    for s in splits:
-                        if str(s.project_id) != str(project_id):
-                            continue
-                        amt = int(s.amount or 0)
-                        rows.append({
-                            'date': t.date, 'title': (s.note or t.description or '—') + ' — تفکیک',
-                            'kind': 'tx', 'ref_id': t.id, 'split': True,
-                            'deposit': amt if t.deposit else 0,
-                            'withdrawal': amt if t.withdrawal else 0,
-                            'bank': t.bank_account.name if t.bank_account_id else '',
-                            'cat': s.category.name if s.category_id else '',
-                        })
-                elif str(t.project_id) == str(project_id):
-                    rows.append({
-                        'date': t.date, 'title': t.description or '—',
-                        'kind': 'tx', 'ref_id': t.id,
-                        'deposit': t.deposit or 0, 'withdrawal': t.withdrawal or 0,
-                        'bank': t.bank_account.name if t.bank_account_id else '',
-                        'cat': _tx_cats(t),
-                    })
+                bank_names = set(BankAccount.objects.filter(id__in=bank_ids)
+                                 .values_list('name', flat=True))
+                rows = [r for r in rows if r['kind'] != 'tx' or r['bank'] in bank_names]
 
         else:  # category_id
             ctx['mode'] = 'category'
@@ -486,6 +465,49 @@ class LedgerView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateV
             if sb < 0:
                 ctx['ledger_alert'] = 'پرداختِ حقوق بیش از تعهد است (اضافه‌پرداخت).'
         return ctx
+
+
+# ── API: گزارشِ مالیِ پروژه (فقط-خواندن) ────────────────────────────────────
+
+@login_required
+@require_invoice_view
+@require_http_methods(['GET'])
+def project_ledger_api(request):
+    """گردشِ حسابِ یک پروژه به‌صورتِ JSON — منبعِ بخشِ «گزارشِ مالیِ پروژه» (زیرِ فاکتور و
+    در صفحه‌ی گزارش). بازه اختیاری (`?from=&to=` شمسی)؛ پیش‌فرض **۳ ماهِ اخیر**.
+    گیت: `manage_finance` یا `view_invoices` (فقط دیدن)."""
+    from core.jalali import format_jalali
+
+    from .balances import project_balance
+    from .ledger_data import last_3_months_range, project_ledger
+    project_id = request.GET.get('project')
+    if not project_id:
+        return JsonResponse({'detail': 'project لازم است'}, status=400)
+    proj = Project.objects.filter(id=project_id).first()
+    if not proj:
+        return JsonResponse({'detail': 'پروژه یافت نشد'}, status=404)
+    start = _pj(request.GET.get('from'))
+    end = _pj(request.GET.get('to'))
+    default_range = not (start and end)
+    if default_range:
+        start, end = last_3_months_range()
+    data = project_ledger(project_id, start, end)
+    rows = [{
+        'date': r['date_fa'], 'title': r['title'], 'kind': r['kind'],
+        'cat': r.get('cat', ''), 'bank': r.get('bank', ''),
+        'deposit': r['deposit'], 'withdrawal': r['withdrawal'], 'balance': r['balance'],
+        'split': r.get('split', False), 'lines': r.get('lines'),
+    } for r in data['rows']]
+    return JsonResponse({
+        'project': proj.name,
+        'from': format_jalali(start), 'to': format_jalali(end),
+        'default_range': default_range,
+        'rows': rows,
+        'total_deposit': data['total_deposit'],
+        'total_withdrawal': data['total_withdrawal'],
+        'final_balance': data['final_balance'],
+        'project_balance': project_balance(project_id),
+    })
 
 
 # ── API: بانک ─────────────────────────────────────────────────────────────
@@ -1044,6 +1066,10 @@ def invoice_create(request):
         description=(d.get('description') or '').strip(),
         due_date=_pj(d.get('due_date')), created_by=request.user)
     _save_lines(inv, d.get('lines', []))
+    # اتصالِ خودکار به گزارش (اگر از دکمه‌ی «＋ فاکتور جدید»ِ صفحه‌ی گزارش آمده‌ایم)
+    if d.get('report'):
+        from reports.models import Report
+        Report.objects.filter(id=d['report']).update(invoice=inv)
     return JsonResponse({'id': inv.id, 'number': inv.number}, status=201)
 
 

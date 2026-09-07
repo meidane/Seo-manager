@@ -64,7 +64,8 @@
   manage_columns, manage_task_types, manage_holidays`
 - **پروژه‌ها**: `view_all_projects`(=دیدنِ همه مثلِ مالک، بدونِ نیازِ عضویتِ تک‌تکِ پروژه؛
   `projects/access.py`), `add_project, edit_project, project_files,
-  project_colleagues_access, project_credentials, project_reports, manage_finance`
+  project_colleagues_access, project_credentials, project_reports, manage_finance,
+  view_invoices`(فقط-خواندنِ فاکتور/گزارشِ مالیِ پروژه — `finance/CLAUDE.md`)
 - **تسک‌ها**: `edit_task, delete_task, view_other_tasks`(مثبت‌قطبی — نبودش یعنی فقط
   تسکِ خودش، `tasks/CLAUDE.md`), `edit_time, review, view_reports`
 
