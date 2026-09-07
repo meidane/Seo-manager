@@ -326,6 +326,11 @@ class InvoiceFormView(LoginRequiredMixin, InvoiceViewPermMixin, TemplateView):
             from .balances import project_balance
             ctx['ledger_project_id'] = invoice.project_id
             ctx['ledger_project_balance'] = project_balance(invoice.project_id)
+        # رسیدِ پرداختِ مشتری — از گزارشِ متصل به این فاکتور (اگر آپلود شده)
+        if invoice:
+            rep_receipt = invoice.reports.exclude(receipt='').exclude(receipt__isnull=True).first()
+            if rep_receipt and rep_receipt.receipt:
+                ctx['invoice_receipt_url'] = rep_receipt.receipt.url
         ctx['page_title'] = f'فاکتور #{invoice.number}' if invoice else 'فاکتور جدید'
         return ctx
 

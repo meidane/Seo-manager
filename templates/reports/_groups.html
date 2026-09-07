@@ -1,9 +1,11 @@
 {% load seo_extras %}
 {% for g in groups %}
   <section class="card glass" style="margin-bottom:14px">
-    <div class="card-h"><h3>{{ g.label }}</h3><span class="chip">{{ g.items|length|fa_digits }} مورد</span></div>
+    <div class="card-h"><h3>{{ g.label }} <span class="chip">{{ g.items|length|fa_digits }} مورد</span></h3>
+      <div class="side-c"><button class="btn btn-sm grp-add" data-add-type="{{ g.add_type }}">＋ افزودن ردیف</button></div>
+    </div>
     <table>
-      <thead><tr><th>عنوان</th><th>مسئول</th><th>تاریخ انجام</th><th>لینک</th><th style="width:80px"></th></tr></thead>
+      <thead><tr><th>عنوان</th><th style="width:150px">مسئول</th><th style="width:130px">تاریخ انجام</th><th style="width:50px">لینک</th><th style="width:120px"></th></tr></thead>
       <tbody>
         {% for it in g.items %}
           <tr>
@@ -18,9 +20,12 @@
             </td>
           </tr>
           <tr id="desc-{{ it.id }}" style="display:none">
-            <td colspan="5" style="background:rgba(255,255,255,.02)">
-              <div contenteditable="true" data-item-desc="{{ it.id }}" class="rich" style="padding:10px;min-height:50px;outline:none;border:1px solid var(--stroke-soft);border-radius:var(--r-sm)">{{ it.eff_description|safe }}</div>
-              <small style="color:var(--text-faint)">این توضیح فقط برای همین گزارش ذخیره می‌شود.</small>
+            <td colspan="5" style="background:var(--fill)">
+              <textarea class="input idesc rich-editor" id="idesc-{{ it.id }}" data-item-desc="{{ it.id }}" rows="4">{{ it.eff_description }}</textarea>
+              <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+                <button class="btn btn-sm btn-p idesc-save" data-item="{{ it.id }}">ذخیره توضیح</button>
+                <small style="color:var(--text-faint)">می‌توانی عکس هم بگذاری؛ این توضیح فقط برای همین گزارش ذخیره می‌شود.</small>
+              </div>
             </td>
           </tr>
         {% endfor %}
@@ -28,5 +33,5 @@
     </table>
   </section>
 {% empty %}
-  <section class="card glass"><div class="empty"><div class="ico">▪</div><h4>هنوز ردیفی در گزارش نیست</h4><p>با «ایمپورت تسک‌ها» تسک‌های پروژه را بیاور و موارد را انتخاب کن.</p></div></section>
+  <section class="card glass"><div class="empty"><div class="ico">▪</div><h4>هنوز ردیفی در گزارش نیست</h4><p>با «ایمپورت تسک‌ها» تسک‌های پروژه را بیاور و موارد را انتخاب کن، یا از دکمهٔ «＋ ردیف دستی» بالای «ایمپورت» استفاده کن.</p></div></section>
 {% endfor %}

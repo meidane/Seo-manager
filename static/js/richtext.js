@@ -40,6 +40,9 @@
       window.tinymce.init({
         selector, base_url: BASE, suffix: '.min',
         directionality: 'rtl', skin: 'oxide-dark',
+        // URLهای عکس مطلق بمانند (/media/...) — وگرنه TinyMCE آن‌ها را نسبی می‌کرد
+        // (../../media/...) و در صفحه‌ای با عمقِ متفاوت (مثلِ پیش‌نمایش/عمومیِ گزارش) 404 می‌شد.
+        relative_urls: false, remove_script_host: true, convert_urls: false,
         content_css: light ? false : 'dark',
         menubar: false, statusbar: false, height: 240, branding: false,
         plugins: 'lists link image table autoresize code',

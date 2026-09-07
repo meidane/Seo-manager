@@ -1,5 +1,6 @@
 """ویوهای گزارش‌دهی — صفحه‌ی ساخت (login) + نسخه‌ی عمومی مشتری (بدون login)."""
 import json
+import re
 from datetime import date
 
 import bleach
@@ -28,7 +29,11 @@ ALLOWED_ATTRS = {'a': ['href', 'target', 'rel'], 'img': ['src', 'alt', 'style'],
 
 
 def clean_html(html):
-    return bleach.clean(html or '', tags=ALLOWED_TAGS, attributes=ALLOWED_ATTRS, strip=True)
+    html = html or ''
+    # URLهای نسبیِ عکسِ ادیتور (../media, ../../media) را به مطلق (/media/) نرمال کن،
+    # وگرنه در پیش‌نمایش/عمومیِ گزارش (عمقِ متفاوت) 404 می‌دهند.
+    html = re.sub(r'(?:\.\./)+media/', '/media/', html)
+    return bleach.clean(html, tags=ALLOWED_TAGS, attributes=ALLOWED_ATTRS, strip=True)
 
 
 def _body(request):
@@ -127,22 +132,26 @@ class ReportDetailView(LoginRequiredMixin, DetailView):
         return ctx
 
 
+# اطلاعاتِ حسابِ واریز — **هاردکد، مستقل از حسابداری** (خواستِ کاربر). برای تغییر فقط همین‌جا.
+PAYMENT_INFO = {
+    'bank': 'بانک سامان',
+    'holder': 'امیر گودرزی',
+    'card': '6219861055890247',
+    'sheba': 'IR930560084570002252677001',
+}
+
+
 def _public_report_ctx(report, ctx):
     """context مشترکِ نسخه‌ی عمومی/پیش‌نمایش (گروه‌ها، فیلدهای مجاز، سکشن‌ها، کلماتِ
-    کلیدی، آمار، فاکتور، حساب‌های بانکی، رسید)."""
-    from finance.models import BankAccount
+    کلیدی، آمار، فاکتور، اطلاعاتِ حسابِ هاردکد، رسیدِ مشتری)."""
     ctx['groups'] = report.grouped_items()
     ctx['visible'] = report.visible_fields or []
     ctx['fields'] = [(k, lbl) for k, lbl in CLIENT_FIELDS if report.sees(k)]
     ctx['sections'] = list(report.sections.all())
     ctx['keywords'] = list(report.keywords.all())
     ctx['stats'] = report.stats()
-    inv_ctx = _invoice_ctx(report)
-    ctx['invoice_ctx'] = inv_ctx
-    # فقط حساب‌هایی که «نمایش زیرِ فاکتورِ مشتری» تیک دارند (نه همهٔ حساب‌ها) — معمولاً یکی
-    ctx['bank_accounts'] = (list(BankAccount.all_objects.filter(
-        organization_id=report.organization_id, is_active=True,
-        show_on_invoice=True)) if inv_ctx else [])
+    ctx['invoice_ctx'] = _invoice_ctx(report)
+    ctx['pay_info'] = PAYMENT_INFO   # هاردکد — به حسابداری وصل نیست
     return ctx
 
 
@@ -404,24 +413,32 @@ def upload_image(request, pk):
     return JsonResponse({'url': att.file.url})
 
 
-@login_required
 @require_http_methods(['POST', 'DELETE'])
 def report_receipt(request, pk):
-    """آپلود/حذفِ رسیدِ پرداختِ فاکتورِ متصل به گزارش (اختیاری؛ در نسخهٔ مشتری زیرِ فاکتور دیده می‌شود)."""
+    """آپلود/حذفِ رسیدِ پرداختِ **مشتری** روی گزارش (`Report.receipt`).
+
+    مشتری از نسخهٔ عمومی (بدونِ login، فقط اگر گزارش `is_public`) کنارِ اطلاعاتِ حساب
+    آپلود می‌کند؛ صاحبِ گزارش هم از پیش‌نمایش (login). فقط تصویر/PDF، حداکثر ۱۰MB.
+    """
     report = get_object_or_404(Report, pk=pk)
-    if not report.invoice_id:
-        return JsonResponse({'detail': 'فاکتوری به این گزارش متصل نیست'}, status=400)
-    inv = report.invoice
+    # گیت: کاربرِ لاگین‌شده (صاحب) یا گزارشِ عمومی (مشتری، capability = توکنِ لینک)
+    if not (request.user.is_authenticated or report.is_public):
+        return JsonResponse({'detail': 'اجازه نیست'}, status=403)
     if request.method == 'DELETE':
-        inv.receipt.delete(save=False)
-        inv.receipt = None
-        inv.save(update_fields=['receipt', 'updated_at'])
+        if not request.user.is_authenticated:
+            return JsonResponse({'detail': 'حذف فقط توسطِ صاحبِ گزارش'}, status=403)
+        report.receipt.delete(save=False)
+        report.receipt = None
+        report.save(update_fields=['receipt', 'updated_at'])
         return JsonResponse({'ok': True})
     f = request.FILES.get('receipt')
     if not f:
         return JsonResponse({'detail': 'فایلی انتخاب نشد'}, status=400)
-    if f.size > 20 * 1024 * 1024:
-        return JsonResponse({'detail': 'حجم بیش از ۲۰ مگابایت'}, status=400)
-    inv.receipt = f
-    inv.save(update_fields=['receipt', 'updated_at'])
-    return JsonResponse({'ok': True, 'url': inv.receipt.url})
+    if f.size > 10 * 1024 * 1024:
+        return JsonResponse({'detail': 'حجم بیش از ۱۰ مگابایت'}, status=400)
+    ok_types = ('image/', 'application/pdf')
+    if not (f.content_type or '').startswith(ok_types):
+        return JsonResponse({'detail': 'فقط تصویر یا PDF'}, status=400)
+    report.receipt = f
+    report.save(update_fields=['receipt', 'updated_at'])
+    return JsonResponse({'ok': True, 'url': report.receipt.url})

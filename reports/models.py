@@ -74,6 +74,9 @@ class Report(TimeStampedModel):
     # نباید این گزارش را عوض کند. ۰ = محاسبه نشود.
     content_hourly_rate = models.BigIntegerField('نرخِ ساعتیِ تولید محتوا (اسنپ‌شات)', default=0)
     content_word_rate = models.BigIntegerField('نرخِ هر کلمهٔ تولید محتوا (اسنپ‌شات)', default=0)
+    # رسیدِ پرداختِ مشتری — مشتری از نسخهٔ عمومی/پیش‌نمایش کنارِ اطلاعاتِ حساب آپلود می‌کند؛
+    # اگر گزارش فاکتور دارد، در صفحهٔ فاکتور هم دیده می‌شود.
+    receipt = models.FileField('رسیدِ پرداخت', upload_to='receipts/', null=True, blank=True)
 
     organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
     objects = TenantManager()
@@ -113,10 +116,11 @@ class Report(TimeStampedModel):
         """آیتم‌ها را در سطل‌های نوع برمی‌گرداند: dictهای {key,label,items,cols}."""
         items = list(self.items.select_related('task', 'task__assignee', 'task__type_def').all())
         out = []
-        for key, label, _types in BUCKETS:
+        for key, label, types in BUCKETS:
             bucket = [it for it in items if it.bucket == key]
             if bucket:
                 out.append({'key': key, 'label': label, 'items': bucket,
+                            'add_type': types[0],  # نوعِ ردیفِ دستیِ این سکشن
                             'cols': BUCKET_COLS.get(key, {'word': False, 'link': False})})
         return out
 

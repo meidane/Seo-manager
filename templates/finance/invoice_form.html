@@ -28,6 +28,12 @@
       </div>
       <div class="field"><label>توضیحات فاکتور</label>
         <textarea class="input" id="inv-desc" rows="2" placeholder="توضیحات…">{% if invoice %}{{ invoice.description }}{% endif %}</textarea></div>
+      {% if invoice_receipt_url %}
+      <div style="margin-top:6px;font-size:12.5px;color:var(--text-dim);display:flex;gap:8px;align-items:center">
+        <span>رسیدِ پرداختِ مشتری:</span>
+        <a class="lnk" href="{{ invoice_receipt_url }}" target="_blank" rel="noopener">مشاهدهٔ رسید ↗</a>
+      </div>
+      {% endif %}
     </div>
   </section>
 

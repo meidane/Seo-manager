@@ -44,9 +44,8 @@
           {% for inv in invoices %}<option value="{{ inv.id }}" {% if report.invoice_id == inv.id %}selected{% endif %}>فاکتور #{{ inv.number|fa_digits }}{% if inv.project %} · {{ inv.project.name }}{% endif %} · {{ inv.grand_total|money }}</option>{% endfor %}
         </select>
         {% if report.project_id %}<a class="btn btn-sm btn-p" href="{% url 'finance:invoice_new' %}?project={{ report.project_id }}&report={{ report.id }}" title="ساختِ فاکتورِ جدید برای این پروژه و اتصالِ خودکار به این گزارش">＋ فاکتور جدید</a>{% endif %}
-        {% if report.invoice_id %}<a class="btn btn-sm" href="{% url 'finance:invoice_edit_page' report.invoice_id %}" target="_blank" rel="noopener">ویرایشِ فاکتور ↗</a>
-        <label class="btn btn-sm" style="cursor:pointer" title="آپلودِ رسیدِ پرداخت (اختیاری — به مشتری نشان داده می‌شود)">📎 رسید<input type="file" id="r-receipt" hidden></label>
-        <a id="r-receipt-link" class="lnk" href="{% if report.invoice.receipt %}{{ report.invoice.receipt.url }}{% endif %}" target="_blank" rel="noopener" style="font-size:12px{% if not report.invoice.receipt %};display:none{% endif %}">رسیدِ فعلی ↗</a>{% endif %}
+        {% if report.invoice_id %}<a class="btn btn-sm" href="{% url 'finance:invoice_edit_page' report.invoice_id %}" target="_blank" rel="noopener">ویرایشِ فاکتور ↗</a>{% endif %}
+        {% if report.receipt %}<a class="lnk" href="{{ report.receipt.url }}" target="_blank" rel="noopener" style="font-size:12px" title="رسیدی که مشتری آپلود کرده">رسیدِ مشتری ↗</a>{% endif %}
         {% if report.project_id %}<span style="flex:1"></span>
         <button type="button" class="btn btn-sm" id="r-fin-toggle" aria-expanded="false">📊 گزارشِ مالیِ پروژه</button>
         <span class="tag {% if client_balance < 0 %}t-bad{% elif client_balance > 0 %}t-ok{% else %}t-mute{% endif %}" title="مانده‌ی کلِ پروژه">مانده: {{ client_balance|money }}</span>{% endif %}
@@ -200,17 +199,6 @@ document.getElementById('r-invoice').onchange=e=>App.fetchJSON(`/reports/api/${R
   };
 })();
 
-// ── آپلودِ رسیدِ پرداخت (اختیاری) ──
-(function(){ const rc=document.getElementById('r-receipt'); if(!rc) return;
-  rc.onchange=async()=>{ const f=rc.files[0]; if(!f) return;
-    const fd=new FormData(); fd.append('receipt',f);
-    try{ const d=await App.fetchJSON(`/reports/api/${RID}/receipt/`,{method:'POST',body:fd});
-      const lk=document.getElementById('r-receipt-link'); if(lk){ lk.href=d.url; lk.style.display=''; }
-      App.toast('رسید آپلود شد','ok');
-    }catch(_){}
-  };
-})();
-
 // ── نهایی‌سازی ──
 document.getElementById('r-final').onclick=async()=>{
   const cur=document.getElementById('r-status').textContent.includes('نهایی');
@@ -255,9 +243,6 @@ document.addEventListener('blur',async e=>{
     await App.fetchJSON(`/reports/api/items/${e.target.dataset.itemTitle}/`,{method:'PATCH',body:{override_title:e.target.textContent.trim()}});
     App.toast('ذخیره شد','ok');
   }
-  if(e.target.matches('[data-item-desc]')){
-    await App.fetchJSON(`/reports/api/items/${e.target.dataset.itemDesc}/`,{method:'PATCH',body:{override_description:e.target.innerHTML}});
-  }
 },true);
 document.addEventListener('change',async e=>{
   if(e.target.matches('[data-item-date]')){
@@ -267,9 +252,23 @@ document.addEventListener('change',async e=>{
 });
 document.addEventListener('click',async e=>{
   const del=e.target.closest('[data-item-del]');
-  if(del){ if(await App.confirm('این ردیف از گزارش حذف شود؟')){await App.fetchJSON(`/reports/api/items/${del.dataset.itemDel}/`,{method:'DELETE'});del.closest('tr').remove();App.toast('حذف شد','ok');} }
+  if(del){ if(await App.confirm('این ردیف از گزارش حذف شود؟')){await App.fetchJSON(`/reports/api/items/${del.dataset.itemDel}/`,{method:'DELETE'});del.closest('tr').remove();App.toast('حذف شد','ok');} return; }
+  // بازکردنِ توضیح + init کردنِ TinyMCE (تا بشود عکس گذاشت)
   const ed=e.target.closest('[data-toggle-desc]');
-  if(ed){ const row=document.getElementById('desc-'+ed.dataset.toggleDesc); if(row)row.style.display=row.style.display==='none'?'':'none'; }
+  if(ed){ const id=ed.dataset.toggleDesc; const row=document.getElementById('desc-'+id);
+    if(row){ const open=row.style.display==='none'; row.style.display=open?'':'none';
+      if(open && window.RichText){ RichText.init('#idesc-'+id); } }
+    return; }
+  // ذخیرهٔ توضیحِ آیتم (از textareaِ TinyMCE)
+  const sv=e.target.closest('.idesc-save');
+  if(sv){ const id=sv.dataset.item; if(window.RichText) RichText.save();
+    const ta=document.getElementById('idesc-'+id);
+    await App.fetchJSON(`/reports/api/items/${id}/`,{method:'PATCH',body:{override_description:ta.value}});
+    App.toast('توضیح ذخیره شد','ok'); return; }
+  // افزودنِ ردیفِ دستی به همین سکشن (با نوعِ همان گروه)
+  const ga=e.target.closest('.grp-add');
+  if(ga){ await App.fetchJSON(`/reports/api/${RID}/manual/`,{method:'POST',body:{title:'ردیف جدید',type:ga.dataset.addType}});
+    location.reload(); return; }
 });
 
 // ── تنظیمات نمایش مشتری ──
