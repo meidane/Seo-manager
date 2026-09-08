@@ -27,20 +27,36 @@ def _int_ids(ids):
 
 
 def project_balances(project_ids):
-    """{project_id: مانده} برای پروژه‌های داده‌شده (کلِ تاریخ، بدون بازه)."""
+    """{project_id: مانده} برای پروژه‌های داده‌شده (کلِ تاریخ، بدون بازه).
+
+    تراکنشِ **تفکیک‌شده** تخصیصش در ردیف‌های `TransactionSplit` است، نه پروژه‌ی خودش —
+    پس تراکنش‌های دارای split از جمعِ والد کنار گذاشته می‌شوند و به‌جایش مبلغِ هر split
+    (با جهتِ واریز/برداشتِ همان تراکنش) به پروژه‌ی خودش اضافه می‌شود. (باگِ قبلی: واریزِ
+    تفکیک‌شده اصلاً در مانده شمرده نمی‌شد چون project_idِ والد خالی بود.)
+    """
+    from .models import TransactionSplit
     ids = _int_ids(project_ids)
     if not ids:
         return {}
+    # تراکنش‌های بدونِ تفکیک → پروژه‌ی خودِ تراکنش
     tx = {r['project_id']: r for r in Transaction.objects
-          .filter(project_id__in=ids).values('project_id')
+          .filter(project_id__in=ids, splits__isnull=True).values('project_id')
           .annotate(d=Sum('deposit'), w=Sum('withdrawal'))}
+    # تفکیک‌ها → مبلغِ هر split به پروژه‌ی خودش (جهت از واریز/برداشتِ تراکنشِ والد)
+    split_bal = {}
+    for s in (TransactionSplit.objects.filter(project_id__in=ids)
+              .select_related('transaction')):
+        amt = int(s.amount or 0)
+        signed = amt if (s.transaction.deposit or 0) else -amt
+        split_bal[s.project_id] = split_bal.get(s.project_id, 0) + signed
     inv = {r['invoice__project_id']: r['s'] for r in InvoiceLine.objects
            .filter(invoice__project_id__in=ids).values('invoice__project_id')
            .annotate(s=Sum(_LINE_TOTAL))}
     out = {}
     for pid in ids:
         t = tx.get(pid) or {}
-        out[pid] = int(t.get('d') or 0) - int(t.get('w') or 0) - int(inv.get(pid) or 0)
+        out[pid] = (int(t.get('d') or 0) - int(t.get('w') or 0)
+                    + split_bal.get(pid, 0) - int(inv.get(pid) or 0))
     return out
 
 

@@ -26,7 +26,7 @@
     const pc = t.project_color || t.color;  // رنگ‌بندی بر اساسِ پروژه (نه نوعِ تسک)
     const style = `style="${t.done ? '' : `background:rgba(${pc},.20);`}border-right:4px solid rgb(${pc})"`;
     const attrs = t.virtual ? '' : ` draggable="true" data-id="${t.id}" data-open-task="${t.id}"`;
-    const title = `${t.type_label}: ${t.title}${t.assignee ? ' — ' + t.assignee : ''}`;
+    const title = `${t.type_label}: ${t.title}${t.project ? ' — ' + t.project : ''}`;
     return `<span class="tk${extra ? ' tk-extra' : ''}${t.done ? ' done' : ''}${t.is_placeholder ? ' placeholder' : ''}${t.virtual ? ' virtual' : ''}"${attrs} title="${esc(title)}" ${style}>` +
       `${av(t)}<span class="tk-tx">${t.type_label}: ${t.title}</span></span>`;
   }

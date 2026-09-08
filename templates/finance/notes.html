@@ -23,13 +23,13 @@
   <section class="card glass" id="fn-list">
     {% if notes %}
       {% for n in notes %}
-      <div class="fn-item{% if n.done %} done{% endif %}" data-note="{{ n.id }}">
+      <div class="fn-item{% if n.done %} done{% endif %}" data-note="{{ n.id }}" data-title="{{ n.title }}" data-date="{{ n.date|jalali }}" data-body="{{ n.body }}">
         <label class="fn-check"><input type="checkbox" class="fn-done" {% if n.done %}checked{% endif %} title="رسیدگی‌شده"></label>
         <div class="fn-main">
           <div class="fn-top"><b class="fn-title">{{ n.title }}</b><span class="fn-date">{{ n.date|jalali }}</span></div>
           {% if n.body %}<div class="fn-body">{{ n.body|linebreaksbr }}</div>{% endif %}
         </div>
-        <button class="mini fn-del" title="حذف">حذف</button>
+        <span class="fn-actions"><button class="mini fn-edit" title="ویرایش">ویرایش</button><button class="mini fn-del" title="حذف">حذف</button></span>
       </div>
       {% endfor %}
     {% else %}
@@ -50,7 +50,8 @@
   .fn-title{font-size:14px}
   .fn-date{font-size:12px;color:var(--text-faint);font-variant-numeric:tabular-nums}
   .fn-body{font-size:12.5px;color:var(--text-dim);line-height:1.85;margin-top:4px;white-space:pre-wrap}
-  .fn-del{flex:none;color:var(--text-faint)}
+  .fn-actions{flex:none;display:flex;gap:6px}
+  .fn-del{color:var(--text-faint)}
   .fn-del:hover{color:var(--danger);border-color:var(--danger)}
 </style>
 <script>
@@ -74,12 +75,30 @@
     }
   });
   list.addEventListener('click',async e=>{
-    const del=e.target.closest('.fn-del'); if(!del) return;
-    const it=del.closest('.fn-item');
-    if(await App.confirm('این یادداشت حذف شود؟')){
-      await App.fetchJSON(`/finance/api/notes/${it.dataset.note}/`,{method:'DELETE'}); it.remove(); App.toast('حذف شد','ok');
-    }
+    const del=e.target.closest('.fn-del');
+    if(del){ const it=del.closest('.fn-item');
+      if(await App.confirm('این یادداشت حذف شود؟')){ await App.fetchJSON(`/finance/api/notes/${it.dataset.note}/`,{method:'DELETE'}); it.remove(); App.toast('حذف شد','ok'); }
+      return; }
+    const ed=e.target.closest('.fn-edit');
+    if(ed){ const it=ed.closest('.fn-item'); openEdit(it); return; }
   });
+  function esc(s){ return String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+  function openEdit(it){
+    App.openModal(`<div class="modal-h"><h3>ویرایشِ یادداشت</h3><button class="x" onclick="App.closeModal()">×</button></div>
+      <div class="modal-b">
+        <div class="grid2">
+          <div class="field"><label>عنوان</label><input class="input" id="fe-title" value="${esc(it.dataset.title)}"></div>
+          <div class="field"><label>تاریخ</label><input class="input jdate" id="fe-date" dir="ltr" value="${esc(it.dataset.date)}"></div>
+        </div>
+        <div class="field"><label>توضیحات</label><textarea class="input" id="fe-body" rows="3">${esc(it.dataset.body)}</textarea></div>
+      </div>
+      <div class="modal-f"><button class="btn btn-p" id="fe-save">ذخیره</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+    document.getElementById('fe-save').onclick=async()=>{
+      await App.fetchJSON(`/finance/api/notes/${it.dataset.note}/`,{method:'PATCH',body:{
+        title:document.getElementById('fe-title').value, date:document.getElementById('fe-date').value, body:document.getElementById('fe-body').value}});
+      App.closeModal(); App.toast('ذخیره شد','ok'); location.reload();
+    };
+  }
 })();
 </script>
 {% endblock %}

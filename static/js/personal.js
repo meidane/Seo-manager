@@ -158,42 +158,76 @@
   if (addInput) addInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addInbox(); } });
   const plus = document.getElementById('inbox-plus'); if (plus) plus.onclick = addInbox;
 
-  // ── برنامهٔ هفته: فهرستِ عمودیِ ۷ روز با درگ‌ودراپِ بینِ روزها ──
+  // ── برنامهٔ هفته: شبکهٔ ۷ روز؛ درگ بینِ روزها + اولویتِ داخلِ روز + پلی + تخمینِ inline ──
   const weekGrid = document.getElementById('week-grid');
   if (weekGrid) {
     let wdrag = null;
+    const fmt = window.fmtMin || ((m) => String(m));
+    const parseHM = window.parseHM || ((s) => parseInt(s, 10) || 0);
+
+    // شماره‌گذاریِ اولویت (فقط انجام‌نشده‌ها) + شمارندهٔ هدرِ روز
+    function renumber(list) {
+      let p = 0;
+      list.querySelectorAll('.wtask').forEach((t) => {
+        const pri = t.querySelector('.wtask-pri');
+        if (t.classList.contains('done')) { if (pri) pri.textContent = ''; }
+        else { p++; if (pri) pri.textContent = toFa(p); }
+      });
+    }
     function updateCounts() {
       weekGrid.querySelectorAll('.wday').forEach((col) => {
         const total = col.querySelectorAll('.wtask').length;
-        const done = col.querySelectorAll('.wtask.dim').length;
-        const c = col.querySelector('.wday-count'); if (c) c.textContent = done + '/' + total;
+        const done = col.querySelectorAll('.wtask.done').length;
+        const c = col.querySelector('.wday-count'); if (c) c.textContent = toFa(done) + '/' + toFa(total);
+        const l = col.querySelector('.wday-list'); if (l) renumber(l);
       });
     }
-    weekGrid.addEventListener('dragstart', (e) => { wdrag = e.target.closest('.wtask'); if (wdrag) wdrag.classList.add('dragging'); });
-    weekGrid.addEventListener('dragend', () => { if (wdrag) wdrag.classList.remove('dragging'); wdrag = null; document.querySelectorAll('.wday.drop-hi').forEach((c) => c.classList.remove('drop-hi')); });
-    weekGrid.querySelectorAll('.wday-list').forEach((list) => {
-      const col = list.closest('.wday');
-      list.addEventListener('dragover', (e) => { if (wdrag) { e.preventDefault(); col.classList.add('drop-hi'); } });
-      list.addEventListener('dragleave', () => col.classList.remove('drop-hi'));
-      list.addEventListener('drop', async (e) => {
-        e.preventDefault(); col.classList.remove('drop-hi');
-        if (!wdrag) return;
-        const from = wdrag.closest('.wday-list');
-        if (from === list) return;
-        list.appendChild(wdrag); updateCounts();
-        try { await api(`/personal/api/tasks/${wdrag.dataset.id}/plan/`, 'PATCH', { date: list.dataset.date }); } catch (_) { location.reload(); }
+
+    // فقط تسک‌های شخصی draggableاند (سیستمی‌ها از پروژهٔ خودشان مدیریت می‌شوند)
+    weekGrid.addEventListener('dragstart', (e) => { wdrag = e.target.closest('.wtask[draggable]'); if (wdrag) wdrag.classList.add('dragging'); });
+    weekGrid.addEventListener('dragend', async () => {
+      if (!wdrag) return;
+      const el = wdrag; wdrag = null; el.classList.remove('dragging');
+      document.querySelectorAll('.wday.drop-hi').forEach((c) => c.classList.remove('drop-hi'));
+      const list = el.closest('.wday-list'); if (!list) return;
+      updateCounts();
+      const newDate = list.dataset.date;
+      if (el.dataset.date !== newDate) {   // روز عوض شد → تاریخِ برنامه را ست کن
+        el.dataset.date = newDate;
+        try { await api(`/personal/api/tasks/${el.dataset.id}/plan/`, 'PATCH', { date: newDate }); }
+        catch (_) { location.reload(); return; }
+      }
+      // ذخیرهٔ ترتیبِ روزِ مقصد (board_order) — فقط idهای شخصیِ همان روز
+      const ids = [...list.querySelectorAll('.wtask[draggable]')].map((r) => +r.dataset.id);
+      try { await api('/personal/api/tasks/reorder/', 'POST', { ids }); } catch (_) {}
+    });
+    // dragover روی کلِ بدنهٔ روز تا روزِ خالی هم مقصدِ رهاکردن شود (باگِ رفع‌شده)
+    weekGrid.querySelectorAll('.wday-body').forEach((body) => {
+      const col = body.closest('.wday');
+      const list = body.querySelector('.wday-list');
+      body.addEventListener('dragover', (e) => {
+        if (!wdrag) return; e.preventDefault(); col.classList.add('drop-hi');
+        const after = [...list.querySelectorAll('.wtask:not(.dragging)')].find((r) => {
+          const b = r.getBoundingClientRect(); return e.clientY < b.top + b.height / 2;
+        });
+        if (after) list.insertBefore(wdrag, after); else list.appendChild(wdrag);
       });
+      body.addEventListener('dragleave', (e) => { if (!body.contains(e.relatedTarget)) col.classList.remove('drop-hi'); });
     });
-    // تیکِ انجام + بازگشت به اینباکس (↩)
-    weekGrid.addEventListener('change', async (e) => {
-      const cb = e.target.closest('.pt-done'); if (!cb) return;
-      const t = cb.closest('.wtask'); const done = cb.checked;
+
+    async function toggleTimer(t, btn) {
+      const on = !btn.classList.contains('on');
       try {
-        await api(`/personal/api/tasks/${t.dataset.id}/done/`, 'PATCH', { done });
-        t.classList.toggle('dim', done); t.querySelector('.pt-title').classList.toggle('is-done', done); updateCounts();
-      } catch (_) { cb.checked = !done; }
-    });
+        const d = await api(`/tasks/api/${t.dataset.id}/timer/`, 'POST', { action: on ? 'start' : 'stop' });
+        weekGrid.querySelectorAll('.wtask-play.on').forEach((b) => { b.classList.remove('on'); b.textContent = '▶'; });
+        if (on) { btn.classList.add('on'); btn.textContent = '⏸'; }
+        if (d && d.stopped_id) { const o = weekGrid.querySelector(`.wtask[data-id="${d.stopped_id}"] .wtask-play`); if (o) { o.classList.remove('on'); o.textContent = '▶'; } }
+      } catch (_) {}
+    }
+
     weekGrid.addEventListener('click', async (e) => {
+      const play = e.target.closest('.wtask-play');
+      if (play) { e.stopPropagation(); await toggleTimer(play.closest('.wtask'), play); return; }
       const un = e.target.closest('.pt-unplan');
       if (un) {  // بازگشت به اینباکس = حذفِ تاریخِ برنامه
         e.stopPropagation();
@@ -201,10 +235,35 @@
         try { await api(`/personal/api/tasks/${t.dataset.id}/plan/`, 'PATCH', { date: '' }); t.remove(); updateCounts(); } catch (_) {}
         return;
       }
-      // کلیک روی تسک (نه چک‌باکس/هدف/دستگیره/اینپوت/هدرِ روز) → مودالِ کاملِ تسک
-      if (e.target.closest('.pt-done, .pt-goal-wrap, .pt-grip, .wgrid-newtask, .wday-head')) return;
+      // کلیک روی تسک (نه کنترل‌ها) → مودالِ کاملِ تسک
+      if (e.target.closest('.pt-done, .pt-goal-wrap, .pt-grip, .wtask-est, .wgrid-newtask, .wday-head')) return;
       const t = e.target.closest('.wtask'); if (t && window.openTask) window.openTask(t.dataset.openTask);
     });
+
+    weekGrid.addEventListener('change', async (e) => {
+      // تیکِ انجام — شخصی از endpointِ شخصی، سیستمی از وضعیتِ تسک
+      if (e.target.classList.contains('pt-done')) {
+        const t = e.target.closest('.wtask'); const done = e.target.checked;
+        try {
+          if (t.dataset.sys) await api(`/tasks/api/${t.dataset.id}/status/`, 'PATCH', { status: done ? 'done' : 'todo' });
+          else await api(`/personal/api/tasks/${t.dataset.id}/done/`, 'PATCH', { done });
+          t.classList.toggle('done', done); t.classList.toggle('dim', done);
+          t.querySelector('.pt-title').classList.toggle('is-done', done);
+          const list = t.closest('.wday-list');
+          if (done) list.appendChild(t);   // انجام‌شده به ته لیست
+          const play = t.querySelector('.wtask-play'); if (play && done) play.remove();
+          updateCounts();
+        } catch (_) { e.target.checked = !done; }
+        return;
+      }
+      // تخمینِ زمانِ inline (دقیقه یا H:MM) → estimate_minutes
+      if (e.target.classList.contains('wtask-est')) {
+        const t = e.target.closest('.wtask'); const mins = parseHM(e.target.value);
+        try { await api(`/tasks/api/${t.dataset.id}/`, 'PATCH', { estimate_minutes: mins }); e.target.value = mins ? fmt(mins) : ''; }
+        catch (_) {}
+      }
+    });
+
     // افزودنِ کار به یک روزِ خاص (Enter در اینپوتِ ته روز)
     weekGrid.addEventListener('keydown', async (e) => {
       const inp = e.target.closest('.wgrid-newtask'); if (!inp || e.key !== 'Enter') return;
@@ -213,10 +272,18 @@
         const t = await api('/personal/api/tasks/', 'POST', { title });
         await api(`/personal/api/tasks/${t.id}/plan/`, 'PATCH', { date: inp.dataset.date });
         const list = inp.closest('.wday').querySelector('.wday-list');
-        list.insertAdjacentHTML('beforeend', `<div class="wtask" data-id="${t.id}" data-open-task="${t.id}" draggable="true"><span class="pt-grip">⠿</span><input type="checkbox" class="pt-done"><span class="pt-title">${title.replace(/</g, '&lt;')}</span></div>`);
+        list.insertAdjacentHTML('beforeend',
+          `<div class="wtask" data-id="${t.id}" data-open-task="${t.id}" draggable="true">` +
+          '<span class="wtask-pri"></span><span class="pt-grip" title="جابه‌جایی/اولویت">⠿</span>' +
+          '<input type="checkbox" class="pt-done">' +
+          '<button class="wtask-play" title="شروعِ زمانِ کار">▶</button>' +
+          `<span class="pt-title">${title.replace(/</g, '&lt;')}</span>` +
+          '<input type="text" class="wtask-est" dir="ltr" placeholder="⏱" title="تخمینِ زمان (دقیقه یا 1:30)">' +
+          '<button class="pt-unplan" title="بازگشت به اینباکس (حذفِ تاریخ)">↩</button></div>');
         inp.value = ''; updateCounts();
       } catch (_) {}
     });
+    updateCounts();
   }
 
   // ── هبیت ترکر ──

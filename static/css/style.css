@@ -1657,6 +1657,20 @@ input[type=checkbox]:disabled{opacity:.5;cursor:default}
 .wtask:hover .pt-unplan{opacity:1}
 .wtask .pt-unplan:hover{color:var(--primary-400)}
 .wtask-run{color:var(--ok-fg);font-size:9px;flex:none}
+.wday-list{min-height:26px}   /* روزِ خالی هم مقصدِ درگ باشد */
+/* شمارهٔ اولویتِ ریز کنارِ هر تسک */
+.wtask-pri{flex:none;min-width:12px;font-size:9.5px;color:var(--text-faint);font-variant-numeric:tabular-nums;text-align:center}
+/* دکمهٔ پلی/توقفِ زمان */
+.wtask-play{flex:none;width:18px;height:18px;border:0;background:transparent;color:var(--text-faint);cursor:pointer;font-size:9px;line-height:1;border-radius:var(--r-full);padding:0}
+.wtask-play:hover{color:var(--primary-400)}
+.wtask-play.on{background:var(--success);color:#052}
+/* تخمینِ زمانِ inline */
+.wtask-est{flex:none;width:40px;border:1px solid transparent;background:transparent;color:var(--text-dim);font-family:inherit;font-size:10.5px;text-align:center;padding:2px 3px;border-radius:5px;font-variant-numeric:tabular-nums}
+.wtask-est:hover,.wtask-est:focus{border-color:var(--stroke-soft);outline:none}
+.wtask-est::placeholder{color:var(--text-faint)}
+/* بَجِ پروژهٔ تسکِ سیستمی (اسایمن‌شده از پروژهٔ دیگر) */
+.wtask-proj{flex:none;font-size:9.5px;color:var(--text-faint);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:1px 6px;border-radius:99px;background:var(--fill-strong)}
+.wtask.sys{border-style:dashed}
 /* اینپوتِ «＋کار» فقط روی روزِ فوکوس یا هاور — تا روزهای دیگر خالی و تمیز بمانند */
 .wgrid-newtask{width:100%;border:0;background:transparent;color:var(--text);font-family:inherit;font-size:11px;padding:2px 4px;outline:none;display:none}
 .wday.sel .wgrid-newtask,.wday:hover .wgrid-newtask{display:block}

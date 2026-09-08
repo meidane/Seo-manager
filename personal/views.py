@@ -69,20 +69,10 @@ class PersonalDashboardView(View):
         inbox.sort(key=lambda t: t.dim)  # پایدار: فعال‌ها بالا، بقیه ته
         wk_done = sum(1 for t in inbox if t.is_done)
 
-        # تسک‌های روزِ انتخاب‌شده: شخصی‌ها (قابل‌ویرایش) + سیستمی‌های همان روز (فقط‌خواندنی)
         from .models import DailyPlan
         daily = list(ptasks.filter(planned_date=day).order_by('board_order', 'id'))
         for t in daily:  # تضمینِ رکوردِ تاریخچهٔ روز (برای نمودار)، idempotent
             DailyPlan.objects.get_or_create(task=t, date=day, defaults={'user': user})
-        system_tasks = []
-        if me:
-            sys_qs = Task.objects.filter(assignee=me, planned_date=day).exclude(status=Task.DONE)
-            if pproject:
-                sys_qs = sys_qs.exclude(project=pproject)
-            ids = accessible_project_ids(request)
-            if ids is not None:
-                sys_qs = sys_qs.filter(project_id__in=ids)
-            system_tasks = list(sys_qs.select_related('project')[:50])
 
         # درصدِ روز = انجام‌شده / کلِ تسک‌های همان روزِ من (شخصی + سیستمی)
         day_done = day_total = 0
@@ -94,21 +84,46 @@ class PersonalDashboardView(View):
             day_total = dq.count()
             day_done = dq.filter(status=Task.DONE).count()
 
-        # ── شبکهٔ ۷ روزِ هفته (برنامه‌ریزیِ شخصی، درگ‌ودراپ بینِ روزها) ──
-        # هر روز = ستونی از تسک‌های شخصیِ همان روز؛ روزِ انتخابی «فوکوس» است، بقیه کم‌رنگ‌تر.
+        # ── شبکهٔ ۷ روزِ هفته (برنامه‌ریزیِ شخصی + هر تسکی که مسئولش منم) ──
+        # هر روز = ستونی از تسک‌های شخصیِ همان روز + تسک‌های اسایمن‌شده به من در هر
+        # پروژهٔ دیگر (تا از همین‌جا مدیریتشان کنم). روزِ انتخابی «فوکوس» است، بقیه کم‌رنگ‌تر.
         grid_sat = week_saturday(day)
+        grid_end = grid_sat + timedelta(days=6)
+        sys_by_day = {}
+        if me:
+            sq = Task.objects.filter(assignee=me, planned_date__range=(grid_sat, grid_end))
+            if pproject:
+                sq = sq.exclude(project=pproject)   # پروژهٔ شخصی جداگانه می‌آید
+            ids = accessible_project_ids(request)
+            if ids is not None:
+                sq = sq.filter(project_id__in=ids)
+            for t in sq.select_related('project', 'type_def'):
+                sys_by_day.setdefault(t.planned_date, []).append(t)
+
         week_grid = []
         for i in range(7):
             d = grid_sat + timedelta(days=i)
             dtasks = list(ptasks.filter(planned_date=d).order_by('board_order', 'id')) if (me and pproject) else []
             for t in dtasks:
                 DailyPlan.objects.get_or_create(task=t, date=d, defaults={'user': user})
+                t.is_sys = False
+            for t in sys_by_day.get(d, []):
+                t.is_sys = True
+            allt = dtasks + sys_by_day.get(d, [])
+            # ترتیب: انجام‌نشده‌ها اول (شخصی قبل از سیستمی)، انجام‌شده‌ها ته لیست
+            allt.sort(key=lambda t: (t.is_done, t.is_sys, getattr(t, 'board_order', 0) or 0, t.id))
+            pri = 0
+            for t in allt:  # شمارهٔ اولویتِ ریز (فقط برای انجام‌نشده‌ها)
+                if t.is_done:
+                    t.pri = None
+                else:
+                    pri += 1
+                    t.pri = pri
             week_grid.append({
                 'date': d, 'iso': d.isoformat(), 'name': WEEKDAY_NAMES[i],
                 'day_fa': format_jalali(d, '%d', fa_digits=True), 'nav': nav(day=d.isoformat()),
                 'is_today': d == today, 'is_sel': d == day, 'is_future': d > today,
-                'tasks': dtasks, 'done': sum(1 for t in dtasks if t.is_done),
-            })
+                'tasks': allt, 'done': sum(1 for t in allt if t.is_done)})
 
         # ── عادت‌ها (هفتگی، با ناوبری؛ همه‌ی روزها قابلِ‌کلیک، روزهای هدف پررنگ‌تر) ──
         hdays = []
@@ -184,7 +199,7 @@ class PersonalDashboardView(View):
             'is_this_week': wk == week_saturday(today),
             'inbox_prev': nav(week=(wk - timedelta(days=7)).isoformat()),
             'inbox_next': nav(week=(wk + timedelta(days=7)).isoformat()),
-            'daily': daily, 'system_tasks': system_tasks, 'week_grid': week_grid,
+            'daily': daily, 'week_grid': week_grid,
             'day_done': day_done, 'day_total': day_total, 'day_pct': _pct(day_done, day_total),
             'day_fa': jalali_long(day), 'is_today': day == today,
             'day_prev': nav(day=(day - timedelta(days=1)).isoformat()),
