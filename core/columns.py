@@ -22,13 +22,17 @@ PROJECTS = [
     {'key': 'done', 'label': 'انجام', 'display': 'number', 'default': True},
     {'key': 'remaining', 'label': 'باقی', 'display': 'number', 'default': True},
     {'key': 'overdue', 'label': 'عقب', 'display': 'number', 'default': True},
-    {'key': 'minutes', 'label': 'جمع ساعت', 'display': 'time', 'default': True},
+    {'key': 'est_minutes', 'label': 'ساعت تخمین', 'display': 'time', 'default': True},
+    {'key': 'minutes', 'label': 'ساعت کارکرد', 'display': 'time'},
     {'key': 'words', 'label': 'جمع کلمه', 'display': 'number'},
-    {'key': 'progress', 'label': 'پیشرفت', 'display': 'progress', 'default': True},
-    {'key': 'last_report', 'label': 'آخرین گزارش', 'display': 'date', 'default': True},
+    # نمودارِ کوچکِ روند ۱۴روزِ انجام‌شده‌ها (مثلِ اسپارک‌لاینِ صفحهٔ افراد؛ هاور = تعداد)
+    {'key': 'spark', 'label': 'روند ۱۴ روز', 'display': 'spark', 'default': True},
+    # یک ستونِ «وضعیت» به‌جای دو ستونِ گزارش/پرداخت (آخرین گزارش + آخرین پرداخت)
+    {'key': 'status_col', 'label': 'وضعیت', 'display': 'status_col', 'default': True},
+    {'key': 'progress', 'label': 'پیشرفت', 'display': 'progress'},
+    {'key': 'last_report', 'label': 'آخرین گزارش', 'display': 'date'},
     {'key': 'last_activity', 'label': 'آخرین فعالیت', 'display': 'timeago'},
-    # هنوز به finance وصل نیست؛ همیشه «—» نشان می‌دهد تا آن گام بعدی انجام شود
-    {'key': 'last_payment', 'label': 'آخرین پرداخت', 'display': 'date', 'default': True},
+    {'key': 'last_payment', 'label': 'آخرین پرداخت', 'display': 'date'},
 ]
 
 COLLEAGUES = [

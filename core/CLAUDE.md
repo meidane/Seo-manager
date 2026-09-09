@@ -23,8 +23,15 @@
   (برای تسک‌ها، از فیلدهای سفارشیِ انواعِ فعالِ سازمان داینامیک می‌سازد، کلید `cf:<type_def_id>:<field_key>`)
   + `get_columns(table, scope)` (می‌خواند از `ColumnConfig`، پیش‌فرض اگر تنظیم نشده) +
   `cell_value(obj, col)`. حالت‌های نمایش: `text, number, time(دقیقه→ساعت), date, timeago,
-  bool, badge(status/priority/state/عمومی), link_icon, progress`. **فیلدِ جدید = فقط اینجا
-  اضافه کن**، در ویو/تمپلیت تکرار نکن.
+  bool, badge(status/priority/state/عمومی), link_icon, progress, **spark**(نمودارِ کوچک؛
+  مقدار = لیستِ `{h,n}`، هاور=تعداد)، **status_col**(HTMLِ ازپیش‌ساخته‌ی امنِ ویو). **فیلدِ
+  جدید = فقط اینجا اضافه کن**، در ویو/تمپلیت تکرار نکن.
+  - **ستون‌های پیش‌فرضِ پروژه‌ها (این تغییر):** «ساعت تخمین» (`est_minutes`) به‌جای «ساعت
+    کارکرد»، **`spark`** (روند ۱۴روزِ انجام‌شده‌ها، مثلِ اسپارک‌لاینِ افراد) به‌جای `progress`،
+    و یک **`status_col`** («وضعیت» = آخرین گزارش + آخرین پرداخت) به‌جای دو ستونِ جدای
+    `last_report`/`last_payment`. مقدارِ `spark`/`status_col`/`est_minutes`/`last_payment` را
+    `ProjectListView` روی هر ردیف می‌گذارد. ردیف‌های ماهِ گزارش داده‌ی spark ندارند پس نمودار
+    نمی‌گیرند (خودکار «—»).
 - `templatetags/seo_extras.py` — `jalali, jalali_long, money, timeago, fa_digits, dictkey,
   repfield, elided_pages` + **`{% column_cell obj col %}`** (رندرِ یک سلولِ جدولِ سفارشی طبق
   `col.display`؛ منبعِ واحدِ رندرِ ستون‌ها — در تسک/پروژه/همکار/داشبورد همه‌جا از همین استفاده کن).

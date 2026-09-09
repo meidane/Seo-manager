@@ -4,6 +4,7 @@ from datetime import date, datetime
 from django import template
 from django.utils import timezone
 from django.utils.html import escape, format_html
+from django.utils.safestring import mark_safe
 
 from core import jalali as j
 from core.columns import cell_value
@@ -139,6 +140,19 @@ def column_cell(obj, col):
     منبعِ واحدِ رندرِ ستون‌ها برای تسک/پروژه/همکار — همه‌جا از همین تگ استفاده کن."""
     value = cell_value(obj, col)
     display = col.get('display', 'text')
+
+    # نمودارِ کوچکِ روند (لیستِ {h,n})؛ روی ردیف‌های ماه (بدونِ داده) خالی می‌ماند = بدونِ نمودار
+    if display == 'spark':
+        bars = value or []
+        if not bars:
+            return format_html('<span class="zero">—</span>')
+        inner = ''.join(
+            '<i style="height:%d%%" title="%s"></i>' % (int(b.get('h', 0)), fa_digits(b.get('n', 0)))
+            for b in bars)
+        return format_html('<div class="spark spark-cell">{}</div>', mark_safe(inner))
+    # ستونِ «وضعیت» — HTMLِ ازپیش‌ساخته‌ی امن از ویو (آخرین گزارش + آخرین پرداخت)
+    if display == 'status_col':
+        return value if value else format_html('<span class="zero">—</span>')
 
     if value in (None, ''):
         if display == 'link_icon':

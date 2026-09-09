@@ -170,7 +170,7 @@
       </div>
 
       {% for s in seo_sections %}
-      <div class="seo-section" data-year="{{ s.year }}" data-month="{{ s.month }}" style="margin-bottom:20px">
+      <div class="seo-section" id="month-{{ s.year }}-{{ s.month }}" data-year="{{ s.year }}" data-month="{{ s.month }}" style="margin-bottom:20px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
           <b style="font-size:14.5px">{{ s.label }}</b>
           <span class="sec-moves" style="display:inline-flex;gap:2px">
@@ -422,6 +422,12 @@
   if (new URLSearchParams(location.search).has('kw_period')) activate('keywords');
   // بردِ سئو: با فیلترِ نوع یا رفرشِ افزودن، تبِ تسک‌ها باز بماند
   if (new URLSearchParams(location.search).has('seo_type') || location.hash === '#tasks') activate('tasks');
+  // کلیک روی ماهِ زیرِ پروژه (صفحهٔ لیست): #month-YYYY-M → اسکرول به همان سکشنِ برد
+  if (/^#month-\d+-\d+$/.test(location.hash)) {
+    activate('tasks');
+    const sec = document.getElementById(location.hash.slice(1));
+    if (sec) { requestAnimationFrame(() => { sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); sec.classList.add('sec-flash'); }); }
+  }
 
   // ── دسترسی‌ها ──
   const CREATE_URL = "{% url 'projects:credential_create' project.pk %}";

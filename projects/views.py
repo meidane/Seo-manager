@@ -110,14 +110,23 @@ class ProjectListView(LoginRequiredMixin, DateRangeMixin, ListView):
         query = self.request.GET.get('q', '').strip()
         if query:
             qs = qs.filter(Q(name__icontains=query) | Q(domain__icontains=query))
+        # فیلترِ نوعِ پروژه — پیش‌فرض «سئو» (فقط پروژه‌های سئو دیده می‌شوند)؛ «all» = همه.
+        # پروژهٔ شخصیِ خودِ کاربر همیشه دیده می‌شود (فارغ از نوع).
+        self._ptype = self.request.GET.get('type', Project.SEO)
+        if self._ptype and self._ptype != 'all':
+            qs = qs.filter(Q(project_types__icontains=self._ptype) | Q(personal_owner__isnull=False))
         from django.db.models import Case, F, IntegerField, Value, When
         qs = qs.annotate(
             planned=Count('tasks', filter=Q(tasks__planned_date__range=(start, end))),
             done=Count('tasks', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
             words=Sum('tasks__word_count', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
             minutes=Sum('tasks__spent_minutes', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
+            # «ساعت تخمین» = جمعِ تخمینِ تسک‌های برنامه‌ریزی‌شده در بازه (خواستِ کاربر)
+            est_minutes=Sum('tasks__estimate_minutes', filter=Q(tasks__planned_date__range=(start, end))),
             overdue=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING], tasks__planned_date__lt=date.today())),
             last_report=Max('reports__date_to'),
+            # آخرین پرداخت = آخرین تراکنشِ واریز به پروژه (وصل به finance)
+            last_payment=Max('transactions__date', filter=Q(transactions__deposit__gt=0)),
             last_activity=Max('tasks__updated_at'),
             # پروژه‌ی شخصی همیشه اولِ لیست (فقط پروژه‌ی شخصیِ خودِ کاربر اینجا هست)
             _personal=Case(When(personal_owner__isnull=False, then=Value(0)),
@@ -136,9 +145,38 @@ class ProjectListView(LoginRequiredMixin, DateRangeMixin, ListView):
         return qs.order_by('_personal', 'status', SORTS[self._sort], 'name')
 
     def get_context_data(self, **kwargs):
+        from datetime import date, timedelta
+
+        from django.db.models import Count
+        from django.utils.safestring import mark_safe
+
+        from core.jalali import format_jalali
+        from tasks.models import Task
+
         ctx = super().get_context_data(**kwargs)
         ctx.update(self.range_context())
-        for p in ctx['projects']:
+        projects = list(ctx['projects'])
+        pids = [p.id for p in projects]
+        # ── اسپارک‌لاینِ ۱۴ روز (تعدادِ انجام‌شده در هر روز) — یک کوئریِ گروهی ──
+        today = date.today()
+        spark_start = today - timedelta(days=13)
+        day_counts = {}
+        for r in (Task.objects.filter(project_id__in=pids, status=Task.DONE,
+                                      done_date__range=(spark_start, today))
+                  .values('project_id', 'done_date').annotate(n=Count('id'))):
+            day_counts.setdefault(r['project_id'], {})[r['done_date']] = r['n']
+        days = [spark_start + timedelta(days=i) for i in range(14)]
+        for p in projects:
+            dc = day_counts.get(p.id, {})
+            mx = max(dc.values()) if dc else 0
+            p.spark = [{'h': (round(dc.get(d, 0) / mx * 100) if mx else 0), 'n': dc.get(d, 0)} for d in days]
+            # ستونِ «وضعیت»: آخرین گزارش + آخرین پرداخت (فعلاً؛ بعداً موارد مهمِ دستی)
+            rep = format_jalali(p.last_report) if p.last_report else '—'
+            pay = format_jalali(p.last_payment) if getattr(p, 'last_payment', None) else '—'
+            p.status_col = mark_safe(
+                '<div class="stcol"><span class="stcol-r"><b>گزارش:</b> %s</span>'
+                '<span class="stcol-r"><b>پرداخت:</b> %s</span></div>' % (rep, pay))
+        for p in projects:
             p.remaining = max(p.planned - p.done, 0)
             p.progress = round(p.done / p.planned * 100) if p.planned else 0
             if not p.is_active:
@@ -155,6 +193,8 @@ class ProjectListView(LoginRequiredMixin, DateRangeMixin, ListView):
                 p.state = ('info', 'جلوتر')
         ctx['columns'] = get_columns(ColumnConfig.PROJECTS, ColumnConfig.PAGE)
         ctx['sort'] = getattr(self, '_sort', 'priority')
+        ctx['ptype'] = getattr(self, '_ptype', Project.SEO)
+        ctx['type_choices'] = [('all', 'همه‌ی انواع')] + list(Project.TYPE_CHOICES)
         ctx['q'] = self.request.GET.get('q', '').strip()
         # ── ماه‌های گزارش (شخصی‌سازیِ سئو): ماهِ قبل/جاری/بعد ──
         from tasks.models import Task
