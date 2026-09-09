@@ -330,7 +330,7 @@ label{font-size:12px;color:var(--text-dim);display:block;margin-bottom:6px}
 .ms-btn{white-space:nowrap}
 .ms-drop{display:none;position:absolute;top:calc(100% + 5px);inset-inline-start:0;z-index:80;
   min-width:240px;max-height:340px;overflow-y:auto;padding:8px;border-radius:var(--r-sm);
-  background:var(--surface,rgba(20,26,38,.98));border:1px solid var(--stroke);box-shadow:0 12px 34px rgba(0,0,0,.45)}
+  background:var(--card-solid);border:1px solid var(--stroke);box-shadow:var(--shadow)}
 .ms-drop.open{display:block}
 .ms-search{width:100%;margin-bottom:8px;padding:7px 9px;font-size:12px}
 .ms-opts{display:flex;flex-direction:column;gap:1px}
@@ -1149,8 +1149,14 @@ button:disabled, .btn:disabled{opacity:.6;cursor:not-allowed}
 #bulkbar{z-index:60}
 #bulkbar .rs-menu{top:auto;bottom:calc(100% + 6px)}
 
-/* بابتِ چندانتخابیِ درون‌جدولِ تراکنش‌ها — تک‌خطیِ فشرده، ردیف را بلند نمی‌کند */
-.txcat-wrap{display:flex;flex-wrap:nowrap;gap:4px;align-items:center;min-width:120px;max-width:100%;overflow:hidden}
+/* ستونِ «شرح سند» — همیشه تک‌خطی، دکمهٔ تفکیک (⑂) کنارِ متن می‌ماند نه خطِ دوم */
+table.sheet td.tx-desc{text-align:right;white-space:nowrap;max-width:240px}
+.tx-desc-tx{display:inline-block;max-width:180px;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;vertical-align:middle}
+.tx-split-btn{margin-inline-start:5px;vertical-align:middle;flex:none}
+/* بابتِ چندانتخابیِ درون‌جدولِ تراکنش‌ها — تک‌خطیِ فشرده، ستونِ باریک‌تر (خواستِ کاربر) */
+table.sheet td.txcat-cell{max-width:150px}
+.txcat-wrap{display:flex;flex-wrap:nowrap;gap:4px;align-items:center;min-width:96px;max-width:100%;overflow:hidden}
 .txcat-chip{flex:none;max-width:104px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   font-size:10.5px;padding:2px 8px;gap:4px;display:inline-flex;align-items:center;line-height:1.5;border-radius:var(--r-full)}
 .txcat-x{cursor:pointer;opacity:.5;font-style:normal;font-size:11px;flex:none}

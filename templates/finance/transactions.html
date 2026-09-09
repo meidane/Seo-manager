@@ -75,7 +75,7 @@
             <td class="chk-col"><input type="checkbox" class="row-check" data-id="{{ t.id }}"></td>
             <td>{{ t.date|jalali }}</td>
             <td><span class="tag t-mute" style="white-space:nowrap">{{ t.bank_account.name }}</span></td>
-            <td style="text-align:right;max-width:220px"><span style="display:inline-block;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle" title="{{ t.description }}">{{ t.description }}</span> <button type="button" class="mini tx-split-btn" data-id="{{ t.id }}" data-amount="{{ t.deposit|add:t.withdrawal }}" title="تفکیک این تراکنش">⑂</button></td>
+            <td class="tx-desc"><span class="tx-desc-tx" title="{{ t.description }}">{{ t.description }}</span><button type="button" class="mini tx-split-btn" data-id="{{ t.id }}" data-amount="{{ t.deposit|add:t.withdrawal }}" title="تفکیک این تراکنش">⑂</button></td>
             <td class="num {% if t.deposit %}dep{% endif %}">{% if t.deposit %}{{ t.deposit|money }}{% else %}—{% endif %}</td>
             <td class="num {% if t.withdrawal %}wd{% endif %}">{% if t.withdrawal %}{{ t.withdrawal|money }}{% else %}—{% endif %}</td>
             <td class="num">{% if t.balance != None %}{{ t.balance|money }}{% else %}—{% endif %}</td>
