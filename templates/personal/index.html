@@ -66,14 +66,16 @@
             <div class="wday-body">
               <div class="wday-list" data-date="{{ col.iso }}">
                 {% for t in col.tasks %}
-                  <div class="wtask{% if t.is_done %} done dim{% endif %}{% if t.is_sys %} sys{% endif %}" data-id="{{ t.id }}" data-open-task="{{ t.id }}"{% if not t.is_sys %} draggable="true"{% endif %}{% if t.is_sys %} data-sys="1"{% endif %}>
+                  <div class="wtask{% if t.is_done %} done{% endif %}{% if t.is_sys %} sys{% endif %}" data-id="{{ t.id }}" data-open-task="{{ t.id }}"{% if not t.is_sys %} draggable="true"{% endif %}{% if t.is_sys %} data-sys="1"{% endif %}>
                     <span class="wtask-pri" title="اولویت">{% if t.pri %}{{ t.pri|fa_digits }}{% endif %}</span>
                     {% if not t.is_sys %}<span class="pt-grip" title="جابه‌جایی/اولویت">⠿</span>{% endif %}
-                    <input type="checkbox" class="pt-done" {% if t.is_done %}checked{% endif %}>
-                    {% if not t.is_done %}<button class="wtask-play{% if t.timer_started_at %} on{% endif %}" title="{% if t.timer_started_at %}توقفِ زمان{% else %}شروعِ زمانِ کار{% endif %}">{% if t.timer_started_at %}⏸{% else %}▶{% endif %}</button>{% endif %}
-                    <span class="pt-title {% if t.is_done %}is-done{% endif %}">{{ t.title }}</span>
-                    {% if t.is_sys %}<span class="wtask-proj" title="پروژه">{{ t.project.name }}</span>{% endif %}
-                    <input type="text" class="wtask-est" dir="ltr" value="{% if t.estimate_minutes %}{{ t.estimate_minutes|hoursmin }}{% endif %}" placeholder="⏱" title="تخمینِ زمان (دقیقه یا 1:30)">
+                    <input type="checkbox" class="pt-done"{% if t.is_done %} checked{% endif %}>
+                    <span class="pt-title{% if t.is_done %} is-done{% endif %}">{{ t.title }}</span>
+                    {% if t.is_sys %}<a class="wtask-proj" href="/tasks/?project={{ t.project_id }}" title="{{ t.project.name }}" onclick="event.stopPropagation()">{{ t.project.name }}</a>{% endif %}
+                    <span class="timer-cell wtask-timer{% if t.is_done %} done{% endif %}" data-id="{{ t.id }}" data-spent="{{ t.spent_minutes|default:0 }}" data-running="{% if t.timer_started_at %}1{% else %}0{% endif %}" data-started="{% if t.timer_started_at %}{{ t.timer_started_at|date:'c' }}{% endif %}" title="زمانِ صرف‌شده / تخمین">
+                      {% if not t.is_done %}<button class="tbtn" title="شروع/توقف تایمر">▶</button>{% endif %}
+                      <span class="tval">{{ t.spent_minutes|hm }}</span><span class="t-est est-edit" title="کلیک: تعیینِ تخمینِ زمان">{% if t.estimate_minutes %} / {{ t.estimate_minutes|hm }}{% else %} / —{% endif %}</span>
+                    </span>
                     {% if not t.is_sys %}{% include "personal/_goal_select.html" with t=t %}
                     <button class="pt-unplan" title="بازگشت به اینباکس (حذفِ تاریخ)">↩</button>{% endif %}
                   </div>

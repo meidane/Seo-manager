@@ -1627,13 +1627,13 @@ input[type=checkbox]:disabled{opacity:.5;cursor:default}
    فوکوس بوردرِ primary می‌گیرد؛ اینپوتِ «＋کار» فقط روی روزِ فوکوس/هاور دیده می‌شود
    تا ۷ اینپوتِ خالی صفحه را شلوغ نکنند. */
 .week-vgrid{display:flex;flex-direction:column}
-.wday{display:flex;align-items:stretch;gap:10px;border-radius:8px;padding:5px 8px;opacity:.5;
+.wday{display:flex;align-items:stretch;gap:10px;border-radius:8px;padding:6px 8px;opacity:.9;
   border:1px solid transparent;border-bottom-color:var(--stroke-soft);
   transition:opacity .15s,border-color .15s,background .15s}
 .wday:last-child{border-bottom-color:transparent}
-.wday.today{opacity:.72}
+.wday.today{opacity:1}
 .wday.sel{opacity:1;background:var(--fill);border-color:var(--primary-ring)}   /* روزِ فوکوس */
-.wday.future{opacity:.42}
+.wday.future{opacity:.75}
 .wday.drop-hi{opacity:1;background:var(--glass-hover);border-color:var(--primary)}
 .wday-head{flex:none;width:92px;display:flex;flex-direction:column;gap:1px;justify-content:center;
   text-decoration:none;color:var(--text);padding-inline-end:9px;border-inline-end:1px solid var(--stroke-soft)}
@@ -1642,35 +1642,33 @@ input[type=checkbox]:disabled{opacity:.5;cursor:default}
 .wday-num{font-size:10.5px;color:var(--text-faint);font-variant-numeric:tabular-nums}
 .wday-today{font-size:9px;background:var(--primary-soft);color:var(--on-soft);padding:1px 6px;border-radius:99px;width:fit-content}
 .wday-count{font-size:9.5px;color:var(--text-faint);font-variant-numeric:tabular-nums}
-.wday-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;justify-content:center}
-.wday-list{display:flex;flex-direction:column;gap:2px}
-.wtask{display:flex;align-items:center;gap:6px;padding:3px 7px;border-radius:6px;background:var(--card-solid);
-  border:1px solid var(--stroke-soft);font-size:12px}
+.wday-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;justify-content:center}
+.wday-list{display:flex;flex-direction:column;gap:3px;min-height:26px}   /* روزِ خالی هم مقصدِ درگ باشد */
+.wtask{display:flex;align-items:center;gap:7px;padding:5px 9px;min-height:32px;border-radius:7px;background:var(--card-solid);
+  border:1px solid var(--stroke-soft);font-size:12.5px}
 .wtask.dragging{opacity:.45}
-.wtask.dim{opacity:.55}
-.wtask .pt-grip{cursor:grab;color:transparent;font-size:11px;flex:none;user-select:none;transition:color .12s}
+.wtask.done{opacity:.6}
+.wtask.sys{border-style:dashed;background:var(--fill)}
+.wtask .pt-grip{cursor:grab;color:transparent;font-size:12px;flex:none;user-select:none;transition:color .12s}
 .wday:hover .wtask .pt-grip,.wtask:hover .pt-grip{color:var(--text-faint)}
-.wtask .pt-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.wtask .pt-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--text)}
 .wtask .pt-title.is-done{text-decoration:line-through;color:var(--text-faint)}
-.wtask .pt-done{width:auto;flex:none}
-.wtask .pt-unplan{border:0;background:transparent;color:var(--text-faint);cursor:pointer;font-size:12px;flex:none;padding:2px;opacity:0;transition:opacity .12s}
+.wtask .pt-done{flex:none}
+.wtask .pt-unplan{border:0;background:transparent;color:var(--text-faint);cursor:pointer;font-size:13px;flex:none;padding:2px;opacity:0;transition:opacity .12s}
 .wtask:hover .pt-unplan{opacity:1}
 .wtask .pt-unplan:hover{color:var(--primary-400)}
-.wtask-run{color:var(--ok-fg);font-size:9px;flex:none}
-.wday-list{min-height:26px}   /* روزِ خالی هم مقصدِ درگ باشد */
 /* شمارهٔ اولویتِ ریز کنارِ هر تسک */
-.wtask-pri{flex:none;min-width:12px;font-size:9.5px;color:var(--text-faint);font-variant-numeric:tabular-nums;text-align:center}
-/* دکمهٔ پلی/توقفِ زمان */
-.wtask-play{flex:none;width:18px;height:18px;border:0;background:transparent;color:var(--text-faint);cursor:pointer;font-size:9px;line-height:1;border-radius:var(--r-full);padding:0}
-.wtask-play:hover{color:var(--primary-400)}
-.wtask-play.on{background:var(--success);color:#052}
-/* تخمینِ زمانِ inline */
-.wtask-est{flex:none;width:40px;border:1px solid transparent;background:transparent;color:var(--text-dim);font-family:inherit;font-size:10.5px;text-align:center;padding:2px 3px;border-radius:5px;font-variant-numeric:tabular-nums}
-.wtask-est:hover,.wtask-est:focus{border-color:var(--stroke-soft);outline:none}
-.wtask-est::placeholder{color:var(--text-faint)}
+.wtask-pri{flex:none;min-width:13px;font-size:10px;color:var(--text-faint);font-variant-numeric:tabular-nums;text-align:center}
+/* تایمر/تخمین = همان ماژولِ .timer-cell سراسری، فشرده‌شده برای شبکهٔ هفته */
+.wtask .timer-cell{flex:none;min-width:0;gap:5px}
+.wtask .timer-cell .tbtn{width:20px;height:20px}
+.wtask .timer-cell .tval{font-size:11px;min-width:0}
+.wtask .timer-cell .t-est{font-size:11px;color:var(--text-faint);cursor:pointer}
+.wtask .timer-cell .t-est:hover{color:var(--primary-400)}
 /* بَجِ پروژهٔ تسکِ سیستمی (اسایمن‌شده از پروژهٔ دیگر) */
-.wtask-proj{flex:none;font-size:9.5px;color:var(--text-faint);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:1px 6px;border-radius:99px;background:var(--fill-strong)}
-.wtask.sys{border-style:dashed}
+.wtask-proj{flex:none;font-size:10px;color:var(--text-dim);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  padding:2px 8px;border-radius:99px;background:var(--fill-strong);text-decoration:none}
+.wtask-proj:hover{color:var(--primary-400)}
 /* اینپوتِ «＋کار» فقط روی روزِ فوکوس یا هاور — تا روزهای دیگر خالی و تمیز بمانند */
 .wgrid-newtask{width:100%;border:0;background:transparent;color:var(--text);font-family:inherit;font-size:11px;padding:2px 4px;outline:none;display:none}
 .wday.sel .wgrid-newtask,.wday:hover .wgrid-newtask{display:block}

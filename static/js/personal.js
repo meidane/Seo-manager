@@ -162,8 +162,6 @@
   const weekGrid = document.getElementById('week-grid');
   if (weekGrid) {
     let wdrag = null;
-    const fmt = window.fmtMin || ((m) => String(m));
-    const parseHM = window.parseHM || ((s) => parseInt(s, 10) || 0);
 
     // شماره‌گذاریِ اولویت (فقط انجام‌نشده‌ها) + شمارندهٔ هدرِ روز
     function renumber(list) {
@@ -215,19 +213,9 @@
       body.addEventListener('dragleave', (e) => { if (!body.contains(e.relatedTarget)) col.classList.remove('drop-hi'); });
     });
 
-    async function toggleTimer(t, btn) {
-      const on = !btn.classList.contains('on');
-      try {
-        const d = await api(`/tasks/api/${t.dataset.id}/timer/`, 'POST', { action: on ? 'start' : 'stop' });
-        weekGrid.querySelectorAll('.wtask-play.on').forEach((b) => { b.classList.remove('on'); b.textContent = '▶'; });
-        if (on) { btn.classList.add('on'); btn.textContent = '⏸'; }
-        if (d && d.stopped_id) { const o = weekGrid.querySelector(`.wtask[data-id="${d.stopped_id}"] .wtask-play`); if (o) { o.classList.remove('on'); o.textContent = '▶'; } }
-      } catch (_) {}
-    }
-
+    // پلی/توقفِ تایمر و ویرایشِ تخمین = همان ماژولِ سراسریِ tasks.js (کلاسِ .timer-cell)
+    // — دوباره پیاده نمی‌کنیم؛ فقط از باز شدنِ مودال هنگام کلیک روی آن جلوگیری می‌کنیم.
     weekGrid.addEventListener('click', async (e) => {
-      const play = e.target.closest('.wtask-play');
-      if (play) { e.stopPropagation(); await toggleTimer(play.closest('.wtask'), play); return; }
       const un = e.target.closest('.pt-unplan');
       if (un) {  // بازگشت به اینباکس = حذفِ تاریخِ برنامه
         e.stopPropagation();
@@ -236,32 +224,26 @@
         return;
       }
       // کلیک روی تسک (نه کنترل‌ها) → مودالِ کاملِ تسک
-      if (e.target.closest('.pt-done, .pt-goal-wrap, .pt-grip, .wtask-est, .wgrid-newtask, .wday-head')) return;
+      if (e.target.closest('.pt-done, .pt-goal-wrap, .pt-grip, .timer-cell, .wtask-proj, .wgrid-newtask, .wday-head')) return;
       const t = e.target.closest('.wtask'); if (t && window.openTask) window.openTask(t.dataset.openTask);
     });
 
     weekGrid.addEventListener('change', async (e) => {
+      if (!e.target.classList.contains('pt-done')) return;
       // تیکِ انجام — شخصی از endpointِ شخصی، سیستمی از وضعیتِ تسک
-      if (e.target.classList.contains('pt-done')) {
-        const t = e.target.closest('.wtask'); const done = e.target.checked;
-        try {
-          if (t.dataset.sys) await api(`/tasks/api/${t.dataset.id}/status/`, 'PATCH', { status: done ? 'done' : 'todo' });
-          else await api(`/personal/api/tasks/${t.dataset.id}/done/`, 'PATCH', { done });
-          t.classList.toggle('done', done); t.classList.toggle('dim', done);
-          t.querySelector('.pt-title').classList.toggle('is-done', done);
-          const list = t.closest('.wday-list');
-          if (done) list.appendChild(t);   // انجام‌شده به ته لیست
-          const play = t.querySelector('.wtask-play'); if (play && done) play.remove();
-          updateCounts();
-        } catch (_) { e.target.checked = !done; }
-        return;
-      }
-      // تخمینِ زمانِ inline (دقیقه یا H:MM) → estimate_minutes
-      if (e.target.classList.contains('wtask-est')) {
-        const t = e.target.closest('.wtask'); const mins = parseHM(e.target.value);
-        try { await api(`/tasks/api/${t.dataset.id}/`, 'PATCH', { estimate_minutes: mins }); e.target.value = mins ? fmt(mins) : ''; }
-        catch (_) {}
-      }
+      const t = e.target.closest('.wtask'); const done = e.target.checked;
+      try {
+        if (t.dataset.sys) await api(`/tasks/api/${t.dataset.id}/status/`, 'PATCH', { status: done ? 'done' : 'todo' });
+        else await api(`/personal/api/tasks/${t.dataset.id}/done/`, 'PATCH', { done });
+        t.classList.toggle('done', done);
+        t.querySelector('.pt-title').classList.toggle('is-done', done);
+        const cell = t.querySelector('.timer-cell'); if (cell) cell.classList.toggle('done', done);
+        const btn = t.querySelector('.timer-cell .tbtn');
+        if (done && btn) { btn.remove(); window.dispatchEvent(new CustomEvent('timer-changed', { detail: { id: t.dataset.id } })); }
+        const list = t.closest('.wday-list');
+        if (done) list.appendChild(t);   // انجام‌شده به ته لیست
+        updateCounts();
+      } catch (_) { e.target.checked = !done; }
     });
 
     // افزودنِ کار به یک روزِ خاص (Enter در اینپوتِ ته روز)
@@ -276,9 +258,10 @@
           `<div class="wtask" data-id="${t.id}" data-open-task="${t.id}" draggable="true">` +
           '<span class="wtask-pri"></span><span class="pt-grip" title="جابه‌جایی/اولویت">⠿</span>' +
           '<input type="checkbox" class="pt-done">' +
-          '<button class="wtask-play" title="شروعِ زمانِ کار">▶</button>' +
           `<span class="pt-title">${title.replace(/</g, '&lt;')}</span>` +
-          '<input type="text" class="wtask-est" dir="ltr" placeholder="⏱" title="تخمینِ زمان (دقیقه یا 1:30)">' +
+          `<span class="timer-cell wtask-timer" data-id="${t.id}" data-spent="0" data-running="0" data-started="" title="زمانِ صرف‌شده / تخمین">` +
+          '<button class="tbtn" title="شروع/توقف تایمر">▶</button>' +
+          '<span class="tval">0:00</span><span class="t-est est-edit" title="کلیک: تعیینِ تخمینِ زمان"> / —</span></span>' +
           '<button class="pt-unplan" title="بازگشت به اینباکس (حذفِ تاریخ)">↩</button></div>');
         inp.value = ''; updateCounts();
       } catch (_) {}
