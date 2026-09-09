@@ -136,25 +136,30 @@
   });
 
   /* ── تأیید ── جایگزین confirm بومی با ظاهر شیشه‌ای ── */
+  // تأیید روی یک لایه‌ی مستقل (نه modal-root مشترک) باز می‌شود تا اگر از داخلِ یک مودالِ
+  // بازِ دیگر (مثلاً حذفِ گزارشِ کار در مودالِ تسک) صدا زده شد، مودالِ زیرین را نابود نکند
+  // — قبلاً چون هر دو از یک `modal-root` استفاده می‌کردند، تأیید محتوای مودالِ تسک را
+  // جایگزین می‌کرد و لیستِ گزارش‌ها از DOM می‌رفت (باگِ «دکمهٔ حذفِ گزارش کار نمی‌کند»).
   function confirmDialog(message, { okText = 'تأیید', cancelText = 'انصراف' } = {}) {
     return new Promise((resolve) => {
-      const root = openModal(
-        `<div class="modal-b" style="text-align:center">
-           <p style="font-size:14px;margin:8px 0 18px">${message}</p>
-           <div style="display:flex;gap:8px;justify-content:center">
-             <button class="btn" data-act="cancel">${cancelText}</button>
-             <button class="btn btn-p" data-act="ok">${okText}</button>
+      const layer = document.createElement('div');
+      layer.className = 'modal-backdrop open';
+      layer.style.zIndex = '200';   // بالای modal-root (۱۰۰)
+      layer.innerHTML =
+        `<div class="modal glass" style="max-width:400px">
+           <div class="modal-b" style="text-align:center">
+             <p style="font-size:14px;margin:8px 0 18px">${message}</p>
+             <div style="display:flex;gap:8px;justify-content:center">
+               <button class="btn" data-act="cancel">${cancelText}</button>
+               <button class="btn btn-p" data-act="ok">${okText}</button>
+             </div>
            </div>
-         </div>`
-      );
-      root.querySelector('[data-act="ok"]').onclick = () => {
-        closeModal();
-        resolve(true);
-      };
-      root.querySelector('[data-act="cancel"]').onclick = () => {
-        closeModal();
-        resolve(false);
-      };
+         </div>`;
+      document.body.appendChild(layer);
+      const done = (val) => { layer.remove(); resolve(val); };
+      layer.querySelector('[data-act="ok"]').onclick = () => done(true);
+      layer.querySelector('[data-act="cancel"]').onclick = () => done(false);
+      layer.addEventListener('click', (e) => { if (e.target === layer) done(false); });
     });
   }
 
