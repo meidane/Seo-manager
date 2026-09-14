@@ -133,6 +133,10 @@ def _can_complete_directly(request, task):
 def apply_fields(task: Task, data: dict, request=None):
     """اعمال فیلدهای مجاز از dict روی نمونه‌ی تسک (بدون save). `request` برای تصمیمِ
     «آیا این کاربر می‌تواند مستقیم تسک را تکمیل کند» لازم است (مدیر/ناظر)."""
+    # وضعیتِ قبلی را پیش از هر setattr نگه دار — «تغییرِ وضعیت» یعنی مقدارِ واقعاً عوض‌شده،
+    # نه صرفِ حضورِ کلیدِ `status` در بدنه (مودال همیشه آن را می‌فرستد؛ باگِ رفع‌شدهٔ
+    # «ویرایشِ تسکِ انجام‌شده آن را از حالتِ done خارج می‌کرد»).
+    prev_status = task.status
     for f in TEXT_FIELDS + CHOICE_FIELDS:
         if f in data:
             setattr(task, f, data[f] or '')
@@ -210,7 +214,7 @@ def apply_fields(task: Task, data: dict, request=None):
     # کلمپِ needs_review→pending **فقط وقتی وضعیت صریحاً در همین درخواست تغییر کرده باشد**
     # (ویرایشِ فیلدِ دیگرِ تسکِ انجام‌شده نباید تکمیل را از بین ببرد — باگِ رفع‌شده) و
     # کاربر اجازهٔ تکمیلِ مستقیم نداشته باشد (مدیر/ناظر می‌تواند مستقیم انجام‌شده کند).
-    status_changed = 'status' in data
+    status_changed = 'status' in data and task.status != prev_status
     if status_changed and task.needs_review and task.status == Task.DONE:
         if not _can_complete_directly(request, task):
             task.status = Task.PENDING
@@ -397,7 +401,10 @@ def _publish_url_error(task):
     """تسک انتشارِ «انجام‌شده» بدون لینک انتشار مجاز نیست (الزام لینک؛ فقط برای نوعِ
     built-inِ قدیمیِ publish — انواعِ سفارشیِ جدید از `_custom_fields_error` پایین
     استفاده می‌کنند، `required`/`required_on_done` روی خودِ فیلد)."""
-    if task.task_type == Task.PUBLISH and task.status == Task.DONE and not task.published_url:
+    # `pending` («تکمیل — در انتظارِ بازبینی») هم یک تکمیل است: تسکِ انتشارِ needs_review
+    # مستقیم به done نمی‌رود بلکه اول pending می‌شود، پس الزامِ لینک باید همان‌جا هم چک شود
+    # (باگِ رفع‌شده: تسکِ انتشار بدونِ لینک به صفِ بازبینی می‌رفت).
+    if task.task_type == Task.PUBLISH and task.status in (Task.DONE, Task.PENDING) and not task.published_url:
         return 'برای تسک انتشارِ انجام‌شده، وارد کردن «لینک انتشار» الزامی است.'
     return None
 
@@ -416,10 +423,12 @@ def _custom_fields_error(task):
     if not task.type_def_id:
         return None
     custom = task.custom or {}
+    # `pending` هم تکمیل است (نیاز به بازبینی؛ سقفش pending نه done) — الزامِ فیلدهای
+    # `required_on_done` باید همان‌جا هم بلاک کند، وگرنه تسکِ ناقص به صفِ بازبینی می‌رود.
     for f in task.type_def.fields.all():
         value = custom.get(f.key)
         empty = _field_is_empty(f, value)
-        if f.required_on_done and task.status == Task.DONE and empty:
+        if f.required_on_done and task.status in (Task.DONE, Task.PENDING) and empty:
             return f'برای تکمیلِ این تسک، «{f.label}» الزامی است.'
     return None
 
@@ -862,19 +871,55 @@ def task_kpis(request, pk):
         return JsonResponse({'detail': 'به این تسک دسترسی نداری'}, status=403)
     kpis = list(task.type_def.kpis.prefetch_related('items')) if task.type_def_id else []
     scores = {s.kpi_id: s for s in task.kpi_scores.all()}
+    self_checks = task.kpi_self_checks or {}
     out, total, cap = [], 0, 0
     for k in kpis:
         s = scores.get(k.id)
         kd = k.to_dict()
         kd['given'] = s.score if s else None
         kd['checked'] = s.checked_items if s else []
+        # خوداظهاریِ خودِ مسئول (تیک‌های نمایشی، مستقل از امتیازِ مدیر)
+        kd['self_checked'] = self_checks.get(str(k.id), [])
         out.append(kd)
         cap += k.cap
         total += (s.score if s else 0)
     return JsonResponse({
         'kpis': out, 'total': total, 'cap': cap, 'has': bool(kpis),
         'quality_score': task.quality_score,
+        # مسئولِ خودِ تسک می‌تواند تیک‌های خوداظهاری بزند (نمایشی) — نه امتیازدهیِ نهایی
+        'can_self_check': _is_own_task(request, task),
     })
+
+
+@login_required
+@require_http_methods(['POST'])
+def task_kpi_self_check(request, pk):
+    """خوداظهاریِ چک‌لیستِ KPI توسطِ **خودِ مسئولِ تسک** (نمایشی): تیک‌ها در
+    `Task.kpi_self_checks` ذخیره می‌شوند، جدا از `TaskKPIScore` (امتیازِ نهاییِ مدیر).
+    فقط مسئولِ خودِ تسک اجازه دارد — وگرنه ۴۰۳."""
+    task = get_object_or_404(Task, pk=pk)
+    if not _is_own_task(request, task):
+        return JsonResponse({'detail': 'فقط مسئولِ تسک می‌تواند این تیک‌ها را بزند'}, status=403)
+    data = _body(request)
+    try:
+        kpi_id = int(data.get('kpi'))
+    except (TypeError, ValueError):
+        return JsonResponse({'detail': 'KPI نامعتبر'}, status=400)
+    # فقط KPIهای همین نوعِ تسک معتبرند + فقط id آیتم‌های واقعیِ همان KPI پذیرفته می‌شوند
+    from .models import TaskTypeKPI
+    kpi = TaskTypeKPI.objects.filter(pk=kpi_id, type_def_id=task.type_def_id).prefetch_related('items').first()
+    if not kpi:
+        return JsonResponse({'detail': 'KPI نامعتبر'}, status=400)
+    valid = {i.id for i in kpi.items.all()}
+    checked = [i for i in (data.get('checked_items') or []) if isinstance(i, int) and i in valid]
+    checks = dict(task.kpi_self_checks or {})
+    if checked:
+        checks[str(kpi_id)] = checked
+    else:
+        checks.pop(str(kpi_id), None)
+    task.kpi_self_checks = checks
+    task.save(update_fields=['kpi_self_checks', 'updated_at'])
+    return JsonResponse({'ok': True, 'kpi': kpi_id, 'checked_items': checked})
 
 
 @login_required

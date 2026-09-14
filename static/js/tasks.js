@@ -245,19 +245,48 @@
     });
   }
 
-  // ── نمایشِ فقط‌خواندنیِ KPIها در مودال (کارمند ببیند طبق چه سنجیده می‌شود) ──
+  // ── KPI در مودال: کارمند طبق چه سنجیده می‌شود + خوداظهاریِ چک‌لیست (نمایشی) ──
+  // آیتم‌های چک‌لیستِ KPI را خودِ مسئولِ تسک می‌تواند تیک بزند (خوداظهاری، ذخیره‌ی زنده).
+  // امتیازدهیِ نهایی همچنان با مدیر است (review.html: scoreKpis) — این فقط نمایشی است.
   async function initKpis(id) {
     const box = document.getElementById('kpi-box'); if (!box) return;
     try {
       const d = await App.fetchJSON(`/tasks/api/${id}/kpis/`);
       if (!d.has) { box.style.display = 'none'; return; }
       box.style.display = '';
+      const canCheck = !!d.can_self_check;
+      const selfScore = (k) => (k.self_checked || []).reduce((a, id2) => {
+        const it = (k.items || []).find((x) => x.id === id2); return a + (it ? it.score : 0);
+      }, 0);
       box.innerHTML = `<label style="font-weight:700">شاخص‌های کیفیت (KPI)${d.cap ? ` — امتیاز: ${d.total}/${d.cap}` : ''}</label>` +
-        d.kpis.map((k) => `<div class="kpi-item"><div class="kpi-head"><b>${esc(k.title)}</b>
-          <span class="tag t-mute">سقف ${k.cap}</span>${k.given != null ? `<span class="tag t-ok">امتیاز: ${k.given}</span>` : ''}
-          ${k.description ? `<span class="kpi-info" title="${esc(k.description)}">ℹ️</span>` : ''}</div>
-          ${k.has_checklist ? `<div class="kpi-items">${k.items.map((it) => `<div class="kpi-ci"><span>${esc(it.title)} <b>(${it.score})</b></span></div>`).join('')}</div>` : ''}</div>`).join('');
+        d.kpis.map((k) => {
+          const sc = (k.self_checked || []);
+          const items = k.has_checklist ? `<div class="kpi-items">${k.items.map((it) => `<label class="kpi-ci${canCheck ? ' kpi-ci-check' : ''}">
+            <input type="checkbox" class="kci-self" data-kpi="${k.id}" data-score="${it.score}" value="${it.id}" ${sc.includes(it.id) ? 'checked' : ''}${canCheck ? '' : ' disabled'}>
+            <span>${esc(it.title)} <b>(${it.score})</b>${it.description ? ` <span class="kpi-info" title="${esc(it.description)}">ℹ️</span>` : ''}</span></label>`).join('')}</div>` : '';
+          const selfTag = k.has_checklist ? `<span class="tag t-mute kpi-self-tag" data-kpi="${k.id}" data-cap="${k.cap}">خوداظهاری: ${selfScore(k)}/${k.cap}</span>` : '';
+          return `<div class="kpi-item" data-kpi="${k.id}"><div class="kpi-head"><b>${esc(k.title)}</b>
+          <span class="tag t-mute">سقف ${k.cap}</span>${selfTag}${k.given != null ? `<span class="tag t-ok">امتیازِ مدیر: ${k.given}</span>` : ''}
+          ${k.description ? `<span class="kpi-info" title="${esc(k.description)}">ℹ️</span>` : ''}</div>${items}</div>`;
+        }).join('');
+      if (canCheck) wireKpiSelfCheck(box, id);
     } catch (_) {}
+  }
+
+  // تیک‌های خوداظهاریِ KPI را زنده ذخیره کن (delegated؛ فقط مسئولِ تسک آن را می‌بیند)
+  function wireKpiSelfCheck(box, id) {
+    box.addEventListener('change', async (e) => {
+      const cb = e.target.closest('.kci-self'); if (!cb) return;
+      const kpiId = cb.dataset.kpi;
+      const item = box.querySelector(`.kpi-item[data-kpi="${kpiId}"]`);
+      const boxes = [...item.querySelectorAll('.kci-self:checked')];
+      const checked = boxes.map((c) => +c.value);
+      const sum = boxes.reduce((a, c) => a + (+c.dataset.score || 0), 0);
+      const tag = item.querySelector('.kpi-self-tag');
+      if (tag) tag.textContent = `خوداظهاری: ${sum}/${tag.dataset.cap}`;
+      try { await App.fetchJSON(`/tasks/api/${id}/kpi-self-check/`, { method: 'POST', body: { kpi: +kpiId, checked_items: checked } }); }
+      catch (_) {}
+    });
   }
 
   // ── جعبه‌ی «موارد نیاز به اصلاح» بالای مودال + تاریخچه (جدیدترین باز، قبلی‌ها جمع) ──

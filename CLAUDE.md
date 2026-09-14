@@ -71,6 +71,7 @@
 | پاکسازی HTML ادیتور | `core/htmlsan.py: clean_html` |
 | رنگ/برچسب نوع تسک | `tasks/models.py: Task.type_label / color_rgb` (+ `TYPE_COLORS`) |
 | KPI (تعریف/امتیاز/سقف) | `tasks/models.py: TaskTypeKPI/KPIChecklistItem/TaskKPIScore` |
+| خوداظهاریِ چک‌لیستِ KPI توسطِ مسئول (نمایشی، جدا از امتیازِ نهاییِ مدیر) | `Task.kpi_self_checks` (JSON) + `tasks/api.py: task_kpi_self_check` + `tasks.js: initKpis/wireKpiSelfCheck` |
 | تکرارِ تسک (تولید تنبل) | `tasks/recurrence.py` + `RecurrenceRule` |
 | ادیتور غنی | `static/js/richtext.js` (کلاس `rich-editor`) |
 | جلوگیری از دابل‌کلیکِ ذخیره/ایجاد | `static/js/app.js: fetchJSON` (دکمه‌ی آغازگر خودکار disable + `.is-loading` تا پایانِ درخواست؛ نیازی به کد در هر دکمه نیست) |

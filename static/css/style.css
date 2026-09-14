@@ -896,11 +896,22 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .btn.loading::after{content:"";position:absolute;inset:0;margin:auto;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:btnspin .6s linear infinite}
 @keyframes btnspin{to{transform:rotate(360deg)}}
 
-/* ویجت سراسریِ «در حال انجام» (گوشهٔ پایین-چپ) */
-.timer-widget{position:fixed;bottom:16px;inset-inline-start:16px;z-index:60;display:none;flex-direction:column;gap:5px;
-  min-width:220px;max-width:290px;padding:10px 12px;border-radius:var(--r-sm);
-  background:var(--card-solid);border:1px solid var(--stroke);backdrop-filter:blur(8px);box-shadow:var(--shadow)}
+/* ویجت سراسریِ «در حال انجام» (چسبیده به پایین-چپِ صفحه، با فلشِ باز/بسته) */
+.timer-widget{position:fixed;bottom:0;inset-inline-start:16px;z-index:60;display:none;flex-direction:column;gap:5px;
+  min-width:220px;max-width:290px;padding:8px 12px 10px;border-radius:var(--r-sm) var(--r-sm) 0 0;
+  background:var(--card-solid);border:1px solid var(--stroke);border-bottom:0;backdrop-filter:blur(8px);box-shadow:var(--shadow)}
 .timer-widget.on{display:flex}
+.timer-widget .tw-head{display:flex;align-items:center;gap:6px;cursor:default}
+.timer-widget .tw-head-t{flex:1;font-size:11px;color:var(--text-faint);display:flex;align-items:center;gap:5px}
+.timer-widget .tw-count{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 4px;
+  border-radius:8px;background:var(--fill-strong);color:var(--text);font-size:10px;font-variant-numeric:tabular-nums}
+.timer-widget .tw-toggle{border:0;background:var(--fill);color:var(--text-faint);width:22px;height:22px;border-radius:6px;
+  cursor:pointer;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;transition:transform .15s}
+.timer-widget .tw-toggle:hover{background:var(--fill-strong);color:var(--text)}
+.timer-widget.collapsed .tw-toggle{transform:rotate(180deg)}
+.timer-widget .tw-body{display:flex;flex-direction:column;gap:5px;margin-top:6px}
+.timer-widget.collapsed{padding-bottom:8px}
+.timer-widget.collapsed .tw-body{display:none}
 .timer-widget .tw-h{font-size:11px;color:var(--text-faint);margin-bottom:2px}
 .tw-row{display:flex;align-items:center;gap:7px;font-size:12.5px}
 .tw-dot{width:8px;height:8px;border-radius:50%;background:#2DD4A7;flex:none;box-shadow:0 0 0 0 rgba(45,212,167,.6);animation:twpulse 1.6s infinite}
@@ -1064,6 +1075,10 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .kpi-tools i:hover,.ci-del:hover{opacity:1}
 .kpi-items{margin-top:8px;padding-inline-start:6px;display:flex;flex-direction:column;gap:5px}
 .kpi-ci{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:var(--text-dim)}
+/* آیتمِ چک‌لیستِ KPI که خودِ مسئول می‌تواند تیک بزند (خوداظهاری، در مودالِ تسک) */
+.kpi-ci-check{justify-content:flex-start;gap:8px;cursor:pointer;margin:0}
+.kpi-ci-check input{flex:none;cursor:pointer}
+.kpi-self-tag{font-variant-numeric:tabular-nums}
 .kpi-info{font-style:normal}
 .kpi-score-row{display:flex;align-items:center;gap:8px;margin:6px 0}
 .kpi-score-row input[type=number]{max-width:80px}

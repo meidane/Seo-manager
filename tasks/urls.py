@@ -25,6 +25,7 @@ urlpatterns = [
     path('api/review-note/<int:pk>/', api.review_note_edit, name='api_review_note_edit'),
     path('api/<int:pk>/kpis/', api.task_kpis, name='api_kpis'),
     path('api/<int:pk>/kpi-score/', api.task_kpi_score, name='api_kpi_score'),
+    path('api/<int:pk>/kpi-self-check/', api.task_kpi_self_check, name='api_kpi_self_check'),
     path('api/<int:pk>/quality-score/', api.task_quality_score, name='api_quality_score'),
     path('api/recurrence/<int:pk>/', api.recurrence_delete, name='api_recurrence_delete'),
     path('api/bulk/', api.task_bulk, name='api_bulk'),

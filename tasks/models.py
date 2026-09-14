@@ -94,6 +94,10 @@ class Task(TimeStampedModel):
     # چک‌لیستِ عمومی (همه‌ی انواع) — لیستِ {'text': str, 'done': bool}. منبعِ ذخیره:
     # apply_fields (پاکسازی می‌کند)؛ نمایش/ویرایش در مودالِ تسک (tasks.js: checklist*).
     checklist = models.JSONField('چک‌لیست', default=list, blank=True)
+    # تیک‌های خودِ مسئول روی آیتم‌های چک‌لیستِ KPI (فقط نمایشی/خوداظهاری) — dictِ
+    # {str(kpi_id): [item_id,...]}. امتیازدهیِ نهاییِ KPI همچنان با مدیر است (TaskKPIScore)؛
+    # این فقط کمک می‌کند مسئول ببیند طبق چه سنجیده می‌شود و خودش پیش‌رفتش را علامت بزند.
+    kpi_self_checks = models.JSONField('خوداظهاریِ چک‌لیستِ KPI', default=dict, blank=True)
     update_type = models.CharField('زیرنوع آپدیت', max_length=10, choices=UPDATE_TYPE_CHOICES, blank=True)
     title = models.CharField('عنوان', max_length=255)
     description = models.TextField('توضیحات', blank=True)

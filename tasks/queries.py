@@ -29,6 +29,11 @@ def reviewable_q(request):
     q = Q(assignee_id__in=sub_ids) & (Q(needs_review=True) | Q(type_def__requires_review=True))
     if m and m.can('review'):
         q |= Q(needs_review=True) | Q(type_def__requires_review=True)
+    # کسی تسکِ خودش را بازبینی نمی‌کند (خودتاییدی) — تسک‌های خودِ کاربر همیشه از صف حذف
+    # می‌شوند. باگِ رفع‌شده: تسکِ خودِ مدیر (نوعش requires_review یا با دسترسیِ سازمانیِ
+    # review) در صفِ بازبینیِ خودش می‌آمد، حتی اگر needs_review نداشت و مدیری هم نداشت.
+    if my_colleague:
+        q &= ~Q(assignee_id=my_colleague.id)
     return q
 
 
@@ -127,22 +132,22 @@ def group_done_by_day(qs, start, end):
 def running_timers_payload(request):
     """تسک‌های در حال اجرای تایمر — «چه کسی الان دارد کار می‌کند»: خودِ کاربر
     (`mine=True`، قابلِ استاپ) + بقیه (`mine=False`، فقط‌خواندنی، با نامِ فرد)، که
-    دامنه‌شان بسته به جایگاهِ کاربر فرق می‌کند:
-    - دسترسیِ سازمانیِ ناظر (`review`/`manage_people`/`view_all_projects`، مثلِ
-      مالک/مدیرِ کل) → **همه‌ی** تایمرهای در حالِ اجرای کلِّ سازمان.
-    - وگرنه، اگر زیرمجموعه دارد → خودش + زیرمجموعه‌ها در هر عمقی (نه فقط مستقیم؛
-      `colleagues.access.all_subordinate_ids`).
+    دامنه‌شان بسته به جایگاهِ کاربر فرق می‌کند. **تایمینگِ بقیه فقط برای مدیرش و مالکِ
+    پنل دیده می‌شود، نه برای همه** (خواستِ کاربر):
+    - **مالکِ پنل** (`Membership.role == 'owner'`) → **همه‌ی** تایمرهای در حالِ اجرای سازمان.
+    - وگرنه، اگر **مدیرِ کسی** است (زیرمجموعه دارد) → خودش + زیرمجموعه‌ها در هر عمقی
+      (`colleagues.access.all_subordinate_ids`، نه فقط مستقیم).
     - وگرنه فقط خودش.
     منبعِ واحد برای ویجتِ سراسری (context processor، بارِ اول) و APIِ
-    `/tasks/api/running/` (پلِ ۳۰ثانیه‌ای). **تله‌ی رفع‌شده:** قبلاً فقط زیرمجموعه‌ی
-    مستقیم را می‌دید و اصلاً راهی برای دیدنِ سازمانی نداشت — مالک/مدیرِ کل که خودش
-    مستقیماً مدیرِ کسی نیست، ویجتش همیشه خالی بود."""
+    `/tasks/api/running/` (پلِ ۳۰ثانیه‌ای). **تغییرِ سیاست:** قبلاً هر دارنده‌ی
+    `review`/`manage_people`/`view_all_projects` تایمرِ همه را می‌دید — حالا فقط مالک
+    (سازمانی) یا مدیرِ واقعیِ همان فرد (زنجیره‌ی `Colleague.manager`)."""
     from .models import Task
     from colleagues.access import all_subordinate_ids
 
     colleague = getattr(request.user, 'colleague', None)
     m = getattr(request, 'membership', None)
-    org_wide = bool(m and (m.can('review') or m.can('manage_people') or m.can('view_all_projects')))
+    org_wide = bool(m and m.role == 'owner')
 
     running = Task.objects.filter(timer_started_at__isnull=False).select_related('project', 'assignee')
     if org_wide:
