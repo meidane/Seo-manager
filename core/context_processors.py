@@ -23,17 +23,13 @@ def notifications(request):
         'notif_unread': qs.filter(read=False).count(),
         'notif_recent': list(qs[:8]),
     }
-    # بَجِ بازبینی: فقط اگر کاربر اصلاً مسیرِ بازبینی دارد (وگرنه کوئری نمی‌زنیم)
+    # بَجِ بازبینی (منبعِ واحد: tasks.queries.review_pending_count — پولینگِ زنده هم از
+    # همان می‌خواند). فقط اگر کاربر اصلاً مسیرِ بازبینی دارد کوئری می‌زند.
     try:
-        from tasks.models import Task
-        from tasks.queries import reviewable_q
-        m = getattr(request, 'membership', None)
-        my_c = getattr(user, 'colleague', None)
-        has_path = bool((m and m.can('review')) or (my_c and my_c.reports.exists()))
-        if has_path:
-            ctx['review_pending_count'] = Task.objects.filter(
-                status__in=[Task.DONE, Task.PENDING], review_status=Task.UNREVIEWED
-            ).filter(reviewable_q(request)).count()
+        from tasks.queries import review_pending_count
+        n = review_pending_count(request)
+        if n:
+            ctx['review_pending_count'] = n
     except Exception:  # noqa: BLE001
         pass
     return ctx

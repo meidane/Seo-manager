@@ -896,6 +896,14 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .btn.loading::after{content:"";position:absolute;inset:0;margin:auto;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:btnspin .6s linear infinite}
 @keyframes btnspin{to{transform:rotate(360deg)}}
 
+/* چیپِ «به‌روزرسانیِ زنده» (لیستِ تسک/بازبینی — وقتی چیزی بدونِ رفرش عوض شد) */
+.live-refresh{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:70;
+  border:1px solid var(--primary-ring);background:var(--card-solid);color:var(--primary-400);
+  padding:7px 14px;border-radius:999px;font-size:12.5px;cursor:pointer;box-shadow:var(--shadow);
+  backdrop-filter:blur(8px);animation:lrpop .2s ease}
+.live-refresh:hover{background:var(--fill-strong)}
+@keyframes lrpop{from{opacity:0;transform:translate(-50%,-8px)}to{opacity:1;transform:translate(-50%,0)}}
+
 /* ویجت سراسریِ «در حال انجام» (چسبیده به پایین-چپِ صفحه، با فلشِ باز/بسته) */
 .timer-widget{position:fixed;bottom:0;inset-inline-start:16px;z-index:60;display:none;flex-direction:column;gap:5px;
   min-width:220px;max-width:290px;padding:8px 12px 10px;border-radius:var(--r-sm) var(--r-sm) 0 0;

@@ -1,0 +1,20 @@
+{% comment %}
+چیپِ سبکِ «به‌روزرسانی» — وقتی پولینگِ سراسریِ اعلان (هدر، هر ۶۰ثانیه) رویدادِ
+`notif-poll` را با اعلانِ تازه بفرستد، این چیپ بالای صفحه ظاهر می‌شود تا کاربر بدونِ
+رفرشِ دستی بفهمد چیزی عوض شده (تسکی رفت به بازبینی / تسکی برگشت به لیست) و با یک کلیک
+محتوای صفحه را تازه کند. پولرِ جدا نمی‌سازد — از همان رویدادِ هدر تغذیه می‌شود.
+این پارشال را فقط در صفحاتی که لیستشان زنده باید تازه شود include کن (تسک‌ها/بازبینی).
+{% endcomment %}
+<button type="button" id="live-refresh" class="live-refresh" hidden>🔄 <span id="live-refresh-t">موارد جدید — نمایش</span></button>
+<script>
+(function(){
+  var chip=document.getElementById('live-refresh'); if(!chip) return;
+  var n=0;
+  window.addEventListener('notif-poll',function(e){
+    var f=(e.detail&&e.detail.fresh)||0; if(!f) return;
+    n+=f; document.getElementById('live-refresh-t').textContent='‏'+n+' موردِ جدید — نمایش';
+    chip.hidden=false;
+  });
+  chip.addEventListener('click',function(){ location.reload(); });
+})();
+</script>

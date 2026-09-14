@@ -48,6 +48,7 @@
   {% empty %}
     <section class="card glass"><div class="empty"><div class="ico">◎</div><h4>محتوایی برای بازبینی نیست</h4></div></section>
   {% endfor %}
+  {% include "components/_live_refresh.html" %}
 {% endblock %}
 
 {% block scripts %}

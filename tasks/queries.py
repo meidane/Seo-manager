@@ -37,6 +37,21 @@ def reviewable_q(request):
     return q
 
 
+def review_pending_count(request):
+    """تعدادِ تسکِ بازبینی‌نشدهٔ قابل‌بازبینیِ کاربرِ جاری — منبعِ واحدِ بَجِ «بازبینی»
+    (context processor بارِ اول + `notifications_api` برای پولینگِ زنده). اگر کاربر اصلاً
+    مسیرِ بازبینی ندارد (`review` سازمانی یا زیرمجموعه) کوئری نمی‌زند و ۰ برمی‌گرداند."""
+    from .models import Task
+    m = getattr(request, 'membership', None)
+    my_c = getattr(request.user, 'colleague', None)
+    has_path = bool((m and m.can('review')) or (my_c and my_c.reports.exists()))
+    if not has_path:
+        return 0
+    return Task.objects.filter(
+        status__in=[Task.DONE, Task.PENDING], review_status=Task.UNREVIEWED
+    ).filter(reviewable_q(request)).count()
+
+
 def build_task_queryset(request):
     """کوئری‌ستِ فیلترشده‌ی تسک‌ها بر اساسِ دسترسی + فیلترهای GET — منبعِ واحد برای
     `TaskListView` و APIِ لودِ تنبل (`api.task_rows_page`)، تا دو جا فیلترها را

@@ -27,7 +27,7 @@
     <button type="button" id="notif-btn" class="notif-btn" title="اعلان‌ها"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="notif-badge" id="notif-badge"{% if not notif_unread %} hidden{% endif %}>{{ notif_unread }}</span></button>
     <div class="notif-drop glass" id="notif-drop">
       <div class="notif-h">اعلان‌ها</div>
-      <div class="notif-list" id="notif-list">
+      <div class="notif-list" id="notif-list" data-max-id="{% if notif_recent %}{{ notif_recent.0.id }}{% else %}0{% endif %}">
         {% for n in notif_recent %}
           <a class="notif-item{% if not n.read %} unread{% endif %}" href="{{ n.url|default:'#' }}"><span class="notif-ico">{{ n.icon|default:'•' }}</span><span class="notif-txt">{{ n.text }}</span></a>
         {% empty %}<div class="notif-empty">اعلانی نیست</div>{% endfor %}
@@ -56,13 +56,29 @@
     setBadge(0); list.querySelectorAll('.notif-item.unread').forEach(function(el){el.classList.remove('unread');}); }
   btn.onclick=function(e){ e.stopPropagation(); var open=drop.classList.toggle('open'); if(open && !badge.hidden) markRead(); };
   document.addEventListener('click',function(e){ if(!e.target.closest('#notif-wrap')) drop.classList.remove('open'); });
+  // بَجِ زندهٔ «بازبینی»ی سایدبار — بدونِ رفرش بالا/پایین می‌شود
+  function setReview(n){ var b=document.getElementById('review-badge'); if(!b) return;
+    if(n>0){ b.textContent=n; b.hidden=false; } else { b.hidden=true; } }
+  // مبنای «اعلانِ جدید» از سرور می‌آید (بزرگ‌ترین id هنگامِ بارگذاری) تا اعلانِ رسیده
+  // *بعد از* باز شدنِ صفحه در همان پولِ بعدی توست شود (نه اینکه بارِ اول باز-پایه شود).
+  var lastMaxId=parseInt(list.dataset.maxId||'0',10)||0;
   async function refresh(){ try{ var d=await App.fetchJSON("{% url 'notifications_api' %}");
-    setBadge(d.unread);
+    setBadge(d.unread); setReview(d.review_count);
+    // اعلانِ تازه‌رسیده را (نسبت به آخرین باری که دیدیم) به‌صورتِ توست نشان بده تا کاربر
+    // «بدونِ رفرش متوجه شود» — مثلِ رفتنِ تسک به بازبینی (مدیر) یا برگشتِ تسک (کارمند).
+    var maxId = d.items.length ? Math.max.apply(null, d.items.map(function(n){return n.id;})) : 0;
+    var fresh=d.items.filter(function(n){ return n.id>lastMaxId; });
+    if(fresh.length){
+      if(fresh.length===1) App.toast((fresh[0].icon||'🔔')+' '+fresh[0].text,'',5000);
+      else App.toast('🔔 '+fresh.length+' اعلانِ جدید','',5000);
+      window.dispatchEvent(new CustomEvent('notif-poll',{detail:{unread:d.unread,review:d.review_count,fresh:fresh.length}}));
+    }
+    lastMaxId=Math.max(lastMaxId,maxId);
     list.innerHTML = d.items.length ? d.items.map(function(n){
       return '<a class="notif-item'+(n.read?'':' unread')+'" href="'+(n.url||'#')+'"><span class="notif-ico">'+(n.icon||'•')+'</span><span class="notif-txt">'+
         n.text.replace(/</g,'&lt;')+'</span></a>'; }).join('') : '<div class="notif-empty">اعلانی نیست</div>';
   }catch(_){ } }
-  setInterval(refresh, 60000);   // هماهنگیِ دوره‌ای
+  setInterval(refresh, 60000);   // هماهنگیِ دوره‌ای (یک پولرِ واحدِ سراسری)
 })();
 
 (function(){var s=document.getElementById('org-switch');if(!s)return;

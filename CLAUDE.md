@@ -82,6 +82,8 @@
 | پروژه‌ی «شخصی»ِ خودکارِ هر همکار (فقط خودش می‌بیند، حتی مالک نه) | `projects/models.py: Project.personal_owner/is_personal` + `projects/signals.py: ensure_personal_project` (enforcement فقط در `access.py`) |
 | دعوت‌نامه‌ی در انتظار (نه عضویتِ فوری، فقط با شماره تماس) | `accounts/models.py: Invite` + `colleagues.views.colleague_grant_access` (+ `docs/PLATFORM.md`) |
 | «این تسک قابلِ‌بازبینیِ این کاربر است؟» | `tasks/queries.py: reviewable_q` (صفحه‌ی بازبینی + فیدِ داشبورد) — زنجیره‌ای، نه فقط مدیرِ مستقیم (`colleagues/access.py: all_subordinate_ids`) |
+| شمارِ تسکِ نیازمندِ بازبینیِ کاربر (بَجِ سایدبار + پولینگِ زنده) | `tasks/queries.py: review_pending_count` (context processor + `core.views.notifications_api`) |
+| به‌روزرسانیِ زندهٔ بدونِ رفرش (بَجِ بازبینی/توست/چیپِ لیست) | پولِ ۶۰ثانیه‌ایِ زنگوله در `components/header.html` → رویدادِ `notif-poll` → `components/_live_refresh.html` (پولرِ جدا نساز) |
 | زیرمجموعه‌ی مدیریتی در هر عمقی (نه فقط مدیرِ مستقیم) | `colleagues/access.py: all_subordinate_ids` (BFS روی `Colleague.manager`) — `tasks/queries.py` و `tasks/api.py: task_review` از همین می‌خوانند |
 | «سرپرست است؟» (زیرمجموعه دارد یا پرمیشنِ ناظر) | `colleagues/access.py: is_manager_tier` |
 | «می‌تواند این فردِ مشخص را مدیریت کند؟» (سازمانی یا مدیرِ زنجیره‌ایِ همان فرد) | `colleagues/access.py: can_manage_colleague` — `colleagues/views.py` (ویرایش/آرشیو/دسترسی) |

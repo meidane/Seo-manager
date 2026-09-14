@@ -193,7 +193,15 @@ def notifications_api(request):
         'id': n.id, 'text': n.text, 'url': n.url, 'icon': n.icon,
         'read': n.read, 'ago': timezone.localtime(n.created_at).strftime('%m/%d %H:%M'),
     } for n in qs[:15]]
-    return JsonResponse({'unread': qs.filter(read=False).count(), 'items': items})
+    # `review_count` را هم می‌دهیم تا بَجِ «بازبینی»ی سایدبار زنده به‌روز شود (بدونِ رفرش)
+    try:
+        from tasks.queries import review_pending_count
+        review = review_pending_count(request)
+    except Exception:  # noqa: BLE001
+        review = 0
+    return JsonResponse({
+        'unread': qs.filter(read=False).count(), 'items': items, 'review_count': review,
+    })
 
 
 @login_required
