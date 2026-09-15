@@ -11,7 +11,8 @@
     <div class="side-c">
       <button class="btn btn-p" id="r-save-all">ذخیرهٔ گزارش</button>
       <button class="btn" id="r-settings">تنظیمات نمایش مشتری</button>
-      <a class="btn" href="{% url 'reports:preview' report.pk %}" target="_blank" rel="noopener">پیش‌نمایش مشتری ↗</a>
+      {# لینکِ واحد: همین لینکِ عمومی هم پیش‌نمایشِ ماست هم نسخهٔ مشتری (خواستِ کاربر) #}
+      <a class="btn" href="{{ report.public_url }}" target="_blank" rel="noopener">مشاهدهٔ گزارش ↗</a>
       <button class="btn" id="r-final">{% if report.status == 'final' %}بازگشت به پیش‌نویس{% else %}نهایی‌سازی{% endif %}</button>
     </div>
   </div>
@@ -301,6 +302,14 @@ async function addManual(type, sectionEl){
 }
 
 // ── حذفِ ردیف / بازکردنِ توضیح / افزودنِ ردیفِ سکشن (بدونِ اتوسیو) ──
+// عنوانِ ردیف باید paste as plain text باشد (نه استایل/بولد/HTML) — خواستِ کاربر
+document.addEventListener('paste', e=>{
+  const el=e.target.closest('[data-plain]'); if(!el) return;
+  e.preventDefault();
+  const text=(e.clipboardData||window.clipboardData).getData('text/plain');
+  document.execCommand('insertText', false, text);
+});
+
 document.addEventListener('click',async e=>{
   const del=e.target.closest('[data-item-del]');
   if(del){ if(await App.confirm('این ردیف از گزارش حذف شود؟')){await App.fetchJSON(`/reports/api/items/${del.dataset.itemDel}/`,{method:'DELETE'});

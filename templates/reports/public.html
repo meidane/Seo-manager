@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ report.title }} — {{ report.project.name }}</title>
+{# favicon: لوگوی پروژه اگر بود، وگرنه آیکنِ پیش‌فرضِ پنل #}
+<link rel="icon" href="{% if report.project.logo %}{{ report.project.logo.url }}{% else %}{% static 'img/icon-192.png' %}{% endif %}">
 <link rel="stylesheet" href="{% static 'vendor/vazirmatn/vazirmatn.css' %}">
 <style>
 /* نسخه‌ی عمومی — پیش‌فرض دارک، با دکمه‌ی خاموش/روشن (لایت) بالای صفحه */
@@ -101,7 +103,23 @@ td a:hover{text-decoration:underline}
   .pc-num{font-size:17px;letter-spacing:1.5px}
   .pc-lbl{min-width:64px;font-size:12px}
 }
-@media print{:root{--bg:#fff;--card:#fff;--text:#1F2937;--dim:#6B7280;--faint:#9CA3AF;--stroke:#ddd;--th-bg:#F3F4F6}.print,.theme-toggle{display:none}}
+/* ── چاپ/PDF: دقیقاً مثلِ صفحه، رنگ‌ها چاپ شوند و المان‌ها بینِ صفحات نشکنند ── */
+@page{size:A4;margin:10mm}
+@media print{
+  :root{--bg:#fff;--card:#fff;--text:#1F2937;--dim:#6B7280;--faint:#9CA3AF;--stroke:#ddd;--th-bg:#F3F4F6}
+  html,body{background:#fff}
+  /* رنگ/پس‌زمینه‌ها در چاپ حفظ شوند (هدرِ رنگیِ جدول، بَج‌ها، کارت‌ها) */
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .print,.theme-toggle,.edit-btn,.it-more,.pc-up,.pc-del,.pc-copy{display:none!important}
+  .wrap{max-width:100%;padding:0}
+  /* سایه‌ها در چاپ زشت می‌شوند؛ حذف */
+  .head,.desc,table,.paycard{box-shadow:none!important}
+  /* المان‌ها وسطِ صفحه نصف نشوند */
+  table,tr,td,th,.desc,.paycard,.head,h2.group{break-inside:avoid;page-break-inside:avoid}
+  h2.group{break-after:avoid;page-break-after:avoid}
+  /* توضیحاتِ کلمپ‌شده در چاپ کامل دیده شود */
+  .it-desc{-webkit-line-clamp:unset!important;display:block!important;overflow:visible!important}
+}
 </style>
 {# کدهای اضافهٔ سازمان (تنظیمات ← کدهای اضافه) — قبل از بسته‌شدنِ head #}
 {% if report.organization.custom_head_html %}{{ report.organization.custom_head_html|safe }}{% endif %}
@@ -116,13 +134,11 @@ td a:hover{text-decoration:underline}
       <div class="meta">{{ report.project.name }} — {{ report.date_from|jalali }} تا {{ report.date_to|jalali }}</div>
     </div>
     <div class="actions">
+      {% if can_edit %}<a class="btn edit-btn" href="{% url 'reports:detail' report.pk %}">✎ ویرایش</a>{% endif %}
       <button class="btn theme-toggle" id="theme-toggle" title="تغییرِ تم روشن/تاریک" aria-label="تغییر تم"></button>
       <button class="btn print" onclick="window.print()">چاپ / PDF</button>
     </div>
   </div>
-
-  {# ── نوارِ خلاصه: تعدادِ انتشار/آپدیت/فنی/سایر + جمع + زمان ── #}
-  {% include "reports/_summary_bar.html" %}
 
   {% if report.description %}
     <h2 class="group">توضیحات</h2>
@@ -157,7 +173,7 @@ td a:hover{text-decoration:underline}
       <thead><tr>
         <th>عنوان</th>
         <th style="width:80px">زمان</th>
-        {% if g.cols.word and 'word_count' in visible %}<th style="width:80px">کلمه</th>{% endif %}
+        {% if g.cols.word and g.has_word and 'word_count' in visible %}<th style="width:80px">کلمه</th>{% endif %}
         {% if 'assignee' in visible %}<th style="width:120px">مسئول</th>{% endif %}
         {% if 'done_date' in visible %}<th style="width:100px">تاریخ</th>{% endif %}
       </tr></thead>
@@ -172,7 +188,7 @@ td a:hover{text-decoration:underline}
               {% if it.eff_description %}<div class="it-desc rich" data-desc>{{ it.eff_description|safe }}</div><button type="button" class="it-more" data-more hidden>بیشتر…</button>{% endif %}
             </td>
             <td class="num-c t-nowrap">{{ it.eff_estimate|hoursmin }}</td>
-            {% if g.cols.word and 'word_count' in visible %}<td class="num-c">{{ it|repfield:'word_count'|default:'—' }}</td>{% endif %}
+            {% if g.cols.word and g.has_word and 'word_count' in visible %}<td class="num-c">{{ it|repfield:'word_count'|default:'—' }}</td>{% endif %}
             {% if 'assignee' in visible %}<td>{{ it.eff_assignee.full_name|default:'—' }}</td>{% endif %}
             {% if 'done_date' in visible %}<td class="num-c">{{ it.eff_done_date|jalali|default:'—' }}</td>{% endif %}
           </tr>

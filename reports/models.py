@@ -142,7 +142,9 @@ class Report(TimeStampedModel):
             if bucket or (include_defaults and key in self.DEFAULT_BUCKETS):
                 out.append({'key': key, 'label': label, 'items': bucket,
                             'add_type': types[0],  # نوعِ ردیفِ دستیِ این سکشن
-                            'cols': BUCKET_COLS.get(key, {'word': False, 'link': False})})
+                            'cols': BUCKET_COLS.get(key, {'word': False, 'link': False}),
+                            # آیا حداقل یک آیتم کلمه دارد؟ (برای حذفِ ستونِ کلمهٔ خالی در نمایشِ مشتری)
+                            'has_word': any(it.eff_word_count for it in bucket)})
         return out
 
     def snapshot_content_rates(self):

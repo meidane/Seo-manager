@@ -180,17 +180,41 @@ class PublicReportView(DetailView):
     def get_object(self, queryset=None):
         import uuid as _uuid
 
-        from django.shortcuts import get_object_or_404
+        from django.http import Http404
         token = self.kwargs.get('token')
-        qs = Report.objects.filter(is_public=True)
-        try:  # اگر UUIDِ معتبر بود، لینکِ قدیمی است
-            return get_object_or_404(qs, public_token=_uuid.UUID(str(token)))
-        except (ValueError, TypeError):
-            return get_object_or_404(qs, public_code=token)
+
+        def _lookup(mgr):
+            try:
+                return mgr.filter(public_token=_uuid.UUID(str(token))).first()
+            except (ValueError, TypeError):
+                return mgr.filter(public_code=token).first()
+
+        self._can_edit = False
+        self._preview = False
+        # لینکِ واحد: همان لینکِ عمومی هم برای مشتری کار می‌کند هم — اگر مالکِ لاگین‌کرده
+        # بازش کند — به‌عنوانِ پیش‌نمایش، حتی قبل از عمومی‌شدن (خواستِ کاربر: یک لینک، نه دو).
+        obj = _lookup(Report.all_objects.filter(is_public=True))
+        if obj:
+            self._can_edit = self._owner(obj)
+            return obj
+        obj = _lookup(Report.all_objects)
+        if obj and self._owner(obj):
+            self._can_edit = True
+            self._preview = True   # هنوز عمومی نشده، ولی مالک می‌بیندش
+            return obj
+        raise Http404('گزارش پیدا نشد')
+
+    def _owner(self, report):
+        """کاربرِ لاگین‌کرده‌ای که عضوِ همان سازمانِ گزارش است (می‌تواند ویرایش کند)."""
+        u = self.request.user
+        m = getattr(self.request, 'membership', None)
+        return bool(u.is_authenticated and m and report.organization_id == m.organization_id)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         _public_report_ctx(self.object, ctx)
+        ctx['can_edit'] = self._can_edit
+        ctx['is_preview'] = self._preview
         return ctx
 
 
@@ -205,6 +229,7 @@ class ReportPreviewView(LoginRequiredMixin, DetailView):
         ctx = super().get_context_data(**kwargs)
         _public_report_ctx(self.object, ctx)
         ctx['is_preview'] = True
+        ctx['can_edit'] = True   # پیش‌نمایش را فقط مالک می‌بیند
         return ctx
 
 
