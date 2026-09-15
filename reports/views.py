@@ -155,7 +155,9 @@ def _public_report_ctx(report, ctx):
     ctx['visible'] = report.visible_fields or []
     ctx['fields'] = [(k, lbl) for k, lbl in CLIENT_FIELDS if report.sees(k)]
     ctx['sections'] = list(report.sections.all())
-    kws = list(report.keywords.all())
+    # فقط کلماتِ دارای متن به مشتری نشان داده شوند — ردیفِ خالی/بی‌کلمه تیبل را الکی نشان
+    # ندهد (خواستِ کاربر: «تیبل خالی را به مشتری نمایش نده»). `{% if keywords %}` بقیه را می‌بندد.
+    kws = [k for k in report.keywords.all() if (k.keyword or '').strip()]
     ctx['keywords'] = kws
     # ستونِ «تغییر»/«یادداشت» فقط وقتی نشان داده شود که حداقل یک کلمه پُرش کرده باشد (خواستِ کاربر)
     ctx['kw_any_change'] = any(k.change is not None for k in kws)

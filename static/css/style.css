@@ -1104,6 +1104,12 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .subtab:hover{color:var(--text)}
 .subtab.on{color:var(--text);border-bottom-color:var(--primary)}
 .subtab-panel{display:none}
+/* فیلترِ نوعِ بردِ سئو = دکمه‌های چیپی (به‌جای دراپ‌داون) برای جابه‌جاییِ سریع بینِ انواع */
+.seo-typefilter{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
+.seo-tf{font-size:12px;padding:5px 12px;border-radius:999px;border:1px solid var(--stroke);
+  color:var(--text-dim);background:var(--fill);cursor:pointer;white-space:nowrap;transition:var(--ease)}
+.seo-tf:hover{color:var(--text);background:var(--fill-strong)}
+.seo-tf.on{color:#fff;background:var(--primary);border-color:var(--primary)}
 .subtab-panel.on{display:block}
 .rk-spark{display:block;width:90px;height:24px}
 .star{cursor:pointer;font-style:normal;font-size:14px;color:var(--text-faint);opacity:.6}

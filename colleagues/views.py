@@ -92,13 +92,28 @@ class ColleagueListView(LoginRequiredMixin, DateRangeMixin, ListView):
             qs = qs.filter(Q(full_name__icontains=query) | Q(email__icontains=query))
         ids = accessible_project_ids(self.request)
         tq = Q(tasks__project_id__in=ids) if ids is not None else Q()
+        from django.db.models import Case, IntegerField, OuterRef, Subquery, Value, When
+
+        from accounts.models import Membership
+        # افرادی که نقشِ سازمانی‌شان فقط «عضو» است یا اصلاً حساب/دسترسی ندارند بروند ته
+        # لیست، نقش‌دارها (مالک/مدیر/…) بالا (خواستِ کاربر). نقشِ واقعی در `Membership.role`
+        # است نه `Colleague.roles` (که فیلدِ تگِ جداست و اغلب خالی).
+        m = getattr(self.request, 'membership', None)
+        org_id = m.organization_id if m else None
+        mrole = (Membership.objects.filter(user=OuterRef('user'), organization_id=org_id)
+                 .values('role')[:1])
+        role_rank = Case(
+            When(Q(_mrole__isnull=True) | Q(_mrole='member'), then=Value(1)),
+            default=Value(0), output_field=IntegerField())
         return qs.annotate(
             planned=Count('tasks', filter=Q(tasks__planned_date__range=(start, end)) & tq),
             done=Count('tasks', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end)) & tq),
             words=Sum('tasks__word_count', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end)) & tq),
             minutes=Sum('tasks__spent_minutes', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end)) & tq),
             overdue=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING], tasks__planned_date__lt=date.today()) & tq),
-        ).order_by('status', 'full_name')  # ترتیب صریح برای صفحه‌بندیِ پایدار
+            _mrole=Subquery(mrole),
+            _role_rank=role_rank,
+        ).order_by('status', '_role_rank', 'full_name')  # فعال‌ها اول، نقش‌دارها بالاتر، سپس نام
 
     def get_context_data(self, **kwargs):
         from collections import defaultdict

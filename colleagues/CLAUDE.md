@@ -112,6 +112,13 @@ per-object (این فردِ مشخص).
   چون فقط به `Colleague` وابسته است (جهتِ درستِ وابستگی: `tasks` به `colleagues`
   وابسته است، نه برعکس).
 
+## ترتیبِ لیستِ افراد: نقش‌دارها بالا، «عضو»/بدونِ‌حساب پایین (این تغییر)
+`ColleagueListView.get_queryset` علاوه بر `status`/`full_name`، با `_role_rank` مرتب می‌شود:
+افرادی که **نقشِ سازمانی‌شان `member`(عضو) است یا اصلاً حساب/عضویت ندارند** می‌روند ته لیست
+(rank=1)، بقیه (مالک/مدیر/سرپرست/…) بالا (rank=0). نقشِ واقعی از **`Membership.role`**
+می‌آید (Subquery روی `user`+org)، نه `Colleague.roles` (که فیلدِ تگِ جداست و اغلب خالی —
+`_grant_access` فقط `Membership.role` را ست می‌کند). خواستِ کاربر.
+
 ## اتصال به حضورغیاب (worktracker — پروژه‌ی مجزا)
 هر همکار می‌تواند به سامانه‌ی حضورغیابِ **worktracker** وصل شود (`Colleague.
 worktracker_username`) + `Colleague.birth_date`. seo-manager فقط **می‌خواند** (سرور-به-سرور):

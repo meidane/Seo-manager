@@ -15,11 +15,13 @@
 .rep-sum-cell.rs-time .rs-num{color:var(--primary,#6366F1)}
 </style>
 {% with sb=report.summary_bar %}
+{% if sb.total %}
 <div class="rep-summary">
-  {% for c in sb.cells %}
+  {% for c in sb.cells %}{% if c.count %}
     <div class="rep-sum-cell"><span class="rs-label">{{ c.label }}</span><b class="rs-num">{{ c.count|fa_digits }}</b><span class="rs-sub">مورد</span></div>
-  {% endfor %}
+  {% endif %}{% endfor %}
   <div class="rep-sum-cell rs-total"><span class="rs-label">جمع تسک‌ها</span><b class="rs-num">{{ sb.total|fa_digits }}</b><span class="rs-sub">مورد</span></div>
-  <div class="rep-sum-cell rs-time"><span class="rs-label">جمع زمان</span><b class="rs-num">{{ sb.minutes|hoursmin }}</b><span class="rs-sub">ساعت:دقیقه</span></div>
+  {% if sb.minutes %}<div class="rep-sum-cell rs-time"><span class="rs-label">جمع زمان</span><b class="rs-num">{{ sb.minutes|hoursmin }}</b><span class="rs-sub">ساعت:دقیقه</span></div>{% endif %}
 </div>
+{% endif %}
 {% endwith %}

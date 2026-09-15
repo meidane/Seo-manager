@@ -152,13 +152,11 @@
     <div class="card-h">
       <h3>بردِ سئو — ماه‌های گزارش</h3>
       <div class="side-c" style="gap:8px">
-        <form method="get" style="margin:0;display:flex;gap:6px;align-items:center">
-          <select name="seo_type" class="input" style="width:auto;padding:5px 10px;font-size:12px" onchange="this.form.submit()">
-            <option value="">همهٔ انواع</option>
-            {% for tid,tname in seo_types %}<option value="{{ tid }}" {% if seo_type == tid|stringformat:'s' %}selected{% endif %}>{{ tname }}</option>{% endfor %}
-          </select>
-        </form>
-        <a href="{% url 'core:columns' %}" class="mini" title="افزودن/سفارشی‌سازیِ ستون‌ها">＋ ستون‌ها</a>
+        {# فیلترِ نوع = دکمه‌های سریع (نه دراپ‌داون) تا جابه‌جایی بینِ انواع راحت باشد #}
+        <div class="seo-typefilter">
+          <a href="?#tasks" class="seo-tf{% if not seo_type %} on{% endif %}">همهٔ انواع</a>
+          {% for tid,tname in seo_types %}<a href="?seo_type={{ tid }}#tasks" class="seo-tf{% if seo_type == tid|stringformat:'s' %} on{% endif %}">{{ tname }}</a>{% endfor %}
+        </div>
         <a href="{% url 'tasks:list' %}?project={{ project.pk }}&assignee=" class="btn btn-sm">مدیریت کامل ↗</a>
       </div>
     </div>
@@ -169,7 +167,6 @@
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
           <b style="font-size:14.5px">بدونِ ماهِ گزارش</b>
           <span style="color:var(--text-faint);font-size:11px">{{ no_month_total|fa_digits }} تسک</span>
-          <span class="zero" style="font-size:11px">— برای اینکه در گزارشِ ماهانه بیایند، ماهِ گزارش برایشان تعیین کن</span>
         </div>
         <div class="tsheet-wrap">
         <table class="tsheet">

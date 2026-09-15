@@ -269,13 +269,17 @@ class ReportItem(models.Model):
             return BUCKET_BY_TYPE_NAME[t.type_def.name]
         return TYPE_TO_BUCKET.get(self.eff_type, 'other')
 
+    # برچسبِ فارسیِ نوعِ ردیفِ دستی (manual_type انگلیسی است؛ کاربر می‌خواهد فارسی نشان داده شود)
+    MANUAL_TYPE_LABEL = {'publish': 'انتشار', 'update': 'آپدیت', 'tech': 'فنی',
+                         'reportage': 'رپورتاژ', 'linkbuilding': 'لینک‌سازی', 'other': 'سایر'}
+
     @property
     def eff_type_label(self):
-        """برچسبِ نوع برای بَجِ کنارِ عنوان (نوعِ سفارشی یا built-in)."""
+        """برچسبِ نوع برای بَجِ کنارِ عنوان — همیشه فارسی (ردیفِ دستی هم مثلِ ایمپورت‌شده)."""
         t = self.task
         if t:
             return t.type_label
-        return self.manual_type or ''
+        return self.MANUAL_TYPE_LABEL.get(self.manual_type, self.manual_type or '')
 
     @property
     def eff_estimate(self):
@@ -303,7 +307,7 @@ class ReportItem(models.Model):
         from core.jalali import format_jalali
         t = self.task
         if key == 'type':
-            return t.type_label if t else self.manual_type
+            return t.type_label if t else self.MANUAL_TYPE_LABEL.get(self.manual_type, self.manual_type)
         if key == 'done_date':
             return format_jalali(self.eff_done_date)
         if key == 'published_url':
