@@ -187,6 +187,22 @@ class Report(TimeStampedModel):
                 'minutes': total_min, 'words': total_words,
                 'hourly': hourly, 'word_rate': word_rate}
 
+    # نوارِ خلاصهٔ بالای گزارش (خواستِ کاربر): انتشار/آپدیت/فنی/سایر همیشه + جمع + زمان
+    SUMMARY_BUCKETS = [('publish', 'انتشار'), ('update', 'آپدیت'), ('tech', 'فنی'), ('other', 'سایر')]
+
+    def summary_bar(self):
+        """سلول‌های نوارِ خلاصه: تعدادِ هر نوعِ اصلی (حتی ۰)، رپورتاژ اگر بود، جمعِ کلِ
+        تسک‌ها و جمعِ زمان (دقیقه). منبعِ واحدِ نوارِ بالای صفحهٔ ویرایش و نسخهٔ مشتری."""
+        counts, total_min, total = {}, 0, 0
+        for it in self.items.select_related('task', 'task__type_def').all():
+            counts[it.bucket] = counts.get(it.bucket, 0) + 1
+            total_min += it.eff_estimate or 0
+            total += 1
+        cells = [{'key': k, 'label': lbl, 'count': counts.get(k, 0)} for k, lbl in self.SUMMARY_BUCKETS]
+        if counts.get('promo'):
+            cells.append({'key': 'promo', 'label': 'رپورتاژ و لینک‌سازی', 'count': counts['promo']})
+        return {'cells': cells, 'total': total, 'minutes': total_min}
+
     def stats(self):
         """آمارِ خلاصهٔ گزارش: تعداد هر سطل + جمعِ زمان/کلمه + هزینهٔ تولید محتوا."""
         groups = self.grouped_items()
@@ -339,8 +355,15 @@ class ReportKeyword(models.Model):
     """
     report = models.ForeignKey(Report, verbose_name='گزارش', on_delete=models.CASCADE, related_name='keywords')
     keyword = models.CharField('کلمهٔ کلیدی', max_length=200)
-    position = models.CharField('جایگاه', max_length=30, blank=True)  # رشته: «۳» یا «۳ (+۲)» یا خالی
+    position = models.CharField('جایگاه فعلی', max_length=30, blank=True)  # رشته: «۳» یا خالی
+    # تغییرِ جایگاه (اختیاری): عددِ علامت‌دار — مثبت=بهبود (▲ سبز)، منفی=افت (▼ قرمز)، ۰=بدون تغییر
+    change = models.IntegerField('تغییر جایگاه', null=True, blank=True)
+    note = models.CharField('یادداشت', max_length=200, blank=True)  # اختیاری
     order = models.PositiveIntegerField('ترتیب', default=0)
+
+    @property
+    def has_change(self):
+        return self.change is not None
 
     class Meta:
         verbose_name = 'کلمهٔ کلیدیِ گزارش'

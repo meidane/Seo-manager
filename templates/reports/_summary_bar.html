@@ -1,0 +1,25 @@
+{% load seo_extras %}
+{% comment %}
+نوارِ خلاصهٔ بالای گزارش (خواستِ کاربر): تعدادِ تسکِ انتشار/آپدیت/فنی/سایر + جمعِ تسک‌ها +
+جمعِ زمان. منبعِ داده: `Report.summary_bar`. در هر دو صفحهٔ ویرایش (style.css سراسری) و
+نسخهٔ مشتریِ public.html (پالتِ مستقل) کار کند — پس رنگ‌ها با fallbackِ متغیر نوشته شده‌اند.
+{% endcomment %}
+<style>
+.rep-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:0 0 16px}
+.rep-sum-cell{display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 10px;border-radius:12px;
+  background:var(--card-solid,var(--card,#fff));border:1px solid var(--stroke,#e5e7eb)}
+.rep-sum-cell .rs-label{font-size:12px;color:var(--text-dim,var(--dim,#6b7280))}
+.rep-sum-cell .rs-num{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text,#111827)}
+.rep-sum-cell .rs-sub{font-size:10.5px;color:var(--text-faint,var(--faint,#9ca3af))}
+.rep-sum-cell.rs-total{background:color-mix(in srgb,var(--primary,#6366F1) 12%,transparent);border-color:color-mix(in srgb,var(--primary,#6366F1) 30%,transparent)}
+.rep-sum-cell.rs-time .rs-num{color:var(--primary,#6366F1)}
+</style>
+{% with sb=report.summary_bar %}
+<div class="rep-summary">
+  {% for c in sb.cells %}
+    <div class="rep-sum-cell"><span class="rs-label">{{ c.label }}</span><b class="rs-num">{{ c.count|fa_digits }}</b><span class="rs-sub">مورد</span></div>
+  {% endfor %}
+  <div class="rep-sum-cell rs-total"><span class="rs-label">جمع تسک‌ها</span><b class="rs-num">{{ sb.total|fa_digits }}</b><span class="rs-sub">مورد</span></div>
+  <div class="rep-sum-cell rs-time"><span class="rs-label">جمع زمان</span><b class="rs-num">{{ sb.minutes|hoursmin }}</b><span class="rs-sub">ساعت:دقیقه</span></div>
+</div>
+{% endwith %}

@@ -16,6 +16,9 @@
     </div>
   </div>
 
+  {# ── نوارِ خلاصه: تعدادِ انتشار/آپدیت/فنی/سایر + جمع + زمان ── #}
+  {% include "reports/_summary_bar.html" %}
+
   {# ── لینک عمومی ── با «نهایی‌سازی» خودکار فعال می‌شود (بدونِ چک‌باکسِ جدا) ── #}
   <section class="glass filters" style="justify-content:space-between">
     <span id="r-public-note" style="display:flex;align-items:center;gap:6px;margin:0;font-size:12.5px;color:var(--text-dim)">
@@ -99,11 +102,13 @@
       <div class="side-c"><span class="tag t-mute" title="فعلاً دستی؛ بعداً به بخشِ ردیابیِ کلمات کلیدی و افزونهٔ کروم وصل می‌شود">دستی</span></div>
     </div>
     <div style="padding:10px 14px">
-      <table class="tsheet" id="kw-table"><thead><tr><th>کلمهٔ کلیدی</th><th style="width:130px">جایگاه</th><th style="width:44px"></th></tr></thead>
+      <table class="tsheet" id="kw-table"><thead><tr><th>کلمهٔ کلیدی</th><th style="width:110px">جایگاه فعلی</th><th style="width:110px">تغییر (+/−)</th><th>یادداشت</th><th style="width:44px"></th></tr></thead>
         <tbody id="kw-body">
           {% for kw in keywords %}
           <tr data-kw="{{ kw.id }}"><td><input class="input cf-inline kw-word" value="{{ kw.keyword }}"></td>
             <td><input class="input cf-inline kw-pos" dir="ltr" value="{{ kw.position }}"></td>
+            <td><input class="input cf-inline kw-change" dir="ltr" placeholder="+۲ یا −۱" value="{% if kw.has_change %}{{ kw.change }}{% endif %}"></td>
+            <td><input class="input cf-inline kw-note" value="{{ kw.note }}" placeholder="اختیاری"></td>
             <td><button class="mini kw-del" type="button">×</button></td></tr>
           {% endfor %}
         </tbody>
@@ -208,7 +213,8 @@ document.getElementById('r-save-all').onclick=async()=>{
       description: ta?ta.value:'' };
   });
   const keywords=[...document.querySelectorAll('tr[data-kw]')].map(tr=>({
-    id:+tr.dataset.kw, keyword:tr.querySelector('.kw-word').value, position:tr.querySelector('.kw-pos').value }));
+    id:+tr.dataset.kw, keyword:tr.querySelector('.kw-word').value, position:tr.querySelector('.kw-pos').value,
+    change:tr.querySelector('.kw-change').value, note:tr.querySelector('.kw-note').value }));
   const sections=[...document.querySelectorAll('.sec-item')].map(el=>({
     id:+el.dataset.sec, title:el.querySelector('.sec-title').value, description:el.querySelector('.sec-desc').value }));
   try{
@@ -329,7 +335,7 @@ document.getElementById('r-settings').onclick=()=>{
   document.getElementById('kw-add').onclick=async()=>{
     const d=await App.fetchJSON(`/reports/api/${RID}/keywords/`,{method:'POST',body:{keyword:'',position:''}});
     const tr=document.createElement('tr'); tr.dataset.kw=d.id;
-    tr.innerHTML=`<td><input class="input cf-inline kw-word" value=""></td><td><input class="input cf-inline kw-pos" dir="ltr" value=""></td><td><button class="mini kw-del" type="button">×</button></td>`;
+    tr.innerHTML=`<td><input class="input cf-inline kw-word" value=""></td><td><input class="input cf-inline kw-pos" dir="ltr" value=""></td><td><input class="input cf-inline kw-change" dir="ltr" placeholder="+۲ یا −۱" value=""></td><td><input class="input cf-inline kw-note" value="" placeholder="اختیاری"></td><td><button class="mini kw-del" type="button">×</button></td>`;
     body.appendChild(tr); tr.querySelector('.kw-word').focus();
   };
   body.addEventListener('click',async e=>{

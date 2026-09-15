@@ -113,6 +113,7 @@ class ReportDetailView(LoginRequiredMixin, DetailView):
         ctx = super().get_context_data(**kwargs)
         # صفحهٔ ویرایش: سکشن‌های پیش‌فرضِ انتشار/آپدیت/فنی همیشه دیده شوند (حتی خالی)
         ctx['groups'] = self.object.grouped_items(include_defaults=True)
+        ctx['stats'] = self.object.stats()   # نوارِ خلاصهٔ بالای صفحه
         ctx['client_fields'] = CLIENT_FIELDS
         ctx['visible_fields'] = self.object.visible_fields
         ctx['invoices'] = Invoice.objects.select_related('project')
@@ -154,7 +155,11 @@ def _public_report_ctx(report, ctx):
     ctx['visible'] = report.visible_fields or []
     ctx['fields'] = [(k, lbl) for k, lbl in CLIENT_FIELDS if report.sees(k)]
     ctx['sections'] = list(report.sections.all())
-    ctx['keywords'] = list(report.keywords.all())
+    kws = list(report.keywords.all())
+    ctx['keywords'] = kws
+    # ستونِ «تغییر»/«یادداشت» فقط وقتی نشان داده شود که حداقل یک کلمه پُرش کرده باشد (خواستِ کاربر)
+    ctx['kw_any_change'] = any(k.change is not None for k in kws)
+    ctx['kw_any_note'] = any(k.note for k in kws)
     ctx['stats'] = report.stats()
     ctx['invoice_ctx'] = _invoice_ctx(report)
     ctx['pay_info'] = PAYMENT_INFO   # هاردکد — به حسابداری وصل نیست
@@ -281,6 +286,21 @@ def _parse_hmm(val):
         return None
 
 
+def _parse_change(val):
+    """تغییرِ جایگاهِ کلمهٔ کلیدی: عددِ علامت‌دار (مثبت/منفی) یا None اگر خالی/نامعتبر.
+    ارقامِ فارسی و علامتِ «+» را می‌پذیرد (مثلِ «+۲»، «-۱»، «۳»، «۰»)."""
+    s = str(val if val is not None else '').strip()
+    for fa, en in zip('۰۱۲۳۴۵۶۷۸۹', '0123456789'):
+        s = s.replace(fa, en)
+    s = s.replace('+', '').strip()
+    if s == '' or s == '-':
+        return None
+    try:
+        return int(s)
+    except (ValueError, TypeError):
+        return None
+
+
 @login_required
 @require_http_methods(['POST'])
 def add_items(request, pk):
@@ -392,6 +412,10 @@ def save_all(request, pk):
         if kw:
             kw.keyword = (row.get('keyword') or '')[:200]
             kw.position = (row.get('position') or '')[:30]
+            if 'change' in row:
+                kw.change = _parse_change(row.get('change'))
+            if 'note' in row:
+                kw.note = (row.get('note') or '')[:200]
             kw.save()
 
     secs = {s.id: s for s in report.sections.all()}
@@ -473,6 +497,10 @@ def keyword_edit(request, pk):
         kw.keyword = (d['keyword'] or '')[:200]
     if 'position' in d:
         kw.position = (d['position'] or '')[:30]
+    if 'change' in d:
+        kw.change = _parse_change(d.get('change'))
+    if 'note' in d:
+        kw.note = (d['note'] or '')[:200]
     kw.save()
     return JsonResponse({'ok': True})
 

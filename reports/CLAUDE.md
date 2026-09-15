@@ -199,6 +199,21 @@ invoice_receipt_url` از `invoice.reports`). آپلودِ عمومی به CSRF 
   `_groups.html` هست؛ رفاین بعدی).
 - **نمودارِ واقعی** در `ReportSection` (فعلاً فقط عنوان+متن).
 
+## نوارِ خلاصهٔ بالای گزارش + ستون‌های کلمهٔ کلیدی (این تغییر)
+- **نوارِ خلاصه:** `Report.summary_bar()` (منبعِ واحد) → تعدادِ تسکِ انتشار/آپدیت/فنی/سایر
+  (همیشه، حتی ۰) + رپورتاژ اگر بود + `total` (جمعِ تسک‌ها) + `minutes` (جمعِ زمان).
+  پارشالِ `reports/_summary_bar.html` (با `<style>`ِ درون‌خطی + fallbackِ متغیر تا هم در
+  صفحهٔ ویرایش با style.css سراسری و هم در `public.html` با پالتِ مستقل کار کند) بالای
+  هر دو صفحه include می‌شود. `stats()` هم هست ولی buckets‌اش فقط ناخالی است؛ نوار از
+  `summary_bar` می‌آید (چهار نوعِ اصلی همیشه).
+- **`ReportKeyword` دو فیلدِ جدید (اختیاری):** `change`(IntegerField علامت‌دار،
+  null=بدونِ‌مقدار) و `note`(CharField). ورودی در `detail.html` (اینپوتِ `.kw-change`/
+  `.kw-note`)؛ ذخیره در `keyword_edit`/`save_all` با `_parse_change` (ارقامِ فارسی و «+»
+  را می‌پذیرد؛ خالی/«-» → None). **نمایشِ ستون فقط وقتی حداقل یک کلمه پُرش کرده باشد**
+  (`kw_any_change`/`kw_any_note` در `_public_report_ctx`) — وگرنه کلِ ستون در نسخهٔ مشتری
+  حذف می‌شود (خواستِ کاربر). رنگ/جهت در `public.html`: `change>0` سبز «▲ +n»، `<0` قرمز
+  «▼ n»، `0`/None خاکستری «—» (کلاس‌های `.kw-up/.kw-dn/.kw-zero`). `position` = «جایگاه فعلی».
+
 ## سکشن‌های پیش‌فرض + لینکِ ردیفِ دستی + نهایی‌سازی + هشدارِ ذخیره‌نشده (این تغییر)
 - **سکشن‌های پیش‌فرضِ ادیت:** `grouped_items(include_defaults=True)` (فقط `ReportDetailView`)
   سه سکشنِ **انتشار/آپدیت/فنی** (`Report.DEFAULT_BUCKETS`) را همیشه می‌آورد، حتی خالی، تا
