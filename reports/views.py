@@ -111,7 +111,8 @@ class ReportDetailView(LoginRequiredMixin, DetailView):
         from finance.balances import project_balance
         from finance.models import Invoice
         ctx = super().get_context_data(**kwargs)
-        ctx['groups'] = self.object.grouped_items()
+        # صفحهٔ ویرایش: سکشن‌های پیش‌فرضِ انتشار/آپدیت/فنی همیشه دیده شوند (حتی خالی)
+        ctx['groups'] = self.object.grouped_items(include_defaults=True)
         ctx['client_fields'] = CLIENT_FIELDS
         ctx['visible_fields'] = self.object.visible_fields
         ctx['invoices'] = Invoice.objects.select_related('project')
@@ -340,6 +341,8 @@ def item_edit(request, pk):
         item.override_word_count = int(wc) if wc.isdigit() else None
     if 'override_assignee' in d:
         item.override_assignee_id = d['override_assignee'] or None
+    if 'url' in d:  # لینکِ ردیفِ دستی (خواستِ کاربر: هنگامِ افزودنِ دستی جای واردکردنِ لینک)
+        item.manual_url = (d['url'] or '')[:200]
     item.save()
     return JsonResponse({'ok': True, 'title': item.eff_title,
                          'done_date': _fa(item.eff_done_date)})
@@ -379,6 +382,8 @@ def save_all(request, pk):
             it.override_word_count = int(wc) if wc.isdigit() else None
         if 'assignee' in row:
             it.override_assignee_id = row['assignee'] or None
+        if 'url' in row:
+            it.manual_url = (row['url'] or '')[:200]
         it.save()
 
     kws = {k.id: k for k in report.keywords.all()}
@@ -488,6 +493,9 @@ def report_update(request, pk):
         report.is_public = bool(d['is_public'])
     if 'status' in d:
         report.status = d['status']
+        # نهایی‌سازی = لینک عمومیِ مشتری خودکار فعال؛ بازگشت به پیش‌نویس = غیرفعال
+        # (خواستِ کاربر: بدونِ آپشنِ جدا؛ منبعِ واحدِ سرورساید تا کلاینت قابلِ دورزدن نباشد).
+        report.is_public = (report.status == Report.FINAL)
     invoice_changed = 'invoice' in d and str(d.get('invoice') or '') != str(report.invoice_id or '')
     if 'invoice' in d:
         report.invoice_id = d['invoice'] or None

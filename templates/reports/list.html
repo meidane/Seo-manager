@@ -53,12 +53,17 @@ document.addEventListener('click',e=>{
       <div style="display:flex;gap:8px"><button class="btn btn-p" type="submit">ساخت و ادامه</button><button class="btn" type="button" onclick="App.closeModal()">انصراف</button></div>
     </form>`);
 });
-document.addEventListener('click', async e=>{
-  const b=e.target.closest('.rep-del'); if(!b) return;
-  if(await App.confirm('این گزارش حذف شود؟')){
-    await App.fetchJSON(`/reports/api/${b.dataset.id}/delete/`,{method:'DELETE'});
-    b.closest('tr').remove(); App.toast('حذف شد','ok');
-  }
+// حذف: باید مستقیم روی خودِ دکمه بایند شود. قبلاً delegated روی document بود، ولی
+// دکمه inline `event.stopPropagation()` دارد (برای جلوگیری از ناوبریِ ردیف) که همان
+// bubbling را تا document قطع می‌کرد → هندلرِ حذف هرگز اجرا نمی‌شد (باگِ «دکمه کار نمی‌کند»).
+document.querySelectorAll('.rep-del').forEach(b=>{
+  b.addEventListener('click', async e=>{
+    e.stopPropagation();   // جلوی ناوبریِ ردیف
+    if(await App.confirm('این گزارش حذف شود؟')){
+      await App.fetchJSON(`/reports/api/${b.dataset.id}/delete/`,{method:'DELETE'});
+      b.closest('tr').remove(); App.toast('حذف شد','ok');
+    }
+  });
 });
 </script>
 {% endblock %}

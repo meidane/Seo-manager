@@ -16,11 +16,12 @@
     </div>
   </div>
 
-  {# ── لینک عمومی ── #}
+  {# ── لینک عمومی ── با «نهایی‌سازی» خودکار فعال می‌شود (بدونِ چک‌باکسِ جدا) ── #}
   <section class="glass filters" style="justify-content:space-between">
-    <label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">
-      <input type="checkbox" id="r-public" {% if report.is_public %}checked{% endif %}> لینک عمومی برای مشتری فعال باشد
-    </label>
+    <span id="r-public-note" style="display:flex;align-items:center;gap:6px;margin:0;font-size:12.5px;color:var(--text-dim)">
+      {% if report.is_public %}<span class="tag t-ok">لینک عمومی فعال</span> مشتری می‌تواند گزارش را ببیند
+      {% else %}<span class="tag t-mute">پیش‌نویس</span> با «نهایی‌سازی»، لینک عمومی برای مشتری فعال می‌شود{% endif %}
+    </span>
     <span style="display:flex;gap:8px;align-items:center">
       <input class="input" id="r-link" style="max-width:340px" dir="ltr" readonly value="{{ request.scheme }}://{{ request.get_host }}{{ report.public_url }}">
       <button class="btn btn-sm" id="r-copy">📋 کپی</button>
@@ -179,6 +180,19 @@ const VISIBLE = {{ visible_fields|safe }};
 
 const desc=document.getElementById('r-desc');
 
+// ── هشدارِ «تغییراتِ ذخیره‌نشده» قبلِ بستنِ تب/رفتن از صفحه (خواستِ کاربر) ──
+// این صفحه اتوسیو ندارد؛ اگر چیزی عوض شده و «ذخیرهٔ گزارش» زده نشده، مرورگر می‌پرسد.
+let RDIRTY=false;
+// ویجتِ مالیِ فقط‌خواندنی (گردشِ حساب) نباید تغییرِ گزارش حساب شود
+const markDirty=(e)=>{ if(e&&e.target&&e.target.closest&&e.target.closest('#r-fin-panel')) return; RDIRTY=true; };
+const clearDirty=()=>{ RDIRTY=false; };
+// هر input/change داخلِ صفحهٔ گزارش (اینپوت/سلکت/contenteditable → رویدادِ input) = تغییر.
+const rroot=document.querySelector('[data-report]');
+if(rroot){ rroot.addEventListener('input',markDirty); rroot.addEventListener('change',markDirty); }
+window.addEventListener('beforeunload',e=>{ if(RDIRTY){ e.preventDefault(); e.returnValue=''; } });
+// رفرش‌های عمدیِ خودمان نباید هشدار بدهند → قبلِ reload دیرتی را پاک می‌کنیم (navGuardOff).
+function navGuardOff(){ clearDirty(); }
+
 // ── ذخیرهٔ یکجای کلِ گزارش (تک‌دکمه، بدونِ اتوسیو) ──
 document.getElementById('r-save-all').onclick=async()=>{
   if(window.RichText) RichText.save();   // سینکِ همهٔ ادیتورهای TinyMCE به textarea
@@ -190,6 +204,7 @@ document.getElementById('r-save-all').onclick=async()=>{
       word_count:(tr.querySelector('[data-item-word]')||{}).value||'',
       assignee:(tr.querySelector('[data-item-assignee]')||{}).value||'',
       done_date:(tr.querySelector('[data-item-date]')||{}).value||'',
+      url:(tr.querySelector('[data-item-url]')||{}).value||'',
       description: ta?ta.value:'' };
   });
   const keywords=[...document.querySelectorAll('tr[data-kw]')].map(tr=>({
@@ -202,12 +217,12 @@ document.getElementById('r-save-all').onclick=async()=>{
       items, keywords, sections }});
     if(res && res.content_total>0) App.toast('گزارش ذخیره شد — هزینهٔ تولید محتوا در فاکتور: '+res.content_total.toLocaleString('fa-IR')+' ریال','ok');
     else App.toast('گزارش ذخیره شد','ok');
+    navGuardOff();   // ذخیره شد → دیگر تغییرِ ذخیره‌نشده نداریم
     setTimeout(()=>location.reload(),700);
   }catch(_){}
 };
 
-// ── لینک عمومی ──
-document.getElementById('r-public').onchange=e=>App.fetchJSON(`/reports/api/${RID}/update/`,{method:'PATCH',body:{is_public:e.target.checked}}).then(()=>App.toast(e.target.checked?'لینک فعال شد':'لینک غیرفعال شد','ok'));
+// ── لینک عمومی ── (فعال/غیرفعال‌شدنش با «نهایی‌سازی» است، نه چک‌باکسِ جدا) ──
 document.getElementById('r-copy').onclick=()=>{navigator.clipboard.writeText(document.getElementById('r-link').value);App.toast('کپی شد','ok');};
 
 // ── فاکتور متصل ──
@@ -233,6 +248,7 @@ document.getElementById('r-invoice').onchange=e=>App.fetchJSON(`/reports/api/${R
 document.getElementById('r-final').onclick=async()=>{
   const cur=document.getElementById('r-status').textContent.includes('نهایی');
   await App.fetchJSON(`/reports/api/${RID}/update/`,{method:'PATCH',body:{status:cur?'draft':'final'}});
+  navGuardOff();   // رفرشِ عمدیِ خودمان — هشدارِ تغییرِ ذخیره‌نشده ندهد
   location.reload();
 };
 

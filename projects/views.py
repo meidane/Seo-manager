@@ -116,6 +116,10 @@ class ProjectListView(LoginRequiredMixin, DateRangeMixin, ListView):
         if self._ptype and self._ptype != 'all':
             qs = qs.filter(Q(project_types__icontains=self._ptype) | Q(personal_owner__isnull=False))
         from django.db.models import Case, F, IntegerField, Value, When
+        # **مهم:** فقط aggregateهای روی رابطهٔ `tasks` اینجا می‌آیند. اگر Max روی
+        # `reports`/`transactions` (رابطه‌های دیگر) هم در همین annotate باشد، JOINِ چندگانه
+        # ردیف‌ها را ضرب می‌کند و شمارشِ تسک‌ها چند برابر می‌شود (باگِ «۲۰ تسک → ۱۳۰/۶۳۹»).
+        # last_report/last_payment جداگانه (زیر، در get_context_data) محاسبه می‌شوند.
         qs = qs.annotate(
             planned=Count('tasks', filter=Q(tasks__planned_date__range=(start, end))),
             done=Count('tasks', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end))),
@@ -124,9 +128,6 @@ class ProjectListView(LoginRequiredMixin, DateRangeMixin, ListView):
             # «ساعت تخمین» = جمعِ تخمینِ تسک‌های برنامه‌ریزی‌شده در بازه (خواستِ کاربر)
             est_minutes=Sum('tasks__estimate_minutes', filter=Q(tasks__planned_date__range=(start, end))),
             overdue=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING], tasks__planned_date__lt=date.today())),
-            last_report=Max('reports__date_to'),
-            # آخرین پرداخت = آخرین تراکنشِ واریز به پروژه (وصل به finance)
-            last_payment=Max('transactions__date', filter=Q(transactions__deposit__gt=0)),
             last_activity=Max('tasks__updated_at'),
             # پروژه‌ی شخصی همیشه اولِ لیست (فقط پروژه‌ی شخصیِ خودِ کاربر اینجا هست)
             _personal=Case(When(personal_owner__isnull=False, then=Value(0)),
@@ -157,6 +158,18 @@ class ProjectListView(LoginRequiredMixin, DateRangeMixin, ListView):
         ctx.update(self.range_context())
         projects = list(ctx['projects'])
         pids = [p.id for p in projects]
+        # ── آخرین گزارش/پرداخت جداگانه (نه در annotateِ اصلی — وگرنه JOINِ چندرابطه‌ای
+        #    شمارشِ تسک‌ها را ضرب می‌کند؛ باگِ «۲۰ → ۱۳۰») ──
+        from django.db.models import Max as _Max, Q as _Q
+        from reports.models import Report as _Report
+        from finance.models import Transaction as _Tx
+        last_rep = dict(_Report.objects.filter(project_id__in=pids)
+                        .values_list('project_id').annotate(m=_Max('date_to')).values_list('project_id', 'm'))
+        last_pay = dict(_Tx.objects.filter(project_id__in=pids, deposit__gt=0)
+                        .values_list('project_id').annotate(m=_Max('date')).values_list('project_id', 'm'))
+        for p in projects:
+            p.last_report = last_rep.get(p.id)
+            p.last_payment = last_pay.get(p.id)
         # ── اسپارک‌لاینِ ۱۴ روز (تعدادِ انجام‌شده در هر روز) — یک کوئریِ گروهی ──
         today = date.today()
         spark_start = today - timedelta(days=13)
@@ -305,6 +318,17 @@ class ProjectDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
                              'strategy': s.description if s else '', 'has_strategy': bool(s and s.description),
                              'tasks': by.get((yr, mo), [])})
         ctx['seo_sections'] = sections
+        # ── تسک‌های بدونِ ماهِ گزارش (بالای برد) — انجام‌نشده‌ها اول، انجام‌شده‌های بی‌ماه ته ──
+        nm = p.tasks.select_related('assignee', 'type_def').filter(report_month__isnull=True)
+        if seo_type:
+            nm = nm.filter(type_def_id=seo_type)
+        nm_active = list(nm.exclude(status=Task.DONE).order_by('board_order', 'id'))
+        nm_done = list(nm.filter(status=Task.DONE).order_by('-done_date', '-id'))
+        no_month = nm_active + nm_done
+        NM_SHOW = 7   # فعلاً نهایتِ ۶-۷ مورد؛ بقیه با «مشاهدهٔ همه»
+        ctx['no_month_tasks'] = no_month[:NM_SHOW]
+        ctx['no_month_hidden'] = no_month[NM_SHOW:]
+        ctx['no_month_total'] = len(no_month)
         active_types = TaskTypeDef.objects.filter(is_active=True)
         ctx['seo_types'] = list(active_types.values_list('id', 'name'))
         ctx['all_types'] = active_types

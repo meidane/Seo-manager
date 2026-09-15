@@ -15,7 +15,11 @@
   {% endif %}
 
   <section class="card glass" style="padding:20px;display:flex;gap:14px;align-items:center;margin-bottom:14px">
-    <i class="pdot" style="width:14px;height:14px;background:{{ project.color }}"></i>
+    {# لوگوی پروژه/سایت بالای صفحه (خواستِ کاربر) — لوگو یا fallbackِ رنگی از رنگِ پروژه #}
+    <span class="proj-logo-lg">
+      {% if project.logo %}<img src="{{ project.logo.url }}" alt="{{ project.name }}">
+      {% else %}<span class="fb" style="background:color-mix(in srgb,{{ project.color }} 24%,transparent);color:{{ project.color }}">{{ project.name|slice:':1' }}</span>{% endif %}
+    </span>
     <div style="flex:1">
       <h1 style="font-size:20px;font-weight:700">{{ project.name }}</h1>
       {% if project.domain %}<a href="//{{ project.domain }}" target="_blank" rel="noopener" style="color:var(--primary-400);font-size:13px;direction:ltr;display:inline-block">{{ project.domain }} ↗</a>{% endif %}
@@ -159,6 +163,27 @@
       </div>
     </div>
     <div style="padding:12px 14px">
+      {# ── تسک‌های بدونِ ماهِ گزارش (بالای برد) — نهایتِ ۷ مورد + «مشاهدهٔ همه» ── #}
+      {% if no_month_tasks %}
+      <div class="no-month-sec" style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+          <b style="font-size:14.5px">بدونِ ماهِ گزارش</b>
+          <span style="color:var(--text-faint);font-size:11px">{{ no_month_total|fa_digits }} تسک</span>
+          <span class="zero" style="font-size:11px">— برای اینکه در گزارشِ ماهانه بیایند، ماهِ گزارش برایشان تعیین کن</span>
+        </div>
+        <div class="tsheet-wrap">
+        <table class="tsheet">
+          <thead>{% include "tasks/_task_thead.html" %}</thead>
+          <tbody>{% include "tasks/_rows.html" with tasks=no_month_tasks %}</tbody>
+          {% if no_month_hidden %}<tbody class="nm-hidden" hidden>{% include "tasks/_rows.html" with tasks=no_month_hidden %}</tbody>{% endif %}
+        </table>
+        </div>
+        {% if no_month_hidden %}
+        <div style="margin-top:8px"><button class="btn btn-sm" id="nm-showall">مشاهدهٔ همه ({{ no_month_total|fa_digits }})</button></div>
+        {% endif %}
+      </div>
+      {% endif %}
+
       <div style="margin-bottom:14px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
         <span style="color:var(--text-dim);font-size:12px">افزودنِ سکشنِ ماهِ گزارش:</span>
         {% if seo_periods %}
@@ -664,6 +689,11 @@
     const [year, month] = sel.value.split('-').map(Number);
     try{ await App.fetchJSON(`/projects/api/${pid}/seo/section/`, {method:'POST', body:{year, month}}); reloadTasks(); }catch(_){}
   });
+
+  // «مشاهدهٔ همه»ی تسک‌های بدونِ ماهِ گزارش (نمایشِ ردیف‌های مخفی)
+  (function(){ const btn=document.getElementById('nm-showall'); if(!btn) return;
+    btn.addEventListener('click', ()=>{ board.querySelectorAll('.nm-hidden').forEach(t=>t.hidden=false); btn.remove(); });
+  })();
 
   // بالا/پایین بردنِ سکشنِ ماهِ گزارش (بدونِ رفرش، جابه‌جاییِ DOM + ذخیرهٔ ترتیب)
   board.addEventListener('click', async e=>{

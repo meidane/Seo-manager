@@ -127,13 +127,19 @@ class Report(TimeStampedModel):
     def sees(self, field_key):
         return field_key in (self.visible_fields or [])
 
-    def grouped_items(self):
-        """آیتم‌ها را در سطل‌های نوع برمی‌گرداند: dictهای {key,label,items,cols}."""
+    # سکشن‌های پیش‌فرضِ صفحهٔ ویرایش (خواستِ کاربر): انتشار/آپدیت/فنی همیشه دیده شوند
+    DEFAULT_BUCKETS = ('publish', 'update', 'tech')
+
+    def grouped_items(self, include_defaults=False):
+        """آیتم‌ها را در سطل‌های نوع برمی‌گرداند: dictهای {key,label,items,cols}.
+        `include_defaults=True` (صفحهٔ ویرایش) سکشن‌های پیش‌فرضِ انتشار/آپدیت/فنی را حتی
+        وقتی خالی‌اند هم می‌آورد تا کاربر بتواند مستقیم داخلشان ردیف اضافه کند؛ نسخهٔ
+        عمومیِ مشتری (پیش‌فرضِ False) فقط سکشن‌های دارای آیتم را نشان می‌دهد."""
         items = list(self.items.select_related('task', 'task__assignee', 'task__type_def').all())
         out = []
         for key, label, types in BUCKETS:
             bucket = [it for it in items if it.bucket == key]
-            if bucket:
+            if bucket or (include_defaults and key in self.DEFAULT_BUCKETS):
                 out.append({'key': key, 'label': label, 'items': bucket,
                             'add_type': types[0],  # نوعِ ردیفِ دستیِ این سکشن
                             'cols': BUCKET_COLS.get(key, {'word': False, 'link': False})})

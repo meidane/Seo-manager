@@ -2,7 +2,8 @@
 <tr data-row="{{ it.id }}">
   <td><span contenteditable="true" data-item-title="{{ it.id }}" style="outline:none">{{ it.eff_title }}</span>
     {% if it.eff_url %}<a class="lnk it-linkicon" href="{{ it.eff_url }}" target="_blank" rel="noopener" title="لینک">↗</a>{% endif %}
-    {% if it.task and it.task.status != 'done' %}<span class="tag t-warn" title="این تسک هنوز انجام‌نشده — فقط برای خودِ ما، در گزارشِ مشتری دیده نمی‌شود">⏳ {{ it.task.get_status_display }}</span>{% endif %}</td>
+    {% if it.task and it.task.status != 'done' %}<span class="tag t-warn" title="این تسک هنوز انجام‌نشده — فقط برای خودِ ما، در گزارشِ مشتری دیده نمی‌شود">⏳ {{ it.task.get_status_display }}</span>{% endif %}
+    {% if not it.task %}<input class="input cf-inline it-url" dir="ltr" data-item-url="{{ it.id }}" value="{{ it.manual_url }}" placeholder="https://… (لینکِ ردیف)" style="margin-top:5px;font-size:11.5px">{% endif %}</td>
   <td><input class="input cf-inline" dir="ltr" style="max-width:64px;text-align:center" data-item-est="{{ it.id }}" value="{% if it.eff_estimate %}{{ it.eff_estimate|hoursmin }}{% endif %}" placeholder="0:00" title="ساعت:دقیقه"></td>
   <td><input class="input cf-inline" dir="ltr" style="max-width:66px;text-align:center" data-item-word="{{ it.id }}" value="{% if it.eff_word_count %}{{ it.eff_word_count }}{% endif %}" placeholder="—"></td>
   <td><select class="input cf-inline" data-item-assignee="{{ it.id }}"><option value="">—</option>{% for co in colleagues %}<option value="{{ co.id }}" {% if it.eff_assignee.id == co.id %}selected{% endif %}>{{ co.full_name }}</option>{% endfor %}</select></td>
