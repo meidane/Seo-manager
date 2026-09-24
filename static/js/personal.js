@@ -71,13 +71,13 @@
         try { await api(`/personal/api/tasks/${id}/plan/`, 'PATCH', { date: '' }); location.reload(); } catch (_) {}
         return;
       }
-      if (e.target.classList.contains('pt-nextweek')) {  // انتقال به هفتهٔ بعد (تاریخِ برنامه = شروعِ هفتهٔ بعد)
+      if (e.target.classList.contains('pt-nextweek')) {  // انتقال به اینباکسِ هفتهٔ بعد (created_at جابه‌جا می‌شود)
         e.stopPropagation();
         try {
-          const r = await api(`/personal/api/tasks/${id}/plan/`, 'PATCH', { date: e.target.dataset.next });
-          const dinp = row.querySelector('.pt-date');
-          if (dinp) dinp.value = r.planned_jalali || '';
-          row.classList.add('dim');
+          await api(`/personal/api/tasks/${id}/next-week/`, 'POST');
+          row.remove();                 // از اینباکسِ این هفته خارج شد
+          const empty = document.getElementById('inbox-empty');
+          if (!list.querySelector('.pers-row') && !empty) list.insertAdjacentHTML('beforeend', '<div class="zero" id="inbox-empty">چیزی در این هفته ثبت نشده — هرچه به ذهنت می‌رسد بنویس.</div>');
           App.toast('به هفتهٔ بعد منتقل شد', 'ok');
           refreshPct(box);
         } catch (_) {}

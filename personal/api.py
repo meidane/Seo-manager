@@ -148,6 +148,30 @@ def ptask_move(request, pk):
 
 
 @admin_only
+@require_http_methods(['POST'])
+def ptask_next_week(request, pk):
+    """«» بعد» در اینباکس — ایده را به اینباکسِ هفتهٔ بعد می‌بَرد.
+
+    اینباکس بر اساسِ `created_at` (شنبه تا جمعهٔ همان هفته) گروه‌بندی می‌شود، پس برای
+    اینکه تسک واقعاً از اینباکسِ این هفته **خارج** و در هفتهٔ بعد ظاهر شود، `created_at`
+    را به شنبهٔ هفتهٔ بعدِ همان هفته‌اش می‌بَریم (نه فقط planned_date؛ باگِ قبلی: فقط
+    planned_date ست می‌شد و تسک در اینباکسِ همین هفته کم‌رنگ می‌ماند و «نمی‌رفت»)."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from .models import week_saturday
+    task = get_object_or_404(_personal_qs(request), pk=pk)
+    cur_local = timezone.localtime(task.created_at)
+    nxt_sat = week_saturday(cur_local.date()) + timedelta(days=7)
+    # ساعت/دقیقهٔ ثبت را نگه می‌داریم، فقط تاریخ را به شنبهٔ هفتهٔ بعد می‌بریم
+    new_dt = cur_local.replace(year=nxt_sat.year, month=nxt_sat.month, day=nxt_sat.day)
+    task.created_at = new_dt
+    task.save(update_fields=['created_at', 'updated_at'])
+    return JsonResponse({'ok': True, 'created_at': new_dt.date().isoformat()})
+
+
+@admin_only
 @require_http_methods(['PATCH'])
 def ptask_done(request, pk):
     """تیک/برداشتنِ انجام — هم وضعیتِ تسک، هم `DailyPlan.done`ِ روزِ برنامه‌اش را هم‌گام می‌کند."""
