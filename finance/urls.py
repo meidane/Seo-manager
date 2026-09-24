@@ -27,6 +27,7 @@ urlpatterns = [
     path('api/tx/<int:pk>/', views.tx_edit, name='tx_edit'),
     path('api/tx/<int:pk>/split/', views.tx_split, name='tx_split'),
     path('api/tx/bulk/', views.tx_bulk, name='tx_bulk'),
+    path('api/tx/apply-suggestions/', views.tx_apply_suggestions, name='tx_apply_suggestions'),
     path('api/import/preview/', views.import_preview, name='import_preview'),
     path('api/import/confirm/', views.import_confirm, name='import_confirm'),
     path('api/payroll/', views.payroll_create, name='payroll_create'),

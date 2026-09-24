@@ -184,7 +184,14 @@ class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
         ctx['qs_params'] = params.urlencode()
 
         ctx['page_obj'] = page_obj
-        ctx['transactions'] = page_obj.object_list
+        transactions = list(page_obj.object_list)
+        # ── پیشنهادِ هوشمندِ پروژه/بابت برای تراکنش‌های بی‌تخصیص (روشِ A: امضا + حافظه) ──
+        from .tx_suggest import suggestions_for
+        sugg = suggestions_for(transactions)
+        for t in transactions:
+            t.ai_suggestion = sugg.get(t.id)
+        ctx['ai_suggest_count'] = len(sugg)
+        ctx['transactions'] = transactions
         ctx['total_count'] = paginator.count
         ctx['banks'] = BankAccount.objects.filter(is_active=True)
         ctx['projects'] = Project.objects.filter(status=Project.ACTIVE, personal_owner__isnull=True)
@@ -709,6 +716,34 @@ def tx_edit(request, pk):
     # هشدارِ نرم (بدونِ بلاک) اگر این نسبت‌دهی ناسازگاریِ حسابداری ساخت
     warning = _tx_anomaly_warning(t)
     return JsonResponse({'ok': True, 'warning': warning})
+
+
+@login_required
+@require_finance
+@require_http_methods(['POST'])
+def tx_apply_suggestions(request):
+    """تأییدِ گروهیِ پیشنهادهای هوشمند برای فهرستی از تراکنش‌ها.
+
+    بدنه: `{ids: [...]}` (idهای تراکنش‌های نمایش‌دادهٔ صفحه). پیشنهاد **سرورساید دوباره
+    محاسبه می‌شود** (نه اعتماد به مقدارِ کلاینت) و روی تراکنش‌های هنوز-بی‌تخصیص نشانده می‌شود.
+    """
+    from .tx_suggest import suggestions_for
+    ids = [int(x) for x in (_body(request).get('ids') or []) if str(x).isdigit()]
+    txs = list(Transaction.objects.filter(id__in=ids, project__isnull=True, categories__isnull=True)
+               .prefetch_related('categories', 'splits').distinct())
+    sugg = suggestions_for(txs)
+    applied = 0
+    for t in txs:
+        s = sugg.get(t.id)
+        if not s:
+            continue
+        if s.get('project_id'):
+            t.project_id = s['project_id']
+            t.save(update_fields=['project', 'updated_at'])
+        if s.get('category_id'):
+            t.categories.set([s['category_id']])
+        applied += 1
+    return JsonResponse({'ok': True, 'applied': applied})
 
 
 @login_required

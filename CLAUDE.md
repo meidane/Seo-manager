@@ -99,6 +99,7 @@
 | مانده‌ی «کل حساب با همکار» در تبِ حقوق | `finance/views.py: PayrollListView` (Σتعهد حقوق − Σبرداشتِ تراکنش‌های `category__colleague`) |
 | مانده‌ی گردش حساب (پروژه/حقوق) | `finance/balances.py: project_balances/salary_balances` (منبع واحدِ ستونِ مانده + بنر + هشدار) |
 | هشدارهای حسابداری (نرم) | `finance/alerts.py: compute_alerts` (بانکِ منفی/پروژه‌ی مثبت/اضافه‌پرداختِ حقوق) + `_tx_anomaly_warning` |
+| پیشنهادِ هوشمندِ پروژه/بابتِ تراکنشِ تکراری (امضای IBAN/کارت + حافظه) | `finance/tx_suggest.py: signatures/suggestions_for` (روشِ A؛ `TransactionListView` + `tx_apply_suggestions`) |
 
 ## دستورهای کلیدی
 ```bash
