@@ -23,11 +23,18 @@
     ویرایشِ درون‌جدولی = چیپ‌ها (`.txcat-*` در `transactions.html`؛ Enter=افزودن، ×=حذف).
     مانده‌ی حقوق: `balances.py` با `categories__colleague_id`.
 - **Payroll / PayrollItem** — صورت‌حساب حقوق ماهانه؛ `total/remaining/status/month_name` (property).
-  تبِ حقوق ستون‌ها: همکار · ماه(نام، `month_name`) · اجزا · جمع · **مانده‌ی «کل حساب با همکار»**
-  (وضعیت حذف شد). مانده = Σ تعهدِ همه‌ی حقوق‌های همکار − Σ برداشتِ تراکنش‌های بابتِ حقوقِ او
-  (`category__colleague`) — در `PayrollListView` محاسبه و به‌صورت dict `balances` پاس داده می‌شود.
-  ویرایشِ کاملِ حقوق (همکار/ماه/اجزا) از همان مودال، `payroll_edit` با آرایه‌ی `items` بازساخت می‌کند.
-  مودالِ صدور/ویرایش: ماه با **نام** (`فروردین…اسفند`, context `months`)، اجزا تک‌ردیفی با **Enter=ردیف بعد**.
+  تبِ حقوق (`PayrollListView`) ستون‌ها: همکار · ماه(نام) · اجزا · جمع · **مانده‌ی «کل حساب با
+  همکار»** (`balances.salary_balances`). کلیکِ ردیف/«ویرایش» → صفحهٔ فرم؛ «مانده» لینک به تبِ گزارش.
+  - **صدور/ویرایش = فرمِ صفحه‌ایِ کامل (نه مودال)، مثلِ فاکتور** (`PayrollFormView`،
+    `templates/finance/payroll_form.html`، URLها `payroll_new`/`payroll_edit_page`). هر ردیف
+    **دو فیلد** دارد (عنوان + مبلغ) + جمعِ کل؛ بدونِ تعداد/مالیات. ذخیره از `payroll_create`
+    (POST) / `payroll_edit` (PATCH) با `_save_payroll_items` (منبعِ واحدِ ساختِ اجزا +
+    **محافظِ ضدِ نابودیِ داده** مثلِ `_save_lines`: ورودیِ خالی ردیف‌های موجود را پاک نمی‌کند).
+  - **زیرِ فرم «گزارشِ حسابِ حقوقِ همکار»** (مثلِ گزارشِ مالیِ پروژه زیرِ فاکتور): گردشِ حسابِ
+    بابتِ حقوق از **`ledger_data.salary_ledger(colleague_id)`** (تعهدِ حقوق‌ها=واریز،
+    پرداختِ تراکنش‌های بابتِ حقوق=برداشت، ماندهٔ تجمعی=`salary_balance`) — همان مارک‌آپِ
+    `sheet ledger`، سرورساید. `LedgerView` حالتِ بابتِ حقوق هنوز منطقِ خودش را دارد (قابلِ
+    DRY با `salary_ledger` در آینده).
 - **Invoice / InvoiceLine** — فاکتور فروش/خدمات به یک پروژه. `number` خودکار و پشت‌سرهم
   در سطحِ سازمان (در `save()` = `Max(number)+1`، با `UniqueConstraint(organization, number)`).
   فیلدها: `issue_date(تاریخ ثبت, میلادی), project, description, due_date(تاریخ پرداخت)`.

@@ -256,6 +256,42 @@ class PayrollListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
         return ctx
 
 
+class PayrollFormView(LoginRequiredMixin, FinancePermMixin, TemplateView):
+    """صفحه‌ی صدور/ویرایشِ حقوق (فرمِ کاملِ صفحه‌ای مثلِ فاکتور، نه مودال).
+
+    هر ردیف دو فیلد دارد (عنوان + مبلغ) و جمع پایین می‌آید؛ زیرِ فرم «گزارشِ حسابِ
+    حقوقِ همکار» (گردشِ حساب بابتِ حقوق) — مثلِ گزارشِ مالیِ پروژه زیرِ فاکتور.
+    """
+
+    template_name = 'finance/payroll_form.html'
+
+    def get_context_data(self, **kwargs):
+        from colleagues.models import Colleague
+        from core.jalali import MONTH_NAMES, today_jalali
+
+        from .balances import salary_balance
+        from .ledger_data import salary_ledger
+        ctx = super().get_context_data(**kwargs)
+        pk = kwargs.get('pk')
+        payroll = None
+        if pk:
+            payroll = get_object_or_404(Payroll.objects.prefetch_related('items').select_related('colleague'), pk=pk)
+        ctx['payroll'] = payroll
+        ctx['items'] = payroll.items.all() if payroll else []
+        ctx['colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)
+        ctx['months'] = list(enumerate(MONTH_NAMES, start=1))
+        cy = today_jalali()
+        ctx['cur_year'] = payroll.year if payroll else cy.year
+        ctx['cur_month'] = payroll.month if payroll else cy.month
+        ctx['prefill_colleague'] = self.request.GET.get('colleague') or ''
+        # گزارشِ حسابِ حقوقِ همکار (زیرِ فرم) — فقط برای حقوقِ موجود
+        if payroll:
+            ctx['sal_ledger'] = salary_ledger(payroll.colleague_id)
+            ctx['sal_balance'] = salary_balance(payroll.colleague_id)
+        ctx['page_title'] = 'صدور حقوق'
+        return ctx
+
+
 class InvoiceListView(LoginRequiredMixin, InvoiceViewPermMixin, DateRangeMixin, TemplateView):
     template_name = 'finance/invoices.html'
 
@@ -1020,6 +1056,19 @@ def import_confirm(request):
 
 # ── API: حقوق ─────────────────────────────────────────────────────────────
 
+def _save_payroll_items(payroll, items):
+    """اجزای حقوق را از نو می‌سازد (منبع واحد). محافظِ ضدِ نابودیِ داده مثلِ `_save_lines`:
+    اگر ورودی هیچ ردیفِ معتبری (عنوان‌دار) ندارد ولی حقوق از قبل جزء دارد، دست نمی‌زند."""
+    valid = [it for it in (items or []) if (it.get('title') or '').strip()]
+    if not valid and payroll.items.exists():
+        return False
+    payroll.items.all().delete()
+    for it in valid:
+        PayrollItem.objects.create(payroll=payroll, title=it['title'].strip()[:80],
+                                   amount=parse_amount(it.get('amount', 0)))
+    return True
+
+
 @login_required
 @require_finance
 @require_http_methods(['POST'])
@@ -1030,9 +1079,7 @@ def payroll_create(request):
             colleague_id=d['colleague'], year=int(d['year']), month=int(d['month']))
     except (KeyError, ValueError):
         return JsonResponse({'detail': 'همکار/سال/ماه لازم است'}, status=400)
-    for it in d.get('items', []):
-        if it.get('title'):
-            PayrollItem.objects.create(payroll=p, title=it['title'], amount=parse_amount(it.get('amount', 0)))
+    _save_payroll_items(p, d.get('items', []))
     return JsonResponse({'id': p.id}, status=201)
 
 
@@ -1067,11 +1114,8 @@ def payroll_edit(request, pk):
     except IntegrityError:
         return JsonResponse({'detail': 'برای این همکار در این ماه از قبل حقوق ثبت شده'}, status=400)
     if 'items' in d:
-        p.items.all().delete()
-        for it in d['items']:
-            if it.get('title'):
-                PayrollItem.objects.create(payroll=p, title=it['title'], amount=parse_amount(it.get('amount', 0)))
-    return JsonResponse({'ok': True, 'total': p.total, 'remaining': p.remaining, 'status': p.status})
+        _save_payroll_items(p, d['items'])
+    return JsonResponse({'ok': True, 'id': p.id, 'total': p.total})
 
 
 # ── API: فاکتور ───────────────────────────────────────────────────────────
