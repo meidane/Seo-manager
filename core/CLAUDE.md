@@ -11,11 +11,20 @@
 ## ابزارها
 - `jalali.py` — تبدیل میلادی↔شمسی، `parse_jalali`, `format_jalali`, `to_fa/en_digits`,
   `MONTH_NAMES`, `WEEKDAY_NAMES`. **فقط لایه‌ی نمایش/ورودی.**
-- `daterange.py` — **`DateRangeMixin`**: `get_range(request)`, `get_previous_range()`,
-  `range_context()`. در session ذخیره می‌شود.
+- `daterange.py` — **سیستمِ واحدِ بازه‌ی زمانی** (نوار بالای هر جدول/بخش، **نه در ناو**):
+  - **`DateRangeMixin`** (حالت‌مند، پیش‌فرض `this_month`، همیشه فیلتر): `get_range(request)`,
+    `get_previous_range()`, `range_context()`. در session ذخیره می‌شود.
+  - **`optional_range(request)`** (بدونِ session، پیش‌فرض «همه»، فقط اگر کاربر صریح
+    `range`/`from`/`to` بدهد) → `(start, end, ctx)` برای تراکنش/فاکتور/گردش‌حساب.
+  - **`bar_context(key, start, end, optional=False)`** = منبعِ واحدِ کلیدهای نمایشِ نوار
+    (`range_key/range_start_fa/range_end_fa/range_days/range_label/range_optional`)؛ هم
+    `range_context` هم `optional_range` از همین می‌سازند.
+  - **UI:** پارشالِ واحد `templates/components/_daterange_bar.html` — هرجا بازه لازم بود
+    `{% include %}`اش کن (بالای همان جدول/بخش). لینک‌ها با `{% querystring %}` بقیه‌ی
+    پارامترها را حفظ می‌کنند. حالتِ `range_optional` یک چیپِ «همه» هم اضافه می‌کند.
+    CSS: `.range-bar`/`.range`/`.range-note` در `style.css`.
 - `crypto.py` — Fernet (`encrypt/decrypt`). کلید از `FERNET_KEY` یا مشتق از `SECRET_KEY`.
 - `htmlsan.py` — **`clean_html`** (whitelist bleach). خروجی هر ادیتور را پاکسازی کن.
-- `context_processors.py: date_range` — پیش‌تنظیم‌های بازه برای هدر.
 - `columns.py` — **کاتالوگِ ستون‌های قابل‌سفارشی‌سازی** (منبعِ واحدِ برچسب/حالتِ نمایش):
   `PROJECTS/COLLEAGUES` (لیست دیکشنری `{key,label,display,default}`؛ **`TASKS` عمداً خالی
   است** — ستونِ اضافیِ جدولِ تسک از فیلدهای سفارشیِ نوعِ انتخاب‌شده می‌آید، نه کاتالوگ؛ بخشِ

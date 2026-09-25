@@ -14,8 +14,7 @@ from django.views.decorators.http import require_http_methods
 from django.views.generic import TemplateView
 
 from accounts.access import has_perm
-from core.daterange import (PRESET_LABELS, PRESETS, DateRangeMixin,
-                            _resolve_preset)
+from core.daterange import DateRangeMixin, optional_range
 from core.jalali import format_jalali, parse_jalali
 from projects.models import Project
 
@@ -109,23 +108,6 @@ class FinanceDashboardView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin,
         return ctx
 
 
-def _optional_range(g):
-    """بازه‌ی تاریخِ اختیاری برای تراکنش‌ها — پیش‌فرض بدون فیلتر (همه).
-    فقط وقتی کاربر صریح `from/to` یا `range` بدهد اعمال می‌شود.
-    برمی‌گرداند (start, end, label) یا (None, None, '')."""
-    if g.get('from') and g.get('to'):
-        try:
-            s, e = parse_jalali(g['from']), parse_jalali(g['to'])
-            return s, e, f'{format_jalali(s)} تا {format_jalali(e)}'
-        except (ValueError, TypeError):
-            pass
-    key = g.get('range')
-    if key and (key in PRESETS or key in ('this_month', 'last_month')):
-        s, e = _resolve_preset(key, date.today())
-        return s, e, PRESET_LABELS.get(key, '')
-    return None, None, ''
-
-
 class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
     template_name = 'finance/transactions.html'
 
@@ -135,8 +117,8 @@ class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
         qs = Transaction.objects.select_related('bank_account', 'project').prefetch_related(
             'categories', 'splits__project', 'splits__category')
 
-        # بازه‌ی تاریخ اختیاری (پیش‌فرض: همه‌ی تراکنش‌ها)
-        start, end, range_label = _optional_range(g)
+        # بازه‌ی تاریخ اختیاری (پیش‌فرض: همه‌ی تراکنش‌ها) — نوارِ بازه‌ی واحد
+        start, end, range_ctx = optional_range(self.request)
         if start and end:
             qs = qs.filter(date__range=(start, end))
 
@@ -198,7 +180,7 @@ class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
         ctx['categories'] = Category.objects.all()
         ctx['selected_categories'] = cat_ids
         ctx['selected_banks'] = bank_ids
-        ctx['range_label'] = range_label
+        ctx.update(range_ctx)
         ctx['q'] = q
         ctx['filters'] = g
         ctx['page_title'] = 'تراکنش‌ها'
@@ -299,17 +281,16 @@ class PayrollFormView(LoginRequiredMixin, FinancePermMixin, TemplateView):
         return ctx
 
 
-class InvoiceListView(LoginRequiredMixin, InvoiceViewPermMixin, DateRangeMixin, TemplateView):
+class InvoiceListView(LoginRequiredMixin, InvoiceViewPermMixin, TemplateView):
     template_name = 'finance/invoices.html'
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         g = self.request.GET
-        self.get_range(self.request)  # فقط برای پیکرِ بازه‌ی سراسری (فیلتر نمی‌کنیم)
-        ctx.update(self.range_context())
         qs = (Invoice.objects.select_related('project').prefetch_related('lines'))
-        # پیش‌فرض: همه‌ی فاکتورها (بدونِ فیلترِ تاریخ)؛ فقط اگر کاربر صریح بازه بدهد
-        start, end, range_label = _optional_range(g)
+        # پیش‌فرض: همه‌ی فاکتورها (بدونِ فیلترِ تاریخ)؛ فقط اگر کاربر صریح بازه بدهد — نوارِ واحد
+        start, end, range_ctx = optional_range(self.request)
+        ctx.update(range_ctx)
         if start and end:
             qs = qs.filter(issue_date__range=(start, end))
         if g.get('project'):
@@ -324,7 +305,6 @@ class InvoiceListView(LoginRequiredMixin, InvoiceViewPermMixin, DateRangeMixin, 
         from .balances import project_balances
         ctx['project_bal'] = project_balances({inv.project_id for inv in invoices})
         ctx['invoices'] = invoices
-        ctx['range_label'] = range_label
         ctx['projects'] = Project.objects.filter(status=Project.ACTIVE, personal_owner__isnull=True)
         ctx['filters'] = g
         ctx['page_title'] = 'فاکتورها'
@@ -378,7 +358,7 @@ class InvoiceFormView(LoginRequiredMixin, InvoiceViewPermMixin, TemplateView):
         return ctx
 
 
-class LedgerView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateView):
+class LedgerView(LoginRequiredMixin, FinancePermMixin, TemplateView):
     """گردشِ حساب (مثلِ صورت‌حسابِ بانکی) — فیلترِ **یا** پروژه **یا** بابت (نه هر دو، نه هیچ‌کدام).
 
     - پروژه: فاکتورهای پروژه = برداشت؛ تراکنش‌های پروژه (واریز/برداشت) = واریز/برداشت.
@@ -394,9 +374,9 @@ class LedgerView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateV
         ctx = super().get_context_data(**kwargs)
         g = self.request.GET
         # تاریخ اختیاری است — پیش‌فرض کلِ گردشِ حساب (بدونِ فیلترِ بازه)؛ فقط اگر کاربر
-        # صریح from/to/range بدهد اعمال می‌شود (مثلِ تراکنش‌ها).
-        start, end, range_label = _optional_range(g)
-        ctx['range_label'] = range_label
+        # صریح from/to/range بدهد اعمال می‌شود (مثلِ تراکنش‌ها) — نوارِ بازه‌ی واحد.
+        start, end, range_ctx = optional_range(self.request)
+        ctx.update(range_ctx)
 
         project_id = g.get('project') or ''
         category_id = g.get('category') or ''

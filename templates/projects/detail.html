@@ -56,6 +56,7 @@
 
   {# نمای کلی #}
   <div class="tab-panel" data-panel="overview">
+  {% include "components/_daterange_bar.html" %}
   <div class="stats" style="grid-template-columns:repeat(4,1fr)">
     <div class="stat glass"><div class="lab"><i class="dot" style="background:var(--success)"></i> انجام‌شده</div><div class="num">{{ stats.done|fa_digits }}</div></div>
     <div class="stat glass"><div class="lab"><i class="dot" style="background:var(--slate)"></i> باقی‌مانده</div><div class="num">{{ stats.remaining|fa_digits }}</div></div>

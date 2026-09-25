@@ -3,10 +3,10 @@
 {% block title %}حسابداری{% endblock %}
 
 {% block content %}
-  <div class="page-h"><h1>حسابداری</h1>
-    {% if range_start_fa %}<span class="range-note">{{ range_start_fa }} تا {{ range_end_fa }} — {{ range_days|fa_digits }} روز</span>{% endif %}
-  </div>
+  <div class="page-h"><h1>حسابداری</h1></div>
   {% include "finance/_nav.html" %}
+
+  {% include "components/_daterange_bar.html" %}
 
   <div class="stats" style="grid-template-columns:repeat(5,1fr)">
     <div class="stat glass"><div class="lab"><i class="dot" style="background:var(--success)"></i> درآمد (واریز)</div><div class="num">{{ income|money }}</div></div>

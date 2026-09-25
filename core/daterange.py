@@ -37,6 +37,47 @@ PRESET_LABELS = {
 DEFAULT_RANGE = 'this_month'
 
 
+def bar_context(key, start, end, optional=False) -> dict:
+    """context واحدِ نوارِ بازه (`components/_daterange_bar.html`) — منبعِ واحدِ کلیدهای
+    نمایش. هم `DateRangeMixin.range_context`، هم `optional_range` از همین می‌سازند تا
+    مارک‌آپ و کلیدها در همه‌جای سیستم یکی باشند."""
+    span = (end - start).days + 1
+    return {
+        'range_key': key,
+        'range_start': start,
+        'range_end': end,
+        'range_label': PRESET_LABELS.get(key, 'دلخواه'),
+        'range_start_fa': format_jalali(start),
+        'range_end_fa': format_jalali(end),
+        'range_days': span,
+        'range_optional': optional,
+    }
+
+
+def optional_range(request):
+    """بازه‌ی اختیاری (بدونِ session، بدونِ پیش‌فرض) — برای صفحاتی که پیش‌فرضشان «همه‌ی
+    تاریخ‌ها» است (تراکنش/فاکتور/گردش‌حساب). خروجی `(start, end, ctx)`:
+    - اگر بازه‌ای انتخاب نشده باشد: `(None, None, {range_key:'all', range_optional:True, ...})`.
+    - وگرنه: بازه‌ی محاسبه‌شده + همان کلیدهای نوار (با `range_optional=True`).
+    همان مدلِ `DateRangeMixin` را بازتاب می‌دهد ولی حالت‌مند نیست."""
+    g = request.GET
+    today = date.today()
+    if g.get('from') and g.get('to'):
+        try:
+            s = parse_jalali(g['from'])
+            e = parse_jalali(g['to'])
+            return s, e, bar_context('custom', s, e, optional=True)
+        except (ValueError, TypeError):
+            pass
+    key = g.get('range')
+    if key and (key in PRESETS or key in ('this_month', 'last_month')):
+        s, e = _resolve_preset(key, today)
+        return s, e, bar_context(key, s, e, optional=True)
+    # هیچ بازه‌ای انتخاب نشده = همه‌ی تاریخ‌ها
+    return None, None, {'range_key': 'all', 'range_optional': True,
+                        'range_label': 'همه‌ی تاریخ‌ها'}
+
+
 def _resolve_preset(key: str, ref: date) -> tuple[date, date]:
     """تبدیل کلید پیش‌تنظیم به بازه‌ی (شروع، پایان) میلادی."""
     if key == 'today':
@@ -133,14 +174,5 @@ class DateRangeMixin:
         }
 
     def range_context(self) -> dict:
-        """داده‌ی بازه برای تمپلیت (برچسب و متن نمایشی)."""
-        span = (self.range_end - self.range_start).days + 1
-        return {
-            'range_key': self.range_key,
-            'range_start': self.range_start,
-            'range_end': self.range_end,
-            'range_label': PRESET_LABELS.get(self.range_key, 'دلخواه'),
-            'range_start_fa': format_jalali(self.range_start),
-            'range_end_fa': format_jalali(self.range_end),
-            'range_days': span,
-        }
+        """داده‌ی بازه برای تمپلیت (برچسب و متن نمایشی) — از منبعِ واحدِ `bar_context`."""
+        return bar_context(self.range_key, self.range_start, self.range_end)

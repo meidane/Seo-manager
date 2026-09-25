@@ -4,10 +4,12 @@
 
 {% block content %}
   <div class="page-h"><h1>تراکنش‌ها</h1>
-    <span class="range-note"><b>{{ total_count|fa_digits }}</b> تراکنش{% if range_label %} · {{ range_label }}{% endif %}</span>
+    <span class="range-note"><b>{{ total_count|fa_digits }}</b> تراکنش</span>
     <div class="side-c"><a href="{% url 'finance:import' %}" class="btn btn-p">＋ ورود اکسل بانک</a></div>
   </div>
   {% include "finance/_nav.html" %}
+
+  {% include "components/_daterange_bar.html" %}
 
   <form method="get" class="glass filters" id="tx-filters">
     <div class="search" style="max-width:280px;padding:6px 10px">
