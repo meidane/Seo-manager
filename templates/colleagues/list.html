@@ -5,7 +5,6 @@
 {% block content %}
   <div class="page-h">
     <h1>افراد و دسترسی‌ها</h1>
-    {% if range_start_fa %}<span class="range-note">{{ range_start_fa }} تا {{ range_end_fa }} — {{ range_days|fa_digits }} روز</span>{% endif %}
     <div class="side-c">
       <form method="get" style="display:flex"><input type="text" name="q" value="{{ q }}" placeholder="جستجوی نام…" class="input" style="max-width:200px"></form>
       {% if can_manage_colleagues %}
@@ -13,6 +12,8 @@
       {% endif %}
     </div>
   </div>
+
+  {% include "components/_daterange_bar.html" %}
 
   <section class="card glass">
     <div class="card-h"><h3>افراد و عملکردشان در بازه</h3><a href="{% url 'core:columns' %}" class="mini" title="سفارشی‌سازی ستون‌ها">⚙ ستون‌ها</a></div>

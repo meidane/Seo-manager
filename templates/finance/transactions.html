@@ -4,10 +4,12 @@
 
 {% block content %}
   <div class="page-h"><h1>تراکنش‌ها</h1>
-    <span class="range-note"><b>{{ total_count|fa_digits }}</b> تراکنش{% if range_label %} · {{ range_label }}{% endif %}</span>
+    <span class="range-note"><b>{{ total_count|fa_digits }}</b> تراکنش</span>
     <div class="side-c"><a href="{% url 'finance:import' %}" class="btn btn-p">＋ ورود اکسل بانک</a></div>
   </div>
   {% include "finance/_nav.html" %}
+
+  {% include "components/_daterange_bar.html" %}
 
   <form method="get" class="glass filters" id="tx-filters">
     <div class="search" style="max-width:280px;padding:6px 10px">
@@ -61,6 +63,14 @@
     {% if filters.unassigned == '1' %}<a href="?{% querystring unassigned=None %}" class="chip on">فقط بدون پروژه/بابت ✕</a>{% else %}<a href="?{% querystring unassigned='1' %}" class="chip">فقط بدون پروژه/بابت</a>{% endif %}
   </form>
 
+  {% if ai_suggest_count %}
+  <div class="ai-banner glass" id="ai-banner">
+    <span class="ai-badge">AI</span>
+    <span>{{ ai_suggest_count|fa_digits }} تراکنشِ بی‌بابت پیشنهادِ هوشمند دارد (بر اساسِ تراکنش‌های مشابهِ قبلی).</span>
+    <button type="button" class="btn btn-sm btn-p" id="ai-apply-all" style="margin-inline-start:auto">✓ تأییدِ همه</button>
+  </div>
+  {% endif %}
+
   {% if transactions %}
   <div class="sheet-wrap">
     <table class="sheet" id="tx-sheet">
@@ -83,7 +93,7 @@
               <td class="edit"><span class="tag t-mute" title="این تراکنش تفکیک شده — پروژه/بابت از ردیف‌های تفکیک می‌آید">تفکیک‌شده ⑂</span></td>
               <td class="edit"><span class="tag t-mute" title="این تراکنش تفکیک شده — بابت از ردیف‌های تفکیک می‌آید">تفکیک‌شده ⑂</span></td>
             {% else %}
-              <td class="edit"><select class="tx-f rich-select" data-f="project"><option value="">—</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if t.project_id == p.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></td>
+              <td class="edit" style="position:relative"><select class="tx-f rich-select" data-f="project"><option value="">—</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if t.project_id == p.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>{% if t.ai_suggestion %}<div class="ai-sug" data-id="{{ t.id }}" data-project="{{ t.ai_suggestion.project_id|default:'' }}" data-category="{{ t.ai_suggestion.category_id|default:'' }}"><span class="ai-badge" title="پیشنهادِ هوشمند بر اساسِ {{ t.ai_suggestion.count|fa_digits }} تراکنشِ مشابه از همین حساب">AI</span><span class="ai-sug-txt" title="{% if t.ai_suggestion.project_name %}پروژه: {{ t.ai_suggestion.project_name }} {% endif %}{% if t.ai_suggestion.category_name %}· بابت: {{ t.ai_suggestion.category_name }}{% endif %}">{% if t.ai_suggestion.project_name %}{{ t.ai_suggestion.project_name }}{% endif %}{% if t.ai_suggestion.project_name and t.ai_suggestion.category_name %} · {% endif %}{% if t.ai_suggestion.category_name %}{{ t.ai_suggestion.category_name }}{% endif %}</span><button type="button" class="ai-ok mini" title="تأیید — همین را بنشان">✓</button><button type="button" class="ai-no mini" title="رد">✕</button></div>{% endif %}</td>
               <td class="edit txcat-cell" data-id="{{ t.id }}"><div class="txcat-wrap">{% for c in t.categories.all %}<span class="tag txcat-chip" data-cid="{{ c.id }}" style="background:color-mix(in srgb,{{ c.color }} 18%,transparent);color:{{ c.color }}">{{ c.name }}<i class="txcat-x">×</i></span>{% endfor %}<input class="txcat-add" list="tx-cats-dl" placeholder="＋بابت" autocomplete="off"></div></td>
             {% endif %}
             <td class="edit"><input class="tx-f" data-f="note" value="{{ t.note }}" placeholder="—"></td>
@@ -124,6 +134,39 @@
 {% endblock %}
 
 {% block scripts %}
+<style>
+  .ai-banner{display:flex;align-items:center;gap:10px;padding:9px 14px;margin-bottom:12px;border:1px solid var(--primary-ring);border-radius:var(--r-sm);font-size:12.5px}
+  .ai-badge{flex:none;font-size:9.5px;font-weight:800;letter-spacing:.5px;padding:2px 7px;border-radius:99px;
+    background:var(--primary-soft);color:var(--primary-400);border:1px solid var(--primary-ring)}
+  .ai-sug{position:absolute;inset:0;display:flex;align-items:center;gap:6px;padding:0 8px;background:var(--card-solid);cursor:default;z-index:2}
+  .ai-sug-txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;color:var(--primary-400)}
+  .ai-sug .ai-ok,.ai-sug .ai-no{flex:none;border:1px solid var(--stroke-soft);background:var(--fill);width:22px;height:22px;border-radius:var(--r-sm);cursor:pointer;line-height:1;padding:0}
+  .ai-sug .ai-ok{color:var(--ok-fg);border-color:color-mix(in srgb,var(--ok-fg) 40%,transparent)}
+  .ai-sug .ai-ok:hover{background:var(--ok-fg);color:#052}
+  .ai-sug .ai-no:hover{color:var(--danger);border-color:var(--danger)}
+</style>
+<script>
+// ── پیشنهادِ هوشمندِ پروژه/بابت (روشِ A) — تأییدِ تکی/گروهی ──
+(function(){
+  const sheet=document.getElementById('tx-sheet');
+  async function applyOne(sug){
+    const body={ project: sug.dataset.project || '' };
+    if(sug.dataset.category) body.categories=[sug.dataset.category];
+    try{ await App.fetchJSON(`/finance/api/tx/${sug.dataset.id}/`,{method:'PATCH',body}); App.toast('نشست','ok'); location.reload(); }catch(_){}
+  }
+  if(sheet) sheet.addEventListener('click', e=>{
+    const ok=e.target.closest('.ai-ok'); if(ok){ e.stopPropagation(); applyOne(ok.closest('.ai-sug')); return; }
+    const no=e.target.closest('.ai-no'); if(no){ e.stopPropagation(); no.closest('.ai-sug').remove(); return; }
+  });
+  const applyAll=document.getElementById('ai-apply-all');
+  if(applyAll) applyAll.onclick=async()=>{
+    const ids=[...document.querySelectorAll('.ai-sug')].map(s=>+s.dataset.id);
+    if(!ids.length) return;
+    if(!await App.confirm(`${ids.length} پیشنهادِ هوشمند تأیید و نشانده شود؟`)) return;
+    try{ const d=await App.fetchJSON("{% url 'finance:tx_apply_suggestions' %}",{method:'POST',body:{ids}}); App.toast(`${d.applied} مورد نشست`,'ok'); location.reload(); }catch(_){}
+  };
+})();
+</script>
 <script>
 (function(){
   // ── دراپ‌داونِ بابتِ چندانتخابی (جستجو + اعمالِ فوری) ──

@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}{% if payroll %}حقوق {{ payroll.colleague.full_name }}{% else %}صدور حقوق{% endif %}{% endblock %}
+
+{% block content %}
+  <div class="page-h">
+    <h1>{% if payroll %}حقوقِ {{ payroll.colleague.full_name }} — {{ payroll.month_name }} {{ payroll.year|fa_digits }}{% else %}صدور حقوق{% endif %}</h1>
+    <div class="side-c"><a href="{% url 'finance:payroll' %}" class="btn js-back">بازگشت</a></div>
+  </div>
+  {% include "finance/_nav.html" %}
+
+  {# ── مشخصات کلیِ حقوق ── #}
+  <section class="card glass" data-payroll="{{ payroll.pk|default:'' }}">
+    <div class="card-h"><h3>مشخصات حقوق</h3></div>
+    <div style="padding:12px 14px">
+      <div class="grid3">
+        <div class="field"><label>همکار</label>
+          <select id="pay-col" class="rich-select"><option value="">—</option>{% for c in colleagues %}<option value="{{ c.id }}" data-color="{{ c.color }}"{% if c.avatar %} data-img="{{ c.avatar.url }}"{% endif %} {% if payroll.colleague_id == c.id or c.id|stringformat:'s' == prefill_colleague %}selected{% endif %}>{{ c.full_name }}</option>{% endfor %}</select></div>
+        <div class="field"><label>سال</label>
+          <input class="input" id="pay-year" dir="ltr" value="{{ cur_year }}"></div>
+        <div class="field"><label>ماه</label>
+          <select id="pay-month">{% for num,name in months %}<option value="{{ num }}" {% if cur_month == num %}selected{% endif %}>{{ name }}</option>{% endfor %}</select></div>
+      </div>
+    </div>
+  </section>
+
+  {# ── ردیف‌های حقوق (دو فیلد: عنوان + مبلغ) ── #}
+  <section class="card glass">
+    <div class="card-h"><h3>اجزای حقوق</h3>
+      <div class="side-c"><button class="btn btn-sm" id="pay-add-row">＋ افزودن جزء</button></div>
+    </div>
+    <div class="sheet-wrap">
+      <table class="sheet" id="pay-lines">
+        <thead><tr>
+          <th style="width:38px"></th>
+          <th>عنوان</th>
+          <th style="width:200px">مبلغ</th>
+          <th style="width:40px"></th>
+        </tr></thead>
+        <tbody id="pay-body">
+          {% for it in items %}
+          <tr class="pi-row">
+            <td class="rownum num-c"></td>
+            <td class="edit"><input class="pi-t" value="{{ it.title }}" placeholder="حقوق پایه، پاداش، …"></td>
+            <td class="edit"><input class="pi-a num money" dir="ltr" value="{{ it.amount|floatformat:0 }}"></td>
+            <td><button class="mini pi-del" type="button">×</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div style="display:flex;justify-content:flex-end;padding:14px">
+      <div style="min-width:280px">
+        <div class="inv-sumrow inv-grand"><span>جمعِ کلِ حقوق</span><b id="sum-grand">0</b></div>
+      </div>
+    </div>
+  </section>
+
+  {# ── گزارشِ حسابِ حقوقِ همکار (گردشِ حساب بابتِ حقوق) — مثلِ گزارشِ مالیِ پروژه زیرِ فاکتور ── #}
+  {% if payroll %}
+  <section class="card glass">
+    <div class="card-h"><h3>گزارشِ حسابِ حقوقِ همکار</h3>
+      <div class="side-c">
+        <span class="tag {% if sal_balance > 0 %}t-warn{% elif sal_balance < 0 %}t-bad{% else %}t-mute{% endif %}" title="مانده‌ی کلِ حساب با همکار (تعهد − پرداخت)">مانده: {{ sal_balance|money }}</span>
+        <a href="{% url 'finance:ledger' %}?category={{ sal_ledger.rows.0.ref_id|default:'' }}" class="mini" style="display:none"></a>
+      </div>
+    </div>
+    <div class="sheet-wrap">
+      <table class="sheet ledger">
+        <thead><tr>
+          <th style="width:38px"></th>
+          <th style="width:110px">تاریخ</th>
+          <th>شرح</th>
+          <th style="width:120px">بانک</th>
+          <th style="width:130px">تعهد (واریز)</th>
+          <th style="width:130px">پرداخت (برداشت)</th>
+          <th style="width:140px">مانده</th>
+        </tr></thead>
+        <tbody>
+          {% for r in sal_ledger.rows %}
+            <tr>
+              <td class="num-c">{{ forloop.counter|fa_digits }}</td>
+              <td class="num-c">{{ r.date_fa }}</td>
+              <td style="text-align:right">{% if r.kind == 'payroll' %}<span class="tag t-ok" style="margin-inline-end:4px">حقوق</span>{% elif r.split %}<span class="tag t-mute" style="margin-inline-end:4px">تفکیک</span>{% endif %}{{ r.title }}</td>
+              <td>{% if r.bank %}<span class="tag t-mute" style="white-space:nowrap">{{ r.bank }}</span>{% else %}—{% endif %}</td>
+              <td class="num {% if r.deposit %}dep{% endif %}">{% if r.deposit %}{{ r.deposit|money }}{% else %}—{% endif %}</td>
+              <td class="num {% if r.withdrawal %}wd{% endif %}">{% if r.withdrawal %}{{ r.withdrawal|money }}{% else %}—{% endif %}</td>
+              <td class="num-c" style="font-weight:700;{% if r.balance < 0 %}color:var(--danger){% endif %}">{{ r.balance|money }}</td>
+            </tr>
+            {% for ch in r.children %}
+            <tr class="split-child">
+              <td></td><td></td>
+              <td style="text-align:right;color:var(--text-dim)"><span class="split-mark">└</span> {{ ch.title }}</td>
+              <td></td>
+              <td class="num dep" style="opacity:.75">{{ ch.amount|money }}</td>
+              <td></td><td></td>
+            </tr>
+            {% endfor %}
+          {% empty %}
+            <tr><td colspan="7" class="zero" style="text-align:center;padding:22px">هنوز گردشی برای حسابِ حقوقِ این همکار ثبت نشده.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+
+  {# ── نوارِ اکشنِ پایینِ صفحه ── #}
+  <div class="form-actions">
+    <a href="{% url 'finance:payroll' %}" class="btn js-back">بازگشت</a>
+    <button class="btn" id="pay-save-new">ذخیره و جدید</button>
+    <button class="btn btn-p" id="pay-save">ذخیره حقوق</button>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+  .inv-sumrow{display:flex;justify-content:space-between;gap:24px;padding:6px 0;font-size:13px}
+  .inv-sumrow span{color:var(--text-dim)}
+  .inv-grand{font-size:15px}
+  .inv-grand b{color:var(--info)}
+  #pay-lines .num{text-align:left}
+</style>
+<script>
+(function(){
+  const PAY_ID = "{{ payroll.pk|default:'' }}";
+  const body = document.getElementById('pay-body');
+  const toNum = v => { if(v==null) return 0; const s=String(v).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[^\d.\-]/g,''); const n=parseFloat(s); return isNaN(n)?0:n; };
+  const fa = n => Math.round(n).toLocaleString('en-US');
+
+  function rowHTML(){
+    return `<tr class="pi-row">
+      <td class="rownum num-c"></td>
+      <td class="edit"><input class="pi-t" placeholder="حقوق پایه، پاداش، …"></td>
+      <td class="edit"><input class="pi-a num money" dir="ltr" value=""></td>
+      <td><button class="mini pi-del" type="button">×</button></td></tr>`;
+  }
+  function addRow(){ body.insertAdjacentHTML('beforeend', rowHTML()); recalc(); }
+  function recalc(){
+    let sum=0;
+    [...body.querySelectorAll('.pi-row')].forEach((r,i)=>{
+      r.querySelector('.rownum').textContent = (i+1).toString();
+      sum += toNum(r.querySelector('.pi-a').value);
+    });
+    document.getElementById('sum-grand').textContent = fa(sum);
+  }
+  document.getElementById('pay-add-row').onclick=addRow;
+  body.addEventListener('input', e=>{ if(e.target.matches('.pi-a')) recalc(); });
+  body.addEventListener('click', e=>{ const d=e.target.closest('.pi-del'); if(d){ d.closest('tr').remove(); recalc(); } });
+  // Enter: عنوان → مبلغ؛ روی مبلغ → ردیفِ جدید
+  body.addEventListener('keydown', e=>{
+    if(e.key!=='Enter') return;
+    if(e.target.matches('.pi-t')){ e.preventDefault(); e.target.closest('tr').querySelector('.pi-a').focus(); }
+    else if(e.target.matches('.pi-a')){ e.preventDefault(); addRow(); const last=body.querySelector('.pi-row:last-child'); const f=last&&last.querySelector('.pi-t'); if(f) f.focus(); }
+  });
+  if(!body.querySelector('.pi-row')) addRow(); else recalc();
+
+  // بازگشت: اگر از فهرستِ حقوق آمده‌ایم، به همان صفحه برگرد
+  document.querySelectorAll('.js-back').forEach(a=>a.addEventListener('click', e=>{
+    try{ if(document.referrer && document.referrer.indexOf(location.origin+'/finance/payroll')===0 && history.length>1){ e.preventDefault(); history.back(); } }catch(_){}
+  }));
+
+  function collect(){
+    return [...body.querySelectorAll('.pi-row')].map(r=>({
+      title: r.querySelector('.pi-t').value.trim(),
+      amount: r.querySelector('.pi-a').value,
+    })).filter(x=>x.title);
+  }
+  async function save(andNew){
+    const payload={
+      colleague: document.getElementById('pay-col').value,
+      year: document.getElementById('pay-year').value.replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)),
+      month: document.getElementById('pay-month').value,
+      items: collect(),
+    };
+    if(!payload.colleague){ App.toast('همکار را انتخاب کن','warn'); return; }
+    const newUrl="{% url 'finance:payroll_new' %}";
+    try{
+      if(PAY_ID){
+        await App.fetchJSON(`/finance/api/payroll/${PAY_ID}/`,{method:'PATCH',body:payload});
+        App.toast('ذخیره شد','ok');
+        location.href = andNew ? newUrl : `/finance/payroll/${PAY_ID}/`;
+      }else{
+        const d=await App.fetchJSON("{% url 'finance:payroll_create' %}",{method:'POST',body:payload});
+        App.toast('حقوق ثبت شد','ok');
+        location.href = andNew ? newUrl : `/finance/payroll/${d.id}/`;
+      }
+    }catch(_){}
+  }
+  document.getElementById('pay-save').onclick=()=>save(false);
+  document.getElementById('pay-save-new').onclick=()=>save(true);
+})();
+</script>
+{% endblock %}

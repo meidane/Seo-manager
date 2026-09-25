@@ -78,7 +78,6 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'core.context_processors.date_range',
                 'core.context_processors.notifications',
                 'accounts.context_processors.org',
                 'tasks.context_processors.running_timers',

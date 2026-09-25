@@ -4,10 +4,11 @@
 
 {% block content %}
   <div class="page-h"><h1>فاکتورها</h1>
-    {% if range_start_fa %}<span class="range-note">{{ range_start_fa }} تا {{ range_end_fa }} — {{ range_days|fa_digits }} روز</span>{% endif %}
     <div class="side-c">{% if can_edit_finance %}<a href="{% url 'finance:invoice_new' %}" class="btn btn-p">＋ افزودن فاکتور</a>{% else %}<span class="tag t-mute">فقط-خواندنی</span>{% endif %}</div>
   </div>
   {% include "finance/_nav.html" %}
+
+  {% include "components/_daterange_bar.html" %}
 
   <form method="get" class="glass filters">
     <select name="project" class="rich-select" onchange="this.form.submit()"><option value="">همه‌ی پروژه‌ها</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>

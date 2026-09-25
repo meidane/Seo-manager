@@ -28,6 +28,7 @@
 
   {% if grouped_by_day %}
     {# ── تفکیکِ روزانه: تسک‌های انجام‌شده در بازه، گروه‌بندی‌شده روی done_date ── #}
+    {% include "components/_daterange_bar.html" %}
     {% if day_groups %}
       {# ساختارِ یکسان با داشبورد: هر روز = تیترِ نسبی + جدولِ تسکِ فقط‌خواندنی #}
       <section class="card glass" style="margin-top:14px">

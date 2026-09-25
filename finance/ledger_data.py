@@ -103,3 +103,61 @@ def project_ledger(project_id, start=None, end=None):
 
     return {'rows': disp, 'total_deposit': tot_d,
             'total_withdrawal': tot_w, 'final_balance': global_balance}
+
+
+def salary_ledger(colleague_id, start=None, end=None):
+    """گردشِ حسابِ «حقوقِ همکار» — تعهدِ حقوق‌ها = واریز، پرداختیِ تراکنش‌های بابتِ حقوق =
+    برداشت، ماندهٔ تجمعی (تعهد − پرداخت). منبعِ واحد برای صفحهٔ فرمِ حقوق (و قابلِ‌استفاده
+    در `LedgerView` حالتِ بابتِ حقوق). مانده روی کلِ تاریخ حساب می‌شود (= `salary_balance`).
+    خروجی مثلِ `project_ledger`: {rows(جدید→قدیم), total_deposit, total_withdrawal, final_balance}.
+    """
+    from core.jalali import j2g
+    from .balances import salary_balance
+    from .models import Category, Payroll
+
+    cat = Category.all_objects.filter(colleague_id=colleague_id, is_salary=True).first()
+    cat_name = cat.name if cat else 'حقوق'
+    rows = []
+    # پرداخت‌ها: تراکنش/اسپلیتِ بابتِ حقوقِ این همکار = برداشت
+    if cat:
+        tx = (Transaction.objects.select_related('bank_account')
+              .prefetch_related('splits')
+              .filter(Q(categories__id=cat.id) | Q(splits__category_id=cat.id)).distinct())
+        for t in tx:
+            splits = [s for s in t.splits.all() if str(s.category_id) == str(cat.id)]
+            if splits:
+                for s in splits:
+                    amt = int(s.amount or 0)
+                    rows.append({'date': t.date, 'title': (s.note or t.description or '—') + ' — تفکیک',
+                                 'kind': 'tx', 'ref_id': t.id, 'split': True,
+                                 'deposit': int(t.deposit or 0) and amt or 0,
+                                 'withdrawal': amt if t.withdrawal else 0,
+                                 'bank': t.bank_account.name if t.bank_account_id else '', 'cat': cat_name})
+            else:
+                rows.append({'date': t.date, 'title': t.description or '—', 'kind': 'tx', 'ref_id': t.id,
+                             'deposit': int(t.deposit or 0), 'withdrawal': int(t.withdrawal or 0),
+                             'bank': t.bank_account.name if t.bank_account_id else '', 'cat': cat_name})
+    # تعهدها: هر حقوقِ ماهانه = واریز (تاریخ = اولِ ماهِ ثبت)، اجزا به‌صورتِ فرزند
+    for p in Payroll.objects.filter(colleague_id=colleague_id).prefetch_related('items'):
+        try:
+            d = j2g(p.year, p.month, 1)
+        except (ValueError, TypeError):
+            continue
+        rows.append({'date': d, 'title': f'حقوق {p.month_name} {p.year}', 'kind': 'payroll', 'ref_id': p.id,
+                     'deposit': int(p.total), 'withdrawal': 0, 'bank': '', 'cat': cat_name,
+                     'children': [{'title': it.title, 'amount': int(it.amount)} for it in p.items.all()]})
+    rows.sort(key=lambda r: r['date'])
+    bal = 0
+    for r in rows:
+        bal += r['deposit'] - r['withdrawal']
+        r['balance'] = bal
+        r['date_fa'] = format_jalali(r['date'])
+    if start and end:
+        disp = [r for r in rows if start <= r['date'] <= end]
+    else:
+        disp = list(rows)
+    tot_d = sum(r['deposit'] for r in disp)
+    tot_w = sum(r['withdrawal'] for r in disp)
+    disp.reverse()
+    return {'rows': disp, 'total_deposit': tot_d, 'total_withdrawal': tot_w,
+            'final_balance': salary_balance(colleague_id)}

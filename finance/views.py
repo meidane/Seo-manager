@@ -14,8 +14,7 @@ from django.views.decorators.http import require_http_methods
 from django.views.generic import TemplateView
 
 from accounts.access import has_perm
-from core.daterange import (PRESET_LABELS, PRESETS, DateRangeMixin,
-                            _resolve_preset)
+from core.daterange import DateRangeMixin, optional_range
 from core.jalali import format_jalali, parse_jalali
 from projects.models import Project
 
@@ -109,23 +108,6 @@ class FinanceDashboardView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin,
         return ctx
 
 
-def _optional_range(g):
-    """بازه‌ی تاریخِ اختیاری برای تراکنش‌ها — پیش‌فرض بدون فیلتر (همه).
-    فقط وقتی کاربر صریح `from/to` یا `range` بدهد اعمال می‌شود.
-    برمی‌گرداند (start, end, label) یا (None, None, '')."""
-    if g.get('from') and g.get('to'):
-        try:
-            s, e = parse_jalali(g['from']), parse_jalali(g['to'])
-            return s, e, f'{format_jalali(s)} تا {format_jalali(e)}'
-        except (ValueError, TypeError):
-            pass
-    key = g.get('range')
-    if key and (key in PRESETS or key in ('this_month', 'last_month')):
-        s, e = _resolve_preset(key, date.today())
-        return s, e, PRESET_LABELS.get(key, '')
-    return None, None, ''
-
-
 class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
     template_name = 'finance/transactions.html'
 
@@ -135,8 +117,8 @@ class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
         qs = Transaction.objects.select_related('bank_account', 'project').prefetch_related(
             'categories', 'splits__project', 'splits__category')
 
-        # بازه‌ی تاریخ اختیاری (پیش‌فرض: همه‌ی تراکنش‌ها)
-        start, end, range_label = _optional_range(g)
+        # بازه‌ی تاریخ اختیاری (پیش‌فرض: همه‌ی تراکنش‌ها) — نوارِ بازه‌ی واحد
+        start, end, range_ctx = optional_range(self.request)
         if start and end:
             qs = qs.filter(date__range=(start, end))
 
@@ -184,14 +166,21 @@ class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
         ctx['qs_params'] = params.urlencode()
 
         ctx['page_obj'] = page_obj
-        ctx['transactions'] = page_obj.object_list
+        transactions = list(page_obj.object_list)
+        # ── پیشنهادِ هوشمندِ پروژه/بابت برای تراکنش‌های بی‌تخصیص (روشِ A: امضا + حافظه) ──
+        from .tx_suggest import suggestions_for
+        sugg = suggestions_for(transactions)
+        for t in transactions:
+            t.ai_suggestion = sugg.get(t.id)
+        ctx['ai_suggest_count'] = len(sugg)
+        ctx['transactions'] = transactions
         ctx['total_count'] = paginator.count
         ctx['banks'] = BankAccount.objects.filter(is_active=True)
         ctx['projects'] = Project.objects.filter(status=Project.ACTIVE, personal_owner__isnull=True)
         ctx['categories'] = Category.objects.all()
         ctx['selected_categories'] = cat_ids
         ctx['selected_banks'] = bank_ids
-        ctx['range_label'] = range_label
+        ctx.update(range_ctx)
         ctx['q'] = q
         ctx['filters'] = g
         ctx['page_title'] = 'تراکنش‌ها'
@@ -256,17 +245,52 @@ class PayrollListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
         return ctx
 
 
-class InvoiceListView(LoginRequiredMixin, InvoiceViewPermMixin, DateRangeMixin, TemplateView):
+class PayrollFormView(LoginRequiredMixin, FinancePermMixin, TemplateView):
+    """صفحه‌ی صدور/ویرایشِ حقوق (فرمِ کاملِ صفحه‌ای مثلِ فاکتور، نه مودال).
+
+    هر ردیف دو فیلد دارد (عنوان + مبلغ) و جمع پایین می‌آید؛ زیرِ فرم «گزارشِ حسابِ
+    حقوقِ همکار» (گردشِ حساب بابتِ حقوق) — مثلِ گزارشِ مالیِ پروژه زیرِ فاکتور.
+    """
+
+    template_name = 'finance/payroll_form.html'
+
+    def get_context_data(self, **kwargs):
+        from colleagues.models import Colleague
+        from core.jalali import MONTH_NAMES, today_jalali
+
+        from .balances import salary_balance
+        from .ledger_data import salary_ledger
+        ctx = super().get_context_data(**kwargs)
+        pk = kwargs.get('pk')
+        payroll = None
+        if pk:
+            payroll = get_object_or_404(Payroll.objects.prefetch_related('items').select_related('colleague'), pk=pk)
+        ctx['payroll'] = payroll
+        ctx['items'] = payroll.items.all() if payroll else []
+        ctx['colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)
+        ctx['months'] = list(enumerate(MONTH_NAMES, start=1))
+        cy = today_jalali()
+        ctx['cur_year'] = payroll.year if payroll else cy.year
+        ctx['cur_month'] = payroll.month if payroll else cy.month
+        ctx['prefill_colleague'] = self.request.GET.get('colleague') or ''
+        # گزارشِ حسابِ حقوقِ همکار (زیرِ فرم) — فقط برای حقوقِ موجود
+        if payroll:
+            ctx['sal_ledger'] = salary_ledger(payroll.colleague_id)
+            ctx['sal_balance'] = salary_balance(payroll.colleague_id)
+        ctx['page_title'] = 'صدور حقوق'
+        return ctx
+
+
+class InvoiceListView(LoginRequiredMixin, InvoiceViewPermMixin, TemplateView):
     template_name = 'finance/invoices.html'
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         g = self.request.GET
-        self.get_range(self.request)  # فقط برای پیکرِ بازه‌ی سراسری (فیلتر نمی‌کنیم)
-        ctx.update(self.range_context())
         qs = (Invoice.objects.select_related('project').prefetch_related('lines'))
-        # پیش‌فرض: همه‌ی فاکتورها (بدونِ فیلترِ تاریخ)؛ فقط اگر کاربر صریح بازه بدهد
-        start, end, range_label = _optional_range(g)
+        # پیش‌فرض: همه‌ی فاکتورها (بدونِ فیلترِ تاریخ)؛ فقط اگر کاربر صریح بازه بدهد — نوارِ واحد
+        start, end, range_ctx = optional_range(self.request)
+        ctx.update(range_ctx)
         if start and end:
             qs = qs.filter(issue_date__range=(start, end))
         if g.get('project'):
@@ -281,7 +305,6 @@ class InvoiceListView(LoginRequiredMixin, InvoiceViewPermMixin, DateRangeMixin, 
         from .balances import project_balances
         ctx['project_bal'] = project_balances({inv.project_id for inv in invoices})
         ctx['invoices'] = invoices
-        ctx['range_label'] = range_label
         ctx['projects'] = Project.objects.filter(status=Project.ACTIVE, personal_owner__isnull=True)
         ctx['filters'] = g
         ctx['page_title'] = 'فاکتورها'
@@ -335,7 +358,7 @@ class InvoiceFormView(LoginRequiredMixin, InvoiceViewPermMixin, TemplateView):
         return ctx
 
 
-class LedgerView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateView):
+class LedgerView(LoginRequiredMixin, FinancePermMixin, TemplateView):
     """گردشِ حساب (مثلِ صورت‌حسابِ بانکی) — فیلترِ **یا** پروژه **یا** بابت (نه هر دو، نه هیچ‌کدام).
 
     - پروژه: فاکتورهای پروژه = برداشت؛ تراکنش‌های پروژه (واریز/برداشت) = واریز/برداشت.
@@ -351,9 +374,9 @@ class LedgerView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateV
         ctx = super().get_context_data(**kwargs)
         g = self.request.GET
         # تاریخ اختیاری است — پیش‌فرض کلِ گردشِ حساب (بدونِ فیلترِ بازه)؛ فقط اگر کاربر
-        # صریح from/to/range بدهد اعمال می‌شود (مثلِ تراکنش‌ها).
-        start, end, range_label = _optional_range(g)
-        ctx['range_label'] = range_label
+        # صریح from/to/range بدهد اعمال می‌شود (مثلِ تراکنش‌ها) — نوارِ بازه‌ی واحد.
+        start, end, range_ctx = optional_range(self.request)
+        ctx.update(range_ctx)
 
         project_id = g.get('project') or ''
         category_id = g.get('category') or ''
@@ -673,6 +696,34 @@ def tx_edit(request, pk):
     # هشدارِ نرم (بدونِ بلاک) اگر این نسبت‌دهی ناسازگاریِ حسابداری ساخت
     warning = _tx_anomaly_warning(t)
     return JsonResponse({'ok': True, 'warning': warning})
+
+
+@login_required
+@require_finance
+@require_http_methods(['POST'])
+def tx_apply_suggestions(request):
+    """تأییدِ گروهیِ پیشنهادهای هوشمند برای فهرستی از تراکنش‌ها.
+
+    بدنه: `{ids: [...]}` (idهای تراکنش‌های نمایش‌دادهٔ صفحه). پیشنهاد **سرورساید دوباره
+    محاسبه می‌شود** (نه اعتماد به مقدارِ کلاینت) و روی تراکنش‌های هنوز-بی‌تخصیص نشانده می‌شود.
+    """
+    from .tx_suggest import suggestions_for
+    ids = [int(x) for x in (_body(request).get('ids') or []) if str(x).isdigit()]
+    txs = list(Transaction.objects.filter(id__in=ids, project__isnull=True, categories__isnull=True)
+               .prefetch_related('categories', 'splits').distinct())
+    sugg = suggestions_for(txs)
+    applied = 0
+    for t in txs:
+        s = sugg.get(t.id)
+        if not s:
+            continue
+        if s.get('project_id'):
+            t.project_id = s['project_id']
+            t.save(update_fields=['project', 'updated_at'])
+        if s.get('category_id'):
+            t.categories.set([s['category_id']])
+        applied += 1
+    return JsonResponse({'ok': True, 'applied': applied})
 
 
 @login_required
@@ -1020,6 +1071,19 @@ def import_confirm(request):
 
 # ── API: حقوق ─────────────────────────────────────────────────────────────
 
+def _save_payroll_items(payroll, items):
+    """اجزای حقوق را از نو می‌سازد (منبع واحد). محافظِ ضدِ نابودیِ داده مثلِ `_save_lines`:
+    اگر ورودی هیچ ردیفِ معتبری (عنوان‌دار) ندارد ولی حقوق از قبل جزء دارد، دست نمی‌زند."""
+    valid = [it for it in (items or []) if (it.get('title') or '').strip()]
+    if not valid and payroll.items.exists():
+        return False
+    payroll.items.all().delete()
+    for it in valid:
+        PayrollItem.objects.create(payroll=payroll, title=it['title'].strip()[:80],
+                                   amount=parse_amount(it.get('amount', 0)))
+    return True
+
+
 @login_required
 @require_finance
 @require_http_methods(['POST'])
@@ -1030,9 +1094,7 @@ def payroll_create(request):
             colleague_id=d['colleague'], year=int(d['year']), month=int(d['month']))
     except (KeyError, ValueError):
         return JsonResponse({'detail': 'همکار/سال/ماه لازم است'}, status=400)
-    for it in d.get('items', []):
-        if it.get('title'):
-            PayrollItem.objects.create(payroll=p, title=it['title'], amount=parse_amount(it.get('amount', 0)))
+    _save_payroll_items(p, d.get('items', []))
     return JsonResponse({'id': p.id}, status=201)
 
 
@@ -1067,11 +1129,8 @@ def payroll_edit(request, pk):
     except IntegrityError:
         return JsonResponse({'detail': 'برای این همکار در این ماه از قبل حقوق ثبت شده'}, status=400)
     if 'items' in d:
-        p.items.all().delete()
-        for it in d['items']:
-            if it.get('title'):
-                PayrollItem.objects.create(payroll=p, title=it['title'], amount=parse_amount(it.get('amount', 0)))
-    return JsonResponse({'ok': True, 'total': p.total, 'remaining': p.remaining, 'status': p.status})
+        _save_payroll_items(p, d['items'])
+    return JsonResponse({'ok': True, 'id': p.id, 'total': p.total})
 
 
 # ── API: فاکتور ───────────────────────────────────────────────────────────

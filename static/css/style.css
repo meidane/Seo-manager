@@ -220,6 +220,10 @@ a{color:inherit;text-decoration:none}
   color:#fff;font-weight:500;box-shadow:0 4px 14px rgba(65,131,242,.35);
 }
 .range-note{font-size:11.5px;color:var(--text-faint);white-space:nowrap}
+/* نوارِ بازه‌ی واحد (بالای هر جدول/بخش، نه در ناو) — components/_daterange_bar.html */
+/* z-index بالاتر از .filters(30) تا پاپ‌آورِ «دلخواه» روی ردیفِ فیلترِ زیرش بیفتد نه پشتش */
+.range-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 14px;position:relative;z-index:50}
+.range-bar .range{flex-wrap:wrap}
 
 /* ── دکمه ── */
 .btn{

@@ -28,6 +28,7 @@
   </section>
 
   {# ── کارت‌های آمار بازه ── #}
+  {% include "components/_daterange_bar.html" %}
   <div class="stats" style="grid-template-columns:repeat(6,1fr)">
     <div class="stat glass"><div class="lab">برنامه‌ریزی</div><div class="num">{{ stats.planned|fa_digits }}</div></div>
     <div class="stat glass"><div class="lab">انجام‌شده</div><div class="num">{{ stats.done|fa_digits }}</div></div>
