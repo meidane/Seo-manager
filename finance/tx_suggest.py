@@ -19,12 +19,13 @@
 دلیلِ درست/غلط بودنش را بفهمد. هیچ کتابخانهٔ بیرونی لازم نیست؛ فقط regex + دیتای سازمان.
 با هر تصحیحِ کاربر، حافظه بزرگ‌تر و دقیق‌تر می‌شود.
 """
+import json
 import re
 from collections import Counter, defaultdict
 
 from django.db.models import Q
 
-from core.jalali import to_en_digits
+from core.jalali import format_jalali, to_en_digits
 
 _IBAN = re.compile(r'IR\d{24}')
 _CARD = re.compile(r'(?<!\d)\d{16}(?!\d)')
@@ -116,6 +117,7 @@ def suggestions_for(page_txs):
     cat_bank = defaultdict(Counter)   # (sig, dir, bank)  -> Counter(cat_id)  (اولویت: همان حساب)
     proj_any = defaultdict(Counter)   # sig               -> Counter(proj_id) (پروژه خنثیِ جهت)
     proj_bank = defaultdict(Counter)  # (sig, bank)       -> Counter(proj_id)
+    sig_txs = defaultdict(list)       # sig -> [رفرنس‌ها] برای دکمهٔ «مشاهده»
     assigned = (Transaction.objects
                 .filter(Q(project__isnull=False) | Q(categories__isnull=False) | Q(splits__isnull=False))
                 .distinct().prefetch_related('categories', 'splits'))
@@ -127,7 +129,11 @@ def suggestions_for(page_txs):
         if not pids and not cids:
             continue
         adir, abank = _direction(a), a.bank_account_id
+        ref = {'id': a.id, 'date': a.date, 'desc': a.description or '',
+               'amount': int((a.deposit or 0) + (a.withdrawal or 0)),
+               'dir': adir, 'pids': pids, 'cids': cids}
         for sig in sigs:
+            sig_txs[sig].append(ref)
             for c in cids:
                 if adir:
                     cat_dir[(sig, adir)][c] += 1
@@ -200,5 +206,33 @@ def suggestions_for(page_txs):
                 p += f' — رقیب: «{cname.get(top[1][0], "")}» {top[1][1]}'
             parts.append(p)
         s['why'] = (f'{matched} · {_DIR_LABEL.get(d, "")} — ' if matched else '') + '؛ '.join(parts)
+
+        # ── رفرنس‌ها (برای دکمهٔ «مشاهده»): تراکنش‌های قبلیِ هم‌امضایی که این پیشنهاد از آن‌ها آمد ──
+        pid_ch, cid_ch = s.get('project_id'), s.get('category_id')
+        refs, seen = [], set()
+        for sig in sg:
+            for info in sig_txs.get(sig, []):
+                if info['id'] in seen:
+                    continue
+                rel = ((pid_ch and pid_ch in info['pids'])
+                       or (cid_ch and info['dir'] == d and cid_ch in info['cids']))
+                if not rel:
+                    continue
+                seen.add(info['id'])
+                names = ([pname[p] for p in info['pids'] if pname.get(p)]
+                         + [cname[c] for c in info['cids'] if cname.get(c)])
+                refs.append({
+                    'date': format_jalali(info['date']),
+                    'desc': info['desc'][:90],
+                    'amount': f"{info['amount']:,}",
+                    'dir': _DIR_LABEL.get(info['dir'], ''),
+                    'label': ' · '.join(names),
+                })
+                if len(refs) >= 8:
+                    break
+            if len(refs) >= 8:
+                break
+        s['refs'] = refs
+        s['refs_json'] = json.dumps(refs, ensure_ascii=False)
         out[t.id] = s
     return out
