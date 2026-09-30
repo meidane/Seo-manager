@@ -290,6 +290,11 @@ class PayrollFormView(LoginRequiredMixin, FinancePermMixin, TemplateView):
 class InvoiceListView(LoginRequiredMixin, InvoiceViewPermMixin, TemplateView):
     template_name = 'finance/invoices.html'
 
+    def get_template_names(self):
+        if self.request.GET.get('partial'):
+            return ['finance/_invoices_results.html']
+        return [self.template_name]
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         g = self.request.GET

@@ -10,58 +10,55 @@
 
   {% include "components/_daterange_bar.html" %}
 
-  <form method="get" class="glass filters">
-    <select name="project" class="rich-select" onchange="this.form.submit()"><option value="">همه‌ی پروژه‌ها</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
+  <div id="inv-panel">
+  <form method="get" class="glass filters" id="inv-filters">
+    <select name="project" class="rich-select"><option value="">همه‌ی پروژه‌ها</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
   </form>
 
-  <section class="card glass">
-    {% if invoices %}
-      <div class="tscroll">
-      <table>
-        <thead><tr><th>شماره</th><th>تاریخ ثبت</th><th>پروژه</th><th>توضیحات</th><th>تاریخ پرداخت</th><th>جمع کل</th><th>مانده‌ی پروژه</th><th></th></tr></thead>
-        <tbody>
-          {% for inv in invoices %}
-            <tr onclick="location.href='{% url 'finance:invoice_edit_page' inv.pk %}'" style="cursor:pointer">
-              <td class="num-c"><b>#{{ inv.number|fa_digits }}</b></td>
-              <td class="num-c">{{ inv.issue_date|jalali }}</td>
-              <td>{% if inv.project_id %}<div class="assignee-cell">{% include "projects/_logo.html" with project=inv.project %}<span>{{ inv.project.name }}</span></div>{% else %}—{% endif %}</td>
-              <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ inv.description }}">{{ inv.description|default:'—' }}</td>
-              <td class="num-c">{% if inv.due_date %}{{ inv.due_date|jalali }}{% else %}—{% endif %}</td>
-              <td class="num-c" style="font-weight:700">{{ inv.grand_total|money }}</td>
-              {% if inv.project_id %}{% with bal=project_bal|dictkey:inv.project_id %}
-                <td class="num-c">{% if can_edit_finance %}<a href="{% url 'finance:ledger' %}?project={{ inv.project_id }}" class="lnk" onclick="event.stopPropagation()" title="مشاهده‌ی گردش حساب" style="font-weight:700;{% if bal > 0 %}color:var(--warning){% elif bal < 0 %}color:var(--danger){% endif %}">{{ bal|money }} ↗</a>{% else %}<b style="{% if bal > 0 %}color:var(--warning){% elif bal < 0 %}color:var(--danger){% endif %}">{{ bal|money }}</b>{% endif %}</td>
-              {% endwith %}{% else %}<td class="num-c">—</td>{% endif %}
-              <td style="white-space:nowrap">
-                <a class="mini" href="{% url 'finance:invoice_edit_page' inv.pk %}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="بازکردن در تبِ جدید">↗</a>
-                {% if can_edit_finance %}<button class="mini inv-del" data-id="{{ inv.id }}">حذف</button>{% endif %}
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      </div>
-    {% else %}
-      <div class="empty"><div class="ico">🧾</div><h4>فاکتوری نیست</h4>{% if can_edit_finance %}<a href="{% url 'finance:invoice_new' %}" class="btn btn-p" style="margin-top:12px">＋ افزودن فاکتور</a>{% endif %}</div>
-    {% endif %}
-  </section>
-
-  {% include "components/_pagination.html" %}
+  <div id="inv-results">{% include "finance/_invoices_results.html" %}</div>
+  </div>{# /#inv-panel #}
 {% endblock %}
 
 {% block scripts %}
+<style>#inv-results.is-loading{opacity:.5;pointer-events:none;transition:opacity .12s}</style>
 <script>
-// حذفِ فاکتور — هندلر مستقیم روی دکمه (نه دلیگیتِ document)، چون کلیکِ ردیف با
-// stopPropagation قطع می‌شد و دلیگیت هرگز اجرا نمی‌شد (باگِ «حذف کار نمی‌کند»).
-document.querySelectorAll('.inv-del').forEach(b=>{
-  b.addEventListener('click',async e=>{
-    e.stopPropagation();
-    if(await App.confirm('این فاکتور حذف شود؟')){
-      try{
-        await App.fetchJSON(`/finance/api/invoices/${b.dataset.id}/`,{method:'DELETE'});
-        b.closest('tr').remove(); App.toast('حذف شد','ok');
-      }catch(_){}
-    }
+(function(){
+  const panel=document.getElementById('inv-panel'), form=document.getElementById('inv-filters'),
+        results=document.getElementById('inv-results');
+  if(!panel||!form||!results) return;
+  const BASE="{% url 'finance:invoices' %}";
+  function filterQS(){
+    const out=new URLSearchParams();
+    for(const [k,v] of new URLSearchParams(new FormData(form))){ if(v!=='' && v!=null) out.append(k,v); }
+    const cur=new URL(location.href).searchParams;
+    ['range','from','to'].forEach(k=>{ if(cur.get(k)) out.set(k, cur.get(k)); });
+    return out.toString();
+  }
+  let seq=0;
+  async function reload(qs, push){
+    if(qs==null) qs=filterQS();
+    if(push!==false) history.pushState(null,'', qs?BASE+'?'+qs:BASE);
+    results.classList.add('is-loading');
+    const s=++seq;
+    try{
+      const html=await fetch(BASE+'?'+qs+(qs?'&':'')+'partial=1',{headers:{'X-Requested-With':'XMLHttpRequest'},credentials:'same-origin'}).then(r=>r.text());
+      if(s!==seq) return;
+      results.innerHTML=html;
+      if(window.RichSelect) RichSelect.init(results);
+    }catch(_){ App.toast('خطا در بارگذاری','warn'); }
+    finally{ results.classList.remove('is-loading'); }
+  }
+  form.addEventListener('change', e=>{ if(e.target.name==='project') reload(); });
+  form.addEventListener('submit', e=>{ e.preventDefault(); reload(); });
+  panel.addEventListener('click', e=>{
+    const pg=e.target.closest('.pagi a[href]'); if(pg){ e.preventDefault(); reload(new URL(pg.href,location.origin).searchParams.toString()); return; }
+    const del=e.target.closest('.inv-del'); if(del){ e.stopPropagation(); delInvoice(del); }
   });
-});
+  window.addEventListener('popstate', ()=> reload(new URL(location.href).searchParams.toString(), false));
+  async function delInvoice(b){
+    if(!await App.confirm('این فاکتور حذف شود؟')) return;
+    try{ await App.fetchJSON(`/finance/api/invoices/${b.dataset.id}/`,{method:'DELETE'}); b.closest('tr').remove(); App.toast('حذف شد','ok'); }catch(_){}
+  }
+})();
 </script>
 {% endblock %}
