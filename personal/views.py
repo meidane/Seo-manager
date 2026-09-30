@@ -5,7 +5,6 @@
 اینجاست؛ تعامل با API (بخشی reuseِ `tasks/api.py`، بخشی `personal/api.py`).
 """
 from datetime import date, timedelta
-from urllib.parse import urlencode
 
 from django.shortcuts import render
 from django.utils.decorators import method_decorator
@@ -23,13 +22,6 @@ LIFE_AGE_NOW = 28
 LIFE_EXPECTANCY = 75
 
 
-def _iso(value, fallback):
-    try:
-        return date.fromisoformat(value)
-    except (ValueError, TypeError):
-        return fallback
-
-
 def _pct(done, total):
     return round(done / total * 100) if total else 0
 
@@ -45,26 +37,19 @@ class PersonalDashboardView(View):
         today = date.today()
         me, pproject, ptype = personal_context(request)
 
-        # اینباکس با نوارِ بازهٔ واحد (پیش‌فرض «این ماه»، بدونِ چیپِ «همه») — جای فلش‌های هفتگی
+        # ── یک نوارِ بازهٔ واحدِ سراسری برای کلِ صفحهٔ شخصی (بالای صفحه، پیش‌فرض «۷ روز»،
+        # بدونِ چیپِ «همه») — جای همهٔ فلش‌های هفته‌ی قبل/بعد و بازه‌های جداگانه.
         from core.daterange import _resolve_preset, bar_context, optional_range
         r_start, r_end, rctx = optional_range(request)
         if not (r_start and r_end):
-            r_start, r_end = _resolve_preset('this_month', today)
-            rctx = bar_context('this_month', r_start, r_end)
+            r_start, r_end = _resolve_preset('7', today)
+            rctx = bar_context('7', r_start, r_end)
         rctx['range_optional'] = False
 
-        # پارامترهای ناوبری (روزِ تسک‌های امروز، هفتهٔ هبیت — گریدهای روزمحور، جدا از بازهٔ اینباکس)
-        day = _iso(request.GET.get('day'), today)
-        hsat = week_saturday(_iso(request.GET.get('hweek'), today))
-
-        def nav(**over):
-            # بازهٔ اینباکس (range/from/to) در لینک‌های روز/هفته حفظ می‌شود تا با کلیک گم نشود
-            p = {'day': day.isoformat(), 'hweek': hsat.isoformat()}
-            for k in ('range', 'from', 'to'):
-                if request.GET.get(k):
-                    p[k] = request.GET[k]
-            p.update(over)
-            return '?' + urlencode(p)
+        # همهٔ گریدها/باکس‌ها از همین بازه می‌آیند: روزِ مرجع = پایانِ بازه (پیش‌فرض امروز)،
+        # هفتهٔ گرید/هبیت = هفتهٔ حاویِ همان روز. دیگر ناوبرِ جدا (?day/?hweek) نداریم.
+        day = r_end
+        hsat = week_saturday(r_end)
 
         # ── تسک‌های شخصی (Task با نوعِ «شخصی») ──
         ptasks = Task.objects.none()
@@ -131,7 +116,7 @@ class PersonalDashboardView(View):
                     t.pri = pri
             week_grid.append({
                 'date': d, 'iso': d.isoformat(), 'name': WEEKDAY_NAMES[i],
-                'day_fa': format_jalali(d, '%d', fa_digits=True), 'nav': nav(day=d.isoformat()),
+                'day_fa': format_jalali(d, '%d', fa_digits=True),
                 'is_today': d == today, 'is_sel': d == day, 'is_future': d > today,
                 'tasks': allt, 'done': sum(1 for t in allt if t.is_done)})
 
@@ -208,18 +193,11 @@ class PersonalDashboardView(View):
             'daily': daily, 'week_grid': week_grid,
             'day_done': day_done, 'day_total': day_total, 'day_pct': _pct(day_done, day_total),
             'day_fa': jalali_long(day), 'is_today': day == today,
-            'day_prev': nav(day=(day - timedelta(days=1)).isoformat()),
-            'day_next': nav(day=(day + timedelta(days=1)).isoformat()),
             'chart': chart,
             'cweek_fa': jalali_long(cw_sat) + ' – ' + jalali_long(cw_sat + timedelta(days=6)),
-            'cweek_prev': nav(day=(day - timedelta(days=7)).isoformat()),
-            'cweek_next': nav(day=(day + timedelta(days=7)).isoformat()),
             'goal_list': [{'id': x['obj'].id, 'title': x['obj'].title, 'color': x['obj'].color} for x in goals],
             'week_days': hdays, 'habits': habits,
             'hweek_fa': jalali_long(hsat) + ' – ' + jalali_long(hsat + timedelta(days=6)),
-            'is_this_hweek': hsat == week_saturday(today),
-            'hweek_prev': nav(hweek=(hsat - timedelta(days=7)).isoformat()),
-            'hweek_next': nav(hweek=(hsat + timedelta(days=7)).isoformat()),
             'goals': goals,
             # تاریخِ شروعِ هفتهٔ بعد (برای دکمهٔ «هفتهٔ بعد»ِ اینباکس)
             'next_week_iso': (week_saturday(today) + timedelta(days=7)).isoformat(),
