@@ -47,6 +47,11 @@ def _body(request):
 class FinanceDashboardView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateView):
     template_name = 'finance/dashboard.html'
 
+    def get_template_names(self):
+        if self.request.GET.get('partial'):
+            return ['finance/_dashboard_results.html']
+        return [self.template_name]
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         start, end = self.get_range(self.request)

@@ -34,6 +34,11 @@ def _pct(cur, prev):
 
 
 class DashboardView(LoginRequiredMixin, DateRangeMixin, TemplateView):
+    def get_template_names(self):
+        if self.request.GET.get('partial'):
+            return ['dashboard/_results.html']
+        return [getattr(self, 'template_name', None) or 'dashboard/index.html']
+
     template_name = 'dashboard/index.html'
 
     def get_context_data(self, **kwargs):

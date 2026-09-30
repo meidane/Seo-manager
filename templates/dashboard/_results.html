@@ -1,0 +1,99 @@
+{% load seo_extras %}
+<span hidden data-range-key="{{ range_key }}" data-range-note="{% if range_start_fa %}{{ range_start_fa }} تا {{ range_end_fa }} — {{ range_days|fa_digits }} روز{% endif %}"></span>
+  {# ── ردیف ۱: کارت‌های وضعیت ── #}
+  <div class="stats">
+    <div class="stat glass">
+      <div class="lab"><i class="dot" style="background:var(--success)"></i> انجام‌شده</div>
+      <div class="num">{{ cards.done|fa_digits }}</div>
+      <div class="sub">{% if cards.done_pct != None %}<span class="{% if cards.done_pct >= 0 %}up{% else %}down{% endif %}">{% if cards.done_pct >= 0 %}▲{% else %}▼{% endif %} {{ cards.done_pct|fa_digits }}٪</span> نسبت به دوره‌ی قبل{% else %}در بازه‌ی انتخابی{% endif %}</div>
+    </div>
+    <div class="stat glass">
+      <div class="lab"><i class="dot" style="background:var(--slate)"></i> باقی‌مانده</div>
+      <div class="num">{{ cards.remaining|fa_digits }}</div><div class="sub">برنامه‌ریزی‌شده در بازه</div>
+    </div>
+    <div class="stat glass">
+      <div class="lab"><i class="dot" style="background:var(--danger)"></i> عقب‌افتاده</div>
+      <div class="num" style="color:#FF9AAB">{{ cards.overdue|fa_digits }}</div><div class="sub">تسک‌های گذشته‌ی انجام‌نشده</div>
+    </div>
+    <div class="stat glass">
+      <div class="lab"><i class="dot" style="background:var(--info)"></i> جمع ساعت</div>
+      <div class="num">{{ cards.minutes|hours }}</div>
+      <div class="sub">{% if cards.minutes_pct != None %}<span class="{% if cards.minutes_pct >= 0 %}up{% else %}down{% endif %}">{% if cards.minutes_pct >= 0 %}▲{% else %}▼{% endif %} {{ cards.minutes_pct|fa_digits }}٪</span>{% else %}مجموع در بازه{% endif %}</div>
+    </div>
+    <div class="stat glass">
+      <div class="lab"><i class="dot" style="background:var(--warning)"></i> مانده‌ی مالی</div>
+      <div class="num">{{ cards.balance|money }}</div><div class="sub">به FinanceEntry وصل می‌شود</div>
+    </div>
+  </div>
+
+  {# ── ردیف ۲: نوار هشدارها (فقط وقتی مصداق دارند) ── #}
+  <div class="alerts">
+    {% if alerts.overdue %}<a href="{% url 'tasks:list' %}?overdue=1" class="alert a-red"><b>{{ alerts.overdue|fa_digits }} تسک</b> عقب‌افتاده <span class="arw">←</span></a>{% endif %}
+    {% if alerts.no_plan %}<a href="{% url 'projects:list' %}" class="alert a-org"><b>{{ alerts.no_plan|fa_digits }} پروژه‌ی فعال</b> بدون تسک برنامه‌ریزی‌شده <span class="arw">←</span></a>{% endif %}
+    {% if alerts.done_no_link %}<a href="{% url 'tasks:review' %}" class="alert a-yel"><b>{{ alerts.done_no_link|fa_digits }} تسک</b> انجام‌شده بدون لینک انتشار <span class="arw">←</span></a>{% endif %}
+    {% if alerts.unreviewed %}<a href="{% url 'tasks:review' %}" class="alert a-blu"><b>{{ alerts.unreviewed|fa_digits }} محتوا</b> منتشر شده و بازبینی‌نشده <span class="arw">←</span></a>{% endif %}
+  </div>
+
+  {# ── ردیف ۳: وضعیت پروژه‌ها ── #}
+  <section class="card glass">
+    <div class="card-h"><h3>وضعیت پروژه‌ها</h3><div class="side-c"><span class="chip on">بدترین وضعیت بالا</span><a href="{% url 'core:columns' %}" class="mini" title="سفارشی‌سازی ستون‌ها">⚙ ستون‌ها</a></div></div>
+    {% if projects %}
+      <table>
+        <thead><tr><th>پروژه</th>{% for c in project_columns %}<th>{{ c.label }}</th>{% endfor %}</tr></thead>
+        <tbody>
+          {% for p in projects %}
+            <tr onclick="location.href='{{ p.get_absolute_url }}'">
+              <td><div class="proj"><i class="pdot" style="background:{{ p.color }}"></i><span><b>{{ p.name }}</b><span>{{ p.domain }}</span></span></div></td>
+              {% for c in project_columns %}<td>{% column_cell p c %}</td>{% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty"><div class="ico">▤</div><h4>پروژه‌ی فعالی نیست</h4></div>
+    {% endif %}
+  </section>
+
+  {# ── ردیف ۴: دو ستون ── #}
+  <div class="duo">
+    <section class="card glass">
+      <div class="card-h"><h3>عملکرد همکاران</h3><div class="side-c"><span class="chip on">بازه‌ی انتخابی</span><a href="{% url 'core:columns' %}" class="mini" title="سفارشی‌سازی ستون‌ها">⚙</a></div></div>
+      {% if colleagues %}
+        <table>
+          <thead><tr><th>همکار</th>{% for c in colleague_columns %}<th>{{ c.label }}</th>{% endfor %}</tr></thead>
+          <tbody>
+            {% for c in colleagues %}
+              <tr onclick="location.href='{% url 'colleagues:detail' c.pk %}'">
+                <td><div class="who">{% if c.avatar %}<img src="{{ c.avatar.url }}">{% else %}<span class="fb" style="background:color-mix(in srgb,{{ c.color }} 22%,transparent);color:{{ c.color }}">{{ c.initials }}</span>{% endif %}<span><b>{{ c.full_name }}</b><span>{{ c.roles_display }}</span></span></div></td>
+                {% for col in colleague_columns %}<td>{% column_cell c col %}</td>{% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}<div class="empty"><div class="ico">◉</div><h4>همکار فعالی نیست</h4></div>{% endif %}
+    </section>
+
+    <section class="card glass">
+      <div class="card-h"><h3>بازبینی محتوا</h3><div class="side-c"><a href="{% url 'tasks:review' %}" class="chip">همه</a></div></div>
+      <div class="feed">
+        {% for t in review_feed %}
+          <div class="item">
+            <div class="item-t"><span class="ttype" style="background:rgba({{ t.color_rgb }},.16);color:rgb({{ t.color_rgb }})">{{ t.type_label }}</span><b>{{ t.seo_title|default:t.title }}</b></div>
+            <div class="item-m"><span>{{ t.project.name }}</span><span>{{ t.assignee.full_name|default:"—" }}</span><span>{{ t.done_date|jalali }}</span>
+              <span class="grow"><a class="mini go" href="{{ t.published_url }}" target="_blank" rel="noopener">↗ باز کردن</a></span>
+            </div>
+          </div>
+        {% empty %}<div class="empty" style="padding:30px"><div class="ico">◎</div><h4>محتوای بازبینی‌نشده‌ای نیست</h4></div>{% endfor %}
+      </div>
+    </section>
+  </div>
+
+  {# ── ردیف ۵: تسک‌های انجام‌شده به تفکیک روز — جدول، ۷ روز اخیر ── #}
+  <section class="card glass" style="margin-top:14px">
+    <div class="card-h"><h3>تسک‌های انجام‌شده به تفکیک روز</h3><div class="side-c"><span class="chip on">۷ روز اخیر</span><a href="{% url 'tasks:list' %}?group=day" class="chip">همه</a></div></div>
+    {% if daily_groups %}
+      {% for grp in daily_groups %}{% include "tasks/_day_group.html" %}{% endfor %}
+    {% else %}
+      <div class="empty" style="padding:20px"><div class="ico">📅</div><h4>در ۷ روز اخیر تسکِ انجام‌شده‌ای نیست</h4></div>
+    {% endif %}
+  </section>
