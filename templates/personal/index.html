@@ -16,13 +16,9 @@
     {# ── باکس ۱: اینباکسِ هفتگی ── #}
     <section class="card glass pers-box" id="inbox-box">
       <div class="pers-head">
-        <h3>اینباکس هفتگی</h3>
-        <div class="pers-week">
-          <a class="nav-b" href="{{ inbox_prev }}" title="هفته‌ی قبل">‹</a>
-          <span class="pers-week-lab">{{ week_start_fa }} – {{ week_end_fa }}</span>
-          <a class="nav-b" href="{{ inbox_next }}" title="هفته‌ی بعد">›</a>
-        </div>
+        <h3>اینباکس</h3>
       </div>
+      {% include "components/_daterange_bar.html" %}
       <div class="pers-prog"><i style="width:{{ wk_pct }}%"></i><b>{{ wk_pct|fa_digits }}٪ · {{ wk_done|fa_digits }} از {{ wk_total|fa_digits }}</b></div>
       <div class="pers-list" id="inbox-list">
         {% for t in inbox %}
@@ -35,7 +31,7 @@
             <button class="pt-x" title="حذف">×</button>
           </div>
         {% empty %}
-          <div class="zero" id="inbox-empty">چیزی در این هفته ثبت نشده — هرچه به ذهنت می‌رسد بنویس.</div>
+          <div class="zero" id="inbox-empty">چیزی در این بازه ثبت نشده — هرچه به ذهنت می‌رسد بنویس.</div>
         {% endfor %}
       </div>
       <div class="pers-add" id="inbox-add">

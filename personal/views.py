@@ -45,14 +45,24 @@ class PersonalDashboardView(View):
         today = date.today()
         me, pproject, ptype = personal_context(request)
 
-        # پارامترهای ناوبری (سه ناوبرِ مستقل: اینباکسِ هفتگی، روزِ تسک‌های امروز، هفتهٔ هبیت)
-        wk = week_saturday(_iso(request.GET.get('week'), today))
+        # اینباکس با نوارِ بازهٔ واحد (پیش‌فرض «این ماه»، بدونِ چیپِ «همه») — جای فلش‌های هفتگی
+        from core.daterange import _resolve_preset, bar_context, optional_range
+        r_start, r_end, rctx = optional_range(request)
+        if not (r_start and r_end):
+            r_start, r_end = _resolve_preset('this_month', today)
+            rctx = bar_context('this_month', r_start, r_end)
+        rctx['range_optional'] = False
+
+        # پارامترهای ناوبری (روزِ تسک‌های امروز، هفتهٔ هبیت — گریدهای روزمحور، جدا از بازهٔ اینباکس)
         day = _iso(request.GET.get('day'), today)
         hsat = week_saturday(_iso(request.GET.get('hweek'), today))
-        wk_end = wk + timedelta(days=6)
 
         def nav(**over):
-            p = {'week': wk.isoformat(), 'day': day.isoformat(), 'hweek': hsat.isoformat()}
+            # بازهٔ اینباکس (range/from/to) در لینک‌های روز/هفته حفظ می‌شود تا با کلیک گم نشود
+            p = {'day': day.isoformat(), 'hweek': hsat.isoformat()}
+            for k in ('range', 'from', 'to'):
+                if request.GET.get(k):
+                    p[k] = request.GET[k]
             p.update(over)
             return '?' + urlencode(p)
 
@@ -61,9 +71,9 @@ class PersonalDashboardView(View):
         if me and pproject and ptype:
             ptasks = Task.objects.filter(project=pproject, assignee=me, type_def=ptype)
 
-        # اینباکسِ هفتگی: تسک‌های ثبت‌شده در همان هفته (بر اساسِ created_at)؛
+        # اینباکس: تسک‌های ثبت‌شده در بازهٔ انتخابی (بر اساسِ created_at)؛
         # برنامه‌ریزی‌شده/انجام‌شده‌ها ته می‌روند و کم‌رنگ می‌شوند.
-        inbox = list(ptasks.filter(created_at__date__range=(wk, wk_end)).order_by('board_order', 'id'))
+        inbox = list(ptasks.filter(created_at__date__range=(r_start, r_end)).order_by('board_order', 'id'))
         for t in inbox:
             t.dim = bool(t.planned_date) or t.is_done
         inbox.sort(key=lambda t: t.dim)  # پایدار: فعال‌ها بالا، بقیه ته
@@ -195,10 +205,6 @@ class PersonalDashboardView(View):
             'setup_needed': not (me and pproject and ptype),
             'type_name': PERSONAL_TYPE_NAME,
             'inbox': inbox, 'wk_done': wk_done, 'wk_total': len(inbox), 'wk_pct': _pct(wk_done, len(inbox)),
-            'week_start_fa': jalali_long(wk), 'week_end_fa': jalali_long(wk_end),
-            'is_this_week': wk == week_saturday(today),
-            'inbox_prev': nav(week=(wk - timedelta(days=7)).isoformat()),
-            'inbox_next': nav(week=(wk + timedelta(days=7)).isoformat()),
             'daily': daily, 'week_grid': week_grid,
             'day_done': day_done, 'day_total': day_total, 'day_pct': _pct(day_done, day_total),
             'day_fa': jalali_long(day), 'is_today': day == today,
@@ -221,4 +227,5 @@ class PersonalDashboardView(View):
                      'age_now': LIFE_AGE_NOW, 'expectancy': LIFE_EXPECTANCY},
             'notes': PersonalNote.objects.filter(user=request.user),
         }
+        ctx.update(rctx)  # کلیدهای نوارِ بازهٔ اینباکس (range_key/range_start_fa/…)
         return render(request, self.template_name, ctx)
