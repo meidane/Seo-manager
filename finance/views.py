@@ -111,6 +111,12 @@ class FinanceDashboardView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin,
 class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
     template_name = 'finance/transactions.html'
 
+    def get_template_names(self):
+        # فیلترِ اجاکسی: فقط بدنهٔ نتیجه (بنر AI + جدول + صفحه‌بندی) رندر می‌شود، بدونِ رفرشِ صفحه
+        if self.request.GET.get('partial'):
+            return ['finance/_tx_results.html']
+        return [self.template_name]
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         g = self.request.GET
