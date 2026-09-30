@@ -380,6 +380,12 @@ class LedgerView(LoginRequiredMixin, FinancePermMixin, TemplateView):
 
     template_name = 'finance/ledger.html'
 
+    def get_template_names(self):
+        # فیلتر/تاریخِ اجاکسی: فقط ناحیهٔ نتیجه رندر می‌شود
+        if self.request.GET.get('partial'):
+            return ['finance/_ledger_results.html']
+        return [self.template_name]
+
     def get_context_data(self, **kwargs):
         from core.jalali import format_jalali, j2g
         ctx = super().get_context_data(**kwargs)

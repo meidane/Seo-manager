@@ -134,6 +134,7 @@
     if(window.App&&App.initMoney) App.initMoney(results);
     const m=document.getElementById('tx-total-marker'), note=document.querySelector('.page-h .range-note b');
     if(m&&note) note.textContent=(+m.dataset.n).toLocaleString('en-US');
+    if(window.App&&App.syncRangeBar) App.syncRangeBar(results);
     refreshBulk();
   }
 
@@ -160,6 +161,8 @@
     e.preventDefault(); reloadTx(new URL(pg.href,location.origin).searchParams.toString());
   });
   window.addEventListener('popstate', ()=> reloadTx(new URL(location.href).searchParams.toString(), false));
+  // نوارِ تاریخ از همین سواپِ نتیجه استفاده کند (بدونِ رفرش)
+  window.rangeReload = url => reloadTx(new URL(url, location.origin).searchParams.toString());
 
   // ── دراپ‌داونِ بابتِ چندانتخابی (باز/بسته + جستجو + پاک‌کردن) ──
   const cToggle=document.getElementById('cat-toggle'), cBox=document.getElementById('cat-box');
@@ -284,7 +287,7 @@
         <p style="font-size:12px;color:var(--text-dim);margin-bottom:10px">${esc(why)}</p>
         <div class="tscroll"><table class="sheet"><thead><tr><th>تاریخ</th><th>نوع</th><th>مبلغ</th><th>پروژه/بابت</th><th>شرح سند</th></tr></thead><tbody>${rows}</tbody></table></div>
       </div>
-      <div class="modal-f"><button class="btn" onclick="App.closeModal()">بستن</button></div>`);
+      <div class="modal-f"><button class="btn" onclick="App.closeModal()">بستن</button></div>`, {wide:true});
   }
 
   // ══ انتخابِ گروهی ══

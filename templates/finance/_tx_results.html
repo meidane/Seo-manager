@@ -3,6 +3,7 @@
 صفحهٔ کامل include می‌شود و هم به‌تنهایی با `?partial=1` رندر می‌شود (فیلترِ اجاکسی،
 بدونِ رفرشِ صفحه). شمارِ کل در `#tx-total-marker` تا JS عددِ هدر را به‌روز کند.{% endcomment %}
 <span id="tx-total-marker" data-n="{{ total_count }}" hidden></span>
+<span hidden data-range-key="{{ range_key }}" data-range-note="{% if range_start_fa %}{{ range_start_fa }} تا {{ range_end_fa }} — {{ range_days|fa_digits }} روز{% elif range_label %}{{ range_label }}{% endif %}"></span>
 {% if ai_suggest_count %}
 <div class="ai-banner glass" id="ai-banner">
   <span class="ai-badge">AI</span>

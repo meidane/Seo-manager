@@ -45,6 +45,7 @@
       if(s!==seq) return;
       results.innerHTML=html;
       if(window.RichSelect) RichSelect.init(results);
+      if(window.App&&App.syncRangeBar) App.syncRangeBar(results);
     }catch(_){ App.toast('خطا در بارگذاری','warn'); }
     finally{ results.classList.remove('is-loading'); }
   }
@@ -55,6 +56,7 @@
     const del=e.target.closest('.inv-del'); if(del){ e.stopPropagation(); delInvoice(del); }
   });
   window.addEventListener('popstate', ()=> reload(new URL(location.href).searchParams.toString(), false));
+  window.rangeReload = url => reload(new URL(url, location.origin).searchParams.toString());
   async function delInvoice(b){
     if(!await App.confirm('این فاکتور حذف شود؟')) return;
     try{ await App.fetchJSON(`/finance/api/invoices/${b.dataset.id}/`,{method:'DELETE'}); b.closest('tr').remove(); App.toast('حذف شد','ok'); }catch(_){}

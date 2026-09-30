@@ -1,6 +1,7 @@
 {% load seo_extras %}
 {% comment %}نتیجهٔ فیلترشدهٔ فاکتورها (جدول + صفحه‌بندی) — هم در صفحهٔ کامل include می‌شود
 هم به‌تنهایی با `?partial=1` (فیلترِ اجاکسی، بدونِ رفرش).{% endcomment %}
+<span hidden data-range-key="{{ range_key }}" data-range-note="{% if range_start_fa %}{{ range_start_fa }} تا {{ range_end_fa }} — {{ range_days|fa_digits }} روز{% elif range_label %}{{ range_label }}{% endif %}"></span>
 <section class="card glass">
   {% if invoices %}
     <div class="tscroll">
