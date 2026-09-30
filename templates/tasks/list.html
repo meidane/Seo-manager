@@ -26,9 +26,11 @@
     {% if grouped_by_day %}<a href="{% url 'tasks:list' %}" class="chip">✕ خروج از تفکیک</a>{% endif %}
   </form>
 
+  {# نوارِ بازهٔ واحد (پیش‌فرض «همه») — بالای تسک‌ها، هر دو حالتِ لیست و تفکیکِ روزانه #}
+  {% include "components/_daterange_bar.html" %}
+
   {% if grouped_by_day %}
     {# ── تفکیکِ روزانه: تسک‌های انجام‌شده در بازه، گروه‌بندی‌شده روی done_date ── #}
-    {% include "components/_daterange_bar.html" %}
     {% if day_groups %}
       {# ساختارِ یکسان با داشبورد: هر روز = تیترِ نسبی + جدولِ تسکِ فقط‌خواندنی #}
       <section class="card glass" style="margin-top:14px">
@@ -39,6 +41,10 @@
     {% endif %}
   {% else %}
 
+  {% if range_active %}
+  {# ── جعبهٔ واحدِ «تسک‌های بازه» (وقتی کاربر بازه انتخاب کرده) ── #}
+  {% include "tasks/_task_box.html" with title="تسک‌های بازه" tasks=box_range day_gap=True empty_icon="🗓" empty_text="تسکی در این بازه نیست" %}
+  {% else %}
   {# ── جعبه‌ی ۱: این‌هفته + عقب‌افتاده‌ها (قدیمی‌ترین/عقب‌افتاده‌ترین اول) ── #}
   {% include "tasks/_task_box.html" with title="این هفته و عقب‌افتاده‌ها" tasks=box_recent day_gap=True empty_icon="✅" empty_text="کاری برای این هفته یا عقب‌افتاده‌ای نیست" %}
 
@@ -48,6 +54,7 @@
   {# ── جعبه‌ی ۳: انجام‌شده‌ها (جدیدترین اول، لودِ تنبل) ── #}
   {% include "tasks/_task_box.html" with title="تسک‌های انجام‌شده" tasks=box_done table_id="done-tsheet" empty_icon="☑" empty_text="هنوز تسکِ انجام‌شده‌ای ثبت نشده" %}
   <script>window.TASKS_LAZY = {hasMore: {{ has_more_done|yesno:"true,false" }}, page: 1};</script>
+  {% endif %}
 
   {# ── سطلِ زباله: تسک‌های حذف‌شده (آخرِ همه) ── #}
   {% if box_deleted %}
