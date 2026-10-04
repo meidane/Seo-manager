@@ -6,7 +6,7 @@ from django.views.generic import TemplateView
 
 from colleagues.models import Colleague
 from core.columns import get_columns
-from core.daterange import DateRangeMixin
+from core.daterange import optional_range
 from core.models import ColumnConfig
 from projects.access import accessible_project_ids
 from projects.models import Project
@@ -20,15 +20,18 @@ from .queries import PAGE_SIZE, build_task_queryset, group_done_by_day, reviewab
 BOX_CAP = 300
 
 
-class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
+class TaskListView(LoginRequiredMixin, TemplateView):
     """لیست + کانبان با فیلترها. دیدِ پیش‌فرض سه جعبه است (این‌هفته+عقب‌افتاده / آینده /
-    انجام‌شده)، مستقل از بازه‌ی سراسری — `?group=day` تفکیکِ روزانه‌ی جداست."""
+    انجام‌شده)، مستقل از بازه (پیش‌فرضِ نوارِ بازه «همه» است). اگر کاربر صریح بازه‌ای انتخاب
+    کند، یک جعبهٔ واحدِ «تسک‌های بازه» جایِ سه جعبه می‌آید. `?group=day` تفکیکِ روزانه‌ی جداست."""
 
     template_name = 'tasks/list.html'
 
     def get_context_data(self, **kwargs):
+        from django.db.models import Q
         ctx = super().get_context_data(**kwargs)
-        start, end = self.get_range(self.request)
+        # بازهٔ اختیاری (نوارِ واحد، پیش‌فرض «همه») — فقط اگر کاربر صریح بدهد فیلتر می‌کند
+        start, end, range_ctx = optional_range(self.request)
         g = self.request.GET
         m = getattr(self.request, 'membership', None)
         my_colleague = getattr(self.request.user, 'colleague', None)
@@ -36,14 +39,26 @@ class TaskListView(LoginRequiredMixin, DateRangeMixin, TemplateView):
         base, filters = build_task_queryset(self.request)
         ids = accessible_project_ids(self.request)
 
-        ctx.update(self.range_context())
+        ctx.update(range_ctx)
+        range_active = bool(start and end)
+        ctx['range_active'] = range_active
+        ctx['box_range'] = []
         ctx['grouped_by_day'] = g.get('group') == 'day'
         ctx['has_more_done'] = False
         if ctx['grouped_by_day']:
-            # «مشاهده‌ی همه» از داشبورد (تسک‌های انجام‌شده به تفکیک روز) — همان بازه‌ی
-            # سراسری، ولی روی done_date گروه‌بندی می‌شود، نه planned_date.
-            ctx['day_groups'] = group_done_by_day(base, start, end)
+            # «مشاهده‌ی همه» از داشبورد (تسک‌های انجام‌شده به تفکیک روز) — روی done_date
+            # گروه‌بندی می‌شود؛ اگر بازه‌ای نبود، کلِ تاریخچه.
+            gs = start or date(2000, 1, 1)
+            ge = end or date(2100, 1, 1)
+            ctx['day_groups'] = group_done_by_day(base, gs, ge)
             ctx['box_recent'] = ctx['box_future'] = ctx['box_done'] = []
+        elif range_active:
+            # یک جعبهٔ واحد: تسک‌هایی که planned_date در بازه است یا در بازه done شده‌اند
+            ctx['box_range'] = list(base.filter(
+                Q(planned_date__range=(start, end)) | Q(status=Task.DONE, done_date__range=(start, end))
+            ).order_by('-planned_date', '-id')[:BOX_CAP])
+            ctx['box_recent'] = ctx['box_future'] = ctx['box_done'] = []
+            ctx['box_deleted'] = []
         else:
             today = date.today()
             week_end = today + timedelta(days=6)

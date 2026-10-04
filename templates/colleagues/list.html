@@ -15,40 +15,7 @@
 
   {% include "components/_daterange_bar.html" %}
 
-  <section class="card glass">
-    <div class="card-h"><h3>افراد و عملکردشان در بازه</h3><a href="{% url 'core:columns' %}" class="mini" title="سفارشی‌سازی ستون‌ها">⚙ ستون‌ها</a></div>
-    {% if colleagues %}
-      <div class="tscroll">
-      <table>
-        <thead><tr><th>فرد</th>{% for c in columns %}<th>{{ c.label }}</th>{% endfor %}<th>روند 14 روز</th><th>دسترسی</th><th>وضعیت</th></tr></thead>
-        <tbody>
-          {% for c in colleagues %}
-            <tr onclick="location.href='{{ c.get_absolute_url }}'" {% if not c.is_active %}style="opacity:.5"{% endif %} {% if c.wt_today %}style="border-bottom:0"{% endif %}>
-              <td><div class="who">
-                <span class="wt-avwrap {% if c.wt_today.online %}online{% endif %}">{% if c.avatar %}<img src="{{ c.avatar.url }}">{% else %}<span class="fb" style="background:color-mix(in srgb,{{ c.color }} 22%,transparent);color:{{ c.color }}">{{ c.initials }}</span>{% endif %}{% if c.wt_today %}<i class="wt-dot"></i>{% endif %}</span>
-                <span><b>{{ c.full_name }}</b><span>{{ c.roles_display|default:"—" }}</span></span></div></td>
-              {% for col in columns %}<td>{% column_cell c col %}</td>{% endfor %}
-              <td><div class="spark">{% for h in c.spark %}<i style="height:{{ h }}%"></i>{% endfor %}</div></td>
-              <td>{% if c.access_status == 'has_access' %}<span class="tag t-ok">دسترسی دارد</span>
-                  {% elif c.access_status == 'pending' %}<span class="tag t-mute">در انتظار تایید دعوت</span>
-                  {% else %}<span class="tag t-mute">بدون دسترسی</span>{% endif %}</td>
-              <td>{% if c.is_active %}<span class="tag t-ok">فعال</span>{% else %}<span class="tag t-mute">غیرفعال</span>{% endif %}</td>
-            </tr>
-            {% if c.wt_today %}
-            <tr class="wt-subrow"><td colspan="20" style="padding:0 14px 12px">{% include "colleagues/_attendance_day.html" with day=c.wt_today %}</td></tr>
-            {% endif %}
-          {% endfor %}
-        </tbody>
-      </table>
-      </div>
-    {% else %}
-      <div class="empty"><div class="ico">◉</div><h4>فردی یافت نشد</h4>
-        {% if can_manage_colleagues %}<button type="button" class="btn btn-p" id="new-user-btn-empty" style="margin-top:12px">＋ کاربر جدید</button>{% endif %}
-      </div>
-    {% endif %}
-  </section>
-
-  {% include "components/_pagination.html" %}
+  <div data-range-scope>{% include "colleagues/_results.html" %}</div>
 {% endblock %}
 
 {% block scripts %}
@@ -104,9 +71,9 @@
   }
 
   const btn1 = document.getElementById('new-user-btn');
-  const btn2 = document.getElementById('new-user-btn-empty');
   if (btn1) btn1.addEventListener('click', openNewUserModal);
-  if (btn2) btn2.addEventListener('click', openNewUserModal);
+  // دکمهٔ خالی درونِ ناحیهٔ اجاکسی است → delegated تا بعد از swap هم کار کند
+  document.addEventListener('click', e => { if (e.target.closest('#new-user-btn-empty')) openNewUserModal(); });
 })();
 </script>
 {% endif %}

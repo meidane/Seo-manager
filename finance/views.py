@@ -47,6 +47,11 @@ def _body(request):
 class FinanceDashboardView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateView):
     template_name = 'finance/dashboard.html'
 
+    def get_template_names(self):
+        if self.request.GET.get('partial'):
+            return ['finance/_dashboard_results.html']
+        return [self.template_name]
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         start, end = self.get_range(self.request)
@@ -110,6 +115,12 @@ class FinanceDashboardView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin,
 
 class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
     template_name = 'finance/transactions.html'
+
+    def get_template_names(self):
+        # فیلترِ اجاکسی: فقط بدنهٔ نتیجه (بنر AI + جدول + صفحه‌بندی) رندر می‌شود، بدونِ رفرشِ صفحه
+        if self.request.GET.get('partial'):
+            return ['finance/_tx_results.html']
+        return [self.template_name]
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -284,6 +295,11 @@ class PayrollFormView(LoginRequiredMixin, FinancePermMixin, TemplateView):
 class InvoiceListView(LoginRequiredMixin, InvoiceViewPermMixin, TemplateView):
     template_name = 'finance/invoices.html'
 
+    def get_template_names(self):
+        if self.request.GET.get('partial'):
+            return ['finance/_invoices_results.html']
+        return [self.template_name]
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         g = self.request.GET
@@ -368,6 +384,12 @@ class LedgerView(LoginRequiredMixin, FinancePermMixin, TemplateView):
     """
 
     template_name = 'finance/ledger.html'
+
+    def get_template_names(self):
+        # فیلتر/تاریخِ اجاکسی: فقط ناحیهٔ نتیجه رندر می‌شود
+        if self.request.GET.get('partial'):
+            return ['finance/_ledger_results.html']
+        return [self.template_name]
 
     def get_context_data(self, **kwargs):
         from core.jalali import format_jalali, j2g

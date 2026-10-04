@@ -5,7 +5,6 @@
 اینجاست؛ تعامل با API (بخشی reuseِ `tasks/api.py`، بخشی `personal/api.py`).
 """
 from datetime import date, timedelta
-from urllib.parse import urlencode
 
 from django.shortcuts import render
 from django.utils.decorators import method_decorator
@@ -23,13 +22,6 @@ LIFE_AGE_NOW = 28
 LIFE_EXPECTANCY = 75
 
 
-def _iso(value, fallback):
-    try:
-        return date.fromisoformat(value)
-    except (ValueError, TypeError):
-        return fallback
-
-
 def _pct(done, total):
     return round(done / total * 100) if total else 0
 
@@ -45,25 +37,28 @@ class PersonalDashboardView(View):
         today = date.today()
         me, pproject, ptype = personal_context(request)
 
-        # پارامترهای ناوبری (سه ناوبرِ مستقل: اینباکسِ هفتگی، روزِ تسک‌های امروز، هفتهٔ هبیت)
-        wk = week_saturday(_iso(request.GET.get('week'), today))
-        day = _iso(request.GET.get('day'), today)
-        hsat = week_saturday(_iso(request.GET.get('hweek'), today))
-        wk_end = wk + timedelta(days=6)
+        # ── یک نوارِ بازهٔ واحدِ سراسری برای کلِ صفحهٔ شخصی (بالای صفحه، پیش‌فرض «۷ روز»،
+        # بدونِ چیپِ «همه») — جای همهٔ فلش‌های هفته‌ی قبل/بعد و بازه‌های جداگانه.
+        from core.daterange import _resolve_preset, bar_context, optional_range
+        r_start, r_end, rctx = optional_range(request)
+        if not (r_start and r_end):
+            r_start, r_end = _resolve_preset('7', today)
+            rctx = bar_context('7', r_start, r_end)
+        rctx['range_optional'] = False
 
-        def nav(**over):
-            p = {'week': wk.isoformat(), 'day': day.isoformat(), 'hweek': hsat.isoformat()}
-            p.update(over)
-            return '?' + urlencode(p)
+        # همهٔ گریدها/باکس‌ها از همین بازه می‌آیند: روزِ مرجع = پایانِ بازه (پیش‌فرض امروز)،
+        # هفتهٔ گرید/هبیت = هفتهٔ حاویِ همان روز. دیگر ناوبرِ جدا (?day/?hweek) نداریم.
+        day = r_end
+        hsat = week_saturday(r_end)
 
         # ── تسک‌های شخصی (Task با نوعِ «شخصی») ──
         ptasks = Task.objects.none()
         if me and pproject and ptype:
             ptasks = Task.objects.filter(project=pproject, assignee=me, type_def=ptype)
 
-        # اینباکسِ هفتگی: تسک‌های ثبت‌شده در همان هفته (بر اساسِ created_at)؛
+        # اینباکس: تسک‌های ثبت‌شده در بازهٔ انتخابی (بر اساسِ created_at)؛
         # برنامه‌ریزی‌شده/انجام‌شده‌ها ته می‌روند و کم‌رنگ می‌شوند.
-        inbox = list(ptasks.filter(created_at__date__range=(wk, wk_end)).order_by('board_order', 'id'))
+        inbox = list(ptasks.filter(created_at__date__range=(r_start, r_end)).order_by('board_order', 'id'))
         for t in inbox:
             t.dim = bool(t.planned_date) or t.is_done
         inbox.sort(key=lambda t: t.dim)  # پایدار: فعال‌ها بالا، بقیه ته
@@ -121,7 +116,7 @@ class PersonalDashboardView(View):
                     t.pri = pri
             week_grid.append({
                 'date': d, 'iso': d.isoformat(), 'name': WEEKDAY_NAMES[i],
-                'day_fa': format_jalali(d, '%d', fa_digits=True), 'nav': nav(day=d.isoformat()),
+                'day_fa': format_jalali(d, '%d', fa_digits=True),
                 'is_today': d == today, 'is_sel': d == day, 'is_future': d > today,
                 'tasks': allt, 'done': sum(1 for t in allt if t.is_done)})
 
@@ -195,25 +190,14 @@ class PersonalDashboardView(View):
             'setup_needed': not (me and pproject and ptype),
             'type_name': PERSONAL_TYPE_NAME,
             'inbox': inbox, 'wk_done': wk_done, 'wk_total': len(inbox), 'wk_pct': _pct(wk_done, len(inbox)),
-            'week_start_fa': jalali_long(wk), 'week_end_fa': jalali_long(wk_end),
-            'is_this_week': wk == week_saturday(today),
-            'inbox_prev': nav(week=(wk - timedelta(days=7)).isoformat()),
-            'inbox_next': nav(week=(wk + timedelta(days=7)).isoformat()),
             'daily': daily, 'week_grid': week_grid,
             'day_done': day_done, 'day_total': day_total, 'day_pct': _pct(day_done, day_total),
             'day_fa': jalali_long(day), 'is_today': day == today,
-            'day_prev': nav(day=(day - timedelta(days=1)).isoformat()),
-            'day_next': nav(day=(day + timedelta(days=1)).isoformat()),
             'chart': chart,
             'cweek_fa': jalali_long(cw_sat) + ' – ' + jalali_long(cw_sat + timedelta(days=6)),
-            'cweek_prev': nav(day=(day - timedelta(days=7)).isoformat()),
-            'cweek_next': nav(day=(day + timedelta(days=7)).isoformat()),
             'goal_list': [{'id': x['obj'].id, 'title': x['obj'].title, 'color': x['obj'].color} for x in goals],
             'week_days': hdays, 'habits': habits,
             'hweek_fa': jalali_long(hsat) + ' – ' + jalali_long(hsat + timedelta(days=6)),
-            'is_this_hweek': hsat == week_saturday(today),
-            'hweek_prev': nav(hweek=(hsat - timedelta(days=7)).isoformat()),
-            'hweek_next': nav(hweek=(hsat + timedelta(days=7)).isoformat()),
             'goals': goals,
             # تاریخِ شروعِ هفتهٔ بعد (برای دکمهٔ «هفتهٔ بعد»ِ اینباکس)
             'next_week_iso': (week_saturday(today) + timedelta(days=7)).isoformat(),
@@ -221,4 +205,5 @@ class PersonalDashboardView(View):
                      'age_now': LIFE_AGE_NOW, 'expectancy': LIFE_EXPECTANCY},
             'notes': PersonalNote.objects.filter(user=request.user),
         }
+        ctx.update(rctx)  # کلیدهای نوارِ بازهٔ اینباکس (range_key/range_start_fa/…)
         return render(request, self.template_name, ctx)

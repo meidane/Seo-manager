@@ -87,6 +87,11 @@ def _report_month_rows(project_ids, periods):
 
 
 class ProjectListView(LoginRequiredMixin, DateRangeMixin, ListView):
+    def get_template_names(self):
+        if self.request.GET.get('partial'):
+            return ['projects/_results.html']
+        return ['projects/list.html']
+
     """لیست جدولی پروژه‌ها با اطلاعات مدیریتی (مثل جدول داشبورد)."""
 
     model = Project

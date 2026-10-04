@@ -112,9 +112,12 @@
     }
     return root;
   }
-  function openModal(html) {
+  function openModal(html, opts) {
     const root = ensureModalRoot();
-    root.querySelector('.modal').innerHTML = html;
+    const box = root.querySelector('.modal');
+    // کلاسِ عرض هر بار ری‌ست می‌شود تا مودالِ عادیِ بعدی پهن نماند
+    box.className = 'modal' + (opts && opts.wide ? ' modal-wide' : '');
+    box.innerHTML = html;
     root.dataset.dirty = '';
     root.classList.add('open');
     initMoney(root);  // ویرگول‌دارکردنِ مقادیرِ اولیه‌ی اینپوت‌های مبلغ درونِ مودال
@@ -268,6 +271,53 @@
     return (-diff) + ' روز قبل';                    // تاریخِ اصلی در هاور (title) است
   }
 
+  /* ── بارگذاریِ اجاکسیِ ناحیهٔ وابسته به بازهٔ تاریخ (بدونِ رفرشِ صفحه) ──
+     صفحه یک `[data-range-scope]` می‌گذارد دورِ ناحیه‌ای که به بازه وابسته است و ویو با
+     `?partial=1` فقط همان ناحیه را رندر می‌کند. نوارِ تاریخ (`_daterange_bar.html`) این را
+     صدا می‌زند. هندلرهای صفحه باید delegated روی یک جدِّ ثابتِ بیرونِ scope باشند تا بعد از
+     swap زنده بمانند (وگرنه صفحه `window.rangeReload` سفارشیِ خودش را تعریف می‌کند). */
+  // چیپِ فعال و متنِ نوارِ تاریخ را از مارکرِ `[data-range-key]`ِ داخلِ ناحیهٔ swapشده
+  // به‌روز می‌کند (چون نوار بیرونِ ناحیه است و با swap عوض نمی‌شود).
+  function syncRangeBar(scope) {
+    const m = (scope || document).querySelector('[data-range-key]');
+    if (!m) return;
+    const key = m.getAttribute('data-range-key'), note = m.getAttribute('data-range-note') || '';
+    document.querySelectorAll('.range-bar').forEach(function (bar) {
+      bar.querySelectorAll('.range a').forEach(function (a) {
+        a.classList.toggle('on', a.getAttribute('data-rkey') === key);
+      });
+      const noteEl = bar.querySelector('.range-note');
+      if (noteEl) noteEl.textContent = note;
+    });
+  }
+
+  let _rangeSeq = 0;
+  async function rangeReload(url, opts) {
+    const scope = document.querySelector('[data-range-scope]');
+    if (!scope) { location.href = url; return; }
+    if (!(opts && opts.push === false)) { try { history.pushState(null, '', url); } catch (_) {} }
+    scope.classList.add('is-loading');
+    const seq = ++_rangeSeq;
+    try {
+      const u = new URL(url, location.origin);
+      u.searchParams.set('partial', '1');
+      const html = await fetch(u.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' }).then(r => r.text());
+      if (seq !== _rangeSeq) return;
+      scope.innerHTML = html;
+      if (window.RichSelect) RichSelect.init(scope);
+      initMoney(scope);
+      syncRangeBar(scope);
+      document.dispatchEvent(new CustomEvent('range:swapped', { detail: { scope } }));
+    } catch (_) { location.href = url; }
+    finally { scope.classList.remove('is-loading'); }
+  }
+  // back/forward: اگر صفحه از `[data-range-scope]` استفاده می‌کند (نه هوکِ سفارشیِ خودش)،
+  // ناحیه را با URLِ جدید دوباره swap کن (بدونِ pushِ دوباره).
+  window.addEventListener('popstate', function () {
+    if (typeof window.rangeReload === 'function') return;  // صفحه خودش مدیریت می‌کند
+    if (document.querySelector('[data-range-scope]')) rangeReload(location.href, { push: false });
+  });
+
   /* ── نمای عمومی ── */
   window.App = {
     csrf: CSRF,
@@ -280,5 +330,7 @@
     setTheme: applyTheme,
     toggleTheme,
     initMoney,
+    rangeReload,
+    syncRangeBar,
   };
 })();

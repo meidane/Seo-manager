@@ -67,6 +67,11 @@ def donut_segments(pairs):
 
 
 class ColleagueListView(LoginRequiredMixin, DateRangeMixin, ListView):
+    def get_template_names(self):
+        if self.request.GET.get('partial'):
+            return ['colleagues/_results.html']
+        return ['colleagues/list.html']
+
     """لیست جدولی همکاران با آمار بازه‌ای + اسپارک‌لاین روند (مثل داشبورد)."""
 
     model = Colleague

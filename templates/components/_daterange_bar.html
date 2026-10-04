@@ -5,14 +5,14 @@
 هرجا لازم بود: {% include "components/_daterange_bar.html" %}{% endcomment %}
 <div class="range-bar">
   <div class="range" style="position:relative">
-    {% if range_optional %}<a href="{% querystring range=None from=None to=None page=None %}" class="{% if range_key == 'all' %}on{% endif %}">همه</a>{% endif %}
-    <a href="{% querystring range='today' from=None to=None page=None %}"      class="{% if range_key == 'today' %}on{% endif %}">امروز</a>
-    <a href="{% querystring range='7' from=None to=None page=None %}"          class="{% if range_key == '7' %}on{% endif %}">۷ روز</a>
-    <a href="{% querystring range='30' from=None to=None page=None %}"         class="{% if range_key == '30' %}on{% endif %}">۳۰ روز</a>
-    <a href="{% querystring range='90' from=None to=None page=None %}"         class="{% if range_key == '90' %}on{% endif %}">۹۰ روز</a>
-    <a href="{% querystring range='this_month' from=None to=None page=None %}" class="{% if range_key == 'this_month' %}on{% endif %}">این ماه</a>
-    <a href="{% querystring range='last_month' from=None to=None page=None %}" class="{% if range_key == 'last_month' %}on{% endif %}">ماه گذشته</a>
-    <a href="#" id="rc-toggle" class="{% if range_key == 'custom' %}on{% endif %}">دلخواه</a>
+    {% if range_optional %}<a data-rkey="all" href="{% querystring range=None from=None to=None page=None %}" class="{% if range_key == 'all' %}on{% endif %}">همه</a>{% endif %}
+    <a data-rkey="today"      href="{% querystring range='today' from=None to=None page=None %}"      class="{% if range_key == 'today' %}on{% endif %}">امروز</a>
+    <a data-rkey="7"          href="{% querystring range='7' from=None to=None page=None %}"          class="{% if range_key == '7' %}on{% endif %}">۷ روز</a>
+    <a data-rkey="30"         href="{% querystring range='30' from=None to=None page=None %}"         class="{% if range_key == '30' %}on{% endif %}">۳۰ روز</a>
+    <a data-rkey="90"         href="{% querystring range='90' from=None to=None page=None %}"         class="{% if range_key == '90' %}on{% endif %}">۹۰ روز</a>
+    <a data-rkey="this_month" href="{% querystring range='this_month' from=None to=None page=None %}" class="{% if range_key == 'this_month' %}on{% endif %}">این ماه</a>
+    <a data-rkey="last_month" href="{% querystring range='last_month' from=None to=None page=None %}" class="{% if range_key == 'last_month' %}on{% endif %}">ماه گذشته</a>
+    <a data-rkey="custom" href="#" id="rc-toggle" class="{% if range_key == 'custom' %}on{% endif %}">دلخواه</a>
 
     {% comment %}بازه‌ی دلخواه با دو فیلد شروع/پایان{% endcomment %}
     <div id="rc-box" class="range-custom glass" style="display:none">
@@ -27,6 +27,17 @@
 </div>
 <script>
 (function () {
+  // اگر صفحه از بارگذاریِ اجاکسی پشتیبانی کند (`window.rangeReload` سفارشی یا
+  // `[data-range-scope]`)، تغییرِ بازه بدونِ رفرشِ صفحه اعمال می‌شود؛ وگرنه ناوبریِ عادی.
+  function ajaxNav(url) {
+    if (typeof window.rangeReload === 'function') { window.rangeReload(url); return true; }
+    if (document.querySelector('[data-range-scope]') && window.App && App.rangeReload) { App.rangeReload(url); return true; }
+    return false;
+  }
+  document.querySelectorAll('.range-bar .range a').forEach(function (a) {
+    if (a.id === 'rc-toggle') return;
+    a.addEventListener('click', function (e) { if (ajaxNav(a.href)) e.preventDefault(); });
+  });
   var toggle = document.getElementById('rc-toggle'), box = document.getElementById('rc-box');
   if (!toggle || !box) return;
   toggle.onclick = function (e) { e.preventDefault(); box.style.display = box.style.display === 'none' ? 'flex' : 'none'; };
@@ -36,7 +47,8 @@
     var u = new URL(location.href);
     u.searchParams.delete('range'); u.searchParams.delete('page');
     u.searchParams.set('from', f); u.searchParams.set('to', t);
-    location.href = u.pathname + '?' + u.searchParams.toString();
+    var url = u.pathname + '?' + u.searchParams.toString();
+    if (!ajaxNav(url)) location.href = url;
   };
 })();
 </script>

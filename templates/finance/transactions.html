@@ -11,7 +11,9 @@
 
   {% include "components/_daterange_bar.html" %}
 
+  <div id="tx-panel">
   <form method="get" class="glass filters" id="tx-filters">
+    <input type="hidden" name="unassigned" id="f-unassigned" value="{{ filters.unassigned }}">
     <div class="search" style="max-width:280px;padding:6px 10px">
       <span>⌕</span>
       <input type="text" name="q" value="{{ q }}" placeholder="جستجو در شرح سند و توضیحات…" autocomplete="off"
@@ -29,7 +31,7 @@
         <div class="ms-foot"><button type="button" class="btn btn-sm" id="bank-clear">پاک‌کردنِ همه</button></div>
       </div>
     </div>
-    <select name="project" class="rich-select" onchange="this.form.submit()"><option value="">همه‌ی پروژه‌ها</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
+    <select name="project" class="rich-select"><option value="">همه‌ی پروژه‌ها</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
 
     {# بابت — چندانتخابی، قابلِ جستجو، اعمالِ فوری #}
     <div class="ms">
@@ -49,7 +51,7 @@
     </div>
 
     {# نوع: واریز/برداشت #}
-    <select name="flow" onchange="this.form.submit()">
+    <select name="flow">
       <option value="">واریز و برداشت</option>
       <option value="deposit" {% if filters.flow == 'deposit' %}selected{% endif %}>فقط واریز</option>
       <option value="withdrawal" {% if filters.flow == 'withdrawal' %}selected{% endif %}>فقط برداشت</option>
@@ -59,68 +61,12 @@
     <input type="text" name="amt_max" value="{{ filters.amt_max }}" placeholder="تا مبلغ" class="input money" dir="ltr" style="max-width:120px">
     <button type="submit" class="btn btn-sm">اعمال</button>
 
-    {# «فقط بدون پروژه/بابت» — بقیهٔ فیلترها را حفظ می‌کند (querystring)، نه ریست #}
-    {% if filters.unassigned == '1' %}<a href="?{% querystring unassigned=None %}" class="chip on">فقط بدون پروژه/بابت ✕</a>{% else %}<a href="?{% querystring unassigned='1' %}" class="chip">فقط بدون پروژه/بابت</a>{% endif %}
+    {# «فقط بدون پروژه/بابت» — چیپِ toggle (اجاکسی، مقدار در فیلدِ پنهانِ #f-unassigned) #}
+    <a href="#" id="unassigned-chip" class="chip {% if filters.unassigned == '1' %}on{% endif %}">فقط بدون پروژه/بابت{% if filters.unassigned == '1' %} ✕{% endif %}</a>
   </form>
 
-  {% if ai_suggest_count %}
-  <div class="ai-banner glass" id="ai-banner">
-    <span class="ai-badge">AI</span>
-    <span>{{ ai_suggest_count|fa_digits }} تراکنشِ بی‌بابت پیشنهادِ هوشمند دارد (بر اساسِ تراکنش‌های مشابهِ قبلی).</span>
-    <button type="button" class="btn btn-sm btn-p" id="ai-apply-all" style="margin-inline-start:auto">✓ تأییدِ همه</button>
-  </div>
-  {% endif %}
-
-  {% if transactions %}
-  <div class="sheet-wrap">
-    <table class="sheet" id="tx-sheet">
-      <thead><tr>
-        <th class="chk-col"><input type="checkbox" id="check-all"></th>
-        <th>تاریخ</th><th>بانک</th><th>شرح سند</th><th>واریز</th><th>برداشت</th><th>مانده</th>
-        <th style="background:rgba(65,131,242,.08)">پروژه</th><th style="background:rgba(65,131,242,.08)">بابت</th><th style="background:rgba(65,131,242,.08)">توضیحات</th>
-      </tr></thead>
-      <tbody>
-        {% for t in transactions %}
-          <tr data-id="{{ t.id }}">
-            <td class="chk-col"><input type="checkbox" class="row-check" data-id="{{ t.id }}"></td>
-            <td>{{ t.date|jalali }}</td>
-            <td><span class="tag t-mute" style="white-space:nowrap">{{ t.bank_account.name }}</span></td>
-            <td class="tx-desc"><span class="tx-desc-tx" title="{{ t.description }}">{{ t.description }}</span><button type="button" class="mini tx-split-btn" data-id="{{ t.id }}" data-amount="{{ t.deposit|add:t.withdrawal }}" title="تفکیک این تراکنش">⑂</button></td>
-            <td class="num {% if t.deposit %}dep{% endif %}">{% if t.deposit %}{{ t.deposit|money }}{% else %}—{% endif %}</td>
-            <td class="num {% if t.withdrawal %}wd{% endif %}">{% if t.withdrawal %}{{ t.withdrawal|money }}{% else %}—{% endif %}</td>
-            <td class="num">{% if t.balance != None %}{{ t.balance|money }}{% else %}—{% endif %}</td>
-            {% if t.splits.all %}
-              <td class="edit"><span class="tag t-mute" title="این تراکنش تفکیک شده — پروژه/بابت از ردیف‌های تفکیک می‌آید">تفکیک‌شده ⑂</span></td>
-              <td class="edit"><span class="tag t-mute" title="این تراکنش تفکیک شده — بابت از ردیف‌های تفکیک می‌آید">تفکیک‌شده ⑂</span></td>
-            {% else %}
-              <td class="edit" style="position:relative"><select class="tx-f rich-select" data-f="project"><option value="">—</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if t.project_id == p.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>{% if t.ai_suggestion %}<div class="ai-sug" data-id="{{ t.id }}" data-project="{{ t.ai_suggestion.project_id|default:'' }}" data-category="{{ t.ai_suggestion.category_id|default:'' }}"><span class="ai-badge" title="پیشنهادِ هوشمند بر اساسِ {{ t.ai_suggestion.count|fa_digits }} تراکنشِ مشابه از همین حساب">AI</span><span class="ai-sug-txt" title="{% if t.ai_suggestion.project_name %}پروژه: {{ t.ai_suggestion.project_name }} {% endif %}{% if t.ai_suggestion.category_name %}· بابت: {{ t.ai_suggestion.category_name }}{% endif %}">{% if t.ai_suggestion.project_name %}{{ t.ai_suggestion.project_name }}{% endif %}{% if t.ai_suggestion.project_name and t.ai_suggestion.category_name %} · {% endif %}{% if t.ai_suggestion.category_name %}{{ t.ai_suggestion.category_name }}{% endif %}</span><button type="button" class="ai-ok mini" title="تأیید — همین را بنشان">✓</button><button type="button" class="ai-no mini" title="رد">✕</button></div>{% endif %}</td>
-              <td class="edit txcat-cell" data-id="{{ t.id }}"><div class="txcat-wrap">{% for c in t.categories.all %}<span class="tag txcat-chip" data-cid="{{ c.id }}" style="background:color-mix(in srgb,{{ c.color }} 18%,transparent);color:{{ c.color }}">{{ c.name }}<i class="txcat-x">×</i></span>{% endfor %}<input class="txcat-add" list="tx-cats-dl" placeholder="＋بابت" autocomplete="off"></div></td>
-            {% endif %}
-            <td class="edit"><input class="tx-f" data-f="note" value="{{ t.note }}" placeholder="—"></td>
-          </tr>
-          {% for s in t.splits.all %}
-          <tr class="split-child">
-            <td></td><td></td><td></td>
-            <td style="text-align:right;color:var(--text-dim)"><span class="split-mark">└</span> {% if s.note %}{{ s.note }}{% elif s.category_id %}{{ s.category.name }}{% else %}تفکیک{% endif %}</td>
-            <td class="num {% if t.deposit %}dep{% endif %}">{% if t.deposit %}{{ s.amount|money }}{% else %}—{% endif %}</td>
-            <td class="num {% if t.withdrawal %}wd{% endif %}">{% if t.withdrawal %}{{ s.amount|money }}{% else %}—{% endif %}</td>
-            <td></td>
-            <td>{% if s.project_id %}<div class="assignee-cell">{% include "projects/_logo.html" with project=s.project %}<span>{{ s.project.name }}</span></div>{% else %}—{% endif %}</td>
-            <td>{% if s.category_id %}<span class="tag" style="background:color-mix(in srgb,{{ s.category.color }} 18%,transparent);color:{{ s.category.color }}">{{ s.category.name }}</span>{% else %}—{% endif %}</td>
-            <td style="color:var(--text-dim)">{{ s.note }}</td>
-          </tr>
-          {% endfor %}
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  {# ── صفحه‌بندی (۱ ۲ ۳ … ۲۰) ── #}
-  {% include "components/_pagination.html" %}
-
-  {% else %}
-    <section class="card glass"><div class="empty"><div class="ico">▦</div><h4>تراکنشی مطابق فیلتر نیست</h4><a href="{% url 'finance:transactions' %}" class="btn" style="margin-top:12px">پاک‌کردن فیلترها</a></div></section>
-  {% endif %}
+  <div id="tx-results">{% include "finance/_tx_results.html" %}</div>
+  </div>{# /#tx-panel #}
 
   {# datalist مشترک برای جستجوی بابت در جدول #}
   <datalist id="tx-cats-dl">{% for c in categories %}<option value="{{ c.name }}"></option>{% endfor %}</datalist>
@@ -140,71 +86,108 @@
     background:var(--primary-soft);color:var(--primary-400);border:1px solid var(--primary-ring)}
   .ai-sug{position:absolute;inset:0;display:flex;align-items:center;gap:6px;padding:0 8px;background:var(--card-solid);cursor:default;z-index:2}
   .ai-sug-txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;color:var(--primary-400)}
-  .ai-sug .ai-ok,.ai-sug .ai-no{flex:none;border:1px solid var(--stroke-soft);background:var(--fill);width:22px;height:22px;border-radius:var(--r-sm);cursor:pointer;line-height:1;padding:0}
+  .ai-sug .ai-ok,.ai-sug .ai-no,.ai-sug .ai-view{flex:none;border:1px solid var(--stroke-soft);background:var(--fill);width:22px;height:22px;border-radius:var(--r-sm);cursor:pointer;line-height:1;padding:0;display:inline-flex;align-items:center;justify-content:center}
   .ai-sug .ai-ok{color:var(--ok-fg);border-color:color-mix(in srgb,var(--ok-fg) 40%,transparent)}
   .ai-sug .ai-ok:hover{background:var(--ok-fg);color:#052}
   .ai-sug .ai-no:hover{color:var(--danger);border-color:var(--danger)}
+  .ai-sug .ai-view{color:var(--primary-400)}
+  .ai-sug .ai-view:hover{background:var(--primary-soft);border-color:var(--primary-ring)}
+  #tx-results.is-loading{opacity:.5;pointer-events:none;transition:opacity .12s}
 </style>
 <script>
-// ── پیشنهادِ هوشمندِ پروژه/بابت (روشِ A) — تأییدِ تکی/گروهی ──
 (function(){
-  const sheet=document.getElementById('tx-sheet');
-  async function applyOne(sug){
-    const body={ project: sug.dataset.project || '' };
-    if(sug.dataset.category) body.categories=[sug.dataset.category];
-    try{ await App.fetchJSON(`/finance/api/tx/${sug.dataset.id}/`,{method:'PATCH',body}); App.toast('نشست','ok'); location.reload(); }catch(_){}
+  const panel=document.getElementById('tx-panel'), form=document.getElementById('tx-filters'),
+        results=document.getElementById('tx-results');
+  if(!panel||!form||!results) return;
+  const TX_BASE="{% url 'finance:transactions' %}";
+
+  // اطلاعاتِ بابت‌ها (id → {name,color}) + نگاشتِ نام→id
+  const CATS = { {% for c in categories %}"{{ c.id }}":{name:"{{ c.name|escapejs }}",color:"{{ c.color }}"}{% if not forloop.last %},{% endif %}{% endfor %} };
+  const CAT_BY_NAME = {}; Object.keys(CATS).forEach(id=>{ CAT_BY_NAME[CATS[id].name]=id; });
+
+  // ══ فیلترِ اجاکسی (بدونِ رفرشِ صفحه) ══
+  function filterQS(){
+    const out=new URLSearchParams();
+    for(const [k,v] of new URLSearchParams(new FormData(form))){ if(v!=='' && v!=null) out.append(k,v); }
+    // حفظِ بازهٔ تاریخ (نوارِ بالای صفحه، خارج از فرم) هنگامِ تغییرِ فیلترها
+    const cur=new URL(location.href).searchParams;
+    ['range','from','to'].forEach(k=>{ if(cur.get(k)) out.set(k, cur.get(k)); });
+    return out.toString();
   }
-  if(sheet) sheet.addEventListener('click', e=>{
-    const ok=e.target.closest('.ai-ok'); if(ok){ e.stopPropagation(); applyOne(ok.closest('.ai-sug')); return; }
-    const no=e.target.closest('.ai-no'); if(no){ e.stopPropagation(); no.closest('.ai-sug').remove(); return; }
+  let reqSeq=0;
+  async function reloadTx(qs, push){
+    if(qs==null) qs=filterQS();
+    if(push!==false) history.pushState(null,'', qs ? TX_BASE+'?'+qs : TX_BASE);
+    results.classList.add('is-loading');
+    const seq=++reqSeq;
+    try{
+      const url=TX_BASE+'?'+qs+(qs?'&':'')+'partial=1';
+      const html=await fetch(url,{headers:{'X-Requested-With':'XMLHttpRequest'},credentials:'same-origin'}).then(r=>r.text());
+      if(seq!==reqSeq) return;               // پاسخِ کهنه را دور بریز (رقابتِ تایپ)
+      results.innerHTML=html;
+      afterSwap();
+    }catch(_){ if(window.App) App.toast('خطا در بارگذاری','warn'); }
+    finally{ results.classList.remove('is-loading'); }
+  }
+  function afterSwap(){
+    if(window.RichSelect) RichSelect.init(results);
+    if(window.App&&App.initMoney) App.initMoney(results);
+    const m=document.getElementById('tx-total-marker'), note=document.querySelector('.page-h .range-note b');
+    if(m&&note) note.textContent=(+m.dataset.n).toLocaleString('en-US');
+    if(window.App&&App.syncRangeBar) App.syncRangeBar(results);
+    refreshBulk();
+  }
+
+  // فیلترها → همه اجاکسی
+  form.addEventListener('submit', e=>{ e.preventDefault(); reloadTx(); });
+  form.addEventListener('change', e=>{
+    if(['project','flow','bank','category'].includes(e.target.name)) reloadTx();
   });
-  const applyAll=document.getElementById('ai-apply-all');
-  if(applyAll) applyAll.onclick=async()=>{
-    const ids=[...document.querySelectorAll('.ai-sug')].map(s=>+s.dataset.id);
-    if(!ids.length) return;
-    if(!await App.confirm(`${ids.length} پیشنهادِ هوشمند تأیید و نشانده شود؟`)) return;
-    try{ const d=await App.fetchJSON("{% url 'finance:tx_apply_suggestions' %}",{method:'POST',body:{ids}}); App.toast(`${d.applied} مورد نشست`,'ok'); location.reload(); }catch(_){}
-  };
-})();
-</script>
-<script>
-(function(){
-  // ── دراپ‌داونِ بابتِ چندانتخابی (جستجو + اعمالِ فوری) ──
+  let searchT=null;
+  const qInput=form.querySelector('input[name="q"]');
+  if(qInput) qInput.addEventListener('input', ()=>{ clearTimeout(searchT); searchT=setTimeout(()=>reloadTx(),400); });
+  // چیپِ «بدون پروژه/بابت» — toggle اجاکسی (باگِ رفع‌شده: قبلاً «??» دوتایی می‌ساخت و بارِ اول کار نمی‌کرد)
+  const unchip=document.getElementById('unassigned-chip');
+  if(unchip) unchip.addEventListener('click', e=>{
+    e.preventDefault();
+    const h=document.getElementById('f-unassigned'), on=h.value!=='1';
+    h.value=on?'1':''; unchip.classList.toggle('on',on);
+    unchip.textContent='فقط بدون پروژه/بابت'+(on?' ✕':'');
+    reloadTx();
+  });
+  // صفحه‌بندیِ اجاکسی (لینک‌ها درونِ نتیجهٔ swap‌شونده‌اند → delegated روی panel)
+  panel.addEventListener('click', e=>{
+    const pg=e.target.closest('.pagi a[href]'); if(!pg) return;
+    e.preventDefault(); reloadTx(new URL(pg.href,location.origin).searchParams.toString());
+  });
+  window.addEventListener('popstate', ()=> reloadTx(new URL(location.href).searchParams.toString(), false));
+  // نوارِ تاریخ از همین سواپِ نتیجه استفاده کند (بدونِ رفرش)
+  window.rangeReload = url => reloadTx(new URL(url, location.origin).searchParams.toString());
+
+  // ── دراپ‌داونِ بابتِ چندانتخابی (باز/بسته + جستجو + پاک‌کردن) ──
   const cToggle=document.getElementById('cat-toggle'), cBox=document.getElementById('cat-box');
   if(cToggle&&cBox){
     cToggle.onclick=e=>{ e.preventDefault(); const open=cBox.classList.toggle('open'); const s=document.getElementById('cat-search'); if(open&&s)s.focus(); };
-    document.getElementById('cat-clear').onclick=()=>{ cBox.querySelectorAll('input[name="category"]').forEach(c=>c.checked=false); document.getElementById('tx-filters').submit(); };
-    // هر تغییرِ چک‌باکس بلافاصله اعمال می‌شود
-    cBox.addEventListener('change',e=>{ if(e.target.name==='category') document.getElementById('tx-filters').submit(); });
+    document.getElementById('cat-clear').onclick=()=>{ cBox.querySelectorAll('input[name="category"]').forEach(c=>c.checked=false); reloadTx(); };
     const cSearch=document.getElementById('cat-search');
     if(cSearch) cSearch.addEventListener('input',()=>{ const q=cSearch.value.trim().toLowerCase();
       cBox.querySelectorAll('.cat-opt').forEach(o=>{ o.style.display=o.dataset.name.toLowerCase().includes(q)?'':'none'; }); });
     document.addEventListener('click',e=>{ if(!e.target.closest('.ms')) cBox.classList.remove('open'); });
   }
-
-  // ── دراپ‌داونِ بانکِ چندانتخابی (اعمالِ فوری) ──
+  // ── دراپ‌داونِ بانکِ چندانتخابی ──
   const bToggle=document.getElementById('bank-toggle'), bBox=document.getElementById('bank-box');
   if(bToggle&&bBox){
     bToggle.onclick=e=>{ e.preventDefault(); bBox.classList.toggle('open'); };
-    document.getElementById('bank-clear').onclick=()=>{ bBox.querySelectorAll('input[name="bank"]').forEach(c=>c.checked=false); document.getElementById('tx-filters').submit(); };
-    bBox.addEventListener('change',e=>{ if(e.target.name==='bank') document.getElementById('tx-filters').submit(); });
+    document.getElementById('bank-clear').onclick=()=>{ bBox.querySelectorAll('input[name="bank"]').forEach(c=>c.checked=false); reloadTx(); };
     document.addEventListener('click',e=>{ if(!e.target.closest('#bank-box') && !e.target.closest('#bank-toggle')) bBox.classList.remove('open'); });
   }
 
-  // اطلاعاتِ بابت‌ها (id → {name,color}) + نگاشتِ نام→id برای datalist
-  const CATS = { {% for c in categories %}"{{ c.id }}":{name:"{{ c.name|escapejs }}",color:"{{ c.color }}"}{% if not forloop.last %},{% endif %}{% endfor %} };
-  const CAT_BY_NAME = {}; Object.keys(CATS).forEach(id=>{ CAT_BY_NAME[CATS[id].name]=id; });
-
-  // ذخیره + نمایشِ هشدارِ نرمِ حسابداری (بدونِ بلاک)
+  // ══ ذخیره + هشدارِ نرم ══
   async function txSave(id, body){
     const r=await App.fetchJSON(`/finance/api/tx/${id}/`,{method:'PATCH',body});
     if(r&&r.warning) App.toast('⚠ '+r.warning,'warn',6000); else App.toast('ذخیره شد','ok');
     return r;
   }
-
-  const sheet=document.getElementById('tx-sheet'); if(!sheet) return;
-
-  // ── بابتِ چندانتخابی (چیپ‌ها) ──
   const chipIds = cell => [...cell.querySelectorAll('.txcat-chip')].map(c=>c.dataset.cid);
   async function saveCats(cell){ try{ await txSave(cell.dataset.id,{categories:chipIds(cell)}); }catch(_){} }
   function addChip(cell, cid){
@@ -216,73 +199,108 @@
     cell.querySelector('.txcat-add').insertAdjacentElement('beforebegin', s);
     return true;
   }
-  sheet.addEventListener('keydown', e=>{
-    if(e.key!=='Enter' || !e.target.matches('.txcat-add')) return;
-    e.preventDefault();
-    const inp=e.target, cell=inp.closest('.txcat-cell'), val=inp.value.trim();
-    if(!val){ const note=cell.closest('tr').querySelector('.tx-f[data-f="note"]'); if(note)note.focus(); return; }
-    const cid=CAT_BY_NAME[val];
-    if(!cid){ App.toast('بابت پیدا نشد','warn'); return; }
-    if(addChip(cell, cid)) saveCats(cell);
-    inp.value='';
+
+  // ══ همهٔ تعامل‌های جدول delegated روی panel (مقاوم در برابرِ swapِ نتیجه) ══
+  panel.addEventListener('keydown', e=>{
+    if(e.target.matches('.txcat-add')){
+      if(e.key!=='Enter') return;
+      e.preventDefault();
+      const inp=e.target, cell=inp.closest('.txcat-cell'), val=inp.value.trim();
+      if(!val){ const note=cell.closest('tr').querySelector('.tx-f[data-f="note"]'); if(note)note.focus(); return; }
+      const cid=CAT_BY_NAME[val];
+      if(!cid){ App.toast('بابت پیدا نشد','warn'); return; }
+      if(addChip(cell, cid)) saveCats(cell);
+      inp.value='';
+    } else if(e.target.matches('.tx-f[data-f="note"]') && e.key==='Enter'){
+      e.preventDefault();
+      const ntr=e.target.closest('tr').nextElementSibling;
+      if(ntr){ const f=ntr.querySelector('.txcat-add'); if(f) f.focus(); }
+    }
   });
-  // انتخاب از دراپ‌داونِ بابت (datalist) → بدونِ نیاز به Enter خودکار افزوده می‌شود
-  sheet.addEventListener('input', e=>{
+  panel.addEventListener('input', e=>{
     if(!e.target.matches('.txcat-add')) return;
-    const inp=e.target, val=inp.value.trim(), cid=CAT_BY_NAME[val];
+    const inp=e.target, cid=CAT_BY_NAME[inp.value.trim()];
     if(cid){ const cell=inp.closest('.txcat-cell'); if(addChip(cell, cid)) saveCats(cell); inp.value=''; }
   });
-  sheet.addEventListener('click', e=>{
-    const x=e.target.closest('.txcat-x'); if(!x) return;
-    const cell=x.closest('.txcat-cell'); x.closest('.txcat-chip').remove(); saveCats(cell);
+  panel.addEventListener('change', async e=>{
+    // فقط ویرایشِ inlineِ ردیف (نه فیلترهای فرم که name دارند و بالا هندل شدند)
+    const el=e.target.closest('.tx-f'); if(el && el.closest('#tx-results')){ const id=el.closest('tr').dataset.id; try{ await txSave(id,{[el.dataset.f]:el.value}); }catch(_){} return; }
+    // انتخابِ گروهی
+    if(e.target.id==='check-all'){ results.querySelectorAll('.row-check').forEach(c=>c.checked=e.target.checked); refreshBulk(); }
+    else if(e.target.classList.contains('row-check')) refreshBulk();
+  });
+  panel.addEventListener('blur', async e=>{
+    const el=e.target.closest('input.tx-f'); if(!el) return;
+    try{ await App.fetchJSON(`/finance/api/tx/${el.closest('tr').dataset.id}/`,{method:'PATCH',body:{note:el.value}}); }catch(_){}
+  }, true);
+
+  let lastIdx=null;
+  panel.addEventListener('click', e=>{
+    // حذفِ چیپِ بابت
+    const x=e.target.closest('.txcat-x'); if(x){ const cell=x.closest('.txcat-cell'); x.closest('.txcat-chip').remove(); saveCats(cell); return; }
+    // AI: مشاهدهٔ رفرنس (این پیشنهاد از کدام تراکنش‌های قبلی آمد)
+    const vw=e.target.closest('.ai-view'); if(vw){ e.stopPropagation(); showRefs(vw); return; }
+    // AI: تأیید (درجا، بدونِ رفرش)
+    const ok=e.target.closest('.ai-ok'); if(ok){ e.stopPropagation(); acceptSug(ok.closest('.ai-sug')); return; }
+    const no=e.target.closest('.ai-no'); if(no){ e.stopPropagation(); no.closest('.ai-sug').remove(); pruneBanner(); return; }
+    // تفکیک
+    const sp=e.target.closest('.tx-split-btn'); if(sp){ e.preventDefault(); e.stopPropagation(); openSplit(sp.dataset.id, +sp.dataset.amount||0); return; }
+    // شیفت-کلیکِ چک‌باکس
+    const cb=e.target.closest('.row-check'); if(cb){
+      const boxes=[...results.querySelectorAll('.row-check')], idx=boxes.indexOf(cb);
+      if(e.shiftKey && lastIdx!==null && lastIdx!==idx){ const a=Math.min(lastIdx,idx), b=Math.max(lastIdx,idx); for(let i=a;i<=b;i++) boxes[i].checked=cb.checked; refreshBulk(); }
+      lastIdx=idx;
+    }
+    // تأییدِ همهٔ پیشنهادها
+    if(e.target.closest('#ai-apply-all')){ applyAllSug(); return; }
   });
 
-  // ویرایش inline: پروژه (select) و توضیحات (input)
-  sheet.addEventListener('change', async e=>{
-    const el=e.target.closest('.tx-f'); if(!el) return;
-    const id=el.closest('tr').dataset.id;
-    try{ await txSave(id,{[el.dataset.f]:el.value}); }catch(_){}
-  });
-  sheet.addEventListener('blur', async e=>{
-    const el=e.target.closest('input.tx-f'); if(!el) return;
-    const id=el.closest('tr').dataset.id;
-    try{ await App.fetchJSON(`/finance/api/tx/${id}/`,{method:'PATCH',body:{note:el.value}}); }catch(_){}
-  }, true);
-  // Enter روی «توضیحات» → بابتِ ردیفِ بعد (بابت→توضیحات را هندلرِ .txcat-add بالا مدیریت می‌کند)
-  sheet.addEventListener('keydown', e=>{
-    if(e.key!=='Enter' || !e.target.matches('.tx-f[data-f="note"]')) return;
-    e.preventDefault();
-    const ntr=e.target.closest('tr').nextElementSibling;
-    if(ntr){ const f=ntr.querySelector('.txcat-add'); if(f) f.focus(); }
-  });
-  // انتخاب و گروهی
+  // ── AI: تأییدِ تکی (درجا) ──
+  async function acceptSug(sug){
+    if(!sug) return;
+    const body={ project: sug.dataset.project || '' };
+    if(sug.dataset.category) body.categories=[sug.dataset.category];
+    try{
+      await txSave(sug.dataset.id, body);
+      const row=sug.closest('tr');
+      if(sug.dataset.project){ const sel=row.querySelector('.tx-f[data-f="project"]'); if(sel){ sel.value=sug.dataset.project; sel.dispatchEvent(new Event('rs-refresh')); } }
+      if(sug.dataset.category){ const cell=row.querySelector('.txcat-cell'); if(cell) addChip(cell, sug.dataset.category); }
+      sug.remove(); pruneBanner();
+    }catch(_){}
+  }
+  async function applyAllSug(){
+    const ids=[...results.querySelectorAll('.ai-sug')].map(s=>+s.dataset.id);
+    if(!ids.length) return;
+    if(!await App.confirm(`${ids.length} پیشنهادِ هوشمند تأیید و نشانده شود؟`)) return;
+    try{ const d=await App.fetchJSON("{% url 'finance:tx_apply_suggestions' %}",{method:'POST',body:{ids}}); App.toast(`${d.applied} مورد نشست`,'ok'); reloadTx(); }catch(_){}
+  }
+  function pruneBanner(){ if(!results.querySelector('.ai-sug')){ const b=document.getElementById('ai-banner'); if(b) b.remove(); } }
+  // ── AI: مشاهدهٔ رفرنس ──
+  const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  function showRefs(btn){
+    let refs=[]; try{ refs=JSON.parse(btn.dataset.refs||'[]'); }catch(_){}
+    const why=btn.dataset.why||'';
+    const rows = refs.length ? refs.map(r=>`<tr><td style="white-space:nowrap">${esc(r.date)}</td><td>${esc(r.dir)}</td><td class="num" style="white-space:nowrap">${esc(r.amount)}</td><td>${esc(r.label)}</td><td style="color:var(--text-dim);max-width:280px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.desc)}">${esc(r.desc)}</td></tr>`).join('')
+      : '<tr><td colspan="5" style="text-align:center;color:var(--text-faint);padding:14px">رفرنسی برای این پیشنهاد ثبت نشده</td></tr>';
+    App.openModal(`<div class="modal-h"><h3>رفرنسِ پیشنهادِ هوشمند</h3><button class="x" onclick="App.closeModal()">×</button></div>
+      <div class="modal-b">
+        <p style="font-size:12px;color:var(--text-dim);margin-bottom:10px">${esc(why)}</p>
+        <div class="tscroll"><table class="sheet"><thead><tr><th>تاریخ</th><th>نوع</th><th>مبلغ</th><th>پروژه/بابت</th><th>شرح سند</th></tr></thead><tbody>${rows}</tbody></table></div>
+      </div>
+      <div class="modal-f"><button class="btn" onclick="App.closeModal()">بستن</button></div>`, {wide:true});
+  }
+
+  // ══ انتخابِ گروهی ══
   const bar=document.getElementById('bulkbar');
-  const selected=()=>[...sheet.querySelectorAll('.row-check:checked')].map(c=>+c.dataset.id);
-  function refresh(){ const n=selected().length; bar.style.display=n?'flex':'none'; document.getElementById('bulk-count').textContent=n.toLocaleString('en-US'); }
-  sheet.addEventListener('change', e=>{
-    if(e.target.id==='check-all'){ sheet.querySelectorAll('.row-check').forEach(c=>c.checked=e.target.checked); refresh(); }
-    else if(e.target.classList.contains('row-check')) refresh();
-  });
-  // شیفت-کلیک: انتخابِ همه‌ی چک‌باکس‌های بینِ آخرین کلیک و کلیکِ فعلی
-  let lastIdx=null;
-  sheet.addEventListener('click', e=>{
-    const cb=e.target.closest('.row-check'); if(!cb) return;
-    const boxes=[...sheet.querySelectorAll('.row-check')];
-    const idx=boxes.indexOf(cb);
-    if(e.shiftKey && lastIdx!==null && lastIdx!==idx){
-      const a=Math.min(lastIdx,idx), b=Math.max(lastIdx,idx);
-      for(let i=a;i<=b;i++) boxes[i].checked=cb.checked;
-      refresh();
-    }
-    lastIdx=idx;
-  });
+  const selected=()=>[...results.querySelectorAll('.row-check:checked')].map(c=>+c.dataset.id);
+  function refreshBulk(){ const n=selected().length; bar.style.display=n?'flex':'none'; document.getElementById('bulk-count').textContent=n.toLocaleString('en-US'); }
   async function bulk(action, extra){ const ids=selected(); if(!ids.length)return;
-    try{ await App.fetchJSON('/finance/api/tx/bulk/',{method:'POST',body:Object.assign({ids,action},extra)}); App.toast('انجام شد','ok'); setTimeout(()=>location.reload(),300); }catch(_){} }
-  document.getElementById('bulk-project').onchange=e=>{ if(e.target.value) bulk('set_project',{project:e.target.value}); };
-  document.getElementById('bulk-category').onchange=e=>{ if(e.target.value) bulk('set_category',{category:e.target.value}); };
+    try{ await App.fetchJSON('/finance/api/tx/bulk/',{method:'POST',body:Object.assign({ids,action},extra)}); App.toast('انجام شد','ok'); reloadTx(); }catch(_){} }
+  document.getElementById('bulk-project').onchange=e=>{ if(e.target.value){ bulk('set_project',{project:e.target.value}); e.target.value=''; e.target.dispatchEvent(new Event('rs-refresh')); } };
+  document.getElementById('bulk-category').onchange=e=>{ if(e.target.value){ bulk('set_category',{category:e.target.value}); e.target.value=''; e.target.dispatchEvent(new Event('rs-refresh')); } };
   document.getElementById('bulk-del').onclick=async()=>{ if(await App.confirm('تراکنش‌های انتخاب‌شده حذف شوند؟')) bulk('delete',{}); };
 
-  // ── تفکیکِ تراکنش (split) ──
+  // ══ تفکیکِ تراکنش (split) ══
   const PROJ_OPTS = `{% for p in projects %}<option value="{{ p.id }}">{{ p.name|escapejs }}</option>{% endfor %}`;
   const CAT_OPTS = `{% for c in categories %}<option value="{{ c.id }}">{{ c.name|escapejs }}</option>{% endfor %}`;
   function splitRow(s){ s=s||{}; const d=document.createElement('div'); d.className='sp-row';
@@ -343,10 +361,9 @@
         category:r.querySelector('.sp-cat').value,
         note:r.querySelector('.sp-note').value.trim(),
       })).filter(x=>x.amount||x.project||x.category||x.note);
-      try{ await App.fetchJSON(`/finance/api/tx/${id}/split/`,{method:'POST',body:{splits}}); App.toast('ذخیره شد','ok'); location.reload(); }catch(_){}
+      try{ await App.fetchJSON(`/finance/api/tx/${id}/split/`,{method:'POST',body:{splits}}); App.toast('ذخیره شد','ok'); App.closeModal(); reloadTx(); }catch(_){}
     };
   }
-  document.addEventListener('click', e=>{ const b=e.target.closest('.tx-split-btn'); if(b){ e.preventDefault(); e.stopPropagation(); openSplit(b.dataset.id, +b.dataset.amount||0); } });
 })();
 </script>
 {% endblock %}

@@ -151,7 +151,24 @@ payroll_create/edit, invoice_create/edit). فاکتور با فرمِ صفحه�
   فقط وقتی کاربر صریح `?range=`/`?from=&to=` بدهد اعمال می‌شود (`core.daterange.optional_range`،
   که `ctx` نوار را هم می‌سازد + چیپِ «همه»). `_optional_range`ِ محلیِ قدیمی حذف شد.
 
-## تراکنش‌ها (فیلتر/صفحه‌بندی)
+## تراکنش‌ها (فیلتر/صفحه‌بندی) — **همه اجاکسی، بدونِ رفرشِ صفحه**
+- **الگوی partial:** بدنهٔ نتیجه (بنر AI + جدول + صفحه‌بندی) در `templates/finance/_tx_results.html`
+  است؛ صفحهٔ کامل آن را در `<div id="tx-results">` include می‌کند و ویو با `?partial=1` **فقط
+  همان پارشال** را رندر می‌کند (`TransactionListView.get_template_names`). JSِ ته
+  `transactions.html`: `reloadTx(qs)` با `fetch(...&partial=1)` بدنه را swap می‌کند +
+  `history.pushState` (URL هم‌گام) + `RichSelect.init`/`App.initMoney` روی محتوای نو. **همهٔ
+  تعامل‌های جدول delegated روی `#tx-panel`ِ ثابت‌اند** (نه `#tx-sheet`ی که swap می‌شود) تا بعد
+  از هر swap زنده بمانند. فیلترها (پروژه/بانک/بابت/نوع/جستجوی زندهٔ debounce/مبلغ)، صفحه‌بندی،
+  و چیپِ «بدون پروژه/بابت» همه `reloadTx` را صدا می‌زنند. `filterQS()` بازهٔ تاریخِ نوارِ
+  بالا (`range/from/to`) را هم حفظ می‌کند. **تلهٔ رفع‌شده:** چیپِ «بدون پروژه/بابت» قبلاً
+  `href="?{% querystring %}"` بود که `??` دوتایی می‌ساخت و بارِ اول کار نمی‌کرد — حالا
+  toggleِ اجاکسیِ فیلدِ پنهانِ `#f-unassigned` است.
+- **پیشنهادِ AI (تأیید/رد/مشاهده) اجاکسیِ درجاست:** `✓` تأیید → PATCH + نشاندنِ پروژه در
+  `select` (`rs-refresh`) و افزودنِ چیپِ بابت درجا + حذفِ overlay (بدونِ رفرش)؛ `✕` فقط
+  overlay را می‌بندد؛ «تأییدِ همه» → POST + `reloadTx`. **آیکنِ چشم (`.ai-view`)** مودالِ
+  «رفرنس» را باز می‌کند — تراکنش‌های قبلیِ هم‌امضایی که این پیشنهاد از آن‌ها آمد
+  (`tx_suggest.suggestions_for` کلیدِ `refs`/`refs_json` را می‌دهد؛ در `data-refs` امن escape
+  می‌شود و JS مودال را می‌سازد).
 - پیش‌فرض: همه، **۱۰۰تایی صفحه‌بندی** (`Paginator`؛ `?page=`؛ `qs_params` سایرِ فیلترها را در لینکِ صفحه نگه می‌دارد).
 - **صفحه‌بندیِ شماره‌دار** (۱ ۲ ۳ … ۲۰): کامپوننتِ **مشترکِ** `templates/components/_pagination.html`
   (فقط به `page_obj` نیاز دارد؛ بقیه‌ی پارامترها با `{% querystring %}` حفظ می‌شوند؛ بازه از
