@@ -653,6 +653,8 @@ table.sheet tr:hover td{background:var(--row-alt)}
 .calx-body{display:flex;align-items:stretch;gap:0}
 .calx-grid-wrap{flex:1;min-width:0}
 .calx-undated{flex:none;width:250px;border-inline-start:1px solid var(--stroke-soft);display:flex;flex-direction:column;background:var(--fill)}
+/* وقتی توگلِ «بدون تاریخ» خاموش است، کلِ پنل مخفی شود (display:flex وگرنه [hidden] را خنثی می‌کند) */
+.calx-undated[hidden]{display:none}
 .calx-undated-h{padding:11px 14px;font-size:12.5px;font-weight:600;color:var(--text-dim);border-bottom:1px solid var(--stroke-soft)}
 .calx-qadd{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--stroke-soft)}
 .calx-qadd .input{flex:1;min-width:0;font-size:12.5px;padding:7px 9px}
@@ -666,7 +668,15 @@ table.sheet tr:hover td{background:var(--row-alt)}
 .calx-uitem .tk-av{width:18px;height:18px;font-size:9px;flex:none}
 .calx-uitem-tx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
 .calx-uitem-pj{flex:none;font-size:10px;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-@media(max-width:860px){.calx-body{flex-direction:column}.calx-undated{width:auto;border-inline-start:0;border-top:1px solid var(--stroke-soft)}.calx-undated-list{max-height:260px}}
+@media(max-width:860px){
+  .calx-body{flex-direction:column}
+  .calx-undated{width:auto;border-inline-start:0;border-top:1px solid var(--stroke-soft)}
+  .calx-undated-list{max-height:260px}
+  /* گریدِ تقویم افقی اسکرول می‌شود و سلول‌ها حداقل‌عرض می‌گیرند تا تسک‌ها خوانا بمانند */
+  .calx-grid-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .calx-grid-wrap .calx-dow,.calx-grid-wrap .calx-grid{grid-template-columns:repeat(7,minmax(104px,1fr));min-width:728px}
+  .calx-grid-wrap .cell{min-height:104px}
+}
 .cal-bar{display:flex;align-items:center;gap:9px;padding:13px 16px;border-bottom:1px solid var(--stroke-soft);flex-wrap:wrap}
 .cal-bar h3{font-size:15px;font-weight:500;min-width:110px;text-align:center}
 .nav-b{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;flex:none;
@@ -1474,6 +1484,9 @@ table.sheet td:not(.edit){padding:6px 9px}
 .topt{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:99px;border:1px solid var(--stroke-soft);background:var(--fill);color:var(--text-dim);cursor:pointer;font-size:12.5px;font-family:inherit;line-height:1}
 .topt:hover{border-color:var(--stroke);color:var(--text)}
 .topt.on{background:var(--primary-soft);border-color:var(--primary-ring);color:var(--primary-400)}
+.topt-ic{width:14px;height:14px;flex:none;display:block}
+.topt-count{background:var(--fill-strong);color:var(--text-dim);border-radius:99px;padding:0 6px;font-size:10.5px;font-weight:700;font-variant-numeric:tabular-nums}
+.topt.on .topt-count{background:rgba(99,102,241,.22);color:var(--primary-400)}
 .topt-sec{margin-top:10px}
 
 /* جمعِ ساعتِ کاریِ سلولِ تقویم (کنارِ تعدادِ تسک) */

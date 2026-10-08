@@ -17,6 +17,17 @@
     return `<div class="field" data-f="${id}"><label>${label}</label>${inner}</div>`;
   }
 
+  // ── آیکن‌های SVG (هم‌سبکِ بقیهٔ سایت: فونت‌اوسام، fill=currentColor) برای چیپ‌های تولبارِ مودال ──
+  const svg = (p, vb) => `<svg class="topt-ic" viewBox="${vb || '0 0 512 512'}" aria-hidden="true"><path fill="currentColor" d="${p}"/></svg>`;
+  const ICON = {
+    description: svg('M16 64C16 46.3 30.3 32 48 32l416 0c17.7 0 32 14.3 32 32s-14.3 32-32 32L48 96C30.3 96 16 81.7 16 64zm0 128c0-17.7 14.3-32 32-32l288 0c17.7 0 32 14.3 32 32s-14.3 32-32 32L48 224c-17.7 0-32-14.3-32-32zM16 320c0-17.7 14.3-32 32-32l416 0c17.7 0 32 14.3 32 32s-14.3 32-32 32L48 352c-17.7 0-32-14.3-32-32zm0 128c0-17.7 14.3-32 32-32l288 0c17.7 0 32 14.3 32 32s-14.3 32-32 32L48 480c-17.7 0-32-14.3-32-32z'),
+    checklist: svg('M152.1 38.2c9.9 8.9 10.7 24 1.8 33.9l-72 80c-4.4 4.9-10.6 7.8-17.2 7.9s-12.9-2.4-17.6-7L7 113C-2.3 103.6-2.3 88.4 7 79s24.6-9.4 33.9 0l22.1 22.1 55.1-61.2c8.9-9.9 24-10.7 33.9-1.8zm0 160c9.9 8.9 10.7 24 1.8 33.9l-72 80c-4.4 4.9-10.6 7.8-17.2 7.9s-12.9-2.4-17.6-7L7 273c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l22.1 22.1 55.1-61.2c8.9-9.9 24-10.7 33.9-1.8zM224 96c0-17.7 14.3-32 32-32l224 0c17.7 0 32 14.3 32 32s-14.3 32-32 32l-224 0c-17.7 0-32-14.3-32-32zm0 160c0-17.7 14.3-32 32-32l224 0c17.7 0 32 14.3 32 32s-14.3 32-32 32l-224 0c-17.7 0-32-14.3-32-32zM160 416c0-17.7 14.3-32 32-32l288 0c17.7 0 32 14.3 32 32s-14.3 32-32 32l-288 0c-17.7 0-32-14.3-32-32zM48 384a48 48 0 1 1 0 96 48 48 0 1 1 0-96z'),
+    recur: svg('M0 224c0 17.7 14.3 32 32 32s32-14.3 32-32c0-53 43-96 96-96l160 0 0 32c0 12.9 7.8 24.6 19.8 29.6s25.7 2.2 34.9-6.9l64-64c12.5-12.5 12.5-32.8 0-45.3l-64-64c-9.2-9.2-22.9-11.9-34.9-6.9S320 19.1 320 32l0 32L160 64C71.6 64 0 135.6 0 224zm512 64c0-17.7-14.3-32-32-32s-32 14.3-32 32c0 53-43 96-96 96l-160 0 0-32c0-12.9-7.8-24.6-19.8-29.6s-25.7-2.2-34.9 6.9l-64 64c-12.5 12.5-12.5 32.8 0 45.3l64 64c9.2 9.2 22.9 11.9 34.9 6.9s19.8-16.6 19.8-29.6l0-32 160 0c88.4 0 160-71.6 160-160z'),
+    report: svg('M512 240c0 114.9-114.6 208-256 208-37.1 0-72.3-6.4-104.1-17.9-11.9 8.7-31.3 20.6-54.3 30.6C73.6 471.1 44.7 480 16 480c-6.5 0-12.3-3.9-14.8-9.9s-1.1-12.8 3.4-17.4l.3-.3c.3-.3 .7-.7 1.3-1.4 1.1-1.2 2.8-3.1 4.9-5.7 4.1-5 9.6-12.4 15.2-21.6 10-16.6 19.5-38.4 21.4-62.9C17.7 326.8 0 285.1 0 240 0 125.1 114.6 32 256 32s256 93.1 256 208z'),
+    review: svg('M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z'),
+    history: svg('M75 75L41 41C25.9 25.9 0 36.6 0 57.9L0 168c0 13.3 10.7 24 24 24l110.1 0c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C158.6 496.9 205.5 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24l0 104c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65 0-94.1c0-13.3-10.7-24-24-24z'),
+  };
+
   // دراپ‌داونِ «ماه گزارش» — از ماه‌های تعریف‌شده در تنظیمات (cfg.reportPeriods، value='سال-ماه').
   // مقدارِ فعلیِ تسک اگر در فهرست نبود (دادهٔ قدیمی) خودش هم اضافه می‌شود تا گم نشود.
   function reportPeriodSelect(t) {
@@ -117,16 +128,19 @@
           ${field('estimate_minutes', 'تخمین (H:MM)', `<input id="f-estimate_minutes" class="input" dir="ltr" placeholder="0:00" value="${t.estimate_minutes ? fmtMin(t.estimate_minutes) : ''}">`)}
           ${field('report_month', 'ماه گزارش', reportPeriodSelect(t))}
         </div>
-        <label class="tm-review"><input type="checkbox" id="f-needs-review" ${needsReviewDefault ? 'checked' : ''}> نیاز به بازبینی</label>
+        <!-- چک‌باکسِ مخفیِ «نیاز به بازبینی» (وضعیت را کنترل می‌کند)؛ UI آن چیپِ تولبار است -->
+        <input type="checkbox" id="f-needs-review" ${needsReviewDefault ? 'checked' : ''} hidden>
         <!-- فیلدهای سفارشیِ نوع (داینامیک، فقط اگر نوع داشته باشد) -->
         <div id="custom-fields" style="display:none"></div>
         ${recurBannerHtml(t)}
-        <!-- تولبارِ بخش‌های اختیاری (مثلِ گوگل‌کلندر): با کلیک باز می‌شوند -->
+        <!-- تولبارِ بخش‌های اختیاری + کلیدهای بازبینی/تاریخچه (آیکنِ SVG، مثلِ گوگل‌کلندر) -->
         <div class="topt-bar" id="topt-bar">
-          <button type="button" class="topt" data-sec="description">📝 توضیحات</button>
-          <button type="button" class="topt" data-sec="checklist">☑️ چک‌لیست</button>
-          ${isNew ? '<button type="button" class="topt" data-sec="recur">🔁 تکرار</button>' : ''}
-          ${t.id ? '<button type="button" class="topt" data-sec="report">💬 گزارش کار</button>' : ''}
+          <button type="button" class="topt" data-sec="description">${ICON.description} توضیحات</button>
+          <button type="button" class="topt" data-sec="checklist">${ICON.checklist} چک‌لیست</button>
+          ${isNew ? `<button type="button" class="topt" data-sec="recur">${ICON.recur} تکرار</button>` : ''}
+          ${t.id ? `<button type="button" class="topt" data-sec="report">${ICON.report} گزارش کار</button>` : ''}
+          <button type="button" class="topt topt-rev" data-rev>${ICON.review} نیاز به بازبینی</button>
+          ${t.id ? `<button type="button" class="topt" data-sec="history">${ICON.history} تاریخچه <span class="topt-count">${String((t.history || []).length)}</span></button>` : ''}
         </div>
         <div id="sec-description" class="topt-sec" style="display:none">
           <textarea id="f-description" class="rich-editor" rows="4">${esc(t.description)}</textarea>
@@ -143,8 +157,8 @@
             <div id="report-list" class="report-list"></div>
           </div>
         </div>` : ''}
+        ${t.id ? `<div id="sec-history" class="topt-sec" style="display:none"><div class="hist-list">${historyListHtml(t)}</div></div>` : ''}
         ${t.id ? '<div id="kpi-box" style="display:none;margin-top:12px"></div>' : ''}
-        ${historyHtml(t)}
       </div>
     </div>
     <div class="modal-f">
@@ -313,18 +327,15 @@
     return `<div class="fixnote-box"><div class="fixnote-h">⚠ موارد نیاز به اصلاح</div>${ns.map(item).join('')}${more}</div>`;
   }
 
-  // ── تاریخچهٔ تسک (آیکنِ کوچک پایینِ مودال، جمع‌شونده) ──
-  function historyHtml(t) {
-    if (!t || !t.id) return '';
-    const hs = t.history || [];
+  // ── تاریخچهٔ تسک (داخلِ بخشِ جمع‌شونده‌ی تولبار؛ تعداد در چیپ) ──
+  function historyListHtml(t) {
+    const hs = (t && t.history) || [];
     const item = (h) => {
       const ch = Object.keys(h.changes || {}).map((k) =>
         `<div class="hist-ch"><b>${esc(k)}</b>: <span class="hist-old">${esc(h.changes[k][0])}</span> ← <span class="hist-new">${esc(h.changes[k][1])}</span></div>`).join('');
       return `<div class="hist-item"><div class="hist-meta"><span class="hist-badge hist-${h.action}">${esc(h.action_label)}</span> · ${esc(h.user)} · ${esc(h.when)}</div>${ch}</div>`;
     };
-    const body = hs.length ? hs.map(item).join('') : '<div class="zero" style="padding:8px">تاریخچه‌ای نیست</div>';
-    const faNum = String(hs.length);
-    return `<div class="hist-box"><button type="button" class="hist-toggle" id="hist-toggle">🕐 تاریخچهٔ تسک (${faNum})</button><div class="hist-list" id="hist-list" style="display:none">${body}</div></div>`;
+    return hs.length ? hs.map(item).join('') : '<div class="zero" style="padding:8px">تاریخچه‌ای نیست</div>';
   }
 
   // ── فیلدِ کلمهٔ کلیدی/مترادف: تک‌فیلدِ ساده، جدا با «-»، جداکننده رنگی ──
@@ -568,6 +579,8 @@
     // دستی، گزینه‌های وضعیت (انجام‌شده ⇄ تکمیل) دوباره ساخته می‌شوند.
     const needsReviewBox = document.getElementById('f-needs-review');
     const statusSel = document.getElementById('f-status');
+    const revChip = document.querySelector('.topt-rev');
+    const syncRevChip = () => { if (revChip) revChip.classList.toggle('on', needsReviewBox.checked); };
     const rebuildStatus = () => {
       const cur = statusSel.value;
       statusSel.innerHTML = statusOptions(cur, needsReviewBox.checked);
@@ -575,9 +588,11 @@
     };
     document.getElementById('f-assignee').addEventListener('change', (e) => {
       needsReviewBox.checked = colleagueNeedsReview(e.target.value);
-      rebuildStatus();
+      rebuildStatus(); syncRevChip();
     });
-    needsReviewBox.addEventListener('change', rebuildStatus);
+    // چیپِ «نیاز به بازبینی» در تولبار = تاگلِ همان چک‌باکسِ مخفی
+    if (revChip) revChip.onclick = () => { needsReviewBox.checked = !needsReviewBox.checked; rebuildStatus(); syncRevChip(); };
+    syncRevChip();
     const loaded = data.custom || {};
     // با عوض‌کردنِ نوع، مقادیرِ فعلیِ فیلدها را نگه دار و روی مقادیرِ اولیه merge کن؛
     // فیلدهایی که کلیدِ یکسان در نوعِ جدید دارند (مثلاً «کلمات کلیدی» در انتشار↔آپدیت)
@@ -600,11 +615,6 @@
     if (histBtn) histBtn.onclick = () => {
       document.querySelectorAll('[data-fix-item]').forEach((el, i) => { if (i > 0) el.style.display = ''; });
       histBtn.style.display = 'none';
-    };
-    const histToggle = document.getElementById('hist-toggle');  // تاریخچهٔ تسک
-    if (histToggle) histToggle.onclick = () => {
-      const l = document.getElementById('hist-list');
-      l.style.display = l.style.display === 'none' ? '' : 'none';
     };
     wireRecur();               // نوار تکرار (تسک جدید)
     wireChecklist();           // چک‌لیستِ عمومی

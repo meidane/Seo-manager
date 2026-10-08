@@ -95,6 +95,19 @@
       bindUndatedDnd();
     }
 
+    // موبایل: در اولین باز شدن، اسکرولِ افقیِ گرید را روی «امروز» ببر تا روزهای جاری دیده شوند
+    let didScroll = false;
+    function maybeScrollToToday() {
+      if (didScroll) return;
+      const wrap = root.querySelector('.calx-grid-wrap');
+      const today = grid.querySelector('.cell.today');
+      if (!wrap || !today) return;
+      didScroll = true;
+      if (wrap.scrollWidth <= wrap.clientWidth + 4) return;  // بدونِ اسکرولِ افقی (دسکتاپ)
+      const wr = wrap.getBoundingClientRect(), tr = today.getBoundingClientRect();
+      wrap.scrollLeft += (tr.left + tr.width / 2) - (wr.left + wr.width / 2);
+    }
+
     let seq = 0;
     async function load() {
       const s = ++seq;
@@ -105,6 +118,7 @@
         grid.innerHTML = d.days.map((c) => cellHtml(c, canCreate)).join('');
         syncNav(); bindGridDnd();
         if (showUndated) renderUndated(d.undated);
+        maybeScrollToToday();
       } catch (_) {}
     }
 
@@ -116,7 +130,12 @@
     if (yearSel) yearSel.onchange = () => { year = +yearSel.value; load(); };
     root.querySelectorAll('[data-cf]').forEach((el) => el.addEventListener('change', load));
     const uToggle = root.querySelector('[data-cal-undated-toggle]');
-    if (uToggle) uToggle.onclick = () => { showUndated = !showUndated; if (panel) panel.hidden = !showUndated; load(); };
+    if (uToggle) uToggle.onclick = () => {
+      showUndated = !showUndated;
+      uToggle.classList.toggle('on', showUndated);
+      if (panel) panel.hidden = !showUndated;   // CSS: .calx-undated[hidden]{display:none}
+      load();
+    };
 
     // ── کلیکِ سلول: دکمهٔ + / باز-بستِ «N مورد دیگر» ──
     grid.addEventListener('click', (e) => {
