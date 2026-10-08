@@ -83,7 +83,7 @@ class TaskListView(LoginRequiredMixin, TemplateView):
                 ctx['box_deleted'] = list(del_qs.order_by('-deleted_at')[:100])
         visible_projects = Project.objects.filter(id__in=ids) if ids is not None else Project.objects.all()
         ctx['projects'] = visible_projects.filter(status=Project.ACTIVE)
-        ctx['colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)
+        ctx['colleagues'] = Colleague.task_manager_qs()  # فیلترِ مسئول — بدونِ غیرفعال‌های تسک‌منیجر
         # همهٔ پروژه‌ها/همکاران برای دراپ‌داون‌های ویرایشِ زندهٔ جدول (نه فقط فعال)
         ctx['all_projects'] = visible_projects.order_by('status', 'name')
         ctx['all_colleagues'] = Colleague.objects.order_by('status', 'full_name')

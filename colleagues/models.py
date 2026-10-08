@@ -82,6 +82,14 @@ class Colleague(TimeStampedModel):
     def __str__(self):
         return self.full_name
 
+    @classmethod
+    def task_manager_qs(cls):
+        """منبعِ واحدِ همکارانِ تسک‌منیجر: فعال و **بدونِ** `hide_in_task_manager`.
+        هر دراپ‌داونِ مسئول/همکار در تسک‌منیجر (مودالِ تسک، فیلترِ لیست، گزارش، تقویم) از
+        همین می‌خواند — افرادی که فقط برای حسابداری/حقوق ثبت شده‌اند اینجا نمی‌آیند (ولی در
+        دراپ‌داون‌های مالی/عضویتِ پروژه هنوز هستند)."""
+        return cls.objects.filter(status=cls.ACTIVE).exclude(hide_in_task_manager=True)
+
     def get_absolute_url(self):
         return reverse('colleagues:detail', args=[self.pk])
 

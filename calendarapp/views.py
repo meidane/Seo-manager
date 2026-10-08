@@ -130,8 +130,7 @@ def calendar_base_context(request):
         'months': list(enumerate(MONTH_NAMES, 1)),   # [(1,'فروردین'),…]
         'years': list(range(jyear - 3, jyear + 4)),   # بازهٔ انتخابِ سال
         'projects': visible.filter(status=Project.ACTIVE),
-        # افرادِ غیرفعال‌شده در تسک‌منیجر از دراپ‌داونِ همکار حذف می‌شوند
-        'colleagues': Colleague.objects.filter(status=Colleague.ACTIVE).exclude(hide_in_task_manager=True),
+        'colleagues': Colleague.task_manager_qs(),  # غیرفعال‌شده‌های تسک‌منیجر حذف
         'task_types': TaskTypeDef.objects.filter(is_active=True),
     }
 

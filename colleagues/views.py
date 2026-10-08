@@ -103,7 +103,8 @@ class ColleagueListView(LoginRequiredMixin, DateRangeMixin, ListView):
             words=Sum('tasks__word_count', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end)) & tq),
             minutes=Sum('tasks__spent_minutes', filter=Q(tasks__status=Task.DONE, tasks__done_date__range=(start, end)) & tq),
             overdue=Count('tasks', filter=Q(tasks__status__in=[Task.TODO, Task.DOING], tasks__planned_date__lt=date.today()) & tq),
-        ).order_by('status', 'full_name')  # ترتیب صریح برای صفحه‌بندیِ پایدار
+        # ترتیب صریح برای صفحه‌بندیِ پایدار: فعال‌ها بالا، سپس غیرفعال‌شده‌های تسک‌منیجر پایین‌تر
+        ).order_by('status', 'hide_in_task_manager', 'full_name')
 
     def get_context_data(self, **kwargs):
         from collections import defaultdict

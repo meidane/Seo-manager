@@ -121,7 +121,7 @@ class ReportDetailView(LoginRequiredMixin, DetailView):
         ctx['keywords'] = list(self.object.keywords.all())
         ctx['stats'] = self.object.stats()
         from colleagues.models import Colleague
-        ctx['colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)
+        ctx['colleagues'] = Colleague.task_manager_qs()  # مسئولِ آیتم — بدونِ غیرفعال‌های تسک‌منیجر
         # ویجتِ گزارشِ مالی: پروژهٔ فاکتورِ متصل (اگر هست) وگرنه پروژهٔ گزارش — تا آنچه در
         # کارتِ فاکتور می‌بیند با گردشِ حساب یکی باشد (فاکتورِ cross-projectـ متصل هم دیده شود).
         ctx['ledger_project_id'] = (self.object.invoice.project_id
@@ -320,7 +320,7 @@ def add_manual(request, pk):
     )
     # ردیفِ رندرشده را برمی‌گردانیم تا فرانت بدونِ رفرش اضافه‌اش کند (اجاکسی)
     html = render_to_string('reports/_item_row.html', {
-        'it': item, 'colleagues': Colleague.objects.filter(status=Colleague.ACTIVE)})
+        'it': item, 'colleagues': Colleague.task_manager_qs()})
     return JsonResponse({'ok': True, 'id': item.id, 'html': html})
 
 

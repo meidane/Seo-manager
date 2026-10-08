@@ -29,7 +29,7 @@ class ColleagueForm(forms.ModelForm):
         fields = [
             'full_name', 'avatar', 'color', 'phone', 'email',
             'status', 'description', 'manager', 'needs_review',
-            'worktracker_username',
+            'hide_in_task_manager', 'worktracker_username',
         ]
 
     def __init__(self, *args, **kwargs):
@@ -54,6 +54,7 @@ class ColleagueForm(forms.ModelForm):
         self.fields['manager'].queryset = managers
         self.fields['manager'].required = False
         self.fields['needs_review'].required = False
+        self.fields['hide_in_task_manager'].required = False
         self.fields['description'].widget.attrs.update({'class': 'rich-editor'})
 
     def clean_description(self):
