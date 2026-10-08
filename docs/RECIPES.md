@@ -14,7 +14,7 @@
 | سینگل همکار | `/colleagues/<id>/` | `ColleagueDetailView` | `colleagues/detail.html` | calendar-embed |
 | تسک‌ها | `/tasks/` | `tasks/views.py:TaskListView` | `tasks/list.html` | tasks.js (سراسری) |
 | بازبینی | `/tasks/review/` | `TaskReviewView` | `tasks/review.html` | inline |
-| تقویم | `/calendar/` | `calendarapp/views.py` | `calendarapp/index.html`+`_cells.html` | calendar-page.js |
+| تقویم | `/calendar/` | `calendarapp/views.py` | `calendarapp/index.html`+`_calendar.html` | calendar.js |
 | گزارش‌ها | `/reports/` | `reports/views.py` | `reports/{list,detail,public,_groups}.html` | inline |
 | انواع تسک | `/settings/task-types/` | `tasks/type_views.py` | `settings/task_type*.html` | inline |
 | تعطیلات | `/settings/holidays/` | `core/views.py` | `settings/holidays.html` | — |

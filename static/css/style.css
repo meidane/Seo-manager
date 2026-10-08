@@ -1461,11 +1461,20 @@ table.sheet td:not(.edit){padding:6px 9px}
 .day-head b{color:var(--text);font-size:14px}
 .day-head .day-date{color:var(--text-faint);font-size:11px}
 
-/* ═══ مودالِ تسک: تمام‌عرض، دوستونی، ارتفاعِ زیاد (کمترین اسکرول) ═══ */
-.modal:has(.tmodal){max-width:1080px;width:96vw;height:min(92vh,920px)}
-.tmodal-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:20px;align-items:start}
-.tmodal-right{border-inline-start:1px solid var(--stroke-soft);padding-inline-start:20px}
-@media(max-width:860px){.tmodal-grid{grid-template-columns:1fr}.tmodal-right{border-inline-start:0;padding-inline-start:0}}
+/* ═══ مودالِ تسک: تک‌ستونه و خلوت (الهام از گوگل‌کلندر؛ بخش‌های اختیاری با تولبار باز می‌شوند) ═══ */
+.modal:has(.tmodal){max-width:720px;width:94vw;height:auto;max-height:92vh}
+.tmodal-col{display:flex;flex-direction:column}
+.tmodal .tm-title{font-size:15px;font-weight:600;padding:8px 10px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+@media(max-width:560px){.grid3{grid-template-columns:1fr}}
+.tm-review{display:flex;align-items:center;gap:8px;margin:2px 0 6px;cursor:pointer;font-size:12.5px;color:var(--text-dim)}
+.tm-review input{flex:none}
+/* تولبارِ بخش‌های اختیاری */
+.topt-bar{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 2px;padding-top:12px;border-top:1px solid var(--stroke-soft)}
+.topt{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:99px;border:1px solid var(--stroke-soft);background:var(--fill);color:var(--text-dim);cursor:pointer;font-size:12.5px;font-family:inherit;line-height:1}
+.topt:hover{border-color:var(--stroke);color:var(--text)}
+.topt.on{background:var(--primary-soft);border-color:var(--primary-ring);color:var(--primary-400)}
+.topt-sec{margin-top:10px}
 
 /* جمعِ ساعتِ کاریِ سلولِ تقویم (کنارِ تعدادِ تسک) */
 .cnt-h{font-size:9.5px;color:var(--primary-400);background:var(--primary-soft);border-radius:99px;padding:1px 6px;margin-inline-start:3px;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -1642,15 +1651,13 @@ input[type=checkbox]:disabled{opacity:.5;cursor:default}
 .gt-x:hover{color:var(--danger)}
 .goal-row{cursor:pointer}
 
-/* مودالِ تسک: فشرده و مینیمال تا ۴ستون جا شود، بدونِ سرریزِ دراپ‌داون */
-.modal:has(.tmodal){max-width:1040px}
-.tmodal-grid{gap:16px}
-.tmodal-right{padding-inline-start:16px}
+/* مودالِ تسک: فشرده و مینیمال (تک‌ستونه) بدونِ سرریزِ دراپ‌داون */
+.modal:has(.tmodal){max-width:720px}
 .tmodal .field{margin-bottom:9px;min-width:0}
 .tmodal .field>label{font-size:11px;color:var(--text-dim);margin-bottom:3px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tmodal .input,.tmodal select,.tmodal textarea{font-size:12.5px;padding:6px 8px;min-width:0;max-width:100%;width:100%}
-.tmodal .grid4,.tmodal .grid2{gap:8px}
-.tmodal .grid4>.field,.tmodal .grid2>.field{min-width:0}
+.tmodal .grid4,.tmodal .grid3,.tmodal .grid2{gap:8px}
+.tmodal .grid4>.field,.tmodal .grid3>.field,.tmodal .grid2>.field{min-width:0}
 .tmodal .rs{min-width:0;max-width:100%;width:100%}
 .tmodal .rs-btn{width:100%;min-width:0;max-width:100%;font-size:12.5px;padding:5px 8px;overflow:hidden}
 .tmodal .rs-btn>*{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
