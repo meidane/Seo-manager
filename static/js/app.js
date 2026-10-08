@@ -115,8 +115,9 @@
   function openModal(html, opts) {
     const root = ensureModalRoot();
     const box = root.querySelector('.modal');
-    // کلاسِ عرض هر بار ری‌ست می‌شود تا مودالِ عادیِ بعدی پهن نماند
-    box.className = 'modal' + (opts && opts.wide ? ' modal-wide' : '');
+    // کلاسِ عرض هر بار ری‌ست می‌شود تا مودالِ عادیِ بعدی پهن نماند — ولی `glass`
+    // (پس‌زمینه/بوردر/سایهٔ مودال) باید بماند، وگرنه مودال بی‌پس‌زمینه و شفاف می‌شود.
+    box.className = 'modal glass' + (opts && opts.wide ? ' modal-wide' : '');
     box.innerHTML = html;
     root.dataset.dirty = '';
     root.classList.add('open');

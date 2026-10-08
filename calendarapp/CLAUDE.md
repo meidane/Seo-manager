@@ -20,6 +20,13 @@
   `quickadd`) → `calendar_quick_add` (شخصی=پروژهٔ شخصی، وگرنه پروژهٔ فیلتر/`quick-project`).
 - **اجاکسیِ کامل:** ساخت/ویرایش/حذفِ تسک از مودال، به‌جای رفرشِ صفحه `Calendar.refreshAll()`
   را صدا می‌زند (در `tasks.js`، اگر `Calendar.any()`)، پس **فیلترِ فعال نمی‌پرد**.
+- **مخفی‌شدنِ پنلِ بدون‌تاریخ:** توگلِ خاموش `panel.hidden` می‌گذارد؛ چون `.calx-undated`
+  `display:flex` دارد، قاعدهٔ `.calx-undated[hidden]{display:none}` لازم است وگرنه پنل
+  مخفی نمی‌شود (باگِ رفع‌شده).
+- **موبایل (`≤860px`):** گرید در `.calx-grid-wrap` افقی اسکرول می‌شود و سلول‌ها
+  `minmax(104px,…)` (min-width:728px) می‌گیرند تا تسک‌ها خوانا بمانند؛ `calendar.js:
+  maybeScrollToToday` در اولین لود اسکرولِ افقی را روی «امروز» می‌برد (RTL-safe با delta‌ی
+  `getBoundingClientRect`).
 - `views.py` — `CalendarView`، `calendar_api` (ناوبری AJAX + فیلتر project/assignee/type_def +
   `?undated=1` برای لیستِ بدون‌تاریخ)، `calendar_quick_add` (ثبتِ سریعِ بدون‌تاریخ)،
   `picker_api` (فقط پرچم تعطیلی/امروز برای دیت‌پیکر)، `workload_api` (بار کاری همکار برای مودال).
