@@ -1,6 +1,6 @@
 {% load seo_extras %}
 <tr data-row="{{ it.id }}">
-  <td><span contenteditable="true" data-item-title="{{ it.id }}" style="outline:none">{{ it.eff_title }}</span>
+  <td><span class="rep-grip" draggable="true" title="جابه‌جایی">⠿</span><span contenteditable="true" data-item-title="{{ it.id }}" style="outline:none">{{ it.eff_title }}</span>
     {% if it.eff_url %}<a class="lnk it-linkicon" href="{{ it.eff_url }}" target="_blank" rel="noopener" title="لینک">↗</a>{% endif %}
     {% if it.task and it.task.status != 'done' %}<span class="tag t-warn" title="این تسک هنوز انجام‌نشده — فقط برای خودِ ما، در گزارشِ مشتری دیده نمی‌شود">⏳ {{ it.task.get_status_display }}</span>{% endif %}</td>
   <td><input class="input cf-inline" dir="ltr" style="max-width:64px;text-align:center" data-item-est="{{ it.id }}" value="{% if it.eff_estimate %}{{ it.eff_estimate|hoursmin }}{% endif %}" placeholder="0:00" title="ساعت:دقیقه"></td>

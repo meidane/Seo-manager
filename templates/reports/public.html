@@ -60,7 +60,9 @@ td a:hover{text-decoration:underline}
 .kw-table td:last-child,.kw-table th:last-child{text-align:center}
 /* فاکتور: فقط شرح + مبلغ + جمعِ کل */
 .inv-table td.num-c,.inv-table th:last-child{text-align:left;font-variant-numeric:tabular-nums}
-.inv-table tfoot td{border-top:2px solid var(--stroke);font-weight:800;font-size:14px;padding-top:13px}
+.inv-table tfoot td{font-weight:800;font-size:14px}
+.inv-table tfoot tr.inv-sub td{border-top:1px solid var(--stroke);font-weight:600;font-size:12.5px;padding:7px 10px;color:var(--dim)}
+.inv-table tfoot tr:not(.inv-sub) td{border-top:2px solid var(--stroke);padding-top:12px}
 .inv-grand-v{color:var(--ok)}
 .inv-grand-l{color:var(--text)}
 /* بازهٔ تاریخ در تیترِ فاکتور، سمتِ چپ */
@@ -185,7 +187,15 @@ td a:hover{text-decoration:underline}
           </tr>
         {% endfor %}
       </tbody>
-      <tfoot><tr><td class="inv-grand-l">جمعِ کل</td><td class="num-c inv-grand-v">{{ invoice_ctx.invoice.grand_total|money }} ریال</td></tr></tfoot>
+      <tfoot>
+        {% if prev_debt != None %}
+          <tr class="inv-sub"><td>جمعِ این فاکتور</td><td class="num-c">{{ invoice_ctx.invoice.grand_total|money }} ریال</td></tr>
+          <tr class="inv-sub"><td>{% if prev_debt < 0 %}بستانکاری از قبل{% else %}مانده از قبل (بدهیِ قبلی){% endif %}</td><td class="num-c">{{ prev_debt|money }} ریال</td></tr>
+          <tr><td class="inv-grand-l">جمعِ نهایی (قابلِ پرداخت)</td><td class="num-c inv-grand-v">{{ final_due|money }} ریال</td></tr>
+        {% else %}
+          <tr><td class="inv-grand-l">جمعِ کل</td><td class="num-c inv-grand-v">{{ invoice_ctx.invoice.grand_total|money }} ریال</td></tr>
+        {% endif %}
+      </tfoot>
     </table>
   {% endif %}
 

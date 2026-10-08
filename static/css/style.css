@@ -1133,6 +1133,20 @@ select.tx-inline{cursor:pointer;max-width:150px}
 
 /* ── صفحه‌ی ادیتِ گزارش — فاصله‌ی یکدست بینِ بخش‌ها ── */
 [data-report] > section{margin-bottom:14px}
+/* نوارِ فشردهٔ «هزینهٔ تولید محتوا» زیرِ فاکتور */
+.cc-box{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;margin-top:12px;padding:8px 12px;
+  border:1px dashed var(--stroke-soft);border-radius:var(--r-sm);background:var(--fill);
+  font-size:11.5px;color:var(--text-faint)}
+.cc-box b{color:var(--text-dim)}
+.cc-box .cc-lab{font-weight:600;color:var(--text-dim)}
+.cc-box .cc-total{margin-inline-start:auto}
+.cc-box .cc-total b{color:#6FE3C4}
+/* دستگیرهٔ درگِ ردیف‌های گزارش (کلمات کلیدی + ردیف‌های تسک) */
+.rep-grip{display:inline-block;cursor:grab;color:var(--text-faint);margin-inline-end:6px;
+  user-select:none;font-size:13px;vertical-align:middle}
+.rep-grip:active{cursor:grabbing}
+tr.dragging{opacity:.45}
+tr.dragging td{background:var(--fill)}
 /* ردیف‌های «ایمپورت تسک» — گرید تا نوع/عنوان/مسئول در ستون‌های هم‌راستا بیایند */
 [data-report] .pull-all{display:flex;align-items:center;gap:8px;padding:8px 8px;margin-bottom:6px;
   cursor:pointer;border-radius:var(--r-sm);background:var(--fill);font-size:12.5px}

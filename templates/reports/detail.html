@@ -83,6 +83,16 @@
           <span>جمعِ کل: <b style="color:#6FE3C4">{{ invoice_ctx.invoice.grand_total|money }} ریال</b></span>
         </div>
       {% endif %}
+
+      {# ── هزینهٔ تولید محتوا (فشرده، زیرِ فاکتور) ── #}
+      {% if stats.content_cost.hourly or stats.content_cost.word_rate %}
+      <div class="cc-box" title="ساعتِ آیتم‌های انتشار/آپدیت/رپورتاژ × نرخِ ساعتی + تعدادِ کلمه × نرخِ کلمه؛ جمع به مضربِ ۵۰۰٬۰۰۰ رند می‌شود">
+        <span class="cc-lab">هزینهٔ تولید محتوا</span>
+        <span>زمان: <b>{{ stats.content_cost.minutes|hoursmin }}</b> × {{ stats.content_cost.hourly|money }} = {{ stats.content_cost.time|money }}</span>
+        <span>کلمه: <b>{{ stats.content_cost.words|fa_digits }}</b> × {{ stats.content_cost.word_rate|money }} = {{ stats.content_cost.word|money }}</span>
+        <span class="cc-total">جمع: <b>{{ stats.content_cost.total|money }} ریال</b></span>
+      </div>
+      {% endif %}
     </div>
   </section>
 
@@ -101,7 +111,7 @@
       <table class="tsheet" id="kw-table"><thead><tr><th>کلمهٔ کلیدی</th><th style="width:130px">جایگاه</th><th style="width:44px"></th></tr></thead>
         <tbody id="kw-body">
           {% for kw in keywords %}
-          <tr data-kw="{{ kw.id }}"><td><input class="input cf-inline kw-word" value="{{ kw.keyword }}"></td>
+          <tr data-kw="{{ kw.id }}"><td><span class="rep-grip" draggable="true" title="جابه‌جایی">⠿</span><input class="input cf-inline kw-word" value="{{ kw.keyword }}" style="width:calc(100% - 22px)"></td>
             <td><input class="input cf-inline kw-pos" dir="ltr" value="{{ kw.position }}"></td>
             <td><button class="mini kw-del" type="button">×</button></td></tr>
           {% endfor %}
@@ -128,21 +138,6 @@
       {% endfor %}
     </div>
   </section>
-
-  {# ── هزینهٔ تولید محتوا (نرخِ مؤثر: اسنپ‌شاتِ گزارش یا نرخِ فعلیِ پروژه) ── #}
-  {% if stats.content_cost.hourly or stats.content_cost.word_rate %}
-  <section class="card glass">
-    <div class="card-h"><h3>هزینهٔ تولید محتوا</h3>
-      <div class="side-c"><span class="tag t-mute" title="ساعتِ آیتم‌های انتشار/آپدیت/رپورتاژ × نرخِ ساعتی + تعدادِ کلمه × نرخِ کلمه">انتشار/آپدیت/رپورتاژ</span></div>
-    </div>
-    <div style="padding:12px 16px;display:flex;gap:26px;flex-wrap:wrap;font-size:13px">
-      <span>زمان: <b>{{ stats.content_cost.minutes|hoursmin }}</b> × {{ stats.content_cost.hourly|money }} = <b style="color:var(--info)">{{ stats.content_cost.time|money }}</b></span>
-      <span>کلمه: <b>{{ stats.content_cost.words|fa_digits }}</b> × {{ stats.content_cost.word_rate|money }} = <b style="color:var(--info)">{{ stats.content_cost.word|money }}</b></span>
-      <span>جمعِ تولید محتوا: <b style="color:#6FE3C4">{{ stats.content_cost.total|money }} ریال</b></span>
-    </div>
-    <div style="padding:0 16px 12px;color:var(--text-faint);font-size:11.5px">اگر فاکتوری به این گزارش وصل باشد، با «ذخیرهٔ گزارش» این مبلغ به‌صورتِ یک ردیفِ «تولید محتوا» در فاکتور ساخته/به‌روزرسانی می‌شود (۰ = ردیفی اضافه/به‌روز نمی‌شود).</div>
-  </section>
-  {% endif %}
 
   {# ── ایمپورتِ تسک از پروژه ── #}
   <section class="card glass">
@@ -313,7 +308,7 @@ document.getElementById('r-settings').onclick=()=>{
   document.getElementById('kw-add').onclick=async()=>{
     const d=await App.fetchJSON(`/reports/api/${RID}/keywords/`,{method:'POST',body:{keyword:'',position:''}});
     const tr=document.createElement('tr'); tr.dataset.kw=d.id;
-    tr.innerHTML=`<td><input class="input cf-inline kw-word" value=""></td><td><input class="input cf-inline kw-pos" dir="ltr" value=""></td><td><button class="mini kw-del" type="button">×</button></td>`;
+    tr.innerHTML=`<td><span class="rep-grip" draggable="true" title="جابه‌جایی">⠿</span><input class="input cf-inline kw-word" value="" style="width:calc(100% - 22px)"></td><td><input class="input cf-inline kw-pos" dir="ltr" value=""></td><td><button class="mini kw-del" type="button">×</button></td>`;
     body.appendChild(tr); tr.querySelector('.kw-word').focus();
   };
   body.addEventListener('click',async e=>{
@@ -321,6 +316,35 @@ document.getElementById('r-settings').onclick=()=>{
     const tr=del.closest('tr[data-kw]');
     await App.fetchJSON(`/reports/api/keywords/${tr.dataset.kw}/`,{method:'DELETE'}); tr.remove();
   });
+})();
+
+// ── درگِ ترتیبِ ردیف‌ها (کلماتِ کلیدی + ردیف‌های تسک؛ درون هر tbody) ──
+(function(){
+  let dragRow=null, dragBody=null;
+  function initSortable(tbody, onReorder){
+    if(!tbody || tbody.dataset.sortable) return; tbody.dataset.sortable='1';
+    tbody.addEventListener('dragstart', e=>{ const h=e.target.closest('.rep-grip'); if(!h) return;
+      dragRow=h.closest('tr'); dragBody=tbody; dragRow.classList.add('dragging');
+      e.dataTransfer.effectAllowed='move'; try{ e.dataTransfer.setData('text/plain',''); }catch(_){ } });
+    tbody.addEventListener('dragover', e=>{ if(!dragRow||dragBody!==tbody) return;
+      const over=e.target.closest('tr[data-row],tr[data-kw]'); if(!over||!tbody.contains(over)) return;
+      e.preventDefault(); if(over===dragRow) return;
+      const r=over.getBoundingClientRect(); (e.clientY-r.top>r.height/2 ? over.after(dragRow) : over.before(dragRow)); });
+    tbody.addEventListener('drop', e=>e.preventDefault());
+    tbody.addEventListener('dragend', ()=>{ if(!dragRow) return; dragRow.classList.remove('dragging');
+      // هر ردیفِ توضیح زیرِ ردیفِ خودش بماند
+      tbody.querySelectorAll('tr[data-row]').forEach(r=>{ const d=document.getElementById('desc-'+r.dataset.row); if(d) r.after(d); });
+      dragRow=null; dragBody=null; if(onReorder) onReorder(); });
+  }
+  const kwBody=document.getElementById('kw-body');
+  if(kwBody) initSortable(kwBody, ()=>{
+    const order=[...kwBody.querySelectorAll('tr[data-kw]')].map(tr=>+tr.dataset.kw);
+    App.fetchJSON(`/reports/api/${RID}/keywords/reorder/`,{method:'POST',body:{order}}).then(()=>App.toast('ترتیب کلمات ذخیره شد','ok')).catch(()=>{});
+  });
+  document.querySelectorAll('.grp-body').forEach(tb=> initSortable(tb, ()=>{
+    const order=[...document.querySelectorAll('tr[data-row]')].map(tr=>+tr.dataset.row);
+    App.fetchJSON(`/reports/api/${RID}/reorder/`,{method:'POST',body:{order}}).then(()=>App.toast('ترتیب ردیف‌ها ذخیره شد','ok')).catch(()=>{});
+  }));
 })();
 
 // ── سکشن‌های سفارشی ──
