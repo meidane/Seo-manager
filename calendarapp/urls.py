@@ -8,6 +8,7 @@ app_name = 'calendarapp'
 urlpatterns = [
     path('', views.CalendarView.as_view(), name='index'),
     path('api/', views.calendar_api, name='api'),
+    path('api/quick-add/', views.calendar_quick_add, name='quick_add'),
     path('api/picker/', views.picker_api, name='picker'),
     path('api/workload/', views.workload_api, name='workload'),
     path('api/day/', views.day_api, name='day'),

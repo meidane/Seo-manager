@@ -54,6 +54,10 @@ class Colleague(TimeStampedModel):
         'تسک‌هایش نیاز به بازبینی دارد', default=False,
         help_text='فقط با تعیینِ مدیر معنا دارد؛ تسک‌های انجام‌شده برای تاییدِ مدیرش به «بازبینی تسک» می‌رود.',
     )
+    hide_in_task_manager = models.BooleanField(
+        'غیرفعال در تسک‌منیجر', default=False,
+        help_text='برای افرادی که فقط برای حسابداری/حقوق ثبت شده‌اند: از دراپ‌داون‌های تسک‌منیجر حذف و در فهرست افراد پایین‌تر نشان داده می‌شوند.',
+    )
     files = GenericRelation(Attachment)
 
     organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
@@ -63,7 +67,8 @@ class Colleague(TimeStampedModel):
     class Meta:
         verbose_name = 'همکار'
         verbose_name_plural = 'همکاران'
-        ordering = ['status', 'full_name']  # فعال‌ها بالا (active < inactive)
+        # فعال‌ها بالا (active < inactive)، سپس غیرفعال‌شده‌های تسک‌منیجر پایین‌تر، بعد نام
+        ordering = ['status', 'hide_in_task_manager', 'full_name']
         base_manager_name = 'all_objects'
 
     def save(self, *args, **kwargs):
@@ -76,6 +81,14 @@ class Colleague(TimeStampedModel):
 
     def __str__(self):
         return self.full_name
+
+    @classmethod
+    def task_manager_qs(cls):
+        """منبعِ واحدِ همکارانِ تسک‌منیجر: فعال و **بدونِ** `hide_in_task_manager`.
+        هر دراپ‌داونِ مسئول/همکار در تسک‌منیجر (مودالِ تسک، فیلترِ لیست، گزارش، تقویم) از
+        همین می‌خواند — افرادی که فقط برای حسابداری/حقوق ثبت شده‌اند اینجا نمی‌آیند (ولی در
+        دراپ‌داون‌های مالی/عضویتِ پروژه هنوز هستند)."""
+        return cls.objects.filter(status=cls.ACTIVE).exclude(hide_in_task_manager=True)
 
     def get_absolute_url(self):
         return reverse('colleagues:detail', args=[self.pk])

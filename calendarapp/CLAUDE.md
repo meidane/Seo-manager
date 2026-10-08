@@ -6,25 +6,38 @@
 - `calendar_logic.py` — منطق ماتریس ماه در **پایتون** (نه JS). `build_month(jyear, jmonth,
   tasks_by_date, holiday_map)`. **weekday شمسی: شنبه=۰، جمعه=۶.** هر سلول `jdate` (شمسی لاتین)
   برای پرکردن فیلد تاریخ دارد.
-- `views.py` — `CalendarView` (SSR اول)، `calendar_api` (ناوبری AJAX + فیلتر project/assignee/type_def —
-  فیلترِ نوع دیگر با `task_type` خام نیست، با `type_def`(id)؛ `?type=` قدیمی فقط fallback است)،
+## ماژولِ واحدِ تقویم (این تغییر — «دوبار کد نزن»)
+- **`templates/calendarapp/_calendar.html`** پارشالِ واحد + **`static/js/calendar.js`** ماژولِ
+  واحد (روی هر `[data-cal]` سوار می‌شود) — هم صفحهٔ `/calendar/` هم **فضای شخصی** از همین
+  استفاده می‌کنند (قبلاً `calendar-page.js`+`calendar-embed.js`+`_cells.html` تکراری بودند؛ حذف شدند).
+  config از data-attributeها: `fixed-assignee`(اسکوپ + مخفی‌کردنِ فیلترِ همکار)، `undated`
+  (پنلِ بدون‌تاریخ پیش‌فرض باز)، `quickadd`+`personal`/`quick-project`(فیلدِ سریعِ افزودن).
+- **بدونِ SSR سلول‌ها:** ماژول موقعِ mount داده را از `calendar_api` می‌گیرد (دیگر دو مسیرِ
+  رندرِ SSR/JS نداریم؛ تلهٔ قدیمیِ `CAL_INIT`/`_cells.html` از بین رفت).
+- **فیلترها در یک ردیفِ مرتب** (`.calx-filters`) + دکمهٔ **«تسک‌های بدون تاریخ»** (توگلِ پنلِ
+  کناری). پنل تسک‌های `planned_date=None`ِ غیرِdone را نشان می‌دهد (`views._undated_tasks`,
+  فیلتر/گیتِ یکسانِ تقویم) و با **درگ روی یک روز، تاریخ می‌گیرند**. فیلدِ سریع (فقط اگر
+  `quickadd`) → `calendar_quick_add` (شخصی=پروژهٔ شخصی، وگرنه پروژهٔ فیلتر/`quick-project`).
+- **اجاکسیِ کامل:** ساخت/ویرایش/حذفِ تسک از مودال، به‌جای رفرشِ صفحه `Calendar.refreshAll()`
+  را صدا می‌زند (در `tasks.js`، اگر `Calendar.any()`)، پس **فیلترِ فعال نمی‌پرد**.
+- `views.py` — `CalendarView`، `calendar_api` (ناوبری AJAX + فیلتر project/assignee/type_def +
+  `?undated=1` برای لیستِ بدون‌تاریخ)، `calendar_quick_add` (ثبتِ سریعِ بدون‌تاریخ)،
   `picker_api` (فقط پرچم تعطیلی/امروز برای دیت‌پیکر)، `workload_api` (بار کاری همکار برای مودال).
   `_tasks_by_date` تسک‌های انجام‌شده را ته سلول مرتب می‌کند (طوسی).
   **`_virtual_recurrence`/`_merge_virtual`**: رخدادهای آینده‌ی قواعدِ تکرار را به‌صورت
   «مجازی» (بدون ساختِ رکورد، با `raw_next_date`) برای نمایشِ محوِ کلِ ماه اضافه می‌کند
   (کلاس `.tk.virtual`، غیرقابل‌کلیک). تاریخ‌هایی که تسکِ واقعی دارند رد می‌شوند.
-- `static/js/calendar-page.js` — رندر سلول‌ها، آواتار نویسنده، دکمه‌ی + (hover → `openTask(null,{planned_date_fa})`),
-  درگ‌ودراپ بین روزها (`PATCH planned_date_iso`).
-- **چیپِ تسک (`_cells.html: .tk`)**: آواتارِ مسئول + متن؛ `title` کاملِ «نوع: عنوان — مسئول»
-  برای هاور (نامِ کاملِ تسک). بوردرِ راستِ ۴px با **رنگِ خودِ پروژه** (`project_color`) روی
-  همهٔ چیپ‌ها (حتی done) + پس‌زمینهٔ نیمه‌شفافِ همان رنگ — برای تفکیکِ بصریِ پروژه‌ها.
-  **ساعتِ تک‌تکِ تسک نمایش داده نمی‌شود.**
+- **رندرِ سلول/چیپ فقط در `static/js/calendar.js`** (دیگر SSRِ `_cells.html` و `calendar-page.js`
+  وجود ندارد). `cellHtml(c)` سلول را می‌سازد، `chip(t)` چیپِ تسک را: آواتارِ مسئول + متن؛
+  `title` کاملِ «نوع: عنوان — مسئول». بوردرِ راستِ ۴px با **رنگِ خودِ پروژه** + پس‌زمینهٔ
+  نیمه‌شفافِ همان رنگ (تفکیکِ بصریِ پروژه‌ها، حتی روی done). **ساعتِ تک‌تکِ تسک نمایش داده نمی‌شود.**
+  چیپِ غیرمجازی `draggable` است (درگ روی روزِ دیگر → `PATCH planned_date_iso`).
 - **نوارِ «جمعِ زمانِ هر فرد» بالای سلول (`.cell-people`/`.cp`)**: به‌ازای هر مسئولِ آن روز،
   آواتار + جمعِ ساعتِ تخمینیِ او (`cp-h`، فقط اگر >۰). منبع: `calendar_logic._people_totals`
-  (روی `to_dict`های همان روز؛ مجازیِ تکرار حساب نمی‌شود) → کلیدِ `people` در هر سلول.
-  چون از `build_month` می‌آید، هم SSR (`_cells.html`) هم ناوبریِ AJAX (`calendar-page.js`)
-  یک‌جا رندرش می‌کنند.
-- `static/js/calendar-embed.js` — تقویم قابل‌جاسازی در تب‌ها (`data-project`/`data-assignee`).
+  (روی `to_dict`های همان روز؛ مجازیِ تکرار حساب نمی‌شود) → کلیدِ `people` در هر سلول،
+  که `calendar.js` رندرش می‌کند.
+- `static/js/calendar-embed.js` — تقویمِ **فقط‌خواندنیِ** قابل‌جاسازی در تب‌های پروژه/همکار
+  (`data-project`/`data-assignee`). هنوز جداست (مهاجرت به ماژولِ واحد: TODO).
 - `static/js/datepicker.js` — دیت‌پیکر شمسی برای هر `input.jdate` (تعطیلات قرمز).
   **پیش‌نمایشِ روز:** هاور روی یک روزِ پاپ‌آور → پنلِ `.dp-preview` کنارش، تسک‌های همان
   روز (از `GET /calendar/api/day/?date=` → `views.day_api`، با همان گیتِ دسترسیِ تقویم).
@@ -46,17 +59,13 @@
 ## دسترسی در UI (دکمه‌ی ＋)
 دکمه‌ی «＋» هر سلول فقط با `can_create_task` نشان داده می‌شود (context var سراسری —
 هرکسی با پروفایلِ همکار می‌تواند تسکِ جدید برای خودش بسازد، نه فقط دارنده‌ی `edit_task`؛
-`tasks/CLAUDE.md`، بخشِ «تعریفِ تسک برای خود»)، اما دو مسیرِ رندرِ جدا دارد که هر دو باید
-گیت شوند:
-- **SSR اول** (`templates/calendarapp/_cells.html`): `{% if not c.dim and can_create_task %}`.
-- **ناوبریِ AJAX** (تعویضِ ماه، `calendar_api` + `calendar-page.js: cellHtml`): سلول‌ها با JS
-  دوباره ساخته می‌شوند، نه رندرِ تمپلیت — پس پرچم از `window.CAL_INIT.canCreateTask`
-  (ست‌شده در `templates/calendarapp/index.html`، از `can_create_task`) می‌آید، نه از
-  `{% if %}`. اگر گیتِ مشابهی به سلول‌ها اضافه کردی، آن را هم به `CAL_INIT` اضافه کن،
-  وگرنه فقط بارِ اولِ صفحه درست است و بعد از تعویضِ ماه دوباره نمایان می‌شود.
+`tasks/CLAUDE.md`، بخشِ «تعریفِ تسک برای خود»). چون رندر فقط در JS است، این پرچم از
+`data-can-create` روی `[data-cal]` (در `_calendar.html`، از `cal_can_create`) خوانده می‌شود
+و `calendar.js: cellHtml` بر اساسش دکمه را می‌گذارد/حذف می‌کند. گیتِ مشابهِ جدید را هم
+همان‌جا (data-attr روی ریشه → خواندن در `mount`) اضافه کن، نه با `{% if %}`ِ تمپلیت.
 
 ## URLها
-`/calendar/` · `/calendar/api/` · `/calendar/api/picker/` · `/calendar/api/workload/`
+`/calendar/` · `/calendar/api/` · `/calendar/api/quick-add/` · `/calendar/api/picker/` · `/calendar/api/workload/`
 
 ## TODO
 نمای هفته و لیست (فقط ماه ساخته شده) · اتصال workload به دیت‌پیکرِ مودال.

@@ -40,6 +40,26 @@ def _filtered_tasks(request, start, end):
     return qs
 
 
+def _undated_tasks(request):
+    """تسک‌های بدونِ تاریخِ برنامه (ایده‌ها) — همان فیلتر/گیتِ دسترسیِ تقویم. انجام‌شده‌ها نه."""
+    qs = (Task.objects.select_related('project', 'assignee', 'type_def')
+          .filter(planned_date__isnull=True).exclude(status=Task.DONE))
+    ids = accessible_project_ids(request)
+    if ids is not None:
+        qs = qs.filter(project_id__in=ids)
+    m = getattr(request, 'membership', None)
+    if m and not m.can('view_other_tasks'):
+        colleague = getattr(request.user, 'colleague', None)
+        qs = qs.filter(assignee_id=colleague.id if colleague else -1)
+    if request.GET.get('project'):
+        qs = qs.filter(project_id=request.GET['project'])
+    if request.GET.get('assignee'):
+        qs = qs.filter(assignee_id=request.GET['assignee'])
+    if request.GET.get('type_def'):
+        qs = qs.filter(type_def_id=request.GET['type_def'])
+    return [t.to_dict() for t in qs.order_by('board_order', '-id')[:300]]
+
+
 def _tasks_by_date(qs):
     grouped = defaultdict(list)
     for t in qs:
@@ -96,28 +116,31 @@ def _resolve_ym(request):
     return jyear, jmonth
 
 
+def calendar_base_context(request):
+    """context مشترکِ پارشالِ `calendarapp/_calendar.html` (ماه/سال + فیلترها).
+    هم `CalendarView` هم **فضای شخصی** از همین می‌خوانند (دوبار کد نزن). سلول‌ها SSR
+    نمی‌شوند؛ `calendar.js` موقعِ mount از `calendar_api` می‌گیردشان."""
+    from core.jalali import MONTH_NAMES
+    jyear, jmonth = _resolve_ym(request)
+    ids = accessible_project_ids(request)
+    visible = Project.objects.filter(id__in=ids) if ids is not None else Project.objects.all()
+    return {
+        'jyear': jyear,
+        'jmonth': jmonth,
+        'months': list(enumerate(MONTH_NAMES, 1)),   # [(1,'فروردین'),…]
+        'years': list(range(jyear - 3, jyear + 4)),   # بازهٔ انتخابِ سال
+        'projects': visible.filter(status=Project.ACTIVE),
+        'colleagues': Colleague.task_manager_qs(),  # غیرفعال‌شده‌های تسک‌منیجر حذف
+        'task_types': TaskTypeDef.objects.filter(is_active=True),
+    }
+
+
 class CalendarView(LoginRequiredMixin, TemplateView):
     template_name = 'calendarapp/index.html'
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        jyear, jmonth = _resolve_ym(self.request)
-        start, end = month_bounds_gregorian(jyear, jmonth)
-        qs = _filtered_tasks(self.request, start, end)
-        cells = build_month(jyear, jmonth, _merge_virtual(_tasks_by_date(qs), start, end), _holiday_map(start, end))
-
-        from core.jalali import MONTH_NAMES
-        ctx['cells'] = cells
-        ctx['jyear'] = jyear
-        ctx['jmonth'] = jmonth
-        ctx['month_title'] = month_title(jyear, jmonth)
-        ctx['months'] = list(enumerate(MONTH_NAMES, 1))   # [(1,'فروردین'),…]
-        ctx['years'] = list(range(jyear - 3, jyear + 4))   # بازهٔ انتخابِ سال
-        ids = accessible_project_ids(self.request)
-        visible = Project.objects.filter(id__in=ids) if ids is not None else Project.objects.all()
-        ctx['projects'] = visible.filter(status=Project.ACTIVE)
-        ctx['colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)
-        ctx['task_types'] = TaskTypeDef.objects.filter(is_active=True)
+        ctx.update(calendar_base_context(self.request))
         ctx['page_title'] = 'تقویم'
         return ctx
 
@@ -128,10 +151,59 @@ def calendar_api(request):
     jyear, jmonth = _resolve_ym(request)
     start, end = month_bounds_gregorian(jyear, jmonth)
     qs = _filtered_tasks(request, start, end)
-    cells = build_month(jyear, jmonth, _tasks_by_date(qs), _holiday_map(start, end))
-    return JsonResponse({
-        'year': jyear, 'month': jmonth, 'title': month_title(jyear, jmonth), 'days': cells,
-    })
+    cells = build_month(jyear, jmonth, _merge_virtual(_tasks_by_date(qs), start, end), _holiday_map(start, end))
+    resp = {'year': jyear, 'month': jmonth, 'title': month_title(jyear, jmonth), 'days': cells}
+    if request.GET.get('undated'):
+        resp['undated'] = _undated_tasks(request)
+    return JsonResponse(resp)
+
+
+@login_required
+def calendar_quick_add(request):
+    """ثبتِ سریعِ تسکِ بدونِ تاریخ از پنلِ «تسک‌های بدون تاریخ».
+    POST {title, project?, assignee?, personal?} → {ok, id, task}.
+    - `personal=1` → تسکِ شخصی (پروژهٔ شخصی، فقط adminِ فضای شخصی).
+    - وگرنه `project` لازم است (در دسترسِ کاربر)؛ مسئول = `assignee`(اگر edit_task) وگرنه خودِ کاربر."""
+    import json
+
+    from tasks import history as taskhistory
+    try:
+        d = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        d = {}
+    title = (d.get('title') or '').strip()
+    if not title:
+        return JsonResponse({'detail': 'عنوان لازم است'}, status=400)
+
+    if d.get('personal'):
+        from personal.api import _create_personal_task
+        t, err = _create_personal_task(request, title)
+        if err:
+            return JsonResponse({'detail': err}, status=400)
+        return JsonResponse({'ok': True, 'id': t.id, 'task': t.to_dict()})
+
+    my_c = getattr(request.user, 'colleague', None)
+    m = getattr(request, 'membership', None)
+    if not my_c:
+        return JsonResponse({'detail': 'پروفایلِ همکار نداری'}, status=403)
+    project_id = d.get('project')
+    if not project_id:
+        return JsonResponse({'detail': 'پروژه لازم است', 'need_project': True}, status=400)
+    ids = accessible_project_ids(request)
+    if ids is not None and int(project_id) not in ids:
+        return JsonResponse({'detail': 'به این پروژه دسترسی نداری'}, status=403)
+    # مسئول: فقط با edit_task می‌توان به دیگران داد، وگرنه خودِ کاربر
+    assignee_id = d.get('assignee') or my_c.id
+    if not (m and m.can('edit_task')):
+        assignee_id = my_c.id
+    gen = (TaskTypeDef.objects.filter(is_active=True, builtin_key='other').first()
+           or TaskTypeDef.objects.filter(is_active=True).first())
+    t = Task(created_by=request.user, project_id=project_id, assignee_id=assignee_id,
+             type_def=gen, task_type=(gen.builtin_key if gen else Task.OTHER) or Task.OTHER,
+             title=title[:255], planned_date=None)
+    t.save()
+    taskhistory.record(t, taskhistory.TaskHistory.CREATED, request.user)
+    return JsonResponse({'ok': True, 'id': t.id, 'task': t.to_dict()})
 
 
 @login_required

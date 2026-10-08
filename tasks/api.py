@@ -272,9 +272,9 @@ def form_data(request):
     return JsonResponse({
         # [id, name, color, logo_url] — logo/color برای دراپ‌داونِ غنیِ مودال (richselect)
         'projects': [[p.id, p.name, p.color, (p.logo.url if p.logo else '')] for p in projects],
-        # [id, name, needs_review, color, avatar_url]
+        # [id, name, needs_review, color, avatar_url] — بدونِ غیرفعال‌های تسک‌منیجر
         'colleagues': [[c.id, c.full_name, c.needs_review, c.color, (c.avatar.url if c.avatar else '')]
-                        for c in Colleague.objects.filter(status=Colleague.ACTIVE)],
+                        for c in Colleague.task_manager_qs()],
         'typeChoices': list(Task.TYPE_CHOICES),
         'reportMonths': list(Task.REPORT_MONTH_CHOICES),  # [[1,'فروردین'],…] برای دراپ‌داونِ «ماه گزارش»
         'reportYear': today_jalali().year,  # پیش‌فرضِ سالِ گزارش (جالیِ جاری)

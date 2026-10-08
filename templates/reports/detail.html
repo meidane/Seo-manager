@@ -11,21 +11,16 @@
     <div class="side-c">
       <button class="btn btn-p" id="r-save-all">ذخیرهٔ گزارش</button>
       <button class="btn" id="r-settings">تنظیمات نمایش مشتری</button>
-      {# لینکِ واحد: همین لینکِ عمومی هم پیش‌نمایشِ ماست هم نسخهٔ مشتری (خواستِ کاربر) #}
-      <a class="btn" href="{{ report.public_url }}" target="_blank" rel="noopener">مشاهدهٔ گزارش ↗</a>
+      <a class="btn" href="{% url 'reports:preview' report.pk %}" target="_blank" rel="noopener">پیش‌نمایش مشتری ↗</a>
       <button class="btn" id="r-final">{% if report.status == 'final' %}بازگشت به پیش‌نویس{% else %}نهایی‌سازی{% endif %}</button>
     </div>
   </div>
 
-  {# ── نوارِ خلاصه: تعدادِ انتشار/آپدیت/فنی/سایر + جمع + زمان ── #}
-  {% include "reports/_summary_bar.html" %}
-
-  {# ── لینک عمومی ── با «نهایی‌سازی» خودکار فعال می‌شود (بدونِ چک‌باکسِ جدا) ── #}
+  {# ── لینک عمومی ── #}
   <section class="glass filters" style="justify-content:space-between">
-    <span id="r-public-note" style="display:flex;align-items:center;gap:6px;margin:0;font-size:12.5px;color:var(--text-dim)">
-      {% if report.is_public %}<span class="tag t-ok">لینک عمومی فعال</span> مشتری می‌تواند گزارش را ببیند
-      {% else %}<span class="tag t-mute">پیش‌نویس</span> با «نهایی‌سازی»، لینک عمومی برای مشتری فعال می‌شود{% endif %}
-    </span>
+    <label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">
+      <input type="checkbox" id="r-public" {% if report.is_public %}checked{% endif %}> لینک عمومی برای مشتری فعال باشد
+    </label>
     <span style="display:flex;gap:8px;align-items:center">
       <input class="input" id="r-link" style="max-width:340px" dir="ltr" readonly value="{{ request.scheme }}://{{ request.get_host }}{{ report.public_url }}">
       <button class="btn btn-sm" id="r-copy">📋 کپی</button>
@@ -88,6 +83,16 @@
           <span>جمعِ کل: <b style="color:#6FE3C4">{{ invoice_ctx.invoice.grand_total|money }} ریال</b></span>
         </div>
       {% endif %}
+
+      {# ── هزینهٔ تولید محتوا (فشرده، زیرِ فاکتور) ── #}
+      {% if stats.content_cost.hourly or stats.content_cost.word_rate %}
+      <div class="cc-box" title="ساعتِ آیتم‌های انتشار/آپدیت/رپورتاژ × نرخِ ساعتی + تعدادِ کلمه × نرخِ کلمه؛ جمع به مضربِ ۵۰۰٬۰۰۰ رند می‌شود">
+        <span class="cc-lab">هزینهٔ تولید محتوا</span>
+        <span>زمان: <b>{{ stats.content_cost.minutes|hoursmin }}</b> × {{ stats.content_cost.hourly|money }} = {{ stats.content_cost.time|money }}</span>
+        <span>کلمه: <b>{{ stats.content_cost.words|fa_digits }}</b> × {{ stats.content_cost.word_rate|money }} = {{ stats.content_cost.word|money }}</span>
+        <span class="cc-total">جمع: <b>{{ stats.content_cost.total|money }} ریال</b></span>
+      </div>
+      {% endif %}
     </div>
   </section>
 
@@ -103,13 +108,11 @@
       <div class="side-c"><span class="tag t-mute" title="فعلاً دستی؛ بعداً به بخشِ ردیابیِ کلمات کلیدی و افزونهٔ کروم وصل می‌شود">دستی</span></div>
     </div>
     <div style="padding:10px 14px">
-      <table class="tsheet" id="kw-table"><thead><tr><th>کلمهٔ کلیدی</th><th style="width:110px">جایگاه فعلی</th><th style="width:110px">تغییر (+/−)</th><th>یادداشت</th><th style="width:44px"></th></tr></thead>
+      <table class="tsheet" id="kw-table"><thead><tr><th>کلمهٔ کلیدی</th><th style="width:130px">جایگاه</th><th style="width:44px"></th></tr></thead>
         <tbody id="kw-body">
           {% for kw in keywords %}
-          <tr data-kw="{{ kw.id }}"><td><input class="input cf-inline kw-word" value="{{ kw.keyword }}"></td>
+          <tr data-kw="{{ kw.id }}"><td><span class="rep-grip" draggable="true" title="جابه‌جایی">⠿</span><input class="input cf-inline kw-word" value="{{ kw.keyword }}" style="width:calc(100% - 22px)"></td>
             <td><input class="input cf-inline kw-pos" dir="ltr" value="{{ kw.position }}"></td>
-            <td><input class="input cf-inline kw-change" dir="ltr" placeholder="+۲ یا −۱" value="{% if kw.has_change %}{{ kw.change }}{% endif %}"></td>
-            <td><input class="input cf-inline kw-note" value="{{ kw.note }}" placeholder="اختیاری"></td>
             <td><button class="mini kw-del" type="button">×</button></td></tr>
           {% endfor %}
         </tbody>
@@ -135,21 +138,6 @@
       {% endfor %}
     </div>
   </section>
-
-  {# ── هزینهٔ تولید محتوا (نرخِ مؤثر: اسنپ‌شاتِ گزارش یا نرخِ فعلیِ پروژه) ── #}
-  {% if stats.content_cost.hourly or stats.content_cost.word_rate %}
-  <section class="card glass">
-    <div class="card-h"><h3>هزینهٔ تولید محتوا</h3>
-      <div class="side-c"><span class="tag t-mute" title="ساعتِ آیتم‌های انتشار/آپدیت/رپورتاژ × نرخِ ساعتی + تعدادِ کلمه × نرخِ کلمه">انتشار/آپدیت/رپورتاژ</span></div>
-    </div>
-    <div style="padding:12px 16px;display:flex;gap:26px;flex-wrap:wrap;font-size:13px">
-      <span>زمان: <b>{{ stats.content_cost.minutes|hoursmin }}</b> × {{ stats.content_cost.hourly|money }} = <b style="color:var(--info)">{{ stats.content_cost.time|money }}</b></span>
-      <span>کلمه: <b>{{ stats.content_cost.words|fa_digits }}</b> × {{ stats.content_cost.word_rate|money }} = <b style="color:var(--info)">{{ stats.content_cost.word|money }}</b></span>
-      <span>جمعِ تولید محتوا: <b style="color:#6FE3C4">{{ stats.content_cost.total|money }} ریال</b></span>
-    </div>
-    <div style="padding:0 16px 12px;color:var(--text-faint);font-size:11.5px">اگر فاکتوری به این گزارش وصل باشد، با «ذخیرهٔ گزارش» این مبلغ به‌صورتِ یک ردیفِ «تولید محتوا» در فاکتور ساخته/به‌روزرسانی می‌شود (۰ = ردیفی اضافه/به‌روز نمی‌شود).</div>
-  </section>
-  {% endif %}
 
   {# ── ایمپورتِ تسک از پروژه ── #}
   <section class="card glass">
@@ -186,19 +174,6 @@ const VISIBLE = {{ visible_fields|safe }};
 
 const desc=document.getElementById('r-desc');
 
-// ── هشدارِ «تغییراتِ ذخیره‌نشده» قبلِ بستنِ تب/رفتن از صفحه (خواستِ کاربر) ──
-// این صفحه اتوسیو ندارد؛ اگر چیزی عوض شده و «ذخیرهٔ گزارش» زده نشده، مرورگر می‌پرسد.
-let RDIRTY=false;
-// ویجتِ مالیِ فقط‌خواندنی (گردشِ حساب) نباید تغییرِ گزارش حساب شود
-const markDirty=(e)=>{ if(e&&e.target&&e.target.closest&&e.target.closest('#r-fin-panel')) return; RDIRTY=true; };
-const clearDirty=()=>{ RDIRTY=false; };
-// هر input/change داخلِ صفحهٔ گزارش (اینپوت/سلکت/contenteditable → رویدادِ input) = تغییر.
-const rroot=document.querySelector('[data-report]');
-if(rroot){ rroot.addEventListener('input',markDirty); rroot.addEventListener('change',markDirty); }
-window.addEventListener('beforeunload',e=>{ if(RDIRTY){ e.preventDefault(); e.returnValue=''; } });
-// رفرش‌های عمدیِ خودمان نباید هشدار بدهند → قبلِ reload دیرتی را پاک می‌کنیم (navGuardOff).
-function navGuardOff(){ clearDirty(); }
-
 // ── ذخیرهٔ یکجای کلِ گزارش (تک‌دکمه، بدونِ اتوسیو) ──
 document.getElementById('r-save-all').onclick=async()=>{
   if(window.RichText) RichText.save();   // سینکِ همهٔ ادیتورهای TinyMCE به textarea
@@ -210,12 +185,10 @@ document.getElementById('r-save-all').onclick=async()=>{
       word_count:(tr.querySelector('[data-item-word]')||{}).value||'',
       assignee:(tr.querySelector('[data-item-assignee]')||{}).value||'',
       done_date:(tr.querySelector('[data-item-date]')||{}).value||'',
-      url:(tr.querySelector('[data-item-url]')||{}).value||'',
       description: ta?ta.value:'' };
   });
   const keywords=[...document.querySelectorAll('tr[data-kw]')].map(tr=>({
-    id:+tr.dataset.kw, keyword:tr.querySelector('.kw-word').value, position:tr.querySelector('.kw-pos').value,
-    change:tr.querySelector('.kw-change').value, note:tr.querySelector('.kw-note').value }));
+    id:+tr.dataset.kw, keyword:tr.querySelector('.kw-word').value, position:tr.querySelector('.kw-pos').value }));
   const sections=[...document.querySelectorAll('.sec-item')].map(el=>({
     id:+el.dataset.sec, title:el.querySelector('.sec-title').value, description:el.querySelector('.sec-desc').value }));
   try{
@@ -224,12 +197,12 @@ document.getElementById('r-save-all').onclick=async()=>{
       items, keywords, sections }});
     if(res && res.content_total>0) App.toast('گزارش ذخیره شد — هزینهٔ تولید محتوا در فاکتور: '+res.content_total.toLocaleString('fa-IR')+' ریال','ok');
     else App.toast('گزارش ذخیره شد','ok');
-    navGuardOff();   // ذخیره شد → دیگر تغییرِ ذخیره‌نشده نداریم
     setTimeout(()=>location.reload(),700);
   }catch(_){}
 };
 
-// ── لینک عمومی ── (فعال/غیرفعال‌شدنش با «نهایی‌سازی» است، نه چک‌باکسِ جدا) ──
+// ── لینک عمومی ──
+document.getElementById('r-public').onchange=e=>App.fetchJSON(`/reports/api/${RID}/update/`,{method:'PATCH',body:{is_public:e.target.checked}}).then(()=>App.toast(e.target.checked?'لینک فعال شد':'لینک غیرفعال شد','ok'));
 document.getElementById('r-copy').onclick=()=>{navigator.clipboard.writeText(document.getElementById('r-link').value);App.toast('کپی شد','ok');};
 
 // ── فاکتور متصل ──
@@ -255,7 +228,6 @@ document.getElementById('r-invoice').onchange=e=>App.fetchJSON(`/reports/api/${R
 document.getElementById('r-final').onclick=async()=>{
   const cur=document.getElementById('r-status').textContent.includes('نهایی');
   await App.fetchJSON(`/reports/api/${RID}/update/`,{method:'PATCH',body:{status:cur?'draft':'final'}});
-  navGuardOff();   // رفرشِ عمدیِ خودمان — هشدارِ تغییرِ ذخیره‌نشده ندهد
   location.reload();
 };
 
@@ -302,14 +274,6 @@ async function addManual(type, sectionEl){
 }
 
 // ── حذفِ ردیف / بازکردنِ توضیح / افزودنِ ردیفِ سکشن (بدونِ اتوسیو) ──
-// عنوانِ ردیف باید paste as plain text باشد (نه استایل/بولد/HTML) — خواستِ کاربر
-document.addEventListener('paste', e=>{
-  const el=e.target.closest('[data-plain]'); if(!el) return;
-  e.preventDefault();
-  const text=(e.clipboardData||window.clipboardData).getData('text/plain');
-  document.execCommand('insertText', false, text);
-});
-
 document.addEventListener('click',async e=>{
   const del=e.target.closest('[data-item-del]');
   if(del){ if(await App.confirm('این ردیف از گزارش حذف شود؟')){await App.fetchJSON(`/reports/api/items/${del.dataset.itemDel}/`,{method:'DELETE'});
@@ -344,7 +308,7 @@ document.getElementById('r-settings').onclick=()=>{
   document.getElementById('kw-add').onclick=async()=>{
     const d=await App.fetchJSON(`/reports/api/${RID}/keywords/`,{method:'POST',body:{keyword:'',position:''}});
     const tr=document.createElement('tr'); tr.dataset.kw=d.id;
-    tr.innerHTML=`<td><input class="input cf-inline kw-word" value=""></td><td><input class="input cf-inline kw-pos" dir="ltr" value=""></td><td><input class="input cf-inline kw-change" dir="ltr" placeholder="+۲ یا −۱" value=""></td><td><input class="input cf-inline kw-note" value="" placeholder="اختیاری"></td><td><button class="mini kw-del" type="button">×</button></td>`;
+    tr.innerHTML=`<td><span class="rep-grip" draggable="true" title="جابه‌جایی">⠿</span><input class="input cf-inline kw-word" value="" style="width:calc(100% - 22px)"></td><td><input class="input cf-inline kw-pos" dir="ltr" value=""></td><td><button class="mini kw-del" type="button">×</button></td>`;
     body.appendChild(tr); tr.querySelector('.kw-word').focus();
   };
   body.addEventListener('click',async e=>{
@@ -352,6 +316,35 @@ document.getElementById('r-settings').onclick=()=>{
     const tr=del.closest('tr[data-kw]');
     await App.fetchJSON(`/reports/api/keywords/${tr.dataset.kw}/`,{method:'DELETE'}); tr.remove();
   });
+})();
+
+// ── درگِ ترتیبِ ردیف‌ها (کلماتِ کلیدی + ردیف‌های تسک؛ درون هر tbody) ──
+(function(){
+  let dragRow=null, dragBody=null;
+  function initSortable(tbody, onReorder){
+    if(!tbody || tbody.dataset.sortable) return; tbody.dataset.sortable='1';
+    tbody.addEventListener('dragstart', e=>{ const h=e.target.closest('.rep-grip'); if(!h) return;
+      dragRow=h.closest('tr'); dragBody=tbody; dragRow.classList.add('dragging');
+      e.dataTransfer.effectAllowed='move'; try{ e.dataTransfer.setData('text/plain',''); }catch(_){ } });
+    tbody.addEventListener('dragover', e=>{ if(!dragRow||dragBody!==tbody) return;
+      const over=e.target.closest('tr[data-row],tr[data-kw]'); if(!over||!tbody.contains(over)) return;
+      e.preventDefault(); if(over===dragRow) return;
+      const r=over.getBoundingClientRect(); (e.clientY-r.top>r.height/2 ? over.after(dragRow) : over.before(dragRow)); });
+    tbody.addEventListener('drop', e=>e.preventDefault());
+    tbody.addEventListener('dragend', ()=>{ if(!dragRow) return; dragRow.classList.remove('dragging');
+      // هر ردیفِ توضیح زیرِ ردیفِ خودش بماند
+      tbody.querySelectorAll('tr[data-row]').forEach(r=>{ const d=document.getElementById('desc-'+r.dataset.row); if(d) r.after(d); });
+      dragRow=null; dragBody=null; if(onReorder) onReorder(); });
+  }
+  const kwBody=document.getElementById('kw-body');
+  if(kwBody) initSortable(kwBody, ()=>{
+    const order=[...kwBody.querySelectorAll('tr[data-kw]')].map(tr=>+tr.dataset.kw);
+    App.fetchJSON(`/reports/api/${RID}/keywords/reorder/`,{method:'POST',body:{order}}).then(()=>App.toast('ترتیب کلمات ذخیره شد','ok')).catch(()=>{});
+  });
+  document.querySelectorAll('.grp-body').forEach(tb=> initSortable(tb, ()=>{
+    const order=[...document.querySelectorAll('tr[data-row]')].map(tr=>+tr.dataset.row);
+    App.fetchJSON(`/reports/api/${RID}/reorder/`,{method:'POST',body:{order}}).then(()=>App.toast('ترتیب ردیف‌ها ذخیره شد','ok')).catch(()=>{});
+  }));
 })();
 
 // ── سکشن‌های سفارشی ──

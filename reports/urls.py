@@ -26,5 +26,6 @@ urlpatterns = [
     path('api/<int:pk>/sections/', views.section_add, name='section_add'),
     path('api/sections/<int:pk>/', views.section_edit, name='section_edit'),
     path('api/<int:pk>/keywords/', views.keyword_add, name='keyword_add'),
+    path('api/<int:pk>/keywords/reorder/', views.keyword_reorder, name='keyword_reorder'),
     path('api/keywords/<int:pk>/', views.keyword_edit, name='keyword_edit'),
 ]

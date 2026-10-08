@@ -629,6 +629,46 @@ table.sheet tr:hover td{background:var(--row-alt)}
 
 /* ── تقویم (گوگل‌کلندری) ── */
 .cal{margin-top:0}
+/* ── تقویمِ واحد (calx) — ماژولِ مشترکِ صفحهٔ تقویم + شخصی ── */
+.calx{display:flex;flex-direction:column}
+/* نوار بالا = یک ردیفِ واحد: ناو (RTL راست) + همهٔ فیلترها و دکمهٔ «بدون تاریخ» (RTL چپ).
+   روی دسکتاپ تک‌ردیف می‌ماند (nowrap) و فیلترها در صورتِ تنگی جمع می‌شوند؛ زیرِ ۸۶۰px
+   کلِ فیلترها تمیز به ردیفِ دومِ تمام‌عرض می‌روند (نه نیم‌ونصفه). */
+.calx-top{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;padding:12px 16px;border-bottom:1px solid var(--stroke-soft)}
+.calx-nav{display:flex;align-items:center;gap:7px;flex:none}
+.calx-nav .calx-month,.calx-nav .calx-year{width:auto;padding:6px 9px;font-size:12.5px}
+.calx-filters{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;margin-inline-start:auto;min-width:0}
+.calx-fsel{height:34px;font-size:12.5px}
+.calx-filters .rs{flex:0 1 150px;min-width:108px}
+.calx-type{flex:0 1 130px;min-width:92px;padding:6px 9px}
+@media(max-width:860px){
+  .calx-top{flex-wrap:wrap}
+  .calx-filters{margin-inline-start:0;width:100%;flex-wrap:wrap}
+  .calx-filters .rs{flex:1 1 140px}
+  .calx-type{flex:1 1 120px}
+}
+.calx-undated-btn{display:inline-flex;align-items:center;gap:6px;height:34px;white-space:nowrap;flex:none}
+.calx-undated-btn.on{background:linear-gradient(135deg,var(--primary),var(--primary-600));color:#fff;border-color:transparent}
+.calx-ubadge{background:var(--fill-strong);color:var(--text-dim);border-radius:99px;padding:0 7px;font-size:11px;font-weight:700}
+.calx-undated-btn.on .calx-ubadge{background:rgba(255,255,255,.25);color:#fff}
+/* بدنه: پنلِ بدون‌تاریخ کنارِ گرید */
+.calx-body{display:flex;align-items:stretch;gap:0}
+.calx-grid-wrap{flex:1;min-width:0}
+.calx-undated{flex:none;width:250px;border-inline-start:1px solid var(--stroke-soft);display:flex;flex-direction:column;background:var(--fill)}
+.calx-undated-h{padding:11px 14px;font-size:12.5px;font-weight:600;color:var(--text-dim);border-bottom:1px solid var(--stroke-soft)}
+.calx-qadd{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--stroke-soft)}
+.calx-qadd .input{flex:1;min-width:0;font-size:12.5px;padding:7px 9px}
+.calx-qadd .btn{flex:none;padding:0 11px}
+.calx-undated-list{flex:1;overflow-y:auto;max-height:620px;padding:8px}
+.calx-undated-empty{color:var(--text-faint);font-size:12px;text-align:center;padding:24px 10px}
+.calx-uitem{display:flex;align-items:center;gap:7px;padding:7px 8px;margin-bottom:6px;border-radius:var(--r-sm);
+  background:var(--card-solid);border:1px solid var(--stroke-soft);cursor:grab;font-size:12px}
+.calx-uitem:hover{border-color:var(--stroke);background:var(--glass-hover)}
+.calx-uitem:active{cursor:grabbing}
+.calx-uitem .tk-av{width:18px;height:18px;font-size:9px;flex:none}
+.calx-uitem-tx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+.calx-uitem-pj{flex:none;font-size:10px;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:860px){.calx-body{flex-direction:column}.calx-undated{width:auto;border-inline-start:0;border-top:1px solid var(--stroke-soft)}.calx-undated-list{max-height:260px}}
 .cal-bar{display:flex;align-items:center;gap:9px;padding:13px 16px;border-bottom:1px solid var(--stroke-soft);flex-wrap:wrap}
 .cal-bar h3{font-size:15px;font-weight:500;min-width:110px;text-align:center}
 .nav-b{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;flex:none;
@@ -1168,6 +1208,20 @@ select.tx-inline{cursor:pointer;max-width:150px}
 
 /* ── صفحه‌ی ادیتِ گزارش — فاصله‌ی یکدست بینِ بخش‌ها ── */
 [data-report] > section{margin-bottom:14px}
+/* نوارِ فشردهٔ «هزینهٔ تولید محتوا» زیرِ فاکتور */
+.cc-box{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;margin-top:12px;padding:8px 12px;
+  border:1px dashed var(--stroke-soft);border-radius:var(--r-sm);background:var(--fill);
+  font-size:11.5px;color:var(--text-faint)}
+.cc-box b{color:var(--text-dim)}
+.cc-box .cc-lab{font-weight:600;color:var(--text-dim)}
+.cc-box .cc-total{margin-inline-start:auto}
+.cc-box .cc-total b{color:#6FE3C4}
+/* دستگیرهٔ درگِ ردیف‌های گزارش (کلمات کلیدی + ردیف‌های تسک) */
+.rep-grip{display:inline-block;cursor:grab;color:var(--text-faint);margin-inline-end:6px;
+  user-select:none;font-size:13px;vertical-align:middle}
+.rep-grip:active{cursor:grabbing}
+tr.dragging{opacity:.45}
+tr.dragging td{background:var(--fill)}
 /* ردیف‌های «ایمپورت تسک» — گرید تا نوع/عنوان/مسئول در ستون‌های هم‌راستا بیایند */
 [data-report] .pull-all{display:flex;align-items:center;gap:8px;padding:8px 8px;margin-bottom:6px;
   cursor:pointer;border-radius:var(--r-sm);background:var(--fill);font-size:12.5px}
@@ -1442,11 +1496,20 @@ table.sheet td:not(.edit){padding:6px 9px}
 .day-head b{color:var(--text);font-size:14px}
 .day-head .day-date{color:var(--text-faint);font-size:11px}
 
-/* ═══ مودالِ تسک: تمام‌عرض، دوستونی، ارتفاعِ زیاد (کمترین اسکرول) ═══ */
-.modal:has(.tmodal){max-width:1080px;width:96vw;height:min(92vh,920px)}
-.tmodal-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:20px;align-items:start}
-.tmodal-right{border-inline-start:1px solid var(--stroke-soft);padding-inline-start:20px}
-@media(max-width:860px){.tmodal-grid{grid-template-columns:1fr}.tmodal-right{border-inline-start:0;padding-inline-start:0}}
+/* ═══ مودالِ تسک: تک‌ستونه و خلوت (الهام از گوگل‌کلندر؛ بخش‌های اختیاری با تولبار باز می‌شوند) ═══ */
+.modal:has(.tmodal){max-width:720px;width:94vw;height:auto;max-height:92vh}
+.tmodal-col{display:flex;flex-direction:column}
+.tmodal .tm-title{font-size:15px;font-weight:600;padding:8px 10px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+@media(max-width:560px){.grid3{grid-template-columns:1fr}}
+.tm-review{display:flex;align-items:center;gap:8px;margin:2px 0 6px;cursor:pointer;font-size:12.5px;color:var(--text-dim)}
+.tm-review input{flex:none}
+/* تولبارِ بخش‌های اختیاری */
+.topt-bar{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 2px;padding-top:12px;border-top:1px solid var(--stroke-soft)}
+.topt{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:99px;border:1px solid var(--stroke-soft);background:var(--fill);color:var(--text-dim);cursor:pointer;font-size:12.5px;font-family:inherit;line-height:1}
+.topt:hover{border-color:var(--stroke);color:var(--text)}
+.topt.on{background:var(--primary-soft);border-color:var(--primary-ring);color:var(--primary-400)}
+.topt-sec{margin-top:10px}
 
 /* جمعِ ساعتِ کاریِ سلولِ تقویم (کنارِ تعدادِ تسک) */
 .cnt-h{font-size:9.5px;color:var(--primary-400);background:var(--primary-soft);border-radius:99px;padding:1px 6px;margin-inline-start:3px;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -1623,15 +1686,13 @@ input[type=checkbox]:disabled{opacity:.5;cursor:default}
 .gt-x:hover{color:var(--danger)}
 .goal-row{cursor:pointer}
 
-/* مودالِ تسک: فشرده و مینیمال تا ۴ستون جا شود، بدونِ سرریزِ دراپ‌داون */
-.modal:has(.tmodal){max-width:1040px}
-.tmodal-grid{gap:16px}
-.tmodal-right{padding-inline-start:16px}
+/* مودالِ تسک: فشرده و مینیمال (تک‌ستونه) بدونِ سرریزِ دراپ‌داون */
+.modal:has(.tmodal){max-width:720px}
 .tmodal .field{margin-bottom:9px;min-width:0}
 .tmodal .field>label{font-size:11px;color:var(--text-dim);margin-bottom:3px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tmodal .input,.tmodal select,.tmodal textarea{font-size:12.5px;padding:6px 8px;min-width:0;max-width:100%;width:100%}
-.tmodal .grid4,.tmodal .grid2{gap:8px}
-.tmodal .grid4>.field,.tmodal .grid2>.field{min-width:0}
+.tmodal .grid4,.tmodal .grid3,.tmodal .grid2{gap:8px}
+.tmodal .grid4>.field,.tmodal .grid3>.field,.tmodal .grid2>.field{min-width:0}
 .tmodal .rs{min-width:0;max-width:100%;width:100%}
 .tmodal .rs-btn{width:100%;min-width:0;max-width:100%;font-size:12.5px;padding:5px 8px;overflow:hidden}
 .tmodal .rs-btn>*{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

@@ -101,47 +101,50 @@
     <div class="modal-h"><h3>${t.id ? 'ویرایش تسک' : 'تسک جدید'}</h3><button class="x" onclick="App.closeModal()">×</button></div>
     <div class="modal-b tmodal" id="tform">
       ${reviewNotesHtml(t)}
-      <div class="tmodal-grid">
-        <!-- ستونِ راست (اصلی): اطلاعاتِ تسک -->
-        <div class="tmodal-left">
-          <!-- ردیفِ ۴ستونه: پروژه / مسئول / نوع / وضعیت -->
-          <div class="grid4">
-            ${field('project', 'پروژه', `<select id="f-project" class="rich-select"><option value="">— انتخاب —</option>${cfg.projects.map(([v, l, color, img]) => optRich(v, l, t.project_id, color, img)).join('')}</select>`)}
-            ${field('assignee', 'مسئول', assigneeSelect)}
-            ${field('task_type', 'نوع تسک', `<select id="f-task_type">${typeOptions(typeSel)}</select>`)}
-            ${field('status', 'وضعیت', `<select id="f-status">${statusOptions(t.status, needsReviewDefault)}</select>`)}
-          </div>
-          ${field('title', 'عنوان', `<input id="f-title" class="input" value="${esc(t.title)}">`)}
-          <!-- ردیفِ ۴ستونه: تاریخ / تخمین / ماه گزارش -->
-          <div class="grid4">
-            ${field('planned_date', 'تاریخ برنامه', `<div style="display:flex;align-items:center"><input id="f-planned_date" class="input jdate" dir="ltr" readonly value="${t.planned_date_fa || ''}"><span id="rel-planned" class="rel-hint"></span></div>`)}
-            ${field('estimate_minutes', 'تخمین (H:MM)', `<input id="f-estimate_minutes" class="input" dir="ltr" placeholder="0:00" value="${t.estimate_minutes ? fmtMin(t.estimate_minutes) : ''}">`)}
-            ${field('report_month', 'ماه گزارش', reportPeriodSelect(t))}
-          </div>
-          ${recurBarHtml(t)}
-          <label style="display:flex;align-items:center;gap:8px;margin:0 0 14px;cursor:pointer">
-            <input type="checkbox" id="f-needs-review" ${needsReviewDefault ? 'checked' : ''}>
-            بازبینی
-          </label>
-          <!-- فیلدهای سفارشی نوع (کلمه کلیدی/مترادف/... هرکدام یک ردیفِ کامل) -->
-          <div id="custom-fields" style="display:none"></div>
+      <div class="tmodal-col">
+        <!-- عنوان (فیلدِ اصلی، بزرگ‌تر) -->
+        ${field('title', 'عنوان', `<input id="f-title" class="input tm-title" value="${esc(t.title)}" placeholder="عنوان تسک…">`)}
+        <div class="grid2">
+          ${field('project', 'پروژه', `<select id="f-project" class="rich-select"><option value="">— انتخاب —</option>${cfg.projects.map(([v, l, color, img]) => optRich(v, l, t.project_id, color, img)).join('')}</select>`)}
+          ${field('assignee', 'مسئول', assigneeSelect)}
         </div>
-        <!-- ستونِ چپ: چک‌لیست (بالا) + توضیحات + گزارش + تاریخچه -->
-        <div class="tmodal-right">
-          ${checklistHtml(t)}
-          ${t.id ? '<div id="kpi-box" style="display:none;margin-bottom:12px"></div>' : ''}
-          ${field('description', 'توضیحات', `<textarea id="f-description" class="rich-editor" rows="4">${esc(t.description)}</textarea>`)}
-          ${t.id ? `<div class="report-sec">
-            <label style="font-weight:700">گزارش</label>
+        <div class="grid2">
+          ${field('task_type', 'نوع تسک', `<select id="f-task_type">${typeOptions(typeSel)}</select>`)}
+          ${field('status', 'وضعیت', `<select id="f-status">${statusOptions(t.status, needsReviewDefault)}</select>`)}
+        </div>
+        <div class="grid3">
+          ${field('planned_date', 'تاریخ برنامه <span id="rel-planned" class="rel-hint"></span>', `<input id="f-planned_date" class="input jdate" dir="ltr" readonly value="${t.planned_date_fa || ''}">`)}
+          ${field('estimate_minutes', 'تخمین (H:MM)', `<input id="f-estimate_minutes" class="input" dir="ltr" placeholder="0:00" value="${t.estimate_minutes ? fmtMin(t.estimate_minutes) : ''}">`)}
+          ${field('report_month', 'ماه گزارش', reportPeriodSelect(t))}
+        </div>
+        <label class="tm-review"><input type="checkbox" id="f-needs-review" ${needsReviewDefault ? 'checked' : ''}> نیاز به بازبینی</label>
+        <!-- فیلدهای سفارشیِ نوع (داینامیک، فقط اگر نوع داشته باشد) -->
+        <div id="custom-fields" style="display:none"></div>
+        ${recurBannerHtml(t)}
+        <!-- تولبارِ بخش‌های اختیاری (مثلِ گوگل‌کلندر): با کلیک باز می‌شوند -->
+        <div class="topt-bar" id="topt-bar">
+          <button type="button" class="topt" data-sec="description">📝 توضیحات</button>
+          <button type="button" class="topt" data-sec="checklist">☑️ چک‌لیست</button>
+          ${isNew ? '<button type="button" class="topt" data-sec="recur">🔁 تکرار</button>' : ''}
+          ${t.id ? '<button type="button" class="topt" data-sec="report">💬 گزارش کار</button>' : ''}
+        </div>
+        <div id="sec-description" class="topt-sec" style="display:none">
+          <textarea id="f-description" class="rich-editor" rows="4">${esc(t.description)}</textarea>
+        </div>
+        <div id="sec-checklist" class="topt-sec" style="display:none">${checklistHtml(t)}</div>
+        ${isNew ? `<div id="sec-recur" class="topt-sec" style="display:none">${recurPickerHtml()}</div>` : ''}
+        ${t.id ? `<div id="sec-report" class="topt-sec" style="display:none">
+          <div class="report-sec">
             <textarea id="f-report" class="rich-editor" rows="3"></textarea>
             <div style="margin-top:6px;display:flex;gap:8px;align-items:center">
               <button type="button" class="btn btn-sm btn-p" id="report-send">ارسال گزارش</button>
               <button type="button" class="btn btn-sm" id="report-cancel" style="display:none">لغو ویرایش</button>
             </div>
             <div id="report-list" class="report-list"></div>
-          </div>` : ''}
-          ${historyHtml(t)}
-        </div>
+          </div>
+        </div>` : ''}
+        ${t.id ? '<div id="kpi-box" style="display:none;margin-top:12px"></div>' : ''}
+        ${historyHtml(t)}
       </div>
     </div>
     <div class="modal-f">
@@ -203,15 +206,16 @@
     })).filter((x) => x.text);
   }
 
-  // ── نوار تکرار (فقط تسک جدید؛ برای تسکِ موجودِ تکرارشونده فقط بنر حذف سری) ──
-  function recurBarHtml(t) {
-    if (t.id) {
-      if (t.recurrence) return `<div class="rec-bar" style="color:var(--text-dim)">🔁 این تسک بخشی از یک سری تکرار است.
-        <button type="button" class="btn btn-sm" id="rec-del" data-id="${t.recurrence}" style="color:var(--danger)">حذف کل سریِ آینده</button></div>`;
-      return '';
-    }
+  // ── تکرار: بنرِ «بخشی از سری» (تسکِ موجودِ تکرارشونده) + پیکرِ نوعِ تکرار (تسک جدید،
+  //    داخلِ بخشِ جمع‌شونده‌ی «تکرار»؛ فقط با کلیک روی تولبار باز می‌شود). ──
+  function recurBannerHtml(t) {
+    if (!(t.id && t.recurrence)) return '';
+    return `<div class="rec-bar" style="color:var(--text-dim);margin-top:8px">🔁 این تسک بخشی از یک سری تکرار است.
+      <button type="button" class="btn btn-sm" id="rec-del" data-id="${t.recurrence}" style="color:var(--danger)">حذف کل سریِ آینده</button></div>`;
+  }
+  function recurPickerHtml() {
     const wk = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];  // شنبه=۰ .. جمعه=۶
-    return `<div class="rec-wrap"><label>تکرار</label>
+    return `<div class="rec-wrap">
       <div class="rec-bar" id="rec-opts">
         <span class="rec-opt on" data-freq="">یک‌بار</span>
         <span class="rec-opt" data-freq="daily">روزانه</span>
@@ -224,6 +228,41 @@
         <span id="rec-weekdays" style="display:none;gap:4px">${wk.map((w, i) => `<span class="rec-opt" data-wd="${i}">${w}</span>`).join('')}</span>
         <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer"><input type="checkbox" id="rec-skip" checked> رد کردن تعطیلات</label>
       </div></div>`;
+  }
+
+  // ── تولبارِ بخش‌های اختیاری (توضیحات/چک‌لیست/تکرار/گزارش) ──
+  //    هر بخش پیش‌فرض بسته است؛ با کلیک روی چیپ باز/بسته می‌شود. بخشی که از قبل محتوا
+  //    دارد (توضیحاتِ پر، چک‌لیستِ غیرخالی، گزارشِ ثبت‌شده) خودکار باز می‌شود. ادیتورهای
+  //    سنگین (TinyMCE توضیحات/گزارش) فقط هنگامِ اولین بازشدن init می‌شوند (لودِ تنبل).
+  function wireOptToolbar(t, id) {
+    const bar = document.getElementById('topt-bar'); if (!bar) return;
+    const inited = {};
+    const reveal = (name) => {
+      if (name === 'description' && !inited.description) { if (window.RichText) RichText.init('#f-description'); inited.description = true; }
+      if (name === 'report' && !inited.report) { initReports(id); inited.report = true; }
+    };
+    const setSec = (name, show) => {
+      const sec = document.getElementById('sec-' + name);
+      const chip = bar.querySelector(`.topt[data-sec="${name}"]`);
+      if (!sec) return;
+      sec.style.display = show ? '' : 'none';
+      if (chip) chip.classList.toggle('on', show);
+      if (show) reveal(name);
+    };
+    bar.addEventListener('click', (e) => {
+      const chip = e.target.closest('.topt'); if (!chip) return;
+      const name = chip.dataset.sec;
+      const sec = document.getElementById('sec-' + name); if (!sec) return;
+      setSec(name, sec.style.display === 'none');
+    });
+    // بازکردنِ خودکارِ بخش‌های دارای محتوا
+    if (t.description && t.description.replace(/<[^>]*>/g, '').trim()) setSec('description', true);
+    if (t.checklist && t.checklist.length) setSec('checklist', true);
+    if (id) {
+      App.fetchJSON(`/tasks/api/${id}/comments/`)
+        .then((d) => { if (d && d.comments && d.comments.length) setSec('report', true); })
+        .catch(() => {});
+    }
   }
 
   function wireRecur() {
@@ -585,7 +624,7 @@
     relInit();
     const pd = document.getElementById('f-planned_date');
     if (pd) pd.addEventListener('change', relInit);
-    if (window.RichText) RichText.init('#f-description');  // ادیتور غنی توضیحات
+    wireOptToolbar(data, id);  // تولبارِ بخش‌های اختیاری (توضیحات/چک‌لیست/تکرار/گزارش) + لود تنبلِ ادیتورها
     const histBtn = document.getElementById('fix-hist-toggle');  // باز کردن سوابق قبلی نیاز به اصلاح
     if (histBtn) histBtn.onclick = () => {
       document.querySelectorAll('[data-fix-item]').forEach((el, i) => { if (i > 0) el.style.display = ''; });
@@ -598,7 +637,7 @@
     };
     wireRecur();               // نوار تکرار (تسک جدید)
     wireChecklist();           // چک‌لیستِ عمومی
-    if (id) { initReports(id); initKpis(id); }  // گزارش + نمایش KPI (تسک موجود)
+    if (id) initKpis(id);      // نمایش KPI (تسک موجود)؛ گزارش تنبل در wireOptToolbar
     const recDel = document.getElementById('rec-del');
     if (recDel) recDel.onclick = async () => {
       if (await App.confirm('کلِ سریِ آینده‌ی این تکرار حذف شود؟ (تسک‌های انجام‌شده می‌مانند)')) {
@@ -625,9 +664,13 @@
         }
         if (again) { openTask(null); return; }
         App.closeModal();
-        // بدونِ رفرش: ردیفِ لیستِ تسک‌ها را درجا به‌روز/درج می‌کنیم؛ اگر نشد، رفرشِ نرم
+        // بدونِ رفرش: ردیفِ لیستِ تسک‌ها را درجا به‌روز/درج می‌کنیم؛ اگر تقویمی روی صفحه بود
+        // آن را اجاکسی نو می‌کنیم (حفظِ فیلتر)؛ وگرنه رفرشِ نرمِ صفحه.
         const done = await refreshTaskRow(savedId, !id);
-        if (!done) setTimeout(() => location.reload(), 200);
+        if (!done) {
+          if (window.Calendar && Calendar.any()) Calendar.refreshAll();
+          else setTimeout(() => location.reload(), 200);
+        }
       } catch (_) {
         saving = false;
         btns.forEach((b) => { b.disabled = false; b.classList.remove('loading'); });
@@ -636,7 +679,8 @@
     const s = document.getElementById('t-save'); if (s) s.onclick = () => save(false);
     const n = document.getElementById('t-save-next'); if (n) n.onclick = () => save(true);
     const d = document.getElementById('t-del');
-    if (d) d.onclick = async () => { if (await App.confirm('این تسک حذف شود؟')) { await App.fetchJSON(`/tasks/api/${id}/`, { method: 'DELETE' }); App.closeModal(); location.reload(); } };
+    if (d) d.onclick = async () => { if (await App.confirm('این تسک حذف شود؟')) { await App.fetchJSON(`/tasks/api/${id}/`, { method: 'DELETE' }); App.closeModal();
+      if (window.Calendar && Calendar.any()) Calendar.refreshAll(); else location.reload(); } };
   }
   window.openTask = openTask;
 

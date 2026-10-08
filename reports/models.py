@@ -155,6 +155,7 @@ class Report(TimeStampedModel):
 
     # سطل‌هایی که ساعتشان در هزینهٔ تولید محتوا شمرده می‌شود: انتشار/آپدیت/رپورتاژ
     CONTENT_TIME_BUCKETS = ('publish', 'update', 'promo')
+    CONTENT_ROUND_TO = 500_000   # جمعِ هزینهٔ تولید محتوا به مضربِ این مبلغ، به سمتِ پایین
 
     def content_rates(self):
         """(نرخِ ساعتی، نرخِ کلمه) مؤثر — اسنپ‌شاتِ گزارش، و اگر ۰ بود، نرخِ فعلیِ پروژه
@@ -185,7 +186,10 @@ class Report(TimeStampedModel):
             time_cost = int(round(total_min / 60 * hourly))
         if word_rate:
             word_cost = int(total_words * word_rate)
-        return {'time': time_cost, 'word': word_cost, 'total': time_cost + word_cost,
+        # جمع به سمتِ پایین رُند می‌شود تا مضربِ ۵۰۰٬۰۰۰ ریال شود (۴۱٬۶۶۶٬۶۶۷ → ۴۱٬۵۰۰٬۰۰۰)
+        raw_total = time_cost + word_cost
+        total = (raw_total // self.CONTENT_ROUND_TO) * self.CONTENT_ROUND_TO if raw_total > 0 else 0
+        return {'time': time_cost, 'word': word_cost, 'total': total, 'total_raw': raw_total,
                 'minutes': total_min, 'words': total_words,
                 'hourly': hourly, 'word_rate': word_rate}
 

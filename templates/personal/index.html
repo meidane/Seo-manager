@@ -6,84 +6,20 @@
      data-birth="{{ life.birth_iso }}" data-death="{{ life.death_iso }}">
 
   {% if setup_needed %}
-    <div class="card glass" style="padding:14px;border:1px solid var(--warning)">
+    <div class="card glass" style="padding:14px;border:1px solid var(--warning);margin-bottom:14px">
       برای استفاده از تسک‌های شخصی، اول یک نوعِ تسک به نامِ «{{ type_name }}» در
       <a href="{% url 'task_types:list' %}">تنظیمات ← انواع تسک</a> بساز. عادت‌ها و اهداف مستقل‌اند و همین حالا کار می‌کنند.
     </div>
   {% endif %}
 
-  {# ── نوارِ بازهٔ واحدِ سراسریِ فضای شخصی (بالای صفحه، پیش‌فرض «۷ روز») — همهٔ باکس‌ها از این می‌آیند ── #}
-  {% include "components/_daterange_bar.html" %}
+  {% comment %}بالای صفحه = تقویمِ مشترک (همان ماژولِ /calendar/؛ دوبار کد نزن): فیکس روی خودم
+  (فیلترِ همکار مخفی)، پنلِ «تسک‌های بدون تاریخ» باز = اینباکس، فیلدِ افزودنِ سریع روشن
+  (پیش‌فرضِ شخصی)، تسکِ سریع در پروژهٔ شخصی ساخته می‌شود.{% endcomment %}
+  <section class="card glass cal pers-cal" style="margin-top:0;margin-bottom:14px">
+    {% include "calendarapp/_calendar.html" with cal_jyear=jyear cal_jmonth=jmonth cal_can_create=can_create_task cal_fixed_assignee=me_colleague_id cal_undated_default=True cal_quick_add=True cal_personal=True %}
+  </section>
 
-  <div class="pers-grid2">
-    {# ── باکس ۱: اینباکس ── #}
-    <section class="card glass pers-box" id="inbox-box">
-      <div class="pers-head">
-        <h3>اینباکس</h3>
-      </div>
-      <div class="pers-prog"><i style="width:{{ wk_pct }}%"></i><b>{{ wk_pct|fa_digits }}٪ · {{ wk_done|fa_digits }} از {{ wk_total|fa_digits }}</b></div>
-      <div class="pers-list" id="inbox-list">
-        {% for t in inbox %}
-          <div class="pers-row{% if t.dim %} dim{% endif %}" data-id="{{ t.id }}" data-open-task="{{ t.id }}">
-            <input type="checkbox" class="pt-done" {% if t.is_done %}checked{% endif %}>
-            <span class="pt-title {% if t.is_done %}is-done{% endif %}">{{ t.title }}</span>
-            {% include "personal/_goal_select.html" with t=t %}
-            <input type="text" class="pt-date jdate" dir="ltr" readonly placeholder="📅 برنامه" value="{% if t.planned_date %}{{ t.planned_date|jalali }}{% endif %}" title="تعیینِ تاریخِ برنامه">
-            <button class="pt-nextweek" data-next="{{ next_week_iso }}" title="انتقال به هفتهٔ بعد">» بعد</button>
-            <button class="pt-x" title="حذف">×</button>
-          </div>
-        {% empty %}
-          <div class="zero" id="inbox-empty">چیزی در این بازه ثبت نشده — هرچه به ذهنت می‌رسد بنویس.</div>
-        {% endfor %}
-      </div>
-      <div class="pers-add" id="inbox-add">
-        <input type="text" class="input" id="inbox-title" placeholder="یک کار بنویس و Enter بزن…">
-        <button class="btn btn-p" id="inbox-plus" title="افزودن">＋</button>
-      </div>
-    </section>
-
-    {# ── باکس ۲: برنامهٔ هفته (۷ روز، درگ‌ودراپ بینِ روزها؛ روزِ انتخابی فوکوس) ── #}
-    <section class="card glass pers-box" id="week-box">
-      <div class="pers-head">
-        <h3>برنامهٔ هفته</h3>
-        <span class="pers-week-lab">{{ cweek_fa }}</span>
-      </div>
-      <div class="week-vgrid" id="week-grid">
-        {% for col in week_grid %}
-          <div class="wday{% if col.is_sel %} sel{% endif %}{% if col.is_today %} today{% endif %}{% if col.is_future %} future{% endif %}" data-date="{{ col.iso }}">
-            <div class="wday-head">
-              <b>{{ col.name }}</b>
-              <span class="wday-num">{{ col.day_fa }}</span>
-              {% if col.is_today %}<span class="wday-today">امروز</span>{% endif %}
-              <span class="wday-count">{{ col.done|fa_digits }}/{{ col.tasks|length|fa_digits }}</span>
-            </div>
-            <div class="wday-body">
-              <div class="wday-list" data-date="{{ col.iso }}">
-                {% for t in col.tasks %}
-                  <div class="wtask{% if t.is_done %} done{% endif %}{% if t.is_sys %} sys{% endif %}" data-id="{{ t.id }}" data-open-task="{{ t.id }}"{% if not t.is_sys %} draggable="true"{% endif %}{% if t.is_sys %} data-sys="1"{% endif %}>
-                    <span class="wtask-pri" title="اولویت">{% if t.pri %}{{ t.pri|fa_digits }}{% endif %}</span>
-                    {% if not t.is_sys %}<span class="pt-grip" title="جابه‌جایی/اولویت">⠿</span>{% endif %}
-                    <input type="checkbox" class="pt-done"{% if t.is_done %} checked{% endif %}>
-                    <span class="pt-title{% if t.is_done %} is-done{% endif %}">{{ t.title }}</span>
-                    {% if t.is_sys %}<a class="wtask-proj" href="/tasks/?project={{ t.project_id }}" title="{{ t.project.name }}" onclick="event.stopPropagation()">{{ t.project.name }}</a>{% endif %}
-                    <span class="timer-cell wtask-timer{% if t.is_done %} done{% endif %}" data-id="{{ t.id }}" data-spent="{{ t.spent_minutes|default:0 }}" data-running="{% if t.timer_started_at %}1{% else %}0{% endif %}" data-started="{% if t.timer_started_at %}{{ t.timer_started_at|date:'c' }}{% endif %}" title="زمانِ صرف‌شده / تخمین">
-                      {% if not t.is_done %}<button class="tbtn" title="شروع/توقف تایمر">▶</button>{% endif %}
-                      <span class="tval">{{ t.spent_minutes|hm }}</span><span class="t-est est-edit" title="کلیک: تعیینِ تخمینِ زمان">{% if t.estimate_minutes %} / {{ t.estimate_minutes|hm }}{% else %} / —{% endif %}</span>
-                    </span>
-                    {% if not t.is_sys %}{% include "personal/_goal_select.html" with t=t %}
-                    <button class="pt-unplan" title="بازگشت به اینباکس (حذفِ تاریخ)">↩</button>{% endif %}
-                  </div>
-                {% endfor %}
-              </div>
-              <input type="text" class="wgrid-newtask" placeholder="＋ کار برای این روز…" data-date="{{ col.iso }}">
-            </div>
-          </div>
-        {% endfor %}
-      </div>
-    </section>
-  </div>
-
-  {# ── باکس ۳: هبیت ترکر (هفتگی، با ناوبری) ── #}
+  {# ── هبیت ترکر (هفتهٔ جاری) ── #}
   <section class="card glass pers-box" id="habit-box">
     <div class="pers-head">
       <h3>عادت‌ها (هبیت ترکر)</h3>

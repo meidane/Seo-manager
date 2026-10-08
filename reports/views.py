@@ -123,7 +123,7 @@ class ReportDetailView(LoginRequiredMixin, DetailView):
         ctx['keywords'] = list(self.object.keywords.all())
         ctx['stats'] = self.object.stats()
         from colleagues.models import Colleague
-        ctx['colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)
+        ctx['colleagues'] = Colleague.task_manager_qs()  # مسئولِ آیتم — بدونِ غیرفعال‌های تسک‌منیجر
         # ویجتِ گزارشِ مالی: پروژهٔ فاکتورِ متصل (اگر هست) وگرنه پروژهٔ گزارش — تا آنچه در
         # کارتِ فاکتور می‌بیند با گردشِ حساب یکی باشد (فاکتورِ cross-projectـ متصل هم دیده شود).
         ctx['ledger_project_id'] = (self.object.invoice.project_id
@@ -165,6 +165,15 @@ def _public_report_ctx(report, ctx):
     ctx['stats'] = report.stats()
     ctx['invoice_ctx'] = _invoice_ctx(report)
     ctx['pay_info'] = PAYMENT_INFO   # هاردکد — به حسابداری وصل نیست
+    # «مانده از قبل» + «جمعِ نهایی» برای جدولِ فاکتورِ مشتری.
+    # project_balance = Σواریز − Σفاکتور − Σبرداشت (منفی=مشتری بدهکار). بدهیِ قبل از این
+    # فاکتور = −(balance + جمعِ این فاکتور)؛ جمعِ نهاییِ قابل‌پرداخت = این فاکتور + مانده از قبل = −balance.
+    if ctx['invoice_ctx'] and report.project_id:
+        from finance.balances import project_balance
+        bal = int(project_balance(report.project_id))
+        grand = int(ctx['invoice_ctx']['invoice'].grand_total)
+        ctx['prev_debt'] = -(bal + grand)
+        ctx['final_due'] = grand + ctx['prev_debt']   # = −bal
     return ctx
 
 
@@ -359,7 +368,7 @@ def add_manual(request, pk):
     )
     # ردیفِ رندرشده را برمی‌گردانیم تا فرانت بدونِ رفرش اضافه‌اش کند (اجاکسی)
     html = render_to_string('reports/_item_row.html', {
-        'it': item, 'colleagues': Colleague.objects.filter(status=Colleague.ACTIVE)})
+        'it': item, 'colleagues': Colleague.task_manager_qs()})
     return JsonResponse({'ok': True, 'id': item.id, 'html': html})
 
 
@@ -510,6 +519,15 @@ def keyword_add(request, pk):
         keyword=(d.get('keyword') or '')[:200],
         position=(d.get('position') or '')[:30])
     return JsonResponse({'ok': True, 'id': kw.id})
+
+
+@login_required
+@require_http_methods(['POST'])
+def keyword_reorder(request, pk):
+    report = get_object_or_404(Report, pk=pk)
+    for i, kid in enumerate(_body(request).get('order', [])):
+        report.keywords.filter(id=kid).update(order=i)
+    return JsonResponse({'ok': True})
 
 
 @login_required
