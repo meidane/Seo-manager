@@ -627,6 +627,39 @@ table.sheet tr:hover td{background:var(--row-alt)}
 
 /* ── تقویم (گوگل‌کلندری) ── */
 .cal{margin-top:0}
+/* ── تقویمِ واحد (calx) — ماژولِ مشترکِ صفحهٔ تقویم + شخصی ── */
+.calx{display:flex;flex-direction:column}
+.calx-top{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--stroke-soft)}
+.calx-nav{display:flex;align-items:center;gap:7px;flex:none}
+.calx-nav .calx-month,.calx-nav .calx-year{width:auto;padding:6px 9px;font-size:12.5px}
+/* فیلترها همه در یک ردیفِ مرتب (RTL: سمتِ چپ)؛ اگر جا نشد، کلِ گروه زیرِ ناو می‌رود (نه تک‌تک) */
+.calx-filters{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;margin-inline-start:auto}
+.calx-fsel{height:34px;font-size:12.5px}
+.calx-filters .rs{min-width:140px;max-width:170px}
+.calx-type{max-width:135px;padding:6px 9px}
+@media(max-width:760px){.calx-filters{flex-wrap:wrap;margin-inline-start:0;width:100%}.calx-filters .rs{flex:1}}
+.calx-undated-btn{display:inline-flex;align-items:center;gap:6px;height:34px;white-space:nowrap}
+.calx-undated-btn.on{background:linear-gradient(135deg,var(--primary),var(--primary-600));color:#fff;border-color:transparent}
+.calx-ubadge{background:var(--fill-strong);color:var(--text-dim);border-radius:99px;padding:0 7px;font-size:11px;font-weight:700}
+.calx-undated-btn.on .calx-ubadge{background:rgba(255,255,255,.25);color:#fff}
+/* بدنه: پنلِ بدون‌تاریخ کنارِ گرید */
+.calx-body{display:flex;align-items:stretch;gap:0}
+.calx-grid-wrap{flex:1;min-width:0}
+.calx-undated{flex:none;width:250px;border-inline-start:1px solid var(--stroke-soft);display:flex;flex-direction:column;background:var(--fill)}
+.calx-undated-h{padding:11px 14px;font-size:12.5px;font-weight:600;color:var(--text-dim);border-bottom:1px solid var(--stroke-soft)}
+.calx-qadd{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--stroke-soft)}
+.calx-qadd .input{flex:1;min-width:0;font-size:12.5px;padding:7px 9px}
+.calx-qadd .btn{flex:none;padding:0 11px}
+.calx-undated-list{flex:1;overflow-y:auto;max-height:620px;padding:8px}
+.calx-undated-empty{color:var(--text-faint);font-size:12px;text-align:center;padding:24px 10px}
+.calx-uitem{display:flex;align-items:center;gap:7px;padding:7px 8px;margin-bottom:6px;border-radius:var(--r-sm);
+  background:var(--card-solid);border:1px solid var(--stroke-soft);cursor:grab;font-size:12px}
+.calx-uitem:hover{border-color:var(--stroke);background:var(--glass-hover)}
+.calx-uitem:active{cursor:grabbing}
+.calx-uitem .tk-av{width:18px;height:18px;font-size:9px;flex:none}
+.calx-uitem-tx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+.calx-uitem-pj{flex:none;font-size:10px;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:860px){.calx-body{flex-direction:column}.calx-undated{width:auto;border-inline-start:0;border-top:1px solid var(--stroke-soft)}.calx-undated-list{max-height:260px}}
 .cal-bar{display:flex;align-items:center;gap:9px;padding:13px 16px;border-bottom:1px solid var(--stroke-soft);flex-wrap:wrap}
 .cal-bar h3{font-size:15px;font-weight:500;min-width:110px;text-align:center}
 .nav-b{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;flex:none;

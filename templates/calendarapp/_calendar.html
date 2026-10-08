@@ -1,0 +1,40 @@
+{% load static seo_extras %}
+{% comment %}تقویمِ مشترکِ قابل‌استفاده‌مجدد — هم صفحهٔ /calendar/ هم فضای شخصی از همین استفاده می‌کنند
+(دوبار کد نزن). رفتار را `static/js/calendar.js` می‌دهد (روی `[data-cal]` سوار می‌شود).
+context: projects, colleagues, task_types, months, years, cal_jyear, cal_jmonth, cal_can_create,
+cal_fixed_assignee?, cal_undated_default?, cal_quick_add?, cal_personal?, cal_quick_project?{% endcomment %}
+<div class="calx" data-cal
+     data-year="{{ cal_jyear }}" data-month="{{ cal_jmonth }}"
+     data-can-create="{% if cal_can_create %}1{% else %}0{% endif %}"
+     {% if cal_fixed_assignee %}data-fixed-assignee="{{ cal_fixed_assignee }}"{% endif %}
+     data-undated="{% if cal_undated_default %}1{% else %}0{% endif %}"
+     {% if cal_quick_add %}data-quickadd="1"{% endif %}
+     {% if cal_personal %}data-personal="1"{% endif %}
+     {% if cal_quick_project %}data-quick-project="{{ cal_quick_project }}"{% endif %}>
+  <div class="calx-top">
+    <div class="calx-nav">
+      <button type="button" class="nav-b" data-cal-prev title="ماه قبل">‹</button>
+      <select class="input calx-month" title="ماه">{% for n,nm in months %}<option value="{{ n }}" {% if n == cal_jmonth %}selected{% endif %}>{{ nm }}</option>{% endfor %}</select>
+      <select class="input calx-year" title="سال">{% for y in years %}<option value="{{ y }}" {% if y == cal_jyear %}selected{% endif %}>{{ y|fa_digits }}</option>{% endfor %}</select>
+      <button type="button" class="nav-b" data-cal-next title="ماه بعد">›</button>
+      <button type="button" class="btn btn-sm" data-cal-today>امروز</button>
+    </div>
+    <div class="calx-filters">
+      <select class="rich-select calx-fsel" data-cf="project"><option value="">همه‌ی پروژه‌ها</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %}>{{ p.name }}</option>{% endfor %}</select>
+      {% if not cal_fixed_assignee %}<select class="rich-select calx-fsel" data-cf="assignee"><option value="">همه‌ی همکاران</option>{% for c in colleagues %}<option value="{{ c.id }}" data-color="{{ c.color }}"{% if c.avatar %} data-img="{{ c.avatar.url }}"{% endif %}>{{ c.full_name }}</option>{% endfor %}</select>{% endif %}
+      <select class="input calx-fsel calx-type" data-cf="type_def"><option value="">همه‌ی انواع</option>{% for t in task_types %}<option value="{{ t.id }}">{{ t.icon }} {{ t.name }}</option>{% endfor %}</select>
+      <button type="button" class="chip calx-undated-btn" data-cal-undated-toggle title="نمایشِ تسک‌های بدون تاریخ">تسک‌های بدون تاریخ<span class="calx-ubadge" data-undated-count hidden>0</span></button>
+    </div>
+  </div>
+  <div class="calx-body">
+    <aside class="calx-undated" data-undated-panel{% if not cal_undated_default %} hidden{% endif %}>
+      <div class="calx-undated-h">تسک‌های بدون تاریخ</div>
+      {% if cal_quick_add %}<form class="calx-qadd" data-qadd-form><input class="input" data-qadd placeholder="یک کار بنویس و Enter بزن…" autocomplete="off"><button type="submit" class="btn btn-p btn-sm" title="افزودن">＋</button></form>{% endif %}
+      <div class="calx-undated-list" data-undated-list></div>
+    </aside>
+    <div class="calx-grid-wrap">
+      <div class="grid7 calx-dow"><div class="dow">شنبه</div><div class="dow">یکشنبه</div><div class="dow">دوشنبه</div><div class="dow">سه‌شنبه</div><div class="dow">چهارشنبه</div><div class="dow">پنجشنبه</div><div class="dow off">جمعه</div></div>
+      <div class="grid7 calx-grid" data-cal-grid></div>
+    </div>
+  </div>
+</div>

@@ -596,9 +596,13 @@
         }
         if (again) { openTask(null); return; }
         App.closeModal();
-        // بدونِ رفرش: ردیفِ لیستِ تسک‌ها را درجا به‌روز/درج می‌کنیم؛ اگر نشد، رفرشِ نرم
+        // بدونِ رفرش: ردیفِ لیستِ تسک‌ها را درجا به‌روز/درج می‌کنیم؛ اگر تقویمی روی صفحه بود
+        // آن را اجاکسی نو می‌کنیم (حفظِ فیلتر)؛ وگرنه رفرشِ نرمِ صفحه.
         const done = await refreshTaskRow(savedId, !id);
-        if (!done) setTimeout(() => location.reload(), 200);
+        if (!done) {
+          if (window.Calendar && Calendar.any()) Calendar.refreshAll();
+          else setTimeout(() => location.reload(), 200);
+        }
       } catch (_) {
         saving = false;
         btns.forEach((b) => { b.disabled = false; b.classList.remove('loading'); });
@@ -607,7 +611,8 @@
     const s = document.getElementById('t-save'); if (s) s.onclick = () => save(false);
     const n = document.getElementById('t-save-next'); if (n) n.onclick = () => save(true);
     const d = document.getElementById('t-del');
-    if (d) d.onclick = async () => { if (await App.confirm('این تسک حذف شود؟')) { await App.fetchJSON(`/tasks/api/${id}/`, { method: 'DELETE' }); App.closeModal(); location.reload(); } };
+    if (d) d.onclick = async () => { if (await App.confirm('این تسک حذف شود؟')) { await App.fetchJSON(`/tasks/api/${id}/`, { method: 'DELETE' }); App.closeModal();
+      if (window.Calendar && Calendar.any()) Calendar.refreshAll(); else location.reload(); } };
   }
   window.openTask = openTask;
 
