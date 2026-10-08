@@ -629,16 +629,23 @@ table.sheet tr:hover td{background:var(--row-alt)}
 .cal{margin-top:0}
 /* ── تقویمِ واحد (calx) — ماژولِ مشترکِ صفحهٔ تقویم + شخصی ── */
 .calx{display:flex;flex-direction:column}
-.calx-top{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--stroke-soft)}
+/* نوار بالا = یک ردیفِ واحد: ناو (RTL راست) + همهٔ فیلترها و دکمهٔ «بدون تاریخ» (RTL چپ).
+   روی دسکتاپ تک‌ردیف می‌ماند (nowrap) و فیلترها در صورتِ تنگی جمع می‌شوند؛ زیرِ ۸۶۰px
+   کلِ فیلترها تمیز به ردیفِ دومِ تمام‌عرض می‌روند (نه نیم‌ونصفه). */
+.calx-top{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;padding:12px 16px;border-bottom:1px solid var(--stroke-soft)}
 .calx-nav{display:flex;align-items:center;gap:7px;flex:none}
 .calx-nav .calx-month,.calx-nav .calx-year{width:auto;padding:6px 9px;font-size:12.5px}
-/* فیلترها همه در یک ردیفِ مرتب (RTL: سمتِ چپ)؛ اگر جا نشد، کلِ گروه زیرِ ناو می‌رود (نه تک‌تک) */
-.calx-filters{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;margin-inline-start:auto}
+.calx-filters{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;margin-inline-start:auto;min-width:0}
 .calx-fsel{height:34px;font-size:12.5px}
-.calx-filters .rs{min-width:140px;max-width:170px}
-.calx-type{max-width:135px;padding:6px 9px}
-@media(max-width:760px){.calx-filters{flex-wrap:wrap;margin-inline-start:0;width:100%}.calx-filters .rs{flex:1}}
-.calx-undated-btn{display:inline-flex;align-items:center;gap:6px;height:34px;white-space:nowrap}
+.calx-filters .rs{flex:0 1 150px;min-width:108px}
+.calx-type{flex:0 1 130px;min-width:92px;padding:6px 9px}
+@media(max-width:860px){
+  .calx-top{flex-wrap:wrap}
+  .calx-filters{margin-inline-start:0;width:100%;flex-wrap:wrap}
+  .calx-filters .rs{flex:1 1 140px}
+  .calx-type{flex:1 1 120px}
+}
+.calx-undated-btn{display:inline-flex;align-items:center;gap:6px;height:34px;white-space:nowrap;flex:none}
 .calx-undated-btn.on{background:linear-gradient(135deg,var(--primary),var(--primary-600));color:#fff;border-color:transparent}
 .calx-ubadge{background:var(--fill-strong);color:var(--text-dim);border-radius:99px;padding:0 7px;font-size:11px;font-weight:700}
 .calx-undated-btn.on .calx-ubadge{background:rgba(255,255,255,.25);color:#fff}

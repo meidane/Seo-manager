@@ -1,8 +1,9 @@
 """ویوِ "فضای شخصی" — داشبوردِ خصوصیِ یوزرِ admin.
 
-تسک‌های شخصی = `tasks.Task` با نوعِ «شخصی» در پروژهٔ شخصیِ خودکارِ همکار (فقط خودش
-می‌بیند؛ در تقویم/لیست هم همین‌طور). عادت/هدف مدلِ اختصاصیِ همین اپ. فقط رندرِ اولیه
-اینجاست؛ تعامل با API (بخشی reuseِ `tasks/api.py`، بخشی `personal/api.py`).
+بالای صفحه = **تقویمِ مشترک** (`calendarapp/_calendar.html`، فیکس روی خودِ کاربر، پنلِ
+«تسک‌های بدون تاریخ» = همان اینباکس + فیلدِ افزودنِ سریع). پایین‌تر = عادت‌ها/اهداف/
+یادداشت‌ها. تسک‌های شخصی = `tasks.Task` با نوعِ «شخصی» در پروژهٔ شخصیِ خودکارِ همکار.
+عادت/هدف مدلِ اختصاصیِ همین اپ. فقط رندرِ اولیه اینجاست؛ تعامل با API.
 """
 from datetime import date, timedelta
 
@@ -10,8 +11,8 @@ from django.shortcuts import render
 from django.utils.decorators import method_decorator
 from django.views import View
 
+from calendarapp.views import calendar_base_context
 from core.jalali import WEEKDAY_NAMES, format_jalali, jalali_long
-from projects.access import accessible_project_ids
 
 from .access import admin_only
 from .api import PERSONAL_TYPE_NAME, personal_context
@@ -31,96 +32,12 @@ class PersonalDashboardView(View):
     template_name = 'personal/index.html'
 
     def get(self, request):
-        from tasks.models import Task
-
         user = request.user
         today = date.today()
         me, pproject, ptype = personal_context(request)
 
-        # ── یک نوارِ بازهٔ واحدِ سراسری برای کلِ صفحهٔ شخصی (بالای صفحه، پیش‌فرض «۷ روز»،
-        # بدونِ چیپِ «همه») — جای همهٔ فلش‌های هفته‌ی قبل/بعد و بازه‌های جداگانه.
-        from core.daterange import _resolve_preset, bar_context, optional_range
-        r_start, r_end, rctx = optional_range(request)
-        if not (r_start and r_end):
-            r_start, r_end = _resolve_preset('7', today)
-            rctx = bar_context('7', r_start, r_end)
-        rctx['range_optional'] = False
-
-        # همهٔ گریدها/باکس‌ها از همین بازه می‌آیند: روزِ مرجع = پایانِ بازه (پیش‌فرض امروز)،
-        # هفتهٔ گرید/هبیت = هفتهٔ حاویِ همان روز. دیگر ناوبرِ جدا (?day/?hweek) نداریم.
-        day = r_end
-        hsat = week_saturday(r_end)
-
-        # ── تسک‌های شخصی (Task با نوعِ «شخصی») ──
-        ptasks = Task.objects.none()
-        if me and pproject and ptype:
-            ptasks = Task.objects.filter(project=pproject, assignee=me, type_def=ptype)
-
-        # اینباکس: تسک‌های ثبت‌شده در بازهٔ انتخابی (بر اساسِ created_at)؛
-        # برنامه‌ریزی‌شده/انجام‌شده‌ها ته می‌روند و کم‌رنگ می‌شوند.
-        inbox = list(ptasks.filter(created_at__date__range=(r_start, r_end)).order_by('board_order', 'id'))
-        for t in inbox:
-            t.dim = bool(t.planned_date) or t.is_done
-        inbox.sort(key=lambda t: t.dim)  # پایدار: فعال‌ها بالا، بقیه ته
-        wk_done = sum(1 for t in inbox if t.is_done)
-
-        from .models import DailyPlan
-        daily = list(ptasks.filter(planned_date=day).order_by('board_order', 'id'))
-        for t in daily:  # تضمینِ رکوردِ تاریخچهٔ روز (برای نمودار)، idempotent
-            DailyPlan.objects.get_or_create(task=t, date=day, defaults={'user': user})
-
-        # درصدِ روز = انجام‌شده / کلِ تسک‌های همان روزِ من (شخصی + سیستمی)
-        day_done = day_total = 0
-        if me:
-            dq = Task.objects.filter(assignee=me, planned_date=day)
-            ids = accessible_project_ids(request)
-            if ids is not None:
-                dq = dq.filter(project_id__in=ids)
-            day_total = dq.count()
-            day_done = dq.filter(status=Task.DONE).count()
-
-        # ── شبکهٔ ۷ روزِ هفته (برنامه‌ریزیِ شخصی + هر تسکی که مسئولش منم) ──
-        # هر روز = ستونی از تسک‌های شخصیِ همان روز + تسک‌های اسایمن‌شده به من در هر
-        # پروژهٔ دیگر (تا از همین‌جا مدیریتشان کنم). روزِ انتخابی «فوکوس» است، بقیه کم‌رنگ‌تر.
-        grid_sat = week_saturday(day)
-        grid_end = grid_sat + timedelta(days=6)
-        sys_by_day = {}
-        if me:
-            sq = Task.objects.filter(assignee=me, planned_date__range=(grid_sat, grid_end))
-            if pproject:
-                sq = sq.exclude(project=pproject)   # پروژهٔ شخصی جداگانه می‌آید
-            ids = accessible_project_ids(request)
-            if ids is not None:
-                sq = sq.filter(project_id__in=ids)
-            for t in sq.select_related('project', 'type_def'):
-                sys_by_day.setdefault(t.planned_date, []).append(t)
-
-        week_grid = []
-        for i in range(7):
-            d = grid_sat + timedelta(days=i)
-            dtasks = list(ptasks.filter(planned_date=d).order_by('board_order', 'id')) if (me and pproject) else []
-            for t in dtasks:
-                DailyPlan.objects.get_or_create(task=t, date=d, defaults={'user': user})
-                t.is_sys = False
-            for t in sys_by_day.get(d, []):
-                t.is_sys = True
-            allt = dtasks + sys_by_day.get(d, [])
-            # ترتیب: انجام‌نشده‌ها اول (شخصی قبل از سیستمی)، انجام‌شده‌ها ته لیست
-            allt.sort(key=lambda t: (t.is_done, t.is_sys, getattr(t, 'board_order', 0) or 0, t.id))
-            pri = 0
-            for t in allt:  # شمارهٔ اولویتِ ریز (فقط برای انجام‌نشده‌ها)
-                if t.is_done:
-                    t.pri = None
-                else:
-                    pri += 1
-                    t.pri = pri
-            week_grid.append({
-                'date': d, 'iso': d.isoformat(), 'name': WEEKDAY_NAMES[i],
-                'day_fa': format_jalali(d, '%d', fa_digits=True),
-                'is_today': d == today, 'is_sel': d == day, 'is_future': d > today,
-                'tasks': allt, 'done': sum(1 for t in allt if t.is_done)})
-
-        # ── عادت‌ها (هفتگی، با ناوبری؛ همه‌ی روزها قابلِ‌کلیک، روزهای هدف پررنگ‌تر) ──
+        # ── عادت‌ها (هبیت ترکر؛ هفتهٔ جاری — بدونِ نوارِ بازه، چون بالای صفحه حالا تقویم است) ──
+        hsat = week_saturday(today)
         hdays = []
         for i in range(7):
             d = hsat + timedelta(days=i)
@@ -136,39 +53,11 @@ class PersonalDashboardView(View):
             for wd in hdays:
                 active = wd['jwd'] in wset
                 done = logs.get((h.id, wd['date']), False)
-                # هر روزی که انجام شده حساب می‌شود (حتی اگر روزِ هدف نبوده) — تعدادِ انجام مهم است
                 if done and not wd['is_future']:
                     done_days += 1
                 cells.append({**wd, 'active': active, 'done': done})
             habits.append({'obj': h, 'cells': cells, 'done_days': done_days,
                            'target': target_total, 'pct': min(100, _pct(done_days, target_total))})
-
-        # ── نمودارِ هفتگیِ باکسِ روزانه (برنامه‌ریزی/انجام/درصد/ساعت در هفتهٔ حاویِ روزِ انتخابی) ──
-        cw_sat = week_saturday(day)
-        cplans = list(DailyPlan.objects.filter(
-            user=user, date__range=(cw_sat, cw_sat + timedelta(days=6)),
-            task__deleted_at__isnull=True).select_related('task'))
-        chart = []
-        for i in range(7):
-            d = cw_sat + timedelta(days=i)
-            dps = [p for p in cplans if p.date == d]
-            planned = len(dps)
-            done = sum(1 for p in dps if p.done)
-            minutes = sum((p.task.spent_minutes or 0) for p in dps)
-            chart.append({'name': WEEKDAY_NAMES[i], 'day_fa': format_jalali(d, '%d', fa_digits=True),
-                          'planned': planned, 'done': done, 'pct': _pct(done, planned),
-                          'hours': round(minutes / 60, 1), 'is_today': d == today, 'is_future': d > today,
-                          'is_sel': d == day})
-
-        # ── وصلِ تسک‌ها به هدف (آیکنِ 🎯 + انتخابگرِ ردیف) ──
-        from .models import GoalLink
-        grid_tasks = [t for col in week_grid for t in col['tasks']]
-        _ids = [t.id for t in inbox] + [t.id for t in daily] + [t.id for t in grid_tasks]
-        gmap = {gl.task_id: gl.goal for gl in GoalLink.objects.filter(task_id__in=_ids).select_related('goal')}
-        for t in inbox + daily + grid_tasks:
-            g = gmap.get(t.id)
-            t.goal_id = g.id if g else ''
-            t.goal_color = g.color if g else ''
 
         # ── اهداف ──
         goals = []
@@ -189,21 +78,13 @@ class PersonalDashboardView(View):
             'page_title': 'فضای شخصی',
             'setup_needed': not (me and pproject and ptype),
             'type_name': PERSONAL_TYPE_NAME,
-            'inbox': inbox, 'wk_done': wk_done, 'wk_total': len(inbox), 'wk_pct': _pct(wk_done, len(inbox)),
-            'daily': daily, 'week_grid': week_grid,
-            'day_done': day_done, 'day_total': day_total, 'day_pct': _pct(day_done, day_total),
-            'day_fa': jalali_long(day), 'is_today': day == today,
-            'chart': chart,
-            'cweek_fa': jalali_long(cw_sat) + ' – ' + jalali_long(cw_sat + timedelta(days=6)),
-            'goal_list': [{'id': x['obj'].id, 'title': x['obj'].title, 'color': x['obj'].color} for x in goals],
+            'me_colleague_id': me.id if me else '',
             'week_days': hdays, 'habits': habits,
             'hweek_fa': jalali_long(hsat) + ' – ' + jalali_long(hsat + timedelta(days=6)),
             'goals': goals,
-            # تاریخِ شروعِ هفتهٔ بعد (برای دکمهٔ «هفتهٔ بعد»ِ اینباکس)
-            'next_week_iso': (week_saturday(today) + timedelta(days=7)).isoformat(),
             'life': {'birth_iso': birth.isoformat(), 'death_iso': death.isoformat(),
                      'age_now': LIFE_AGE_NOW, 'expectancy': LIFE_EXPECTANCY},
             'notes': PersonalNote.objects.filter(user=request.user),
         }
-        ctx.update(rctx)  # کلیدهای نوارِ بازهٔ اینباکس (range_key/range_start_fa/…)
+        ctx.update(calendar_base_context(request))  # projects/colleagues/task_types/months/years/jyear/jmonth
         return render(request, self.template_name, ctx)

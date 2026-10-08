@@ -116,28 +116,32 @@ def _resolve_ym(request):
     return jyear, jmonth
 
 
+def calendar_base_context(request):
+    """context مشترکِ پارشالِ `calendarapp/_calendar.html` (ماه/سال + فیلترها).
+    هم `CalendarView` هم **فضای شخصی** از همین می‌خوانند (دوبار کد نزن). سلول‌ها SSR
+    نمی‌شوند؛ `calendar.js` موقعِ mount از `calendar_api` می‌گیردشان."""
+    from core.jalali import MONTH_NAMES
+    jyear, jmonth = _resolve_ym(request)
+    ids = accessible_project_ids(request)
+    visible = Project.objects.filter(id__in=ids) if ids is not None else Project.objects.all()
+    return {
+        'jyear': jyear,
+        'jmonth': jmonth,
+        'months': list(enumerate(MONTH_NAMES, 1)),   # [(1,'فروردین'),…]
+        'years': list(range(jyear - 3, jyear + 4)),   # بازهٔ انتخابِ سال
+        'projects': visible.filter(status=Project.ACTIVE),
+        # افرادِ غیرفعال‌شده در تسک‌منیجر از دراپ‌داونِ همکار حذف می‌شوند
+        'colleagues': Colleague.objects.filter(status=Colleague.ACTIVE).exclude(hide_in_task_manager=True),
+        'task_types': TaskTypeDef.objects.filter(is_active=True),
+    }
+
+
 class CalendarView(LoginRequiredMixin, TemplateView):
     template_name = 'calendarapp/index.html'
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        jyear, jmonth = _resolve_ym(self.request)
-        start, end = month_bounds_gregorian(jyear, jmonth)
-        qs = _filtered_tasks(self.request, start, end)
-        cells = build_month(jyear, jmonth, _merge_virtual(_tasks_by_date(qs), start, end), _holiday_map(start, end))
-
-        from core.jalali import MONTH_NAMES
-        ctx['cells'] = cells
-        ctx['jyear'] = jyear
-        ctx['jmonth'] = jmonth
-        ctx['month_title'] = month_title(jyear, jmonth)
-        ctx['months'] = list(enumerate(MONTH_NAMES, 1))   # [(1,'فروردین'),…]
-        ctx['years'] = list(range(jyear - 3, jyear + 4))   # بازهٔ انتخابِ سال
-        ids = accessible_project_ids(self.request)
-        visible = Project.objects.filter(id__in=ids) if ids is not None else Project.objects.all()
-        ctx['projects'] = visible.filter(status=Project.ACTIVE)
-        ctx['colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)
-        ctx['task_types'] = TaskTypeDef.objects.filter(is_active=True)
+        ctx.update(calendar_base_context(self.request))
         ctx['page_title'] = 'تقویم'
         return ctx
 
