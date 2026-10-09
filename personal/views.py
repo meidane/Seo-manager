@@ -79,6 +79,8 @@ class PersonalDashboardView(View):
             'setup_needed': not (me and pproject and ptype),
             'type_name': PERSONAL_TYPE_NAME,
             'me_colleague_id': me.id if me else '',
+            'personal_project_id': pproject.id if pproject else '',
+            'personal_type_id': ptype.id if ptype else '',
             'week_days': hdays, 'habits': habits,
             'hweek_fa': jalali_long(hsat) + ' – ' + jalali_long(hsat + timedelta(days=6)),
             'goals': goals,

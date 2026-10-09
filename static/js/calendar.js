@@ -14,13 +14,21 @@
       ? `<img class="tk-av" src="${t.avatar}" alt="">`
       : `<span class="tk-av" style="background:${t.a_color}">${esc(t.initials || '')}</span>`;
   }
+  // آیکنِ ⚠ زردِ «در انتظار بازبینی»
+  const WARN = '<svg class="tk-warn" viewBox="0 0 512 512" aria-hidden="true"><path fill="currentColor" d="M256 32c14.2 0 27.3 7.5 34.5 19.8l216 368c7.3 12.4 7.4 27.7 .2 40.1S486.3 480 472 480L40 480c-14.3 0-27.6-7.7-34.8-20.1s-7.1-27.8 .2-40.1l216-368C228.7 39.5 241.8 32 256 32zm0 128c-13.3 0-24 10.7-24 24l0 112c0 13.3 10.7 24 24 24s24-10.7 24-24l0-112c0-13.3-10.7-24-24-24zm32 224a32 32 0 1 0 -64 0 32 32 0 1 0 64 0z"/></svg>';
   function chip(t, extra) {
     const pc = t.project_color || t.color;
-    const style = `style="${t.done ? '' : `background:rgba(${pc},.20);`}border-right:4px solid rgb(${pc})"`;
-    const attrs = t.virtual ? '' : ` draggable="true" data-id="${t.id}" data-open-task="${t.id}"`;
-    const title = `${t.type_label}: ${t.title}${t.project ? ' — ' + t.project : ''}`;
-    return `<span class="tk${extra ? ' tk-extra' : ''}${t.done ? ' done' : ''}${t.is_placeholder ? ' placeholder' : ''}${t.virtual ? ' virtual' : ''}"${attrs} title="${esc(title)}" ${style}>` +
-      `${av(t)}<span class="tk-tx">${esc(t.type_label)}: ${esc(t.title)}</span></span>`;
+    // «تکمیل — در انتظار بازبینی» (pending) = کارش انجام شده → مثلِ done خط‌خورده، ولی آلارمِ زرد
+    const review = t.status === 'pending';
+    const doneLike = t.done || review;
+    const style = `style="${doneLike ? '' : `background:rgba(${pc},.20);`}border-right:4px solid rgb(${pc})"`;
+    // مجازی: کلیک‌پذیر برای بازکردنِ نمایندهٔ سری (ولی غیرقابل‌درگ)؛ واقعی: درگ‌پذیر
+    const attrs = t.virtual
+      ? (t.series_task_id ? ` data-open-task="${t.series_task_id}"` : '')
+      : ` draggable="true" data-id="${t.id}" data-open-task="${t.id}"`;
+    const title = `${t.type_label}: ${t.title}${t.project ? ' — ' + t.project : ''}${review ? ' (در انتظار بازبینی)' : ''}`;
+    return `<span class="tk${extra ? ' tk-extra' : ''}${t.done ? ' done' : ''}${review ? ' review' : ''}${t.is_placeholder ? ' placeholder' : ''}${t.virtual ? ' virtual' : ''}"${attrs} title="${esc(title)}" ${style}>` +
+      `${review ? WARN : ''}${av(t)}<span class="tk-tx">${esc(t.type_label)}: ${esc(t.title)}</span></span>`;
   }
   function peopleRow(c) {
     if (!c.people || !c.people.length) return '';
@@ -64,6 +72,14 @@
 
     const monthSel = root.querySelector('.calx-month');
     const yearSel = root.querySelector('.calx-year');
+
+    // پیش‌فرض‌های تسکِ جدیدِ این تقویم (شخصی: پروژه/نوعِ شخصی از data-quick-*)
+    function prefillNew(extra) {
+      const p = Object.assign({}, extra);
+      if (root.dataset.quickProject) p.project_id = +root.dataset.quickProject;
+      if (root.dataset.quickType) p.type_def = +root.dataset.quickType;
+      return p;
+    }
 
     function q() {
       const p = new URLSearchParams({ year, month });
@@ -140,7 +156,7 @@
     // ── کلیکِ سلول: دکمهٔ + / باز-بستِ «N مورد دیگر» ──
     grid.addEventListener('click', (e) => {
       const add = e.target.closest('.cell-add');
-      if (add && window.openTask) { e.stopPropagation(); window.openTask(null, { planned_date_fa: add.dataset.jdate }); return; }
+      if (add && window.openTask) { e.stopPropagation(); window.openTask(null, prefillNew({ planned_date_fa: add.dataset.jdate })); return; }
       const more = e.target.closest('[data-more]');
       if (more) {
         e.stopPropagation();
@@ -201,7 +217,7 @@
         inp.value = ''; inp.focus(); load();
       } catch (err) {
         // اگر پروژه لازم بود → مودالِ کامل با عنوانِ پرشده
-        if (window.openTask) { window.openTask(null, { title }); inp.value = ''; }
+        if (window.openTask) { window.openTask(null, prefillNew({ title })); inp.value = ''; }
       }
     });
 

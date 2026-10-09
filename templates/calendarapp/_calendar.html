@@ -10,7 +10,8 @@ cal_fixed_assignee?, cal_undated_default?, cal_quick_add?, cal_personal?, cal_qu
      data-undated="{% if cal_undated_default %}1{% else %}0{% endif %}"
      {% if cal_quick_add %}data-quickadd="1"{% endif %}
      {% if cal_personal %}data-personal="1"{% endif %}
-     {% if cal_quick_project %}data-quick-project="{{ cal_quick_project }}"{% endif %}>
+     {% if cal_quick_project %}data-quick-project="{{ cal_quick_project }}"{% endif %}
+     {% if cal_quick_type %}data-quick-type="{{ cal_quick_type }}"{% endif %}>
   <div class="calx-top">
     <div class="calx-nav">
       <button type="button" class="nav-b" data-cal-prev title="ماه قبل">‹</button>

@@ -195,7 +195,7 @@
     const info=CATS[cid];
     const s=document.createElement('span'); s.className='tag txcat-chip'; s.dataset.cid=cid;
     s.style.cssText=`background:color-mix(in srgb,${info.color} 18%,transparent);color:${info.color}`;
-    s.innerHTML=`${info.name}<i class="txcat-x">×</i>`;
+    s.innerHTML=`<span class="txcat-name">${info.name}</span><i class="txcat-x">×</i>`;
     cell.querySelector('.txcat-add').insertAdjacentElement('beforebegin', s);
     return true;
   }

@@ -373,6 +373,10 @@ tbody tr:last-child td{border-bottom:0}
   display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .t-ok{background: rgba(45, 212, 167, .14);color: #23a683;}
 .t-warn{background:rgba(249,115,22,.14);color: #dc8549;}
+/* «در انتظار بازبینی» (تسکِ تکمیل‌شده، هنوز تاییدِ مدیر نشده) — آلارمِ زرد + عنوانِ خط‌خورده */
+.t-rev{background:rgba(251,191,36,.16);color:var(--warning);padding:2px 7px}
+.ttl-txt.is-review{text-decoration:line-through;color:var(--text-dim)}
+.tcell .ttl-in.is-review{text-decoration:line-through;color:var(--text-dim)}
 .t-bad{background:rgba(251,87,115,.14);color: #df6379;}
 .t-info{background:rgba(56,189,248,.14);color:var(--info-fg)}
 .t-mute{background:rgba(143,160,184,.13);color:var(--text-dim)}
@@ -1192,8 +1196,12 @@ select.tx-inline{cursor:pointer;max-width:150px}
 
 /* پیش‌نمای تسک تکرارشونده در تقویم (کم‌رنگ/خط‌چین) */
 .tk.placeholder{opacity:.5;border:1px dashed var(--stroke)!important;background:transparent!important;filter:grayscale(.3)}
-.tk.virtual{opacity:.36;cursor:default;pointer-events:none}
+/* رخدادِ مجازیِ تکرار: کم‌رنگ ولی کلیک‌پذیر (باز کردن نمایندهٔ سری) */
+.tk.virtual{opacity:.42;cursor:pointer}
 .tk.placeholder .tk-t{display:none}
+/* «تکمیل — در انتظار بازبینی»: کارش انجام شده (خط‌خورده) ولی آلارمِ زرد که هنوز بازبینی نشده */
+.tk.review{background:rgba(251,191,36,.14);color:var(--text-dim);text-decoration:line-through}
+.tk-warn{width:12px;height:12px;flex:none;color:var(--warning);margin-inline-end:1px}
 /* بخشِ تکرار در مودال تسک */
 .rec-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:12.5px}
 .rec-opt{padding:5px 10px;border-radius:99px;border:1px solid var(--stroke-soft);cursor:pointer;background:var(--fill)}
@@ -1277,12 +1285,17 @@ button:disabled, .btn:disabled{opacity:.6;cursor:not-allowed}
 table.sheet td.tx-desc{text-align:right;white-space:nowrap;max-width:240px}
 .tx-desc-tx{display:inline-block;max-width:180px;overflow:hidden;text-overflow:ellipsis;
   white-space:nowrap;vertical-align:middle}
+/* روی مانیتورهای بزرگ شرح سند تا جای بیشتری باز شود */
+@media(min-width:1400px){table.sheet td.tx-desc{max-width:380px}.tx-desc-tx{max-width:320px}}
+@media(min-width:1700px){table.sheet td.tx-desc{max-width:560px}.tx-desc-tx{max-width:500px}}
 .tx-split-btn{margin-inline-start:5px;vertical-align:middle;flex:none}
 /* بابتِ چندانتخابیِ درون‌جدولِ تراکنش‌ها — تک‌خطیِ فشرده، ستونِ باریک‌تر (خواستِ کاربر) */
 table.sheet td.txcat-cell{max-width:150px}
 .txcat-wrap{display:flex;flex-wrap:nowrap;gap:4px;align-items:center;min-width:96px;max-width:100%;overflow:hidden}
-.txcat-chip{flex:none;max-width:104px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+.txcat-chip{flex:none;max-width:104px;white-space:nowrap;
   font-size:10.5px;padding:2px 8px;gap:4px;display:inline-flex;align-items:center;line-height:1.5;border-radius:var(--r-full)}
+/* نامِ بابت کوتاه (…) می‌شود ولی × همیشه داخلِ چیپ دیده می‌شود (بیرون نمی‌زند) */
+.txcat-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .txcat-x{cursor:pointer;opacity:.5;font-style:normal;font-size:11px;flex:none}
 .txcat-x:hover{opacity:1;color:var(--danger)}
 .txcat-add{flex:1;min-width:30px;width:auto;border:0;background:transparent;color:var(--text-faint);
@@ -1338,13 +1351,15 @@ table.sheet td:not(.edit){padding:6px 9px}
     gap:5px;
     padding: 9px 2px;
     font-size:9.5px;
-    margin-bottom: 4px;
-    r;
     line-height:1.15;
     border-radius:12px;
     margin-bottom: 8px;
+    position:relative;
   }
   .side .nav .ico{font-size: 28px;width:auto;}
+  /* بجِ شمارش (بازبینی) مثلِ نوتیفیکیشن روی گوشهٔ آیکن می‌نشیند، نه زیرِ متن */
+  .side .nav a .nav-badge{position:absolute;top:4px;left:50%;transform:translateX(7px);margin:0;
+    min-width:16px;height:16px;padding:0 3px;font-size:9px;box-shadow:0 0 0 2px var(--bg)}
   .side .nav a.on{background:var(--primary-soft)}
   .side .nav a.on .ico{opacity:1}
   .side .nav a.on::after{display:none}           /* نوارِ کنارهٔ حالتِ فعال حذف */
@@ -1442,6 +1457,10 @@ table.sheet td:not(.edit){padding:6px 9px}
   text-align:center;color:var(--text-faint);background:var(--fill);
   border-inline-end:1px solid var(--stroke-soft);white-space:pre;pointer-events:none;
   direction:ltr;border-radius:6px 0 0 6px;user-select:none}
+/* textareaهای مودال (توضیح/انکر/لینک و مشابه) بوردرِ دائمی بگیرند تا از پس‌زمینه جدا شوند */
+.tmodal .cf-ta{border-color:var(--stroke-soft);background:var(--fill)}
+.tmodal .ta-wrap{border:1px solid var(--stroke-soft);background:var(--fill);border-radius:6px;overflow:hidden}
+.tmodal .ta-wrap .cf-ta{border-color:transparent;background:transparent}
 /* اخطارِ نرمِ «فیلدهای الزامیِ خالی» — قرمز، هاور=جزئیات (ذخیره را بلاک نمی‌کند) */
 .miss-req{background:color-mix(in srgb,var(--danger) 16%,transparent);color:var(--danger);
   cursor:help;white-space:nowrap;margin-inline-start:4px}
