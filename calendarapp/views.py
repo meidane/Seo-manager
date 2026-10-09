@@ -85,6 +85,9 @@ def _virtual_recurrence(start, end):
         tmpl = Task.all_objects.filter(recurrence=rule).order_by('planned_date').first()
         if not tmpl:
             continue
+        # نمایندهٔ سری برای بازکردنِ مودال از یک رخدادِ مجازی = نزدیک‌ترین رخدادِ غیرِ-انجام‌شده
+        rep = (Task.all_objects.filter(recurrence=rule).exclude(status=Task.DONE)
+               .order_by('planned_date').first() or tmpl)
         real_dates = set(Task.all_objects.filter(recurrence=rule).values_list('planned_date', flat=True))
         d, steps = rule.start_date, 0
         while d <= end and steps < 400:
@@ -92,7 +95,8 @@ def _virtual_recurrence(start, end):
                 break
             if d >= start and d not in real_dates:
                 vd = tmpl.to_dict()
-                vd.update(id=None, virtual=True, is_placeholder=True, done=False, overdue=False)
+                vd.update(id=None, virtual=True, is_placeholder=True, done=False,
+                          overdue=False, series_task_id=rep.id)
                 out[d].append(vd)
             d = rule.raw_next_date(d)
             steps += 1

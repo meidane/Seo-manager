@@ -16,7 +16,7 @@
   (فیلترِ همکار مخفی)، پنلِ «تسک‌های بدون تاریخ» باز = اینباکس، فیلدِ افزودنِ سریع روشن
   (پیش‌فرضِ شخصی)، تسکِ سریع در پروژهٔ شخصی ساخته می‌شود.{% endcomment %}
   <section class="card glass cal pers-cal" style="margin-top:0;margin-bottom:14px">
-    {% include "calendarapp/_calendar.html" with cal_jyear=jyear cal_jmonth=jmonth cal_can_create=can_create_task cal_fixed_assignee=me_colleague_id cal_undated_default=True cal_quick_add=True cal_personal=True %}
+    {% include "calendarapp/_calendar.html" with cal_jyear=jyear cal_jmonth=jmonth cal_can_create=can_create_task cal_fixed_assignee=me_colleague_id cal_undated_default=True cal_quick_add=True cal_personal=True cal_quick_project=personal_project_id cal_quick_type=personal_type_id %}
   </section>
 
   {# ── هبیت ترکر (هفتهٔ جاری) ── #}

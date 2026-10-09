@@ -508,10 +508,30 @@ def _attach_recurrence(task, rec):
     start_series(task)
 
 
+# فیلدهای محتوایی که با ویرایشِ یک رخدادِ سری، روی کلِ رخدادهای غیرِ-انجام‌شدهٔ همان سری
+# اعمال می‌شوند (خواستِ کاربر: «هر تغییری دادیم روی همه اجرا بشه»). تاریخ/وضعیت/تایمر
+# per-occurrence می‌مانند (هر رخداد تاریخ و وضعیتِ خودش را دارد).
+_SERIES_SYNC = ['title', 'description', 'assignee_id', 'project_id', 'task_type',
+                'type_def_id', 'estimate_minutes', 'planned_time', 'custom',
+                'checklist', 'word_count', 'needs_review']
+
+
+def _propagate_series(task):
+    """تغییرِ فیلدهای محتوایی را روی همهٔ رخدادهای غیرِ-انجام‌شدهٔ همان سریِ تکرار اعمال کن."""
+    if not task.recurrence_id:
+        return
+    sibs = (Task.all_objects.filter(recurrence_id=task.recurrence_id, deleted_at__isnull=True)
+            .exclude(pk=task.pk).exclude(status=Task.DONE))
+    vals = {f: getattr(task, f) for f in _SERIES_SYNC}
+    sibs.update(updated_at=timezone.now(), **vals)
+
+
 @login_required
 @require_http_methods(['GET', 'PATCH', 'DELETE'])
 def task_detail(request, pk):
-    task = get_object_or_404(Task, pk=pk)
+    # with_placeholders: پیش‌نمای تکرار (رخدادِ آینده) هم باید در مودال باز/ویرایش شود،
+    # وگرنه کلیک روی تسکِ آینده در تقویم ۴۰۴ می‌داد.
+    task = get_object_or_404(Task.objects.with_placeholders(), pk=pk)
     if not _task_visible_ok(request, task):
         return JsonResponse({'detail': 'به این تسک دسترسی نداری'}, status=403)
     if request.method == 'GET':
@@ -577,6 +597,8 @@ def task_detail(request, pk):
     if not was_done and task.status == Task.DONE and task.recurrence_id and not task.is_placeholder:
         from .recurrence import advance
         advance(task)
+    # تکرار: تغییرِ محتوایی روی کلِ رخدادهای غیرِ-انجام‌شدهٔ سری اعمال شود
+    _propagate_series(task)
     resp = task.to_dict()
     resp['warnings'] = task.missing_required   # اخطارِ نرمِ فیلدهای الزامیِ خالی
     return JsonResponse(resp)
