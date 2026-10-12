@@ -80,10 +80,17 @@
 
   // گزینه‌های وضعیت — تسکِ needs_review هرگز «انجام‌شده» ندارد (فقط «تکمیل»)، برعکسش هم همین‌طور
   const STATUS_LABELS = [['todo', 'در انتظار'], ['doing', 'در حال انجام'], ['pending', 'تکمیل — در انتظار بازبینی'], ['done', 'انجام شده']];
+  const STATUS_TEXT = Object.fromEntries(STATUS_LABELS);
   function statusOptions(sel, needsReview) {
     return STATUS_LABELS
       .filter(([v]) => (needsReview ? v !== 'done' : v !== 'pending'))
       .map(([v, l]) => opt(v, l, sel)).join('');
+  }
+  // ── چک‌باکسِ چندحالتهٔ وضعیت در مودال (هم‌سبکِ ردیفِ جدول) ──
+  const ST_CHK_SVG = '<svg class="st-chk-ic" viewBox="0 0 448 512" aria-hidden="true"><path fill="currentColor" d="M438.6 105.4c12.5 12.5 12.5 32.8 0 45.3l-256 256c-12.5 12.5-32.8 12.5-45.3 0l-128-128c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0L160 338.7 393.4 105.4c12.5-12.5 32.8-12.5 45.3 0z"/></svg>';
+  function statusCheckField(t) {
+    const s = t.status || 'todo';
+    return `<div class="st-field"><button type="button" class="st-check st-${s}" id="f-status-check" title="کلیک: تکمیل/لغو">${ST_CHK_SVG}</button><span class="st-label" id="f-status-label">${STATUS_TEXT[s] || ''}</span><input type="hidden" id="f-status" value="${s}"></div>`;
   }
 
   function modalHtml(t) {
@@ -121,7 +128,7 @@
         </div>
         <div class="grid2">
           ${field('task_type', 'نوع تسک', `<select id="f-task_type">${typeOptions(typeSel)}</select>`)}
-          ${field('status', 'وضعیت', `<select id="f-status">${statusOptions(t.status, needsReviewDefault)}</select>`)}
+          ${field('status', 'وضعیت', statusCheckField(t))}
         </div>
         <div class="grid2">
           ${field('planned_date', 'تاریخ برنامه <span id="rel-planned" class="rel-hint"></span>', `<input id="f-planned_date" class="input jdate" dir="ltr" readonly value="${t.planned_date_fa || ''}">`)}
@@ -607,24 +614,33 @@
     App.openModal(modalHtml(data));
     if (window.RichSelect) RichSelect.init();  // دراپ‌داونِ غنیِ پروژه/مسئول در مودال
     if (data.status) document.getElementById('f-status').value = data.status;
-    // نیاز به بازبینی: با عوضِ مسئول، پیش‌فرضِ خودش را می‌گیرد؛ با تیک‌زدن/برداشتنِ
-    // دستی، گزینه‌های وضعیت (انجام‌شده ⇄ تکمیل) دوباره ساخته می‌شوند.
+    // وضعیت = چک‌باکسِ چندحالته. کلیک = تکمیل/لغو؛ سرور pending/done را تعیین می‌کند، ولی
+    // برای پیش‌نمایشِ درست در مودال، done+needs_review+غیرمدیر را «در انتظار بازبینی» نشان می‌دهیم.
     const needsReviewBox = document.getElementById('f-needs-review');
-    const statusSel = document.getElementById('f-status');
+    const statusInput = document.getElementById('f-status');
+    const stCheck = document.getElementById('f-status-check');
+    const stLabel = document.getElementById('f-status-label');
     const revChip = document.querySelector('.topt-rev');
     const syncRevChip = () => { if (revChip) revChip.classList.toggle('on', needsReviewBox.checked); };
-    const rebuildStatus = () => {
-      const cur = statusSel.value;
-      statusSel.innerHTML = statusOptions(cur, needsReviewBox.checked);
-      if (!statusSel.value) statusSel.selectedIndex = 0;  // مقدارِ ازدست‌رفته → اولین گزینه
+    const renderStatus = () => {
+      const raw = statusInput.value || 'todo';
+      const vis = (raw === 'done' && needsReviewBox.checked && !cfg.canComplete) ? 'pending' : raw;
+      if (stCheck) { stCheck.className = 'st-check st-' + vis; }
+      if (stLabel) stLabel.textContent = STATUS_TEXT[vis] || '';
+    };
+    if (stCheck) stCheck.onclick = () => {
+      const raw = statusInput.value || 'todo';
+      const complete = !(raw === 'done' || raw === 'pending');
+      statusInput.value = complete ? 'done' : 'todo';   // سرور با needs_review به pending کلمپ می‌کند
+      renderStatus();
     };
     document.getElementById('f-assignee').addEventListener('change', (e) => {
       needsReviewBox.checked = colleagueNeedsReview(e.target.value);
-      rebuildStatus(); syncRevChip();
+      renderStatus(); syncRevChip();
     });
     // چیپِ «نیاز به بازبینی» در تولبار = تاگلِ همان چک‌باکسِ مخفی
-    if (revChip) revChip.onclick = () => { needsReviewBox.checked = !needsReviewBox.checked; rebuildStatus(); syncRevChip(); };
-    syncRevChip();
+    if (revChip) revChip.onclick = () => { needsReviewBox.checked = !needsReviewBox.checked; renderStatus(); syncRevChip(); };
+    syncRevChip(); renderStatus();
     const loaded = data.custom || {};
     // با عوض‌کردنِ نوع، مقادیرِ فعلیِ فیلدها را نگه دار و روی مقادیرِ اولیه merge کن؛
     // فیلدهایی که کلیدِ یکسان در نوعِ جدید دارند (مثلاً «کلمات کلیدی» در انتشار↔آپدیت)
@@ -861,6 +877,21 @@
         App.toast('وضعیت به‌روز شد', 'ok');
       } catch (_) {}
     }
+  });
+
+  // ── چک‌باکسِ وضعیتِ ردیف (کلیک = تکمیل/لغو؛ سرور pending/done را تعیین می‌کند) ──
+  //    مودال چک‌باکسِ خودش را دارد (id=f-status-check، بدونِ data-id)، پس اینجا فقط ردیف.
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.st-check[data-id]');
+    if (!btn || btn.classList.contains('st-ro')) return;
+    e.preventDefault(); e.stopPropagation();
+    const id = btn.dataset.id, cur = btn.dataset.status;
+    const complete = !(cur === 'done' || cur === 'pending');
+    try {
+      await App.fetchJSON(`/tasks/api/${id}/status/`, { method: 'PATCH', body: { status: complete ? 'done' : 'todo' } });
+      const ok = await refreshTaskRow(id, false);   // کلِ ردیف نو می‌شود (چک‌باکس + خط‌خورده + تگ‌ها)
+      if (!ok && window.Calendar && Calendar.any()) Calendar.refreshAll();
+    } catch (_) {}
   });
 
   // ── باز کردن مودال (دکمه‌ها و ردیف‌ها/چیپ‌ها) ──

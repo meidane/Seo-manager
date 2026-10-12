@@ -94,7 +94,8 @@
 | تسک‌های در حالِ اجرای تایمر برای کاربر/زیرمجموعه‌هایش | `tasks/queries.py: running_timers_payload` (ویجت + API) |
 | نوارِ تبِ صفحاتِ تنظیمات + هابِ سایدبار | `templates/settings/_nav.html` + `accounts:settings_home` — لینکِ سایدبار «تنظیمات» یکی است، گیت‌شده با `has_settings_access` (context processor، از `accounts/permissions.py: SETTINGS_PERMS`) |
 | دادنِ دسترسیِ سیستم به یک فرد | `colleagues.views._grant_access` (`mode=invite` فقط شماره / `mode=password` مدیر خودش رمز می‌سازد) |
-| «این تسک نیاز به بازبینی دارد و باید `pending` بماند نه `done`؟» | `Task.needs_review` (فیلدِ تسک، پیش‌فرضش از `Colleague.needs_review` موقعِ ساخت) + دراپ‌داونِ وضعیت `templates/tasks/_status_select.html` |
+| «این تسک نیاز به بازبینی دارد و باید `pending` بماند نه `done`؟» | `Task.needs_review` (فیلدِ تسک، پیش‌فرضش از `Colleague.needs_review` موقعِ ساخت) + کلمپِ سرور در `tasks/api.py: task_status/apply_fields` |
+| چک‌باکسِ چندحالتهٔ وضعیت (ردیفِ جدول اولِ ردیف + مودال؛ جای ستون/دراپ‌داونِ قدیمی) | `templates/tasks/_status_check.html` + `tasks.js: statusCheckField/renderStatus` + هندلرِ delegatedِ `.st-check[data-id]` + CSS `.st-check.st-<status>` (کلیک=تکمیل/لغو؛ سرور pending/done را تعیین می‌کند) |
 | توقفِ خودکارِ تایمر با تکمیلِ تسک | `tasks/api.py: _stop_timer` (صدا زده می‌شود از `apply_fields`, `task_status`, `task_review`) |
 | جمع‌های فاکتور (جمع/مالیات/تخفیف/کل) | `finance/models.py: Invoice.subtotal/tax_total/discount_total/grand_total` + `InvoiceLine.base/total` (property؛ فرانت هم همین را محاسبه می‌کند) |
 | شماره‌ی خودکارِ فاکتور | `finance/models.py: Invoice.save` (`Max(number)+1` در سطحِ سازمان) |

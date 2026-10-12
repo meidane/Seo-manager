@@ -1205,6 +1205,25 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .tk-dl{width:12px;height:12px;flex:none;color:var(--danger);margin-inline-end:1px}
 .tk.dl-passed{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--danger) 55%,transparent)}
 .dl-alarm{margin-inline-start:4px}
+
+/* ── چک‌باکسِ چندحالتهٔ وضعیت (ردیفِ جدول + مودال) ──
+   todo=طوسیِ توخالی، doing=آبیِ توخالی، pending=زردِ پُر، done=سبزِ پُر */
+.st-check{width:20px;height:20px;border-radius:50%;border:2px solid var(--slate);background:transparent;
+  cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0;flex:none;
+  vertical-align:middle;transition:var(--ease);color:#fff;box-sizing:border-box}
+.st-check .st-chk-ic{width:11px;height:11px;opacity:0;transition:var(--ease)}
+.st-check:not(.st-ro):hover{filter:brightness(1.08);transform:scale(1.06)}
+.st-check.st-ro{cursor:default;pointer-events:none;opacity:.85}
+.st-check.st-todo{border-color:var(--slate)}
+.st-check.st-doing{border-color:var(--primary)}
+.st-check.st-pending{border-color:var(--warning);background:var(--warning);color:#6b5200}
+.st-check.st-pending .st-chk-ic{opacity:1}
+.st-check.st-done{border-color:var(--success);background:var(--success);color:#073b2e}
+.st-check.st-done .st-chk-ic{opacity:1}
+td.st-col,th.st-col{width:1%;text-align:center;padding-inline:6px}
+/* فیلدِ وضعیتِ مودال */
+.st-field{display:flex;align-items:center;gap:9px}
+.st-field .st-label{font-size:12.5px;color:var(--text-dim)}
 /* بخشِ تکرار در مودال تسک */
 .rec-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:12.5px}
 .rec-opt{padding:5px 10px;border-radius:99px;border:1px solid var(--stroke-soft);cursor:pointer;background:var(--fill)}

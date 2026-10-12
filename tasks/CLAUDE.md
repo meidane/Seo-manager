@@ -252,13 +252,32 @@ _field_dict` منبعِ واحدِ پاسخِ create/edit است تا مودال
   (ری‌ستِ `review_status` هم به همین `status_changed` گره خورده، پس تسکِ approved با
   ویرایش دوباره unreviewed نمی‌شود).
 
-## وضعیت به‌صورت inline در نمای پیش‌فرض (بدونِ انتخابِ نوع) — خواستِ کاربر
-`templates/tasks/_status_cell.html` در حالتِ فقط‌خواندنی (نمای سه‌جعبه، بدونِ فیلترِ نوع)
-هم دراپ‌داونِ قابل‌تغییرِ وضعیت را نشان می‌دهد — نه فقط در حالتِ `editable`. شرط:
-`status_choices and (can_edit_task or t.assignee_id == my_colleague_id)` (همان گیتِ
-`api.task_status`: دارنده‌ی `edit_task` یا مسئولِ خودِ تسک). اگر context این varها را
-نداشت (داشبورد/سینگلِ همکار که `status_choices` نمی‌فرستند) به تگِ ساده برمی‌گردد — بی‌رگرسیون.
-هندلرِ `.row-status` در `tasks.js` delegated است، پس بدونِ سیم‌کشیِ اضافه کار می‌کند.
+## وضعیت = چک‌باکسِ چندحالته (ردیفِ جدول + مودال) — منبعِ واحد
+> **جایگزینِ ستونِ «وضعیت»/دراپ‌داونِ قدیمی (خواستِ کاربر).** ستونِ وضعیت و دراپ‌داونِ
+> `_status_cell.html`/`_status_select.html` برداشته شدند؛ به‌جایشان یک **چک‌باکسِ
+> چندحالتهٔ دایره‌ای** در **اولِ ردیف، قبل از آواتار** می‌آید (و همان ویجت در مودال).
+
+- **منبعِ واحدِ رندر:** `templates/tasks/_status_check.html` (دکمهٔ `.st-check` با آیکنِ
+  تیکِ SVG) — در `_rows.html` سلولِ `td.st-col` اولِ ردیف (قبل از آواتار/عنوان، در هر دو
+  حالتِ editable/فقط‌خواندنی)؛ سرستونش `th.st-col` اولِ `_task_thead.html`. مودال همان
+  ظاهر را با `tasks.js: statusCheckField(t)` می‌سازد (`.st-field` = چک‌باکس + برچسب +
+  `#f-status`ِ مخفی).
+- **حالت/رنگ فقط از کلاسِ `st-<status>`** (CSS در `style.css`، «چک‌باکسِ چندحالته»):
+  `todo`=طوسیِ توخالی، `doing`=آبیِ توخالی، `pending`=زردِ پُر (+تیک)، `done`=سبزِ پُر (+تیک).
+- **کلیک = تکمیل/لغو** (نه چرخهٔ چهارحالته): اگر وضعیت `done`/`pending` نبود → تکمیل
+  (`status:done` فرستاده می‌شود)؛ اگر بود → لغو (`status:todo`). **سرور `pending` یا `done`
+  را تعیین می‌کند**، نه کلاینت: `task_status` تسکِ `needs_review` را که کلیک‌کننده‌اش
+  سرپرست نیست به `pending` کلمپ می‌کند (`_can_complete_directly`=`is_supervisor`). پس
+  نویسنده‌ای که تسکِ خودش را تیک بزند → زردِ `pending`؛ مدیر/سرپرست → سبزِ `done`.
+- **ردیف:** هندلرِ delegatedِ `.st-check[data-id]` در `tasks.js` → `PATCH /status/` →
+  `refreshTaskRow(id)` (اگر ردیف نبود، `Calendar.refreshAll()`). **مودال:** `#f-status-check`
+  (بدونِ `data-id`) فقط مقدارِ `#f-status`ِ مخفی را تاگل می‌کند؛ ذخیره با `collect()`،
+  و `renderStatus()` پیش‌نمایِ `done+needs_review+!canComplete`→`pending` را نشان می‌دهد
+  (`form_data.canComplete` = `_can_complete_directly`، هماهنگ با کلمپِ سرور).
+- **گیتِ کلیک‌پذیری:** فقط `can_edit_task` یا مسئولِ خودِ تسک (`my_colleague_id`)؛ وگرنه
+  کلاسِ `st-ro` (فقط نمایش، `pointer-events:none`) — همان گیتِ `api.task_status`.
+- **منسوخ:** `_status_cell.html`/`_status_select.html` و هندلرِ `.row-status` دیگر صدا زده
+  نمی‌شوند (ثبت در `docs/CLEANUP.md`).
 
 ## بازبینی تسک (review) — «بازبینی محتوا»ی قبلی، تغییرِ نام + مسیرِ مدیر
 `TaskReviewView` (`/tasks/review/`) دو مسیرِ مستقلِ OR‌شده دارد که با هم فرق دارند:

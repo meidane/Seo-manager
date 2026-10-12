@@ -297,6 +297,9 @@ def form_data(request):
         # edit_task — مودال با این پرچم دکمه‌ی ذخیره را برای «تسکِ جدید» نشان می‌دهد و
         # دراپ‌داونِ مسئول را روی خودش قفل می‌کند (اگر edit_task هم نداشته باشد).
         'createTask': bool(my_colleague),
+        # مدیر/ناظر می‌تواند تسکِ needs_review را مستقیم «انجام‌شده» کند (نه فقط «در انتظار بازبینی»)
+        # — همان چکِ سرورسایدِ کلمپ (_can_complete_directly) تا پیش‌بینیِ مودال با نتیجه یکی باشد.
+        'canComplete': _can_complete_directly(request, None),
     })
 
 
