@@ -173,9 +173,11 @@ const CLIENT_FIELDS = [{% for k,l in client_fields %}["{{ k }}","{{ l|escapejs }
 const VISIBLE = {{ visible_fields|safe }};
 
 const desc=document.getElementById('r-desc');
+let RDIRTY=false;   // تغییرِ ذخیره‌نشده؟ (محرکِ اتوسیو + جلوگیری از پریدنِ داده هنگام رفرش)
 
-// ── ذخیرهٔ یکجای کلِ گزارش (تک‌دکمه، بدونِ اتوسیو) ──
-document.getElementById('r-save-all').onclick=async()=>{
+// ── ذخیرهٔ یکجای کلِ گزارش — منبعِ واحد (دکمهٔ «ذخیرهٔ گزارش»، اتوسیو، و قبلِ هر رفرش) ──
+//    جمع‌آوریِ عنوان/توضیحات + همهٔ ردیف‌ها (عنوان/زمان/کلمه/مسئول/تاریخ/لینک/توضیح) + کلمات + سکشن‌ها.
+async function saveReport({silent=false}={}){
   if(window.RichText) RichText.save();   // سینکِ همهٔ ادیتورهای TinyMCE به textarea
   const items=[...document.querySelectorAll('tr[data-row]')].map(tr=>{
     const id=+tr.dataset.row; const ta=document.getElementById('idesc-'+id);
@@ -185,21 +187,38 @@ document.getElementById('r-save-all').onclick=async()=>{
       word_count:(tr.querySelector('[data-item-word]')||{}).value||'',
       assignee:(tr.querySelector('[data-item-assignee]')||{}).value||'',
       done_date:(tr.querySelector('[data-item-date]')||{}).value||'',
+      url:(tr.querySelector('[data-item-url]')||{}).value||'',
       description: ta?ta.value:'' };
   });
   const keywords=[...document.querySelectorAll('tr[data-kw]')].map(tr=>({
     id:+tr.dataset.kw, keyword:tr.querySelector('.kw-word').value, position:tr.querySelector('.kw-pos').value }));
   const sections=[...document.querySelectorAll('.sec-item')].map(el=>({
     id:+el.dataset.sec, title:el.querySelector('.sec-title').value, description:el.querySelector('.sec-desc').value }));
-  try{
-    const res=await App.fetchJSON(`/reports/api/${RID}/save-all/`,{method:'POST',body:{
-      title:document.getElementById('r-title').textContent.trim(), description:desc.value,
-      items, keywords, sections }});
+  const res=await App.fetchJSON(`/reports/api/${RID}/save-all/`,{method:'POST',body:{
+    title:document.getElementById('r-title').textContent.trim(), description:desc.value,
+    items, keywords, sections }});
+  RDIRTY=false;
+  if(!silent){
     if(res && res.content_total>0) App.toast('گزارش ذخیره شد — هزینهٔ تولید محتوا در فاکتور: '+res.content_total.toLocaleString('fa-IR')+' ریال','ok');
     else App.toast('گزارش ذخیره شد','ok');
-    setTimeout(()=>location.reload(),700);
-  }catch(_){}
+  }
+  return res;
+}
+document.getElementById('r-save-all').onclick=async()=>{
+  try{ await saveReport(); setTimeout(()=>location.reload(),700); }catch(_){}
 };
+
+// ── اتوسیوِ ۱ دقیقه‌ای (خواستِ کاربر) + ردیابیِ تغییرِ ذخیره‌نشده ──
+//    هر input/change داخلِ گزارش (به‌جز پنلِ فقط‌خواندنیِ مالی) دیرتی می‌شود؛ هر ۶۰ثانیه
+//    اگر دیرتی و تب فعال بود، بی‌صدا ذخیره می‌کند. این «پریدنِ دادهٔ دستی هنگام ایمپورت»
+//    را هم کم‌خطر می‌کند، ولی ایمپورت خودش قبلِ رفرش صریحاً saveReport می‌زند (پایین).
+(function(){
+  const root=document.querySelector('[data-report]'); if(!root) return;
+  const mark=e=>{ if(!e.target.closest('#r-fin-panel')) RDIRTY=true; };
+  root.addEventListener('input', mark);
+  root.addEventListener('change', mark);
+  setInterval(()=>{ if(RDIRTY && !document.hidden){ saveReport({silent:true}).then(()=>App.toast('ذخیرهٔ خودکار','ok')).catch(()=>{}); } }, 60000);
+})();
 
 // ── لینک عمومی ──
 document.getElementById('r-public').onchange=e=>App.fetchJSON(`/reports/api/${RID}/update/`,{method:'PATCH',body:{is_public:e.target.checked}}).then(()=>App.toast(e.target.checked?'لینک فعال شد':'لینک غیرفعال شد','ok'));
@@ -227,6 +246,7 @@ document.getElementById('r-invoice').onchange=e=>App.fetchJSON(`/reports/api/${R
 // ── نهایی‌سازی ──
 document.getElementById('r-final').onclick=async()=>{
   const cur=document.getElementById('r-status').textContent.includes('نهایی');
+  try{ await saveReport({silent:true}); }catch(_){}   // دادهٔ ذخیره‌نشده قبلِ رفرش نپرد
   await App.fetchJSON(`/reports/api/${RID}/update/`,{method:'PATCH',body:{status:cur?'draft':'final'}});
   location.reload();
 };
@@ -254,6 +274,9 @@ document.getElementById('p-fetch').onclick=async()=>{
 document.getElementById('p-add').onclick=async()=>{
   const ids=[...document.querySelectorAll('.pick:checked')].map(c=>+c.value);
   if(!ids.length){App.toast('چیزی انتخاب نشده','warn');return;}
+  // مهم: قبلِ رفرشِ بعدِ ایمپورت، دادهٔ دستی/ویرایشِ ذخیره‌نشده را ذخیره کن تا نپرد
+  // (باگِ کاربر: ردیفِ دستی بعدِ ایمپورت به «ردیف جدید» برمی‌گشت).
+  try{ await saveReport({silent:true}); }catch(_){}
   await App.fetchJSON(`/reports/api/${RID}/items/`,{method:'POST',body:{task_ids:ids}});
   App.toast('افزوده شد','ok'); location.reload();
 };
@@ -266,6 +289,7 @@ async function addManual(type, sectionEl){
   const rows=[...tmp.children];
   let body = sectionEl ? sectionEl.querySelector('.grp-body') : null;
   if(!body){ // اگر سکشنِ این نوع هنوز وجود ندارد (گزارشِ خالی) → رفرش لازم است
+    try{ await saveReport({silent:true}); }catch(_){}   // دادهٔ ذخیره‌نشده قبلِ رفرش نپرد
     location.reload(); return;
   }
   rows.forEach(r=>body.appendChild(r));
