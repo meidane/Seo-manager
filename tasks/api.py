@@ -209,6 +209,8 @@ def apply_fields(task: Task, data: dict, request=None):
             task.planned_date = d
     if 'planned_time' in data and data['planned_time']:
         task.planned_time = data['planned_time']
+    if 'deadline' in data:
+        task.deadline = _pdate(data['deadline'])   # شمسی→میلادی؛ خالی→None (پاک‌کردنِ مهلت)
     if 'done_date' in data:
         task.done_date = _pdate(data['done_date'])
     # کلمپِ needs_review→pending **فقط وقتی وضعیت صریحاً در همین درخواست تغییر کرده باشد**

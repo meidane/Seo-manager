@@ -59,7 +59,14 @@
   هم‌پوشانی).
 - **لینکِ صفحه/انتشار = آیکنِ ته عنوان، نه ستون:** `Task.page_link` (property: مقدارِ فیلدِ
   `is_page_link`، وگرنه `published_url`) → آیکنِ `.lnk-icon` قابل‌کلیک ته سلولِ عنوان.
-  برای پرهیز از N+1، کوئری‌ها `prefetch_related('type_def__fields')` دارند.
+  برای پرهیز از N+1، کوئری‌ها `prefetch_related('type_def__fields')` دارند. **بازکردن** از
+  صفحهٔ تسک با `Task.page_link_open` است که برای نوعِ **انتشار/آپدیت** پارامترِ `lomin` را به
+  انتها می‌چسباند (`/?lomin` یا `&lomin`؛ خواستِ کاربر — ردیابیِ بازدید).
+- **مهلت (`Task.deadline`، اختیاری):** جدا از `planned_date`. `deadline_passed` (property) =
+  مهلت گذشته و تسک هنوز `todo/doing` → **آلارمِ قرمز** کنار عنوان در لیست (`.dl-alarm` تگِ
+  `t-bad`) و تقویم (`.tk-dl` در `calendar.js`؛ کلاسِ `.tk.dl-passed`). در مودال فیلدِ
+  `#f-deadline` (jdate) کنارِ تاریخ برنامه + برچسبِ نسبیِ قرمز. `to_dict` کلیدهای
+  `deadline_iso/deadline_fa/deadline_passed` را می‌دهد → رندرِ اجاکسیِ چیپ/ردیف خودکار.
 - **اولویت از همه‌جا حذف شد** (موقتاً برای سئو): از مودال (`tasks.js`)، کاتالوگِ ستون، و
   جدول. فیلدِ `Task.priority`/`apply_fields` در DB برای سازگاری ماند ولی UI نمی‌سازدش.
 - تغییرِ نوع در ردیف → `apply_fields` علاوه بر `type_def`، `task_type`(builtin_key) را هم

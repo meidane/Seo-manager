@@ -103,6 +103,7 @@ class Task(TimeStampedModel):
     description = models.TextField('توضیحات', blank=True)
     planned_date = models.DateField('تاریخ برنامه', null=True, blank=True)
     planned_time = models.TimeField('ساعت', default=time(8, 0))
+    deadline = models.DateField('مهلت', null=True, blank=True)  # اختیاری؛ گذشتن از آن = آلارمِ قرمز
     # ماهِ گزارش (شخصی‌سازیِ سئو) — ۱=فروردین … ۱۲=اسفند. اختیاری؛ روی هستهٔ سیستم رفتاری ندارد.
     REPORT_MONTH_CHOICES = [
         (1, 'فروردین'), (2, 'اردیبهشت'), (3, 'خرداد'), (4, 'تیر'), (5, 'مرداد'), (6, 'شهریور'),
@@ -199,6 +200,11 @@ class Task(TimeStampedModel):
         return bool(self.planned_date) and self.status in (self.TODO, self.DOING) and self.planned_date < date.today()
 
     @property
+    def deadline_passed(self):
+        """مهلت گذشته و تسک هنوز تمام نشده (نه done نه pending) → آلارمِ قرمز."""
+        return bool(self.deadline) and self.status in (self.TODO, self.DOING) and self.deadline < date.today()
+
+    @property
     def is_done(self):
         return self.status == self.DONE
 
@@ -211,6 +217,20 @@ class Task(TimeStampedModel):
                 if f.is_page_link and self.custom.get(f.key):
                     return self.custom[f.key]
         return self.published_url or ''
+
+    @property
+    def page_link_open(self):
+        """لینکِ صفحه برای **باز کردن** از صفحهٔ تسک — برای نوعِ انتشار/آپدیت پارامترِ
+        `lomin` به انتها اضافه می‌شود (خواستِ کاربر: ردیابیِ بازدید)."""
+        url = self.page_link
+        if not url:
+            return ''
+        name = (self.type_def.name if self.type_def_id else '') or ''
+        if name in ('انتشار', 'آپدیت') or self.task_type in ('publish', 'update'):
+            if '?' in url:
+                return url + '&lomin'
+            return (url + '?lomin') if url.endswith('/') else (url + '/?lomin')
+        return url
 
     @property
     def missing_required(self):
@@ -273,6 +293,9 @@ class Task(TimeStampedModel):
             # باعث می‌شد مودالِ ویرایش تاریخ را خالی نشان دهد
             'planned_date_iso': self.planned_date.isoformat() if self.planned_date else '',
             'planned_date_fa': _fmt_jalali(self.planned_date) if self.planned_date else '',
+            'deadline_iso': self.deadline.isoformat() if self.deadline else '',
+            'deadline_fa': _fmt_jalali(self.deadline) if self.deadline else '',
+            'deadline_passed': self.deadline_passed,
             'status': self.status,
             'needs_review': self.needs_review,
             'done': self.is_done,

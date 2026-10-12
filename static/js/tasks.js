@@ -123,8 +123,11 @@
           ${field('task_type', 'نوع تسک', `<select id="f-task_type">${typeOptions(typeSel)}</select>`)}
           ${field('status', 'وضعیت', `<select id="f-status">${statusOptions(t.status, needsReviewDefault)}</select>`)}
         </div>
-        <div class="grid3">
+        <div class="grid2">
           ${field('planned_date', 'تاریخ برنامه <span id="rel-planned" class="rel-hint"></span>', `<input id="f-planned_date" class="input jdate" dir="ltr" readonly value="${t.planned_date_fa || ''}">`)}
+          ${field('deadline', 'مهلت <span id="rel-deadline" class="rel-hint"></span>', `<input id="f-deadline" class="input jdate" dir="ltr" readonly placeholder="اختیاری" value="${t.deadline_fa || ''}">`)}
+        </div>
+        <div class="grid2">
           ${field('estimate_minutes', 'تخمین (H:MM)', `<input id="f-estimate_minutes" class="input" dir="ltr" placeholder="0:00" value="${t.estimate_minutes ? fmtMin(t.estimate_minutes) : ''}">`)}
           ${field('report_month', 'ماه گزارش', reportPeriodSelect(t))}
         </div>
@@ -507,7 +510,7 @@
       task_type: bk || 'other',
       type_def: (ty && typeof ty.id === 'number') ? ty.id : null,
       title: g('f-title'),
-      planned_date: g('f-planned_date'), status: g('f-status'),
+      planned_date: g('f-planned_date'), deadline: g('f-deadline'), status: g('f-status'),
       needs_review: document.getElementById('f-needs-review').checked,
       estimate_minutes: parseHM(g('f-estimate_minutes')), description: g('f-description'),
       checklist: readChecklist(),
@@ -639,6 +642,17 @@
     relInit();
     const pd = document.getElementById('f-planned_date');
     if (pd) pd.addEventListener('change', relInit);
+    // برچسبِ نسبیِ «مهلت» (+ قرمز اگر گذشته باشد)
+    const relDeadline = () => {
+      const inp = document.getElementById('f-deadline'), h = document.getElementById('rel-deadline');
+      if (!inp || !h) return;
+      h.textContent = inp.value ? '(' + (window.App && App.relDate(inp.value) || '') + ')' : '';
+      const past = inp.value && window.App && /قبل|گذشت/.test(App.relDate(inp.value) || '');
+      h.style.color = past ? 'var(--danger)' : '';
+    };
+    relDeadline();
+    const dd = document.getElementById('f-deadline');
+    if (dd) dd.addEventListener('change', relDeadline);
     wireOptToolbar(data, id);  // تولبارِ بخش‌های اختیاری (توضیحات/چک‌لیست/تکرار/گزارش) + لود تنبلِ ادیتورها
     const histBtn = document.getElementById('fix-hist-toggle');  // باز کردن سوابق قبلی نیاز به اصلاح
     if (histBtn) histBtn.onclick = () => {

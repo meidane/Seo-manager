@@ -1202,6 +1202,9 @@ select.tx-inline{cursor:pointer;max-width:150px}
 /* «تکمیل — در انتظار بازبینی»: کارش انجام شده (خط‌خورده) ولی آلارمِ زرد که هنوز بازبینی نشده */
 .tk.review{background:rgba(251,191,36,.14);color:var(--text-dim);text-decoration:line-through}
 .tk-warn{width:12px;height:12px;flex:none;color:var(--warning);margin-inline-end:1px}
+.tk-dl{width:12px;height:12px;flex:none;color:var(--danger);margin-inline-end:1px}
+.tk.dl-passed{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--danger) 55%,transparent)}
+.dl-alarm{margin-inline-start:4px}
 /* بخشِ تکرار در مودال تسک */
 .rec-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:12.5px}
 .rec-opt{padding:5px 10px;border-radius:99px;border:1px solid var(--stroke-soft);cursor:pointer;background:var(--fill)}
