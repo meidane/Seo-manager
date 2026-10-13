@@ -26,6 +26,7 @@
     report: svg('M512 240c0 114.9-114.6 208-256 208-37.1 0-72.3-6.4-104.1-17.9-11.9 8.7-31.3 20.6-54.3 30.6C73.6 471.1 44.7 480 16 480c-6.5 0-12.3-3.9-14.8-9.9s-1.1-12.8 3.4-17.4l.3-.3c.3-.3 .7-.7 1.3-1.4 1.1-1.2 2.8-3.1 4.9-5.7 4.1-5 9.6-12.4 15.2-21.6 10-16.6 19.5-38.4 21.4-62.9C17.7 326.8 0 285.1 0 240 0 125.1 114.6 32 256 32s256 93.1 256 208z'),
     review: svg('M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z'),
     history: svg('M75 75L41 41C25.9 25.9 0 36.6 0 57.9L0 168c0 13.3 10.7 24 24 24l110.1 0c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C158.6 496.9 205.5 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24l0 104c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65 0-94.1c0-13.3-10.7-24-24-24z'),
+    clock: svg('M256 0a256 256 0 1 1 0 512A256 256 0 1 1 256 0zM232 120l0 136c0 8 4 15.5 10.7 20l96 64c11 7.4 25.9 4.4 33.3-6.7s4.4-25.9-6.7-33.3L280 243.2 280 120c0-13.3-10.7-24-24-24s-24 10.7-24 24z'),
   };
 
   // دراپ‌داونِ «ماه گزارش» — از ماه‌های تعریف‌شده در تنظیمات (cfg.reportPeriods، value='سال-ماه').
@@ -88,9 +89,10 @@
   }
   // ── چک‌باکسِ چندحالتهٔ وضعیت در مودال (هم‌سبکِ ردیفِ جدول) ──
   const ST_CHK_SVG = '<svg class="st-chk-ic" viewBox="0 0 448 512" aria-hidden="true"><path fill="currentColor" d="M438.6 105.4c12.5 12.5 12.5 32.8 0 45.3l-256 256c-12.5 12.5-32.8 12.5-45.3 0l-128-128c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0L160 338.7 393.4 105.4c12.5-12.5 32.8-12.5 45.3 0z"/></svg>';
-  function statusCheckField(t) {
+  // چک‌باکسِ وضعیتِ مودال — کنارِ اینپوتِ عنوان، بدونِ لیبل/متن؛ متنِ وضعیت فقط روی هاور (title).
+  function statusCheckBtn(t) {
     const s = t.status || 'todo';
-    return `<div class="st-field"><button type="button" class="st-check st-${s}" id="f-status-check" title="کلیک: تکمیل/لغو">${ST_CHK_SVG}</button><span class="st-label" id="f-status-label">${STATUS_TEXT[s] || ''}</span><input type="hidden" id="f-status" value="${s}"></div>`;
+    return `<button type="button" class="st-check st-lg st-${s}" id="f-status-check" title="${STATUS_TEXT[s] || ''}" aria-label="وضعیت: ${STATUS_TEXT[s] || ''}">${ST_CHK_SVG}</button><input type="hidden" id="f-status" value="${s}">`;
   }
 
   function modalHtml(t) {
@@ -120,19 +122,20 @@
     <div class="modal-b tmodal" id="tform">
       ${reviewNotesHtml(t)}
       <div class="tmodal-col">
-        <!-- عنوان (فیلدِ اصلی، بزرگ‌تر) -->
-        ${field('title', 'عنوان', `<input id="f-title" class="input tm-title" value="${esc(t.title)}" placeholder="عنوان تسک…">`)}
+        <!-- عنوان (فیلدِ اصلی) + چک‌باکسِ وضعیت کنارش (سمتِ راست، هم‌ارتفاع، مربعی) -->
+        ${field('title', 'عنوان', `<div class="tm-title-row">${statusCheckBtn(t)}<input id="f-title" class="input tm-title" value="${esc(t.title)}" placeholder="عنوان تسک…"></div>`)}
         <div class="grid2">
           ${field('project', 'پروژه', `<select id="f-project" class="rich-select"><option value="">— انتخاب —</option>${cfg.projects.map(([v, l, color, img]) => optRich(v, l, t.project_id, color, img)).join('')}</select>`)}
           ${field('assignee', 'مسئول', assigneeSelect)}
         </div>
         <div class="grid2">
           ${field('task_type', 'نوع تسک', `<select id="f-task_type">${typeOptions(typeSel)}</select>`)}
-          ${field('status', 'وضعیت', statusCheckField(t))}
+          ${field('planned_date', `تاریخ برنامه <span id="rel-planned" class="rel-hint"></span> <button type="button" id="dl-toggle" class="dl-toggle" title="تعیینِ مهلت">${ICON.clock}</button>`, `<input id="f-planned_date" class="input jdate" dir="ltr" readonly value="${t.planned_date_fa || ''}">`)}
         </div>
-        <div class="grid2">
-          ${field('planned_date', 'تاریخ برنامه <span id="rel-planned" class="rel-hint"></span>', `<input id="f-planned_date" class="input jdate" dir="ltr" readonly value="${t.planned_date_fa || ''}">`)}
-          ${field('deadline', 'مهلت <span id="rel-deadline" class="rel-hint"></span>', `<input id="f-deadline" class="input jdate" dir="ltr" readonly placeholder="اختیاری" value="${t.deadline_fa || ''}">`)}
+        <!-- مهلت: فیلدِ جدا نیست — با آیکنِ ⏰ کنارِ «تاریخ برنامه» باز می‌شود (یا اگر از قبل ست بود، باز می‌ماند) -->
+        <div class="field" id="dl-field" data-f="deadline" style="display:${t.deadline_fa ? '' : 'none'}">
+          <label>مهلت <span id="rel-deadline" class="rel-hint"></span></label>
+          <input id="f-deadline" class="input jdate" dir="ltr" readonly placeholder="اختیاری" value="${t.deadline_fa || ''}">
         </div>
         <div class="grid2">
           ${field('estimate_minutes', 'تخمین (H:MM)', `<input id="f-estimate_minutes" class="input" dir="ltr" placeholder="0:00" value="${t.estimate_minutes ? fmtMin(t.estimate_minutes) : ''}">`)}
@@ -619,14 +622,13 @@
     const needsReviewBox = document.getElementById('f-needs-review');
     const statusInput = document.getElementById('f-status');
     const stCheck = document.getElementById('f-status-check');
-    const stLabel = document.getElementById('f-status-label');
     const revChip = document.querySelector('.topt-rev');
     const syncRevChip = () => { if (revChip) revChip.classList.toggle('on', needsReviewBox.checked); };
     const renderStatus = () => {
       const raw = statusInput.value || 'todo';
       const vis = (raw === 'done' && needsReviewBox.checked && !cfg.canComplete) ? 'pending' : raw;
-      if (stCheck) { stCheck.className = 'st-check st-' + vis; }
-      if (stLabel) stLabel.textContent = STATUS_TEXT[vis] || '';
+      // متنِ وضعیت فقط روی هاور (title)، نه برچسبِ کنارِ چک‌باکس (خواستِ کاربر)
+      if (stCheck) { stCheck.className = 'st-check st-lg st-' + vis; stCheck.title = STATUS_TEXT[vis] || ''; }
     };
     if (stCheck) stCheck.onclick = () => {
       const raw = statusInput.value || 'todo';
@@ -669,6 +671,20 @@
     relDeadline();
     const dd = document.getElementById('f-deadline');
     if (dd) dd.addEventListener('change', relDeadline);
+    // آیکنِ ⏰ کنارِ «تاریخ برنامه» → نمایش/پنهانِ فیلدِ مهلت (بدونِ فیلدِ جدا؛ خواستِ کاربر).
+    // اگر مهلت از قبل ست باشد، فیلد از اول باز است و آیکن «فعال».
+    const dlToggle = document.getElementById('dl-toggle');
+    const dlField = document.getElementById('dl-field');
+    if (dlToggle && dlField) {
+      const syncDlToggle = () => dlToggle.classList.toggle('on', dlField.style.display !== 'none');
+      syncDlToggle();
+      dlToggle.onclick = () => {
+        const show = dlField.style.display === 'none';
+        dlField.style.display = show ? '' : 'none';
+        if (show && dd) dd.focus();   // باز کردنِ دیت‌پیکر
+        syncDlToggle();
+      };
+    }
     wireOptToolbar(data, id);  // تولبارِ بخش‌های اختیاری (توضیحات/چک‌لیست/تکرار/گزارش) + لود تنبلِ ادیتورها
     const histBtn = document.getElementById('fix-hist-toggle');  // باز کردن سوابق قبلی نیاز به اصلاح
     if (histBtn) histBtn.onclick = () => {

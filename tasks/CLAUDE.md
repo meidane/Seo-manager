@@ -61,11 +61,14 @@
   `is_page_link`، وگرنه `published_url`) → آیکنِ `.lnk-icon` قابل‌کلیک ته سلولِ عنوان.
   برای پرهیز از N+1، کوئری‌ها `prefetch_related('type_def__fields')` دارند. **بازکردن** از
   صفحهٔ تسک با `Task.page_link_open` است که برای نوعِ **انتشار/آپدیت** پارامترِ `lomin` را به
-  انتها می‌چسباند (`/?lomin` یا `&lomin`؛ خواستِ کاربر — ردیابیِ بازدید).
+  انتها می‌چسباند (`/?lomin` یا `&lomin`؛ خواستِ کاربر — ردیابیِ بازدید). **صفحهٔ بازبینی
+  (`review.html`) هم `page_link_open` را استفاده می‌کند** (دکمهٔ «باز کردن مطلب» + آیکن).
 - **مهلت (`Task.deadline`، اختیاری):** جدا از `planned_date`. `deadline_passed` (property) =
   مهلت گذشته و تسک هنوز `todo/doing` → **آلارمِ قرمز** کنار عنوان در لیست (`.dl-alarm` تگِ
-  `t-bad`) و تقویم (`.tk-dl` در `calendar.js`؛ کلاسِ `.tk.dl-passed`). در مودال فیلدِ
-  `#f-deadline` (jdate) کنارِ تاریخ برنامه + برچسبِ نسبیِ قرمز. `to_dict` کلیدهای
+  `t-bad`) و تقویم (`.tk-dl` در `calendar.js`؛ کلاسِ `.tk.dl-passed`). **در مودال فیلدِ جدا
+  نیست** (خواستِ کاربر): فیلدِ `#f-deadline` (jdate) پیش‌فرض `display:none` است و با آیکنِ
+  ⏰ (`#dl-toggle`، کنارِ لیبلِ «تاریخ برنامه») باز/بسته می‌شود؛ اگر `deadline` از قبل ست
+  باشد فیلد از اول باز است و آیکن «on» (قرمز). `to_dict` کلیدهای
   `deadline_iso/deadline_fa/deadline_passed` را می‌دهد → رندرِ اجاکسیِ چیپ/ردیف خودکار.
 - **اولویت از همه‌جا حذف شد** (موقتاً برای سئو): از مودال (`tasks.js`)، کاتالوگِ ستون، و
   جدول. فیلدِ `Task.priority`/`apply_fields` در DB برای سازگاری ماند ولی UI نمی‌سازدش.
@@ -259,9 +262,19 @@ _field_dict` منبعِ واحدِ پاسخِ create/edit است تا مودال
 
 - **منبعِ واحدِ رندر:** `templates/tasks/_status_check.html` (دکمهٔ `.st-check` با آیکنِ
   تیکِ SVG) — در `_rows.html` سلولِ `td.st-col` اولِ ردیف (قبل از آواتار/عنوان، در هر دو
-  حالتِ editable/فقط‌خواندنی)؛ سرستونش `th.st-col` اولِ `_task_thead.html`. مودال همان
-  ظاهر را با `tasks.js: statusCheckField(t)` می‌سازد (`.st-field` = چک‌باکس + برچسب +
-  `#f-status`ِ مخفی).
+  حالتِ editable/فقط‌خواندنی)؛ سرستونش `th.st-col` اولِ `_task_thead.html`.
+- **مودال:** `tasks.js: statusCheckBtn(t)` فقط دکمهٔ `.st-check.st-lg` + `#f-status`ِ مخفی
+  می‌سازد (**بدونِ لیبلِ «وضعیت» و بدونِ متنِ حالت** — خواستِ کاربر؛ متنِ حالت فقط روی
+  هاور با `title`). جایش **داخلِ ردیفِ `.tm-title-row` کنارِ اینپوتِ عنوان** است (سمتِ
+  راست/inline-start، هم‌ارتفاعِ اینپوت، `.st-lg` = `align-self:stretch`). `renderStatus`
+  کلاس و `title` را به‌روز می‌کند.
+- **تقویم (hover):** `calendar.js: stCheckHtml(t)` همان `.st-check` را به چیپِ `.tk`
+  می‌افزاید (فقط تسکِ واقعیِ غیرمجازی/غیرپیش‌نما). پیش‌فرض نامرئی؛ با **هاورِ چیپ** با
+  انیمیشن از سمتِ راست (`inset-inline-start`) ظاهر می‌شود و محتوای چیپ کمی به چپ می‌رود
+  (`.tk:hover{padding-inline-start:24px}`). کلیک را همان هندلرِ delegatedِ tasks.js
+  می‌گیرد → `PATCH /status/` → `refreshTaskRow`(false روی تقویم) → `Calendar.refreshAll()`.
+- **شکل: مربعِ گوشه‌گرد** (نه دایره): `border-radius:6px` در ردیف/تقویم، `var(--r-sm)` در
+  مودال (مثلِ اینپوت‌ها — خواستِ کاربر).
 - **حالت/رنگ فقط از کلاسِ `st-<status>`** (CSS در `style.css`، «چک‌باکسِ چندحالته»):
   `todo`=طوسیِ توخالی، `doing`=آبیِ توخالی، `pending`=زردِ پُر (+تیک)، `done`=سبزِ پُر (+تیک).
 - **کلیک = تکمیل/لغو** (نه چرخهٔ چهارحالته): اگر وضعیت `done`/`pending` نبود → تکمیل

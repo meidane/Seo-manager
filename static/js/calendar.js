@@ -18,6 +18,15 @@
   const WARN = '<svg class="tk-warn" viewBox="0 0 512 512" aria-hidden="true"><path fill="currentColor" d="M256 32c14.2 0 27.3 7.5 34.5 19.8l216 368c7.3 12.4 7.4 27.7 .2 40.1S486.3 480 472 480L40 480c-14.3 0-27.6-7.7-34.8-20.1s-7.1-27.8 .2-40.1l216-368C228.7 39.5 241.8 32 256 32zm0 128c-13.3 0-24 10.7-24 24l0 112c0 13.3 10.7 24 24 24s24-10.7 24-24l0-112c0-13.3-10.7-24-24-24zm32 224a32 32 0 1 0 -64 0 32 32 0 1 0 64 0z"/></svg>';
   // آیکنِ ⏰ قرمزِ «مهلت گذشت» (ساعتِ زنگ‌دار)
   const DLALARM = '<svg class="tk-dl" viewBox="0 0 512 512" aria-hidden="true"><path fill="currentColor" d="M256 0a256 256 0 1 1 0 512A256 256 0 1 1 256 0zM232 120l0 136c0 8 4 15.5 10.7 20l96 64c11 7.4 25.9 4.4 33.3-6.7s4.4-25.9-6.7-33.3L280 243.2 280 120c0-13.3-10.7-24-24-24s-24 10.7-24 24z"/></svg>';
+  // چک‌باکسِ وضعیتِ هاور (همان ماژولِ ردیف/مودال؛ کلیک را هندلرِ delegatedِ tasks.js می‌گیرد)
+  const ST_CHK_SVG = '<svg class="st-chk-ic" viewBox="0 0 448 512" aria-hidden="true"><path fill="currentColor" d="M438.6 105.4c12.5 12.5 12.5 32.8 0 45.3l-256 256c-12.5 12.5-32.8 12.5-45.3 0l-128-128c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0L160 338.7 393.4 105.4c12.5-12.5 32.8-12.5 45.3 0z"/></svg>';
+  const ST_TEXT = { todo: 'در انتظار', doing: 'در حال انجام', pending: 'تکمیل — در انتظار بازبینی', done: 'انجام شده' };
+  function stCheckHtml(t) {
+    // فقط برای تسکِ واقعیِ غیرمجازی (مجازی/پیش‌نما id واقعی ندارند یا کلیک‌شان بی‌معناست)
+    if (t.virtual || t.is_placeholder || !t.id) return '';
+    const s = t.status || 'todo';
+    return `<button type="button" class="st-check st-${s} tk-stcheck" data-id="${t.id}" data-status="${s}" title="${esc(ST_TEXT[s] || '')}" aria-label="وضعیت">${ST_CHK_SVG}</button>`;
+  }
   function chip(t, extra) {
     const pc = t.project_color || t.color;
     // «تکمیل — در انتظار بازبینی» (pending) = کارش انجام شده → مثلِ done خط‌خورده، ولی آلارمِ زرد
@@ -30,7 +39,7 @@
       : ` draggable="true" data-id="${t.id}" data-open-task="${t.id}"`;
     const title = `${t.type_label}: ${t.title}${t.project ? ' — ' + t.project : ''}${review ? ' (در انتظار بازبینی)' : ''}`;
     return `<span class="tk${extra ? ' tk-extra' : ''}${t.done ? ' done' : ''}${review ? ' review' : ''}${t.deadline_passed ? ' dl-passed' : ''}${t.is_placeholder ? ' placeholder' : ''}${t.virtual ? ' virtual' : ''}"${attrs} title="${esc(title)}${t.deadline_passed ? ' — مهلت گذشت!' : ''}" ${style}>` +
-      `${review ? WARN : ''}${t.deadline_passed ? DLALARM : ''}${av(t)}<span class="tk-tx">${esc(t.type_label)}: ${esc(t.title)}</span></span>`;
+      `${stCheckHtml(t)}${review ? WARN : ''}${t.deadline_passed ? DLALARM : ''}${av(t)}<span class="tk-tx">${esc(t.type_label)}: ${esc(t.title)}</span></span>`;
   }
   function peopleRow(c) {
     if (!c.people || !c.people.length) return '';

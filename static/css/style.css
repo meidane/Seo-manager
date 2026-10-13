@@ -1208,7 +1208,7 @@ select.tx-inline{cursor:pointer;max-width:150px}
 
 /* ── چک‌باکسِ چندحالتهٔ وضعیت (ردیفِ جدول + مودال) ──
    todo=طوسیِ توخالی، doing=آبیِ توخالی، pending=زردِ پُر، done=سبزِ پُر */
-.st-check{width:20px;height:20px;border-radius:50%;border:2px solid var(--slate);background:transparent;
+.st-check{width:20px;height:20px;border-radius:6px;border:2px solid var(--slate);background:transparent;
   cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0;flex:none;
   vertical-align:middle;transition:var(--ease);color:#fff;box-sizing:border-box}
 .st-check .st-chk-ic{width:11px;height:11px;opacity:0;transition:var(--ease)}
@@ -1221,9 +1221,24 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .st-check.st-done{border-color:var(--success);background:var(--success);color:#073b2e}
 .st-check.st-done .st-chk-ic{opacity:1}
 td.st-col,th.st-col{width:1%;text-align:center;padding-inline:6px}
-/* فیلدِ وضعیتِ مودال */
+/* مودال: چک‌باکسِ وضعیت کنارِ اینپوتِ عنوان — هم‌ارتفاعِ اینپوت، مربعیِ گوشه‌گرد (radius مثلِ اینپوت).
+   بدونِ لیبل/متن؛ متنِ وضعیت فقط روی هاور (title). */
+.tm-title-row{display:flex;align-items:stretch;gap:8px}
+.tm-title-row .tm-title{flex:1;min-width:0}
+.st-check.st-lg{width:40px;height:auto;align-self:stretch;border-radius:var(--r-sm)}
+.st-check.st-lg .st-chk-ic{width:16px;height:16px}
 .st-field{display:flex;align-items:center;gap:9px}
-.st-field .st-label{font-size:12.5px;color:var(--text-dim)}
+/* آیکنِ ⏰ تعیینِ مهلت کنارِ لیبلِ «تاریخ برنامه» (فیلدِ مهلت با کلیک باز می‌شود) */
+.dl-toggle{background:transparent;border:0;cursor:pointer;color:var(--text-faint);padding:0;margin-inline-start:3px;line-height:0;vertical-align:middle}
+.dl-toggle .topt-ic{width:13px;height:13px;display:block}
+.dl-toggle:hover{color:var(--primary-400)}
+.dl-toggle.on{color:var(--danger)}
+/* تقویم: چک‌باکسِ وضعیت که با هاورِ چیپِ تسک از سمتِ راست (inline-start) با انیمیشن ظاهر می‌شود */
+.tk{position:relative}
+.tk-stcheck{position:absolute;inset-inline-start:4px;top:50%;width:16px;height:16px;
+  transform:translateY(-50%) scale(.55);opacity:0;pointer-events:none;z-index:3;transition:var(--ease)}
+.tk:hover .tk-stcheck{opacity:1;transform:translateY(-50%) scale(1);pointer-events:auto}
+.tk:hover{transform:translateX(-2px);padding-inline-start:24px}
 /* بخشِ تکرار در مودال تسک */
 .rec-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:12.5px}
 .rec-opt{padding:5px 10px;border-radius:99px;border:1px solid var(--stroke-soft);cursor:pointer;background:var(--fill)}
