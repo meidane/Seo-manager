@@ -123,7 +123,9 @@
       ${reviewNotesHtml(t)}
       <div class="tmodal-col">
         <!-- عنوان (فیلدِ اصلی) + چک‌باکسِ وضعیت کنارش (سمتِ راست، هم‌ارتفاع، مربعی) -->
-        ${field('title', 'عنوان', `<div class="tm-title-row">${statusCheckBtn(t)}<input id="f-title" class="input tm-title" value="${esc(t.title)}" placeholder="عنوان تسک…"></div>`)}
+        <div class="field tm-title-field" data-f="title">
+          <div class="tm-title-row">${statusCheckBtn(t)}<div class="tm-title-col"><label>عنوان</label><input id="f-title" class="input tm-title" value="${esc(t.title)}" placeholder="عنوان تسک…"></div></div>
+        </div>
         <div class="grid2">
           ${field('project', 'پروژه', `<select id="f-project" class="rich-select"><option value="">— انتخاب —</option>${cfg.projects.map(([v, l, color, img]) => optRich(v, l, t.project_id, color, img)).join('')}</select>`)}
           ${field('assignee', 'مسئول', assigneeSelect)}

@@ -1214,20 +1214,21 @@ select.tx-inline{cursor:pointer;max-width:150px}
 .st-check .st-chk-ic{width:11px;height:11px;opacity:0;transition:var(--ease)}
 .st-check:not(.st-ro):hover{filter:brightness(1.08);transform:scale(1.06)}
 .st-check.st-ro{cursor:default;pointer-events:none;opacity:.85}
-.st-check.st-todo{border-color:var(--slate)}
-.st-check.st-doing{border-color:var(--primary)}
+/* حالت‌های توخالی (todo/doing): تیکِ خیلی محو تا معلوم شود چک‌باکس است (خواستِ کاربر) */
+.st-check.st-todo{border-color:var(--slate);color:var(--slate)}
+.st-check.st-doing{border-color:var(--primary);color:var(--primary)}
+.st-check.st-todo .st-chk-ic,.st-check.st-doing .st-chk-ic{opacity:.3}
 .st-check.st-pending{border-color:var(--warning);background:var(--warning);color:#6b5200}
 .st-check.st-pending .st-chk-ic{opacity:1}
 .st-check.st-done{border-color:var(--success);background:var(--success);color:#073b2e}
 .st-check.st-done .st-chk-ic{opacity:1}
 td.st-col,th.st-col{width:1%;text-align:center;padding-inline:6px}
-/* مودال: چک‌باکسِ وضعیت کنارِ اینپوتِ عنوان — هم‌ارتفاعِ اینپوت، مربعیِ گوشه‌گرد (radius مثلِ اینپوت).
-   بدونِ لیبل/متن؛ متنِ وضعیت فقط روی هاور (title). */
-.tm-title-row{display:flex;align-items:stretch;gap:8px}
-.tm-title-row .tm-title{flex:1;min-width:0}
-.st-check.st-lg{width:40px;height:auto;align-self:stretch;border-radius:var(--r-sm)}
+/* مودال: چک‌باکسِ وضعیت کنارِ اینپوتِ عنوان (سمتِ راست) — مربعِ هم‌ارتفاعِ اینپوت، گوشه‌گرد مثلِ اینپوت.
+   لیبلِ «عنوان» بالای خودِ اینپوت است (در ستونِ .tm-title-col)، نه بالای چک‌باکس؛ چک‌باکس هم‌ترازِ اینپوت. */
+.tm-title-row{display:flex;align-items:flex-end;gap:8px}
+.tm-title-col{flex:1;min-width:0;display:flex;flex-direction:column}
+.st-check.st-lg{width:34px;height:34px;border-radius:var(--r-sm)}
 .st-check.st-lg .st-chk-ic{width:16px;height:16px}
-.st-field{display:flex;align-items:center;gap:9px}
 /* آیکنِ ⏰ تعیینِ مهلت کنارِ لیبلِ «تاریخ برنامه» (فیلدِ مهلت با کلیک باز می‌شود) */
 .dl-toggle{background:transparent;border:0;cursor:pointer;color:var(--text-faint);padding:0;margin-inline-start:3px;line-height:0;vertical-align:middle}
 .dl-toggle .topt-ic{width:13px;height:13px;display:block}
