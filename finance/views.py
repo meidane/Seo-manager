@@ -42,6 +42,42 @@ def _body(request):
         return {}
 
 
+# ── گزارشِ سود و زیان بر اساس بابت (منبعِ واحد) ──────────────────────────────
+def _pnl_by_category(request, start, end):
+    """گزارشِ سود و زیان بر اساس بابتِ غیرحقوقی — منبعِ واحدِ داشبورد و تبِ گزارش.
+    درآمد طبقِ **توگلِ سراسریِ `?income=`** (پیش‌فرض فاکتور) برای همهٔ بابت‌ها یکجا، نه
+    `income_source`ِ هر بابت (که دست‌نخورده می‌ماند و جای دیگری اثر دارد). هزینه همیشه از
+    برداشتِ تراکنش. ستونِ فاکتور و واریز هر دو برمی‌گردند تا هیچ درآمدی پنهان نماند.
+    خروجی: `(cats, cats_total, income_mode)`."""
+    income_mode = 'transaction' if request.GET.get('income') == 'transaction' else 'invoice'
+    tx = Transaction.objects.all()
+    if start and end:
+        tx = tx.filter(date__range=(start, end))
+    il = InvoiceLine.objects.filter(category__isnull=False).select_related('category', 'invoice')
+    if start and end:
+        il = il.filter(invoice__issue_date__range=(start, end))
+    inv_income = {}
+    for li in il:
+        inv_income[li.category_id] = inv_income.get(li.category_id, 0) + int(li.total)
+    cats = []
+    cats_total = {'invoice': 0, 'deposit': 0, 'income': 0, 'expense': 0, 'net': 0}
+    for c in Category.objects.filter(is_salary=False):
+        ct = tx.filter(categories=c)
+        exp = ct.aggregate(s=Sum('withdrawal'))['s'] or 0
+        dep = ct.aggregate(s=Sum('deposit'))['s'] or 0
+        invc = inv_income.get(c.id, 0)
+        income_c = invc if income_mode == 'invoice' else dep
+        net = income_c - exp
+        cats.append({'id': c.id, 'name': c.name, 'color': c.color,
+                     'invoice': invc, 'deposit': dep, 'income': income_c, 'expense': exp, 'net': net})
+        cats_total['invoice'] += invc
+        cats_total['deposit'] += dep
+        cats_total['income'] += income_c
+        cats_total['expense'] += exp
+        cats_total['net'] += net
+    return cats, cats_total, income_mode
+
+
 # ── صفحات ────────────────────────────────────────────────────────────────
 
 class FinanceDashboardView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin, TemplateView):
@@ -67,39 +103,8 @@ class FinanceDashboardView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin,
         banks = list(BankAccount.objects.filter(is_active=True))
         bank_total = sum(b.balance for b in banks)
 
-        # ── گزارشِ سود و زیان بر اساس بابت (غیرحقوقی) ──
-        # هزینه: همیشه از تراکنش‌ها (برداشت). درآمد: طبقِ **توگلِ سراسریِ گزارش** (`?income=`،
-        # پیش‌فرض فاکتور) — نه income_sourceِ هر بابت؛ یک دکمهٔ واحد کنارِ فیلترها همهٔ بابت‌ها را
-        # با هم عوض می‌کند. ستونِ «فاکتور» و «واریز» هر دو همیشه نشان داده می‌شوند تا هیچ
-        # درآمدی پنهان نماند؛ «خالص» = درآمدِ منبعِ انتخابی − هزینه. (income_sourceِ هر بابت
-        # دست‌نخورده می‌ماند و جای دیگری — صفحهٔ بابت‌ها/هزینهٔ محتوا — اثر خودش را دارد.)
-        income_mode = 'transaction' if self.request.GET.get('income') == 'transaction' else 'invoice'
-        from .models import InvoiceLine
-        il = InvoiceLine.objects.filter(category__isnull=False).select_related('category', 'invoice')
-        if start and end:
-            il = il.filter(invoice__issue_date__range=(start, end))
-        inv_income = {}
-        for li in il:
-            inv_income[li.category_id] = inv_income.get(li.category_id, 0) + int(li.total)
-        cats = []
-        cats_total = {'invoice': 0, 'deposit': 0, 'income': 0, 'expense': 0, 'net': 0}
-        for c in Category.objects.filter(is_salary=False):
-            ct = tx.filter(categories=c)
-            exp = ct.aggregate(s=Sum('withdrawal'))['s'] or 0
-            dep = ct.aggregate(s=Sum('deposit'))['s'] or 0
-            invc = inv_income.get(c.id, 0)
-            income_c = invc if income_mode == 'invoice' else dep
-            net = income_c - exp
-            cats.append({
-                'id': c.id, 'name': c.name, 'color': c.color,
-                'invoice': invc, 'deposit': dep,
-                'income': income_c, 'expense': exp, 'net': net,
-            })
-            cats_total['invoice'] += invc
-            cats_total['deposit'] += dep
-            cats_total['income'] += income_c
-            cats_total['expense'] += exp
-            cats_total['net'] += net
+        # گزارشِ سود و زیان بر اساس بابت — منبعِ واحد (هم اینجا، هم تبِ گزارش/گردش‌حساب).
+        cats, cats_total, income_mode = _pnl_by_category(self.request, start, end)
 
         # ── حقوق: هزینه از بخشِ حقوق (تعهد)، «پرداخت‌شده» از تراکنش‌ها ──
         salary_rows = []
@@ -425,6 +430,10 @@ class LedgerView(LoginRequiredMixin, FinancePermMixin, TemplateView):
         ctx['categories'] = Category.objects.all()
         ctx['filters'] = g
         ctx['page_title'] = 'گزارش (گردش حساب)'
+
+        # گزارشِ سود و زیان بر اساس بابت (منبعِ واحد) — در حالتِ «بدونِ فیلتر» نمای کلیِ تبِ گزارش.
+        cats, cats_total, income_mode = _pnl_by_category(self.request, start, end)
+        ctx.update({'cats': cats, 'cats_total': cats_total, 'income_mode': income_mode})
 
         # شرطِ طلایی: دقیقاً یکی از پروژه/بابت انتخاب شده باشد
         if bool(project_id) == bool(category_id):

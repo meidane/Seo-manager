@@ -1,0 +1,36 @@
+{% comment %}توگلِ سراسریِ منبعِ درآمدِ گزارش (کنارِ فیلترها؛ پیش‌فرض فاکتور) + هندلرِ کلیکِ
+ردیفِ بابت. اسکریپت یک‌بار اجرا می‌شود (بیرونِ ناحیهٔ اجاکسی include شود)؛ هندلرها delegated
+روی document‌اند تا بعد از swap زنده بمانند. مشترکِ داشبورد و تبِ گزارش.{% endcomment %}
+<div class="inc-toggle" role="group" aria-label="منبعِ درآمدِ گزارش">
+  <span class="inc-lbl">درآمد از:</span>
+  <button type="button" data-inc="invoice">فاکتور</button>
+  <button type="button" data-inc="transaction">تراکنش</button>
+</div>
+<script>
+(function () {
+  var box = document.querySelector('.inc-toggle'); if (!box || box.dataset.incWired) return;
+  box.dataset.incWired = '1';
+  function cur() { try { return new URL(location.href).searchParams.get('income') === 'transaction' ? 'transaction' : 'invoice'; } catch (_) { return 'invoice'; } }
+  function sync() { var c = cur(); box.querySelectorAll('[data-inc]').forEach(function (b) { b.classList.toggle('on', b.dataset.inc === c); }); }
+  box.querySelectorAll('[data-inc]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (cur() === b.dataset.inc) return;
+      var u = new URL(location.href);
+      if (b.dataset.inc === 'transaction') u.searchParams.set('income', 'transaction'); else u.searchParams.delete('income');
+      var url = u.pathname + (u.search || '');
+      if (window.App && App.rangeReload) App.rangeReload(url); else location.href = url;
+      sync();
+    });
+  });
+  document.addEventListener('range:swapped', sync);
+  sync();
+  // کلیک روی ردیفِ بابت → صفحهٔ گزارشِ گردشِ حساب با فیلترِ همان بابت (بازهٔ انتخابی حفظ می‌شود).
+  document.addEventListener('click', function (e) {
+    var row = e.target.closest('.cat-row[data-cat-row]'); if (!row) return;
+    var curp = new URL(location.href).searchParams;
+    var p = new URLSearchParams(); p.set('category', row.dataset.catRow);
+    ['range', 'from', 'to'].forEach(function (k) { if (curp.get(k)) p.set(k, curp.get(k)); });
+    location.href = "{% url 'finance:ledger' %}?" + p.toString();
+  });
+})();
+</script>

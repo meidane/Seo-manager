@@ -153,21 +153,25 @@ payroll_create/edit, invoice_create/edit). فاکتور با فرمِ صفحه�
   فقط وقتی کاربر صریح `?range=`/`?from=&to=` بدهد اعمال می‌شود (`core.daterange.optional_range`،
   که `ctx` نوار را هم می‌سازد + چیپِ «همه»). `_optional_range`ِ محلیِ قدیمی حذف شد.
 
-## داشبورد: گزارشِ «سود و زیان بر اساس بابت» (جدول، نه کارت‌های کوچک)
-`FinanceDashboardView` + `_dashboard_results.html` یک جدولِ تمام‌عرض دارد: هر بابتِ غیرحقوقی
-با ستون‌های **درآمد(فاکتور)** (Σ `InvoiceLine.total` با `invoice.issue_date` در بازه)،
-**واریز(تراکنش)** (Σ deposit)، **هزینه** (Σ withdrawal)، و **خالص** = درآمدِ **منبعِ انتخابی** −
-هزینه. ردیفِ **جمعِ کل** ته جدول (`cats_total`).
-- **منبعِ درآمد = توگلِ سراسریِ گزارش، نه per-category:** یک دکمهٔ segmented «درآمد از: فاکتور |
-  تراکنش» کنارِ نوارِ بازه (`.inc-toggle` در `dashboard.html`، داخلِ `.fin-filters`)،
-  **پیش‌فرض فاکتور**. با پارامترِ `?income=transaction` کار می‌کند (نبودش = فاکتور). JS: URL را
-  عوض و با `App.rangeReload` ناحیه را اجاکسی رفرش می‌کند (بازهٔ انتخاب‌شده حفظ)، active را از
-  URL و رویدادِ `range:swapped` سینک می‌کند. ویو `income_mode` را می‌خواند و خالصِ **همهٔ**
-  بابت‌ها را با آن حساب می‌کند. **`Category.income_source` دیگر داشبورد را کنترل نمی‌کند**
-  (دست‌نخورده برای صفحهٔ بابت‌ها/`content_cost`؛ گزارشِ زیرِ فاکتور و گزارشِ پروژه هم بی‌اثر).
+## گزارشِ «سود و زیان بر اساس بابت» (منبعِ واحد؛ هم داشبورد، هم تبِ گزارش)
+جدولِ تمام‌عرض: هر بابتِ غیرحقوقی با ستون‌های **درآمد(فاکتور)** (Σ `InvoiceLine.total` با
+`invoice.issue_date` در بازه)، **واریز(تراکنش)** (Σ deposit)، **هزینه** (Σ withdrawal)، و
+**خالص** = درآمدِ **منبعِ انتخابی** − هزینه. ردیفِ **جمعِ کل** ته جدول (`cats_total`).
+- **منبعِ واحدِ محاسبه:** `finance/views.py: _pnl_by_category(request, start, end)` →
+  `(cats, cats_total, income_mode)`. هم `FinanceDashboardView` هم `LedgerView` از همین می‌خوانند.
+- **منبعِ واحدِ markup:** پارشالِ `templates/finance/_pnl_report.html` (جدول) + پارشالِ
+  `templates/finance/_income_toggle.html` (توگل + اسکریپتِ مشترک). هر دو صفحه include می‌کنند.
+- **منبعِ درآمد = توگلِ سراسری، نه per-category:** دکمهٔ segmented «درآمد از: فاکتور | تراکنش»
+  کنارِ نوارِ بازه (`.inc-toggle` داخلِ `.fin-filters`)، **پیش‌فرض فاکتور**، پارامترِ
+  `?income=transaction` (نبودش = فاکتور). JS: URL را عوض و با `App.rangeReload` ناحیه را اجاکسی
+  رفرش می‌کند (بازه حفظ)، active را از URL + `range:swapped` سینک می‌کند. **`Category.income_source`
+  دیگر گزارش را کنترل نمی‌کند** (دست‌نخورده برای صفحهٔ بابت‌ها/`content_cost`؛ گزارشِ زیرِ فاکتور و
+  گزارشِ پروژه هم بی‌اثر).
 - ستونِ فاکتور و واریز **هر دو همیشه** نشان داده می‌شوند (شفافیت)؛ ستونِ فعال با `.inc-on` پررنگ.
-- **کلیک روی ردیفِ هر بابت (`.cat-row`)** → `/finance/ledger/?category=<id>` (صفحهٔ گزارشِ گردشِ
-  حساب با فیلترِ همان بابت) — هندلرِ delegated در `dashboard.html`.
+- **تبِ «گزارش» (`LedgerView`/`/finance/ledger/`):** حالتِ بدونِ فیلتر (`invalid_filter`) به‌جای
+  پیامِ «یکی را انتخاب کن»، **جدولِ سود و زیان** را نمای کلی نشان می‌دهد. **کلیک روی ردیفِ هر بابت
+  (`.cat-row`)** → `/finance/ledger/?category=<id>` (بازهٔ انتخابی حفظ می‌شود) = گردشِ حسابِ همان
+  بابت. هندلرِ delegated در `_income_toggle.html`. `ledgerQS` پارامترِ `income` را هم حفظ می‌کند.
 
 ## تراکنش‌ها (فیلتر/صفحه‌بندی) — **همه اجاکسی، بدونِ رفرشِ صفحه**
 - **الگوی partial:** بدنهٔ نتیجه (بنر AI + جدول + صفحه‌بندی) در `templates/finance/_tx_results.html`

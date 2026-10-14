@@ -6,7 +6,10 @@
   <div class="page-h"><h1>گزارش — گردش حساب</h1></div>
   {% include "finance/_nav.html" %}
 
-  {% include "components/_daterange_bar.html" %}
+  <div class="fin-filters">
+    {% include "components/_daterange_bar.html" %}
+    {% include "finance/_income_toggle.html" %}
+  </div>
 
   <div id="lg-panel">
   <form method="get" class="glass filters" id="ledger-filters">
@@ -56,7 +59,7 @@
     const out=new URLSearchParams();
     for(const [k,v] of new URLSearchParams(new FormData(form))){ if(v!=='' && v!=null) out.append(k,v); }
     const cur=new URL(location.href).searchParams;
-    ['range','from','to'].forEach(k=>{ if(cur.get(k)) out.set(k, cur.get(k)); });
+    ['range','from','to','income'].forEach(k=>{ if(cur.get(k)) out.set(k, cur.get(k)); });
     return out.toString();
   }
   function reloadLedger(){ App.rangeReload(BASE+'?'+ledgerQS()); }
