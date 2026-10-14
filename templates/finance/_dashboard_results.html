@@ -25,28 +25,53 @@
   </section>
   {% endif %}
 
-  <div class="duo">
-    <section class="card glass">
-      <div class="card-h"><h3>تفکیک بر اساس بابت</h3></div>
-      <div style="padding:8px 16px 14px">
+  <section class="card glass" style="margin-bottom:14px">
+    <div class="card-h"><h3>سود و زیان بر اساس بابت</h3><div class="side-c"><a href="{% url 'finance:banks' %}" class="chip">مدیریت بابت‌ها</a></div></div>
+    <div class="tscroll">
+    <table>
+      <thead><tr>
+        <th>بابت</th>
+        <th class="num-c" title="جمعِ فاکتورهای این بابت در بازه (تاریخِ ثبتِ فاکتور)">درآمد (فاکتور)</th>
+        <th class="num-c" title="جمعِ واریزهای تراکنشیِ این بابت">واریز (تراکنش)</th>
+        <th class="num-c" title="جمعِ برداشت‌های تراکنشیِ این بابت">هزینه</th>
+        <th class="num-c" title="درآمدِ منبعِ انتخابی − هزینه">خالص</th>
+      </tr></thead>
+      <tbody>
         {% for c in cats %}
-          <div class="sect"><div class="name"><i class="pdot" style="background:{{ c.color }};display:inline-block;margin-inline-end:6px"></i>{{ c.name }} <span style="font-size:10px;color:var(--text-faint)">· درآمد از {{ c.source }}</span></div>
-            <div class="tris"><span>درآمد<b class="dep">{{ c.income|money }}</b></span><span>هزینه<b class="wd">{{ c.expense|money }}</b></span></div></div>
-        {% empty %}<div class="empty" style="padding:20px">بابتی تعریف نشده</div>{% endfor %}
-      </div>
-    </section>
+          <tr>
+            <td><i class="pdot" style="background:{{ c.color }};display:inline-block;margin-inline-end:6px"></i>{{ c.name }}
+              <button type="button" class="src-toggle" data-cat="{{ c.id }}" data-src="{% if c.is_invoice %}invoice{% else %}transaction{% endif %}" title="منبعِ درآمدِ خالص را عوض کن (فاکتور ⇄ تراکنش)">درآمد از {{ c.source }} ⇄</button></td>
+            <td class="num-c {% if c.invoice %}dep{% endif %}">{{ c.invoice|money }}</td>
+            <td class="num-c {% if c.deposit %}dep{% endif %}">{{ c.deposit|money }}</td>
+            <td class="num-c {% if c.expense %}wd{% endif %}">{{ c.expense|money }}</td>
+            <td class="num-c" style="font-weight:700;color:{% if c.net >= 0 %}var(--success){% else %}var(--danger){% endif %}">{{ c.net|money }}</td>
+          </tr>
+        {% empty %}<tr><td colspan="5"><div class="empty" style="padding:18px">بابتی تعریف نشده</div></td></tr>{% endfor %}
+        {% if cats %}
+          <tr style="font-weight:700;border-top:2px solid var(--stroke)">
+            <td>جمعِ کل</td>
+            <td class="num-c dep">{{ cats_total.invoice|money }}</td>
+            <td class="num-c dep">{{ cats_total.deposit|money }}</td>
+            <td class="num-c wd">{{ cats_total.expense|money }}</td>
+            <td class="num-c" style="color:{% if cats_total.net >= 0 %}var(--success){% else %}var(--danger){% endif %}">{{ cats_total.net|money }}</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+    </div>
+    <div style="padding:8px 14px;color:var(--text-faint);font-size:11px">«خالص» از درآمدِ <b>منبعِ انتخابیِ</b> هر بابت (فاکتور یا تراکنش) منهای هزینه حساب می‌شود. ستونِ «فاکتور» و «واریز» هر دو برای شفافیت نشان داده می‌شوند — روی چیپِ «درآمد از …» بزن تا منبع عوض شود.</div>
+  </section>
 
-    <section class="card glass">
-      <div class="card-h"><h3>حساب‌های بانکی</h3><div class="side-c"><a href="{% url 'finance:banks' %}" class="chip">مدیریت</a></div></div>
-      <div style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        {% for b in banks %}
-          <a href="{% url 'finance:transactions' %}?bank={{ b.id }}" class="bank-card glass" title="مشاهده‌ی تراکنش‌های این حساب" style="cursor:pointer;text-decoration:none;color:inherit;display:block"><div class="bname"><span class="blogo" style="background:{{ b.color }}">{{ b.name|first }}</span> {{ b.name }}</div>
-            {% if b.card_number %}<div class="bnum">{{ b.card_number }}</div>{% endif %}
-            <div class="bbal">{{ b.balance|money }}<small> ریال</small></div></a>
-        {% empty %}<div class="empty" style="padding:20px;grid-column:1/-1">حسابی تعریف نشده — <a href="{% url 'finance:banks' %}" style="color:var(--primary-400)">افزودن</a></div>{% endfor %}
-      </div>
-    </section>
-  </div>
+  <section class="card glass" style="margin-bottom:14px">
+    <div class="card-h"><h3>حساب‌های بانکی</h3><div class="side-c"><a href="{% url 'finance:banks' %}" class="chip">مدیریت</a></div></div>
+    <div style="padding:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">
+      {% for b in banks %}
+        <a href="{% url 'finance:transactions' %}?bank={{ b.id }}" class="bank-card glass" title="مشاهده‌ی تراکنش‌های این حساب" style="cursor:pointer;text-decoration:none;color:inherit;display:block"><div class="bname"><span class="blogo" style="background:{{ b.color }}">{{ b.name|first }}</span> {{ b.name }}</div>
+          {% if b.card_number %}<div class="bnum">{{ b.card_number }}</div>{% endif %}
+          <div class="bbal">{{ b.balance|money }}<small> ریال</small></div></a>
+      {% empty %}<div class="empty" style="padding:20px;grid-column:1/-1">حسابی تعریف نشده — <a href="{% url 'finance:banks' %}" style="color:var(--primary-400)">افزودن</a></div>{% endfor %}
+    </div>
+  </section>
 
   <section class="card glass" style="margin-top:14px">
     <div class="card-h"><h3>حقوق — هزینه (تعهد) و پرداخت‌شده (از تراکنش)</h3><div class="side-c"><a href="{% url 'finance:payroll' %}" class="chip">صورت‌حساب‌ها</a></div></div>

@@ -9,4 +9,18 @@
   {% include "components/_daterange_bar.html" %}
 
   <div data-range-scope>{% include "finance/_dashboard_results.html" %}</div>
+
+  <script>
+  // تغییرِ منبعِ درآمدِ یک بابت (فاکتور ⇄ تراکنش) مستقیم از گزارش — delegated تا بعد از
+  // swapِ اجاکسیِ بازه هم زنده بماند.
+  document.addEventListener('click', async function (e) {
+    var b = e.target.closest('.src-toggle'); if (!b) return;
+    e.preventDefault();
+    var next = b.dataset.src === 'invoice' ? 'transaction' : 'invoice';
+    try {
+      await App.fetchJSON('/finance/api/categories/' + b.dataset.cat + '/', { method: 'PATCH', body: { income_source: next } });
+      if (window.App && App.rangeReload) App.rangeReload(location.href); else location.reload();
+    } catch (_) {}
+  });
+  </script>
 {% endblock %}

@@ -54,38 +54,54 @@ class FinanceDashboardView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin,
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        start, end = self.get_range(self.request)
-        ctx.update(self.range_context())
-        tx = Transaction.objects.filter(date__range=(start, end))
+        # بازه‌ی اختیاری — پیش‌فرض «همه‌ی تاریخ‌ها» (نه «این ماه»)، تا گزارشِ بابت‌ها از اول
+        # خالی/صفر به‌نظر نرسد؛ کاربر با نوار بازه محدودش می‌کند. (خواستِ کاربر: #گزارش)
+        start, end, rctx = optional_range(self.request)
+        ctx.update(rctx)
+        tx = Transaction.objects.all()
+        if start and end:
+            tx = tx.filter(date__range=(start, end))
 
         income = tx.aggregate(s=Sum('deposit'))['s'] or 0
         expense = tx.aggregate(s=Sum('withdrawal'))['s'] or 0
         banks = list(BankAccount.objects.filter(is_active=True))
         bank_total = sum(b.balance for b in banks)
 
-        # ── تفکیک بر اساس بابت (غیرحقوقی) ──
-        # هزینه: همیشه از تراکنش‌ها (برداشت). درآمد: طبقِ income_sourceِ بابت
-        # (از تراکنش=واریز، یا از فاکتور=Σ ردیف‌های فاکتورِ آن بابت در بازه).
-        # نکته: یک تراکنش می‌تواند چند بابت داشته باشد → در چند ردیف نمایش داده می‌شود
-        # ولی جمعِ کلِ بالا (income/expense) از خودِ تراکنش‌ها یک‌بار شمرده می‌شود.
+        # ── گزارشِ سود و زیان بر اساس بابت (غیرحقوقی) ──
+        # هزینه: همیشه از تراکنش‌ها (برداشت). درآمد: طبقِ income_sourceِ بابت — از فاکتور
+        # (Σ ردیف‌های فاکتورِ آن بابت، تاریخِ ثبتِ فاکتور در بازه) یا از تراکنش (واریز).
+        # ستونِ «فاکتور» و «واریز» هر دو همیشه نشان داده می‌شوند تا هیچ درآمدی پنهان نماند؛
+        # «خالص» = درآمدِ منبعِ انتخابی − هزینه. یک تراکنش می‌تواند چند بابت داشته باشد
+        # (در چند ردیف دیده می‌شود) ولی جمعِ کلِ بالا از خودِ تراکنش‌ها یک‌بار شمرده می‌شود.
         from .models import InvoiceLine
+        il = InvoiceLine.objects.filter(category__isnull=False).select_related('category', 'invoice')
+        if start and end:
+            il = il.filter(invoice__issue_date__range=(start, end))
         inv_income = {}
-        for li in (InvoiceLine.objects.filter(category__isnull=False,
-                   invoice__issue_date__range=(start, end)).select_related('category')):
+        for li in il:
             inv_income[li.category_id] = inv_income.get(li.category_id, 0) + int(li.total)
         cats = []
+        cats_total = {'invoice': 0, 'deposit': 0, 'income': 0, 'expense': 0, 'net': 0}
         for c in Category.objects.filter(is_salary=False):
             ct = tx.filter(categories=c)
-            expense = ct.aggregate(s=Sum('withdrawal'))['s'] or 0
-            if c.income_source == Category.INCOME_INVOICE:
-                income_c = inv_income.get(c.id, 0)
-            else:
-                income_c = ct.aggregate(s=Sum('deposit'))['s'] or 0
+            exp = ct.aggregate(s=Sum('withdrawal'))['s'] or 0
+            dep = ct.aggregate(s=Sum('deposit'))['s'] or 0
+            invc = inv_income.get(c.id, 0)
+            is_inv = c.income_source == Category.INCOME_INVOICE
+            income_c = invc if is_inv else dep
+            net = income_c - exp
             cats.append({
-                'name': c.name, 'color': c.color,
-                'income': income_c, 'expense': expense,
-                'source': 'فاکتور' if c.income_source == Category.INCOME_INVOICE else 'تراکنش',
+                'id': c.id, 'name': c.name, 'color': c.color,
+                'invoice': invc, 'deposit': dep,
+                'income': income_c, 'expense': exp, 'net': net,
+                'is_invoice': is_inv,
+                'source': 'فاکتور' if is_inv else 'تراکنش',
             })
+            cats_total['invoice'] += invc
+            cats_total['deposit'] += dep
+            cats_total['income'] += income_c
+            cats_total['expense'] += exp
+            cats_total['net'] += net
 
         # ── حقوق: هزینه از بخشِ حقوق (تعهد)، «پرداخت‌شده» از تراکنش‌ها ──
         salary_rows = []
@@ -104,7 +120,7 @@ class FinanceDashboardView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin,
         from .alerts import compute_alerts
         ctx.update({
             'income': income, 'expense': expense, 'net': income - expense,
-            'banks': banks, 'bank_total': bank_total, 'cats': cats,
+            'banks': banks, 'bank_total': bank_total, 'cats': cats, 'cats_total': cats_total,
             'salary_rows': salary_rows, 'salary_total': salary_total,
             'unassigned': tx.filter(project__isnull=True, categories__isnull=True).count(),
             'fin_alerts': compute_alerts(),

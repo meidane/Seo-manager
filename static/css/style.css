@@ -529,6 +529,10 @@ tbody tr:last-child td{border-bottom:0}
 .sect .tris{display:flex;gap:16px;font-size:12px}
 .sect .tris span{display:flex;flex-direction:column}
 .sect .tris b{font-size:14px;font-variant-numeric:tabular-nums}
+/* چیپِ کوچکِ «منبعِ درآمد» در گزارشِ بابت‌ها (کلیک = فاکتور ⇄ تراکنش) */
+.src-toggle{margin-inline-start:8px;font-size:10.5px;color:var(--text-faint);background:var(--fill);
+  border:1px solid var(--stroke-soft);border-radius:var(--r-full);padding:1px 8px;cursor:pointer;font-family:inherit;transition:var(--ease)}
+.src-toggle:hover{color:var(--primary-400);border-color:var(--primary-ring)}
 .mini-bar{height:5px;border-radius:99px;background:var(--fill-strong);overflow:hidden;margin-top:5px}
 .mini-bar i{display:block;height:100%;border-radius:99px}
 .bank-card{padding:16px 18px;position:relative;overflow:hidden}
