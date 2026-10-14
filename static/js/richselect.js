@@ -55,6 +55,24 @@
         };
       });
     }
+    // منو را با position:fixed نسبت به دکمه جای می‌دهد تا از هر کانتینرِ overflow:hidden
+    // (کارتِ کوتاه، ردیفِ فلکس) و هر جدِّ transform/backdrop-filter (glass) فرار کند.
+    function place() {
+      var r = btn.getBoundingClientRect();
+      var rtl = getComputedStyle(document.documentElement).direction === 'rtl';
+      menu.style.position = 'fixed';
+      menu.style.zIndex = '2000';   // بالاتر از مودال/نوارِ چسبانِ فرم
+      menu.style.minWidth = r.width + 'px';
+      menu.style.top = (r.bottom + 4) + 'px';
+      menu.style.left = 'auto'; menu.style.right = 'auto';
+      if (rtl) menu.style.right = (window.innerWidth - r.right) + 'px';
+      else menu.style.left = r.left + 'px';
+      // اگر پایین جا نشد و بالا جا هست، رو به بالا باز کن
+      var mh = menu.offsetHeight;
+      if (r.bottom + 4 + mh > window.innerHeight && r.top - 4 - mh > 0) {
+        menu.style.top = (r.top - 4 - mh) + 'px';
+      }
+    }
     function open() {
       var withSearch = sel.options.length > 8;
       menu.innerHTML = (withSearch ? '<input class="rs-search" placeholder="جستجو…" autocomplete="off">' : '') +
@@ -67,12 +85,22 @@
         si.oninput = function () { box.innerHTML = itemsHTML(si.value); bindItems(); };
         setTimeout(function () { si.focus(); }, 0);
       }
+      document.body.appendChild(menu);   // خروج از کانتینرِ کلیپ‌کننده
       menu.classList.add('open');
       wrap.classList.add('rs-open');
+      place();
+      window.addEventListener('scroll', place, true);
+      window.addEventListener('resize', place);
     }
-    function close() { menu.classList.remove('open'); wrap.classList.remove('rs-open'); }
+    function close() {
+      menu.classList.remove('open'); wrap.classList.remove('rs-open');
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+      if (menu.parentNode === document.body) wrap.appendChild(menu);  // بازگشت به wrap
+      menu.style.position = menu.style.top = menu.style.left = menu.style.right = menu.style.minWidth = menu.style.zIndex = '';
+    }
     btn.onclick = function (e) { e.preventDefault(); menu.classList.contains('open') ? close() : open(); };
-    document.addEventListener('click', function (e) { if (!wrap.contains(e.target)) close(); });
+    document.addEventListener('click', function (e) { if (!wrap.contains(e.target) && !menu.contains(e.target)) close(); });
     // اگر مقدارِ select با کدِ دیگری عوض شد، دکمه هم به‌روز شود
     sel.addEventListener('rs-refresh', renderBtn);
     renderBtn();
