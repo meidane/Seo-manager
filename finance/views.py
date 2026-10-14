@@ -68,11 +68,12 @@ class FinanceDashboardView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin,
         bank_total = sum(b.balance for b in banks)
 
         # ── گزارشِ سود و زیان بر اساس بابت (غیرحقوقی) ──
-        # هزینه: همیشه از تراکنش‌ها (برداشت). درآمد: طبقِ income_sourceِ بابت — از فاکتور
-        # (Σ ردیف‌های فاکتورِ آن بابت، تاریخِ ثبتِ فاکتور در بازه) یا از تراکنش (واریز).
-        # ستونِ «فاکتور» و «واریز» هر دو همیشه نشان داده می‌شوند تا هیچ درآمدی پنهان نماند؛
-        # «خالص» = درآمدِ منبعِ انتخابی − هزینه. یک تراکنش می‌تواند چند بابت داشته باشد
-        # (در چند ردیف دیده می‌شود) ولی جمعِ کلِ بالا از خودِ تراکنش‌ها یک‌بار شمرده می‌شود.
+        # هزینه: همیشه از تراکنش‌ها (برداشت). درآمد: طبقِ **توگلِ سراسریِ گزارش** (`?income=`،
+        # پیش‌فرض فاکتور) — نه income_sourceِ هر بابت؛ یک دکمهٔ واحد کنارِ فیلترها همهٔ بابت‌ها را
+        # با هم عوض می‌کند. ستونِ «فاکتور» و «واریز» هر دو همیشه نشان داده می‌شوند تا هیچ
+        # درآمدی پنهان نماند؛ «خالص» = درآمدِ منبعِ انتخابی − هزینه. (income_sourceِ هر بابت
+        # دست‌نخورده می‌ماند و جای دیگری — صفحهٔ بابت‌ها/هزینهٔ محتوا — اثر خودش را دارد.)
+        income_mode = 'transaction' if self.request.GET.get('income') == 'transaction' else 'invoice'
         from .models import InvoiceLine
         il = InvoiceLine.objects.filter(category__isnull=False).select_related('category', 'invoice')
         if start and end:
@@ -87,15 +88,12 @@ class FinanceDashboardView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin,
             exp = ct.aggregate(s=Sum('withdrawal'))['s'] or 0
             dep = ct.aggregate(s=Sum('deposit'))['s'] or 0
             invc = inv_income.get(c.id, 0)
-            is_inv = c.income_source == Category.INCOME_INVOICE
-            income_c = invc if is_inv else dep
+            income_c = invc if income_mode == 'invoice' else dep
             net = income_c - exp
             cats.append({
                 'id': c.id, 'name': c.name, 'color': c.color,
                 'invoice': invc, 'deposit': dep,
                 'income': income_c, 'expense': exp, 'net': net,
-                'is_invoice': is_inv,
-                'source': 'فاکتور' if is_inv else 'تراکنش',
             })
             cats_total['invoice'] += invc
             cats_total['deposit'] += dep
@@ -121,6 +119,7 @@ class FinanceDashboardView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin,
         ctx.update({
             'income': income, 'expense': expense, 'net': income - expense,
             'banks': banks, 'bank_total': bank_total, 'cats': cats, 'cats_total': cats_total,
+            'income_mode': income_mode,
             'salary_rows': salary_rows, 'salary_total': salary_total,
             'unassigned': tx.filter(project__isnull=True, categories__isnull=True).count(),
             'fin_alerts': compute_alerts(),

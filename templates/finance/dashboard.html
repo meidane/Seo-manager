@@ -6,21 +6,44 @@
   <div class="page-h"><h1>حسابداری</h1></div>
   {% include "finance/_nav.html" %}
 
-  {% include "components/_daterange_bar.html" %}
+  <div class="fin-filters">
+    {% include "components/_daterange_bar.html" %}
+    {% comment %}توگلِ سراسریِ منبعِ درآمدِ گزارش (کنارِ فیلترها؛ پیش‌فرض فاکتور){% endcomment %}
+    <div class="inc-toggle" role="group" aria-label="منبعِ درآمدِ گزارش">
+      <span class="inc-lbl">درآمد از:</span>
+      <button type="button" data-inc="invoice">فاکتور</button>
+      <button type="button" data-inc="transaction">تراکنش</button>
+    </div>
+  </div>
 
   <div data-range-scope>{% include "finance/_dashboard_results.html" %}</div>
 
   <script>
-  // تغییرِ منبعِ درآمدِ یک بابت (فاکتور ⇄ تراکنش) مستقیم از گزارش — delegated تا بعد از
-  // swapِ اجاکسیِ بازه هم زنده بماند.
-  document.addEventListener('click', async function (e) {
-    var b = e.target.closest('.src-toggle'); if (!b) return;
-    e.preventDefault();
-    var next = b.dataset.src === 'invoice' ? 'transaction' : 'invoice';
-    try {
-      await App.fetchJSON('/finance/api/categories/' + b.dataset.cat + '/', { method: 'PATCH', body: { income_source: next } });
-      if (window.App && App.rangeReload) App.rangeReload(location.href); else location.reload();
-    } catch (_) {}
+  // توگلِ سراسریِ منبعِ درآمد (فاکتور/تراکنش) کنارِ فیلترها — پیش‌فرض فاکتور. URL را عوض و
+  // ناحیهٔ گزارش را اجاکسی رفرش می‌کند؛ بازهٔ انتخاب‌شده (range/from/to) حفظ می‌شود.
+  (function () {
+    var box = document.querySelector('.inc-toggle'); if (!box) return;
+    function cur() { try { return new URL(location.href).searchParams.get('income') === 'transaction' ? 'transaction' : 'invoice'; } catch (_) { return 'invoice'; } }
+    function sync() { var c = cur(); box.querySelectorAll('[data-inc]').forEach(function (b) { b.classList.toggle('on', b.dataset.inc === c); }); }
+    box.querySelectorAll('[data-inc]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (cur() === b.dataset.inc) return;
+        var u = new URL(location.href);
+        if (b.dataset.inc === 'transaction') u.searchParams.set('income', 'transaction'); else u.searchParams.delete('income');
+        var url = u.pathname + (u.search || '');
+        if (window.App && App.rangeReload) App.rangeReload(url); else location.href = url;
+        sync();
+      });
+    });
+    document.addEventListener('range:swapped', sync);
+    sync();
+  })();
+
+  // کلیک روی ردیفِ هر بابت → صفحهٔ گزارش (گردشِ حساب) با فیلترِ همان بابت. delegated تا بعد
+  // از swapِ اجاکسی هم کار کند.
+  document.addEventListener('click', function (e) {
+    var row = e.target.closest('.cat-row[data-cat-row]'); if (!row) return;
+    location.href = '/finance/ledger/?category=' + row.dataset.catRow;
   });
   </script>
 {% endblock %}
