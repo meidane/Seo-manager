@@ -2,7 +2,7 @@
 // زیرمجموعه‌ای از REST: types/taxonomies/users/me/posts/pages/media/categories/product_cat/search/rankmath + یک صفحهٔ رقیب.
 import { createServer } from 'node:http';
 
-const PORT = +(process.argv[2] || 8765);
+const PORT = +(process.argv[2] || 8766);
 const AUTH = 'Basic ' + Buffer.from('admin:abcd efgh ijkl').toString('base64');
 const H = `http://127.0.0.1:${PORT}`;
 let nextId = 500;

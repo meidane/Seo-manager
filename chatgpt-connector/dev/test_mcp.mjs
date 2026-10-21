@@ -1,5 +1,5 @@
 // تستِ سرتاسریِ سرورِ MCP روی وردپرسِ ساختگی (فقط توسعه):
-//   node dev/mock_wp.mjs 8765 &   سپس   CWP_HOME=<tmp> CWP_BROWSER_PATH=<chromium> node dev/test_mcp.mjs
+//   node dev/mock_wp.mjs 8766 &   سپس   CWP_HOME=<tmp> CWP_BROWSER_PATH=<chromium> node dev/test_mcp.mjs
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
@@ -57,7 +57,7 @@ if (want('wp')) {
   await call('file_read', { path: 'images/pipe.png' });
 }
 if (want('browser')) {
-  const base = 'http://127.0.0.1:8765';
+  const base = 'http://127.0.0.1:8766';
   await call('page_outline', { url: base + '/competitor' });
   await call('page_outline', { url: base + '/competitor', level: 'sections' });
   await call('page_outline', { urls: [base + '/competitor', base + '/competitor?2'] });

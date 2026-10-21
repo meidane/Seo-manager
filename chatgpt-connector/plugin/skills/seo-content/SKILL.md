@@ -1,12 +1,12 @@
 ---
 name: seo-content
-description: Write new Persian SEO content (articles, product-category descriptions, pages) directly into the user's WordPress sites using the local seo-wp tools — prompts, research steps and files come from the user's Excel file.
+description: Write new Persian SEO content (articles, product-category descriptions, pages) directly into the user's WordPress sites using the local seo-wp tools — prompts, research steps and files come from the ChatGPT-WP panel (per site).
 ---
 
 # تولیدِ محتوای سئو با ابزارهای seo-wp
 
 ابزارها روی کامپیوترِ کاربر اجرا می‌شوند و مستقیم با REST به سایت‌ها وصل‌اند. تنظیمات (سایت‌ها، پرامپت‌ها،
-فایل‌ها، رقبا) از اکسلِ کاربر خوانده می‌شود؛ اگر چیزی کم بود به کاربر بگو در اکسل اضافه کند.
+فایل‌ها، رقبا) برای هر سایت در «پنلِ ChatGPT-WP» تعریف شده؛ اگر چیزی کم بود به کاربر بگو در پنل اضافه کند.
 
 ## ۱) شروع (همیشه)
 1. `sites` → فهرستِ سایت‌ها و پرامپت‌ها.
@@ -35,7 +35,7 @@ description: Write new Persian SEO content (articles, product-category descripti
 - سئو: `seo.title` ≤ ۶۰ نویسه، `seo.description` ≤ ۱۵۵ نویسه، `seo.focus_keyword`.
 
 ## ۴) عکس
-- عکس‌های موجود: `files_list(folder="images")` و فایل‌های نقشِ «داخل متن/شاخص» در بریف.
+- عکس‌های موجود: فایل‌های نقشِ «داخل متن/شاخص» در بریف (آپلودشده در پنل) و `files_list(folder="images")`.
 - داخلِ متن فقط مسیر یا نامِ فایل بگذار: `![توضیحِ دقیقِ عکس](pipe-304.webp)` → خودکار آپلود و جایگزین می‌شود.
 - تصویرِ شاخص: `featured_image` (مسیر/نام/id). اگر ندهی و سایت/پرامپت «تصویر شاخص پیش‌فرض» داشته باشد، همان گذاشته می‌شود.
 - اگر خودت عکس ساختی ولی فایلش روی این کامپیوتر نیست، از کاربر بخواه در پوشهٔ images ذخیره کند و نامش را بگوید.
@@ -54,6 +54,6 @@ description: Write new Persian SEO content (articles, product-category descripti
 `wp_add_link(id, anchor, url)` (پیش‌نمایش) و بعد از تأیید `dry_run=false`.
 
 ## خطاهای رایج
-- 401: «رمز برنامه» یا نام کاربری در اکسل اشتباه است (یا هاست هدرِ Authorization را حذف می‌کند).
+- 401: «رمز برنامه» یا نام کاربری در پنل اشتباه است (یا هاست هدرِ Authorization را حذف می‌کند).
 - گوگل کپچا داد: پنجرهٔ Chrome باز می‌شود؛ از کاربر بخواه یک بار حل کند، بعد دوباره امتحان کن (تا آن موقع بینگ).
 - ابزاری که کارِ خاصی ندارد (مثلاً استخراجِ محصول از سایتِ رقیب): `browser_run` با اسکریپتِ Playwright یا `wp_api`.

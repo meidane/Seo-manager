@@ -2,7 +2,7 @@
 // همهٔ درخواست‌ها از همین کامپیوتر می‌روند (هاست‌های ایرانی از سرورهای OpenAI در دسترس نیستند).
 import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync } from 'node:fs';
 import { join, basename, extname } from 'node:path';
-import { DIRS, HOME, resolvePath, defaultFeatured } from './config.mjs';
+import { DIRS, HOME, findLocal, defaultFeatured } from './config.mjs';
 import {
   norm, relevance, looseRegex, stripTags, htmlToText, htmlSections, wordCount,
   markdownToHtml, looksLikeHtml, hostOf, decodeEntities,
@@ -17,7 +17,7 @@ const state = site => {
 
 // ───────────── درخواستِ پایه ─────────────
 export async function wpFetch(site, path, { method = 'GET', query, body, headers = {}, timeout = 60000, auth = true } = {}) {
-  if (!site.url) throw new Error(`آدرسِ سایتِ «${site.key}» در اکسل خالی است.`);
+  if (!site.url) throw new Error(`آدرسِ سایتِ «${site.key}» در پنل خالی است.`);
   const st = state(site);
   const build = () => {
     if (/^https?:\/\//i.test(path)) return new URL(path);
@@ -56,7 +56,7 @@ export async function wpFetch(site, path, { method = 'GET', query, body, headers
     if (!st.restRoute && !/^https?:/i.test(path) && data === undefined && (res.status === 404 || res.ok)) { st.restRoute = true; continue; }
     if (res.ok) throw new Error(`پاسخِ JSON نبود (${res.status}): ${text.slice(0, 200)}`);
     const msg = data ? `${data.code || ''} ${decodeEntities(data.message || '')}`.trim() : stripTags(text).slice(0, 200);
-    const hint = res.status === 401 ? ' ← نام کاربری/«رمز برنامه» (Application Password) را در اکسل چک کن؛ اگر درست است، هاست هدرِ Authorization را حذف می‌کند.'
+    const hint = res.status === 401 ? ' ← نام کاربری/«رمز برنامه» (Application Password) را در پنل (تبِ اتصال) چک کن؛ اگر درست است، هاست هدرِ Authorization را حذف می‌کند.'
       : res.status === 403 ? ' ← این کاربر دسترسیِ کافی ندارد یا فایروال/امنیتِ سایت درخواست را بسته.'
         : res.status === 404 ? ' ← مسیر وجود ندارد (افزونه/نوعِ محتوا فعال نیست؟).' : '';
     const err = new Error(`WordPress ${res.status}: ${msg}${hint}`);
@@ -135,7 +135,7 @@ export function backup(site, kind, id, data) {
 
 // ───────────── بررسیِ اتصال ─────────────
 export async function wpCheck(site) {
-  if (!site.user || !site.password) throw new Error(`برای «${site.key}» نام کاربری یا «رمز برنامه» در اکسل خالی است.`);
+  if (!site.user || !site.password) throw new Error(`برای «${site.key}» نام کاربری یا «رمز برنامه» در پنل خالی است.`);
   const me = await wpFetch(site, 'wp/v2/users/me', { query: { context: 'edit', _fields: 'id,name,slug,roles,capabilities' } });
   const st = await discover(site);
   const caps = me.data.capabilities || {};
@@ -321,9 +321,8 @@ export async function uploadMedia(site, { source, alt, title, caption, filename 
     mime = (r.headers.get('content-type') || '').split(';')[0];
     name = basename(new URL(source).pathname) || 'image';
   } else {
-    let p = resolvePath(source);
-    if (!existsSync(p) && existsSync(join(DIRS.images, source))) p = join(DIRS.images, source);
-    if (!existsSync(p)) throw new Error(`فایل پیدا نشد: ${p} (عکس‌ها را در ${DIRS.images} بگذار)`);
+    const p = findLocal(source, site);
+    if (!existsSync(p)) throw new Error(`فایل پیدا نشد: ${source} (در پنل برای این سایت آپلود کن، یا در ${DIRS.images} بگذار)`);
     const fst = statSync(p);
     cacheKey = `${p}:${fst.size}:${fst.mtimeMs}`;
     if (st.media.has(cacheKey)) return st.media.get(cacheKey);

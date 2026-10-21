@@ -28,7 +28,7 @@
 - `rank-tracker-extension/` — **افزونهٔ کروم** (MV3، خارج از جنگو)، سازگار با `seo/api.py`.
   جزئیات در `seo/CLAUDE.md`، بخشِ «افزونهٔ مرورگر».
 - `chatgpt-connector/` — **برنامهٔ ویندوزیِ ChatGPT-WP** (خارج از جنگو، به پنل وصل نیست): پلاگینِ MCPِ محلیِ
-  ChatGPT Desktop (Work) ↔ REST وردپرسِ سایت‌ها + تحقیقِ رقبا با Playwright؛ تنظیمات/پرامپت‌ها/فایل‌ها در اکسلِ کاربر.
+  ChatGPT Desktop (Work) ↔ REST وردپرسِ سایت‌ها + تحقیقِ رقبا با Playwright؛ سایت‌ها/پرامپت‌های هر سایت/فایل‌ها از پنلِ محلیِ خودش (config.json).
   نصب/به‌روزرسانی یک‌کلیکی. `chatgpt-connector/CLAUDE.md`.
 - `aistudio/` — **تبِ «AI»ی پروژه**: اتصالِ سایت (Application Password) و MCP (رمزها رمزنگاری‌شده و
   write-only) + پرامپتِ عمومی + پرامپت‌های اختصاصی (متصل به نوعِ تسک) با فایلِ توضیح‌دار. پایهٔ

@@ -3,7 +3,6 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 VER=$(node -p "require('./plugin/plugin.json').version")
-python3 dev/make_template.py >/dev/null
 (cd plugin && npm install --omit=dev --no-audit --no-fund --silent)
 rm -rf dist && mkdir -p dist
 python3 - "$VER" <<'PY'

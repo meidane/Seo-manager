@@ -1,6 +1,6 @@
 // نصبِ یک‌کلیکی (بدونِ PowerShell): کپیِ پلاگین به ChatGPT Desktop + ثبت در marketplace +
-// ساختِ پوشهٔ ChatGPT-WP با اکسلِ قالب + میان‌برِ «پنل» روی دسکتاپ. اجرای دوباره = به‌روزرسانی (اکسلِ کاربر دست نمی‌خورد).
-import { existsSync, mkdirSync, cpSync, rmSync, readFileSync, writeFileSync, copyFileSync } from 'node:fs';
+// ساختِ پوشهٔ ChatGPT-WP + میان‌برِ «پنل» روی دسکتاپ. اجرای دوباره = به‌روزرسانی (تنظیمات/فایل‌های کاربر دست نمی‌خورد).
+import { existsSync, mkdirSync, cpSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { execFileSync } from 'node:child_process';
@@ -76,18 +76,15 @@ export function install({ log = console.log, src = SRC } = {}) {
   writeFileSync(MARKET, JSON.stringify(market, null, 2), 'utf8');
   say(`✓ در فهرستِ پلاگین‌های محلی ثبت شد: ${MARKET}`);
 
-  // ۳) پوشهٔ کاری + اکسل (اگر نبود)
+  // ۳) پوشهٔ کاری (تنظیمات را پنل در config.json می‌سازد)
   for (const d of ['', 'images', 'files', 'backups']) mkdirSync(join(CWP_HOME, d), { recursive: true });
-  const excel = join(CWP_HOME, 'sites.xlsx');
-  if (!existsSync(excel)) { copyFileSync(join(src, 'template', 'sites.xlsx'), excel); say(`✓ فایلِ تنظیمات ساخته شد: ${excel}`); }
-  else say(`✓ فایلِ تنظیماتِ قبلی حفظ شد: ${excel}`);
   writeFileSync(join(CWP_HOME, 'ChatGPT-WP Panel.cmd'), launcher(), 'utf8');
 
   // ۴) میان‌بر روی دسکتاپ
   for (const d of desktopDirs()) {
     try { writeFileSync(join(d, 'ChatGPT-WP Panel.cmd'), launcher(), 'utf8'); say(`✓ میان‌برِ پنل روی دسکتاپ: ${d}`); } catch { /* مهم نیست */ }
   }
-  say('(اکسل، عکس‌ها، فایل‌ها و لاگین‌های مرورگر دست نخوردند.)');
+  say('(تنظیمات، پرامپت‌ها، فایل‌ها و لاگین‌های مرورگر دست نخوردند.)');
   say('');
   say('حالا ChatGPT Desktop را کامل ببند و دوباره باز کن ← Plugins ← Local Private Plugins ← «SEO WordPress Connector» را فعال کن (در حالتِ Work).');
   return { ok: true, steps, version };

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // سرورِ MCP (stdio) برای ChatGPT Desktop (حالتِ Work): اتصالِ مستقیم به سایت‌های وردپرسیِ کاربر با REST
-// + تحقیقِ رقبا با مرورگرِ محلی. تنظیمات از اکسل (%USERPROFILE%\ChatGPT-WP\sites.xlsx).
+// + تحقیقِ رقبا با مرورگرِ محلی. تنظیمات از پنل (%USERPROFILE%\ChatGPT-WP\config.json).
 // پروتکل: JSON-RPC خط‌به‌خط روی stdin/stdout. هرگز چیزی جز پروتکل روی stdout ننویس (لاگ → stderr).
 import { createInterface } from 'node:readline';
-import { config, getSite, siteBrief, EXCEL, HOME, DIRS } from './config.mjs';
+import { config, getSite, siteBrief, CONFIG, HOME, DIRS } from './config.mjs';
 import * as wp from './wp.mjs';
 import * as rs from './research.mjs';
 import { filesList, fileRead } from './files.mjs';
@@ -11,12 +11,12 @@ import { compact } from './text.mjs';
 
 const VERSION = '1.0.0';
 const S = (type, description, extra = {}) => ({ type, description, ...extra });
-const SITE = S('string', 'نامِ کوتاهِ سایت در اکسل (یا دامنه). اگر فقط یک سایت باشد اختیاری است.');
+const SITE = S('string', 'نامِ کوتاهِ سایت (یا دامنه). اگر فقط یک سایت باشد اختیاری است.');
 const obj = (properties, required = []) => ({ type: 'object', properties, required, additionalProperties: false });
 const SEO = obj({ title: S('string', 'عنوانِ سئو (متا تایتل)'), description: S('string', 'توضیحِ متا'), focus_keyword: S('string', 'کلمهٔ کلیدیِ کانونی') });
 
 const tools = [
-  { name: 'sites', description: 'فهرستِ سایت‌های اکسل؛ با site = بریفِ آن سایت (پرامپت‌های عمومی، فهرستِ پرامپت‌های اختصاصی، فایل‌ها، رقبا). با prompt = متنِ پرامپتِ اختصاصی + مراحلِ تحقیقِ لازم (steps) + فایل‌هایش. اولِ هر کار صدا بزن؛ فقط مراحلی را که steps یا کاربر خواسته انجام بده.',
+  { name: 'sites', description: 'فهرستِ سایت‌های تعریف‌شده در پنل؛ با site = بریفِ آن سایت (پرامپت‌های عمومی، فهرستِ پرامپت‌های اختصاصی، فایل‌ها، رقبا). با prompt = متنِ پرامپتِ اختصاصی + مراحلِ تحقیقِ لازم (steps) + فایل‌هایش. اولِ هر کار صدا بزن؛ فقط مراحلی را که steps یا کاربر خواسته انجام بده.',
     inputSchema: obj({ site: S('string', 'اختیاری'), prompt: S('string', 'عنوان/کاربردِ پرامپت (اختیاری)') }) },
   { name: 'wp_check', description: 'تستِ اتصالِ REST + نقش/دسترسی‌های کاربر + افزونهٔ سئو/ووکامرس + تعدادِ مطالب.',
     inputSchema: obj({ site: SITE }) },
@@ -63,7 +63,7 @@ const tools = [
     inputSchema: obj({ url: S('string', 'یک آدرس'), urls: S('array', 'چند آدرس (موازی)', { items: { type: 'string' } }), level: S('string', 'outline | sections | full'),
       max_chars: S('integer', 'سقفِ متن برای هر صفحه'), section_chars: S('integer', 'طولِ خلاصهٔ هر بخش در sections') }) },
   { name: 'competitor_research', description: 'تحقیقِ یک‌جا برای یک کلمهٔ کلیدی: نتایجِ گوگل + سؤالاتِ مرتبط + گوگل ساجست (سؤالی) + سرفصل/مقدمه/FAQ/آمارِ n رقیبِ اول (سایتِ خودت و دامنه‌های «نادیده» حذف) + سرفصل‌ها و واژه‌های مشترکِ رقبا + میانهٔ طولِ محتوا.',
-    inputSchema: obj({ keyword: S('string', 'کلمهٔ کلیدیِ اصلی'), site: S('string', 'سایتِ خودت (برای حذف از نتایج و رقبای اکسل)'), n: S('integer', 'تعدادِ رقبا (۵)'),
+    inputSchema: obj({ keyword: S('string', 'کلمهٔ کلیدیِ اصلی'), site: S('string', 'سایتِ خودت (برای حذف از نتایج و رقبای تعریف‌شده)'), n: S('integer', 'تعدادِ رقبا (۵)'),
       level: S('string', 'outline | sections'), engine: S('string', 'google | bing'), suggest: S('boolean', 'گوگل ساجست هم بگیرد (true)'),
       extra_urls: S('array', 'آدرس‌های رقیبِ دلخواه', { items: { type: 'string' } }) }, ['keyword']) },
   { name: 'browser_run', description: 'اجرای اسکریپتِ دلخواهِ Playwright در Chromeِ محلی (پروفایلِ ماندگار؛ لاگین‌ها می‌مانند). script بدنهٔ یک async function با page, context, helpers است و هرچه return کند برمی‌گردد (helpers.outline() = ساختارِ صفحهٔ فعلی). screenshot=true عکسِ صفحه را هم می‌دهد. برای کارهایی که ابزارِ اختصاصی ندارند (استخراجِ محصول، فرم‌ها، پیشخوانِ وردپرس).',
@@ -93,9 +93,10 @@ const handlers = {
   sites: ({ site, prompt }) => {
     const cfg = config();
     if (site) return siteBrief(getSite(site), prompt);
-    return { excel: EXCEL, folders: { home: HOME, images: DIRS.images, files: DIRS.files, backups: DIRS.backups }, error: cfg.error,
-      sites: cfg.sites.map(s => ({ site: s.key, url: s.url, seo: s.seo, has_credentials: !!(s.user && s.password) })),
-      prompts: cfg.prompts.map(p => `${p.kind === 'general' ? 'عمومی' : 'اختصاصی'}: ${p.title} (${p.site})`) };
+    return { folders: { home: HOME, images: DIRS.images, files: DIRS.files, backups: DIRS.backups },
+      sites: cfg.sites.map(s => ({ site: s.key, url: s.url, seo: s.seo, has_credentials: !!(s.user && s.password),
+        prompts: s.prompts.filter(p => p.kind === 'specific').map(p => p.title) })),
+      hint: cfg.sites.length ? undefined : 'هنوز سایتی تعریف نشده؛ کاربر باید در «پنلِ ChatGPT-WP» (میان‌برِ دسکتاپ) سایت اضافه کند.' };
   },
   wp_check: a => wp.wpCheck(getSite(a.site)),
   wp_find: a => wp.wpFind(getSite(a.site), a),
@@ -188,4 +189,4 @@ rl.on('line', line => {
 rl.on('close', async () => { await rs.closeBrowser().catch(() => {}); process.exit(0); });
 process.on('uncaughtException', e => process.stderr.write(`[uncaught] ${e.stack || e}\n`));
 process.on('unhandledRejection', e => process.stderr.write(`[unhandled] ${e?.stack || e}\n`));
-process.stderr.write(`seo-wp-connector ${VERSION} ready (excel: ${EXCEL})\n`);
+process.stderr.write(`seo-wp-connector ${VERSION} ready (config: ${CONFIG})\n`);
