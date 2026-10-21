@@ -1,7 +1,7 @@
 # core/ — پایه‌های مشترک
 
 ## مدل‌ها (`models.py`)
-- **TimeStampedModel** (abstract) · **Attachment** (GenericFK؛ `is_image, size_h`) ·
+- **TimeStampedModel** (abstract) · **Attachment** (GenericFK؛ `is_image, size_h`؛ + `description`/`role` عمومی — فعلاً تبِ AI می‌خواند) ·
   **ActivityLog** · **Holiday** (میلادی؛ جمعه محاسباتی است و ذخیره نمی‌شود).
 - **ColumnConfig** — سفارشی‌سازیِ ستون‌های جدولِ تسک/پروژه/همکار، per سازمان (tenant عادی:
   `objects`=فیلترشده، `all_objects`=بدون فیلتر). `table`(tasks/projects/colleagues) +

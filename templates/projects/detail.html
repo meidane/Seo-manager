@@ -54,6 +54,7 @@
     {% if 'project_files' in org_perms %}<button class="tab" data-tab="files">فایل‌ها</button>{% endif %}
     {% if 'project_colleagues_access' in org_perms %}<button class="tab" data-tab="members">دسترسی به همکاران</button>{% endif %}
     {% if 'project_credentials' in org_perms %}<button class="tab" data-tab="creds">دسترسی‌ها</button>{% endif %}
+    {% if 'project_ai' in org_perms %}<button class="tab" data-tab="ai">AI</button>{% endif %}
     {% if 'project_reports' in org_perms %}<button class="tab" data-tab="reports">گزارش‌ها</button>{% endif %}
     {% if 'manage_finance' in org_perms %}<button class="tab" data-tab="finance">حسابداری</button>{% endif %}
   </div>
@@ -147,6 +148,9 @@
     {% if not credentials %}<div class="empty" id="cred-empty"><div class="ico">🔑</div><h4>دسترسی‌ای ثبت نشده</h4></div>{% endif %}
   </section>
   {% endif %}
+
+  {# AI — اتصالِ سایت/MCP + پرامپتِ عمومی/اختصاصی (aistudio) #}
+  {% if 'project_ai' in org_perms %}{% include "aistudio/_project_tab.html" %}{% endif %}
 
   {# تسک‌ها — بردِ سئو (سکشن‌های ماهِ گزارش، حالتِ شیت) #}
   <section class="card glass tab-panel on" data-panel="tasks" id="seo-board" data-project="{{ project.pk }}">
@@ -445,6 +449,7 @@
   if (new URLSearchParams(location.search).has('kw_period')) activate('keywords');
   // بردِ سئو: با فیلترِ نوع یا رفرشِ افزودن، تبِ تسک‌ها باز بماند
   if (new URLSearchParams(location.search).has('seo_type') || location.hash === '#tasks') activate('tasks');
+  if (location.hash === '#ai' && tabs.querySelector('[data-tab="ai"]')) activate('ai');
   // کلیک روی ماهِ زیرِ پروژه (صفحهٔ لیست): #month-YYYY-M → اسکرول به همان سکشنِ برد
   if (/^#month-\d+-\d+$/.test(location.hash)) {
     activate('tasks');
@@ -796,4 +801,5 @@
   });
 })();
 </script>
+{% if 'project_ai' in org_perms %}<script src="{% static 'js/aistudio.js' %}"></script>{% endif %}
 {% endblock %}

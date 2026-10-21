@@ -1924,3 +1924,55 @@ input[type=checkbox]:disabled{opacity:.5;cursor:default}
   color:var(--text-dim);border-bottom:1px solid var(--stroke-soft)}
 .pl-line:last-child{border-bottom:0}
 .pl-sub td{background:var(--fill);padding:2px 8px}
+
+/* ═══ تبِ «AI»ی سینگلِ پروژه (static/js/aistudio.js) ═══
+   فقط متغیرهای رنگ (هر دو تم). عرضِ اینپوت/سلکتِ داخلِ ردیف‌های فلکس با انتخاب‌گرِ خاص‌تر
+   `width:auto` می‌گیرد (تلهٔ ۲۹: قاعدهٔ سراسریِ width:100% بقیهٔ فلکس‌آیتم‌ها را له می‌کرد). */
+.ai-tab.on{display:flex;flex-direction:column;gap:14px}
+.ai-card{margin:0}
+.ai-card .ai-body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px}
+.ai-card .field{margin-bottom:0}
+.ai-hint{color:var(--text-faint);font-size:11.5px;line-height:1.8}
+.ai-meta{color:var(--text-faint);font-size:11px;font-weight:400}
+.ai-card label .tag{margin-inline-start:6px;font-size:10.5px;vertical-align:middle}
+.ai-secret{display:flex;gap:8px;align-items:center}
+.ai-secret input.input{flex:1 1 auto;width:auto;min-width:0}
+.ai-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ai-test-res{font-size:12px;color:var(--text-dim)}
+.ai-test-res.ok{color:var(--success)}
+.ai-test-res.bad{color:var(--danger)}
+.ai-card textarea.ai-ta{min-height:130px;resize:vertical;line-height:1.9;font-size:13px}
+.ai-card textarea.ai-ta-lg{min-height:240px}
+.ai-prompt{border:1px solid var(--stroke-soft);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;
+  gap:10px;background:var(--fill);transition:var(--ease)}
+.ai-prompt + .ai-prompt{margin-top:12px}
+.ai-prompt.dirty{border-color:var(--warning)}
+.ai-prompt.drag{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-ring)}
+.ai-p-head{display:flex;gap:8px;align-items:center}
+.ai-p-head input.ai-p-title{flex:1 1 auto;width:auto;min-width:0;font-weight:600}
+.ai-p-head select.ai-p-type{flex:none;width:auto;max-width:230px}
+.ai-p-foot{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ai-spacer{flex:1}
+.ai-dirty{font-size:11px;color:var(--warning)}
+.ai-upload{cursor:pointer}
+.ai-files{display:flex;flex-direction:column;gap:8px}
+.ai-files:empty{display:none}
+.ai-file{display:flex;gap:10px;align-items:flex-start;padding:8px;border:1px solid var(--stroke-soft);
+  border-radius:var(--r-sm);background:var(--card-solid);transition:var(--ease)}
+.ai-file.saved{border-color:var(--success)}
+.ai-thumb{flex:none;width:56px;height:56px;border-radius:var(--r-sm);overflow:hidden;display:grid;place-items:center;
+  background:var(--fill-strong);font-size:22px;text-decoration:none}
+.ai-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.ai-file-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.ai-file-top{display:flex;gap:8px;align-items:center;min-width:0}
+.ai-fname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;color:var(--text)}
+.ai-fsize{flex:none;font-size:11px;color:var(--text-faint)}
+.ai-file-top select.ai-role{flex:none;width:auto;padding:5px 8px;font-size:12px}
+.ai-file-main input.ai-fdesc{font-size:12.5px;padding:7px 10px}
+.ai-fdel{flex:none;background:transparent;border:0;color:var(--text-faint);font-size:18px;line-height:1;cursor:pointer;padding:0 4px}
+.ai-fdel:hover{color:var(--danger)}
+@media(max-width:640px){
+  .ai-p-head{flex-wrap:wrap}
+  .ai-p-head select.ai-p-type{max-width:none;flex:1 1 100%}
+  .ai-file-top{flex-wrap:wrap}
+}

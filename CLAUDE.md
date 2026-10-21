@@ -27,6 +27,9 @@
   کلیدی (مدل + API برای افزونهٔ مرورگر). الگوی «بسته برای هر شرکت» — برای مشتریِ بعدی یک اپِ مشابه بساز.
 - `rank-tracker-extension/` — **افزونهٔ کروم** (MV3، خارج از جنگو)، سازگار با `seo/api.py`.
   جزئیات در `seo/CLAUDE.md`، بخشِ «افزونهٔ مرورگر».
+- `aistudio/` — **تبِ «AI»ی پروژه**: اتصالِ سایت (Application Password) و MCP (رمزها رمزنگاری‌شده و
+  write-only) + پرامپتِ عمومی + پرامپت‌های اختصاصی (متصل به نوعِ تسک) با فایلِ توضیح‌دار. پایهٔ
+  اتوماسیونِ محتوا با ChatGPT — نقشهٔ کامل: **`docs/AI_PLAN.md`**. `aistudio/CLAUDE.md`.
 - `personal/` — **فضای شخصیِ خصوصی** (فقط سوپریوزر/`admin`): بالای صفحه = **تقویمِ مشترک**
   (همان ماژولِ `calendarapp`؛ پنلِ بدون‌تاریخ = اینباکس) + هبیت ترکر، اهداف، یادداشت،
   ثانیه‌شمارِ عمر. اسکوپ به `user`. `personal/CLAUDE.md`.
@@ -70,6 +73,8 @@
 | گروه‌بندی نوع در گزارش | `reports/models.py: BUCKETS` |
 | فیلدهای قابل‌نمایش به مشتری | `reports/models.py: CLIENT_FIELDS` + `Report.visible_fields` |
 | پاکسازی HTML ادیتور | `core/htmlsan.py: clean_html` |
+| تنظیمات/رمزها/پرامپت‌های AIِ هر پروژه (+ گزینه‌های کاربردِ فایل) | `aistudio/models.py: ProjectAI(set/get/has_secret)/AIPrompt/FILE_ROLES` + `static/js/aistudio.js` (تبِ AI) — نقشه: `docs/AI_PLAN.md` |
+| توضیح/کاربردِ یک فایلِ پیوست | `core.Attachment.description/role` (فایلِ موازی نساز؛ پرامپتِ AI هم همین را با `GenericRelation` دارد) |
 | رنگ/برچسب نوع تسک | `tasks/models.py: Task.type_label / color_rgb` (+ `TYPE_COLORS`) |
 | KPI (تعریف/امتیاز/سقف) | `tasks/models.py: TaskTypeKPI/KPIChecklistItem/TaskKPIScore` |
 | خوداظهاریِ چک‌لیستِ KPI توسطِ مسئول (نمایشی، جدا از امتیازِ نهاییِ مدیر) | `Task.kpi_self_checks` (JSON) + `tasks/api.py: task_kpi_self_check` + `tasks.js: initKpis/wireKpiSelfCheck` |
