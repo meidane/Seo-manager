@@ -1,0 +1,19 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "seo-wp-connector",
+  "version": "1.0.0",
+  "description": "Connect ChatGPT (Work) to your WordPress sites over REST and research competitors locally. Settings in Excel.",
+  "license": "MIT",
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "SEO WordPress Connector",
+        "shortDescription": "Write SEO content into your WordPress sites with competitor research and internal links",
+        "longDescription": "Runs on this PC: reads sites, prompts and files from an Excel file, talks to each WordPress site through the REST API (Application Password), researches Google and competitor pages with the local Chrome, and saves articles/category texts as drafts.",
+        "developerName": "Local private integration",
+        "category": "Productivity",
+        "capabilities": ["Read", "Write"]
+      }
+    }
+  }
+}

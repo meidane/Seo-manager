@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ChatGPT-WP</title>
+<style>
+  :root { --bg:#0f1024; --card:#191b38; --line:#2b2e57; --text:#e8e9ff; --muted:#9a9cc8; --primary:#6366f1; --ok:#22c55e; --bad:#ef4444; --warn:#f59e0b; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.7 "Segoe UI", Tahoma, sans-serif; }
+  .wrap { max-width:1000px; margin:0 auto; padding:24px 16px 60px; }
+  h1 { font-size:22px; margin:0 0 4px; } h2 { font-size:16px; margin:0 0 12px; }
+  .sub { color:var(--muted); margin-bottom:20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:16px; }
+  .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)); gap:10px; }
+  .stat { border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+  .stat b { display:block; font-size:13px; color:var(--muted); font-weight:500; }
+  .ok { color:var(--ok); } .bad { color:var(--bad); } .warn { color:var(--warn); } .muted { color:var(--muted); }
+  button { background:var(--primary); color:#fff; border:0; border-radius:9px; padding:7px 14px; font:inherit; cursor:pointer; }
+  button.ghost { background:transparent; border:1px solid var(--line); color:var(--text); }
+  button:disabled { opacity:.5; cursor:wait; }
+  .tscroll { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; min-width:640px; }
+  th, td { border-bottom:1px solid var(--line); padding:8px; text-align:right; vertical-align:top; }
+  th { color:var(--muted); font-weight:500; font-size:13px; }
+  .res { font-size:13px; white-space:pre-wrap; direction:rtl; }
+  code, .ltr { direction:ltr; unicode-bidi:embed; font-family:Consolas, monospace; font-size:12.5px; }
+  ol { margin:0; padding-inline-start:20px; } li { margin-bottom:4px; }
+  .pill { display:inline-block; border:1px solid var(--line); border-radius:99px; padding:0 8px; font-size:12px; margin:2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>اتصالِ ChatGPT به سایت‌ها</h1>
+  <div class="sub">تنظیمات در اکسل است؛ این پنل فقط برای نصب، تستِ اتصال و باز کردنِ فایل‌هاست. <span id="ver" class="muted"></span></div>
+
+  <div class="card">
+    <h2>وضعیت</h2>
+    <div class="grid" id="stats"></div>
+    <div class="row" style="margin-top:12px">
+      <button data-open="excel">📊 باز کردنِ اکسلِ تنظیمات</button>
+      <button class="ghost" data-open="images">🖼 پوشهٔ عکس‌ها</button>
+      <button class="ghost" data-open="files">📁 پوشهٔ فایل‌ها</button>
+      <button class="ghost" data-open="backups">🗂 بک‌آپ‌ها</button>
+      <button class="ghost" id="reload">↻ دوباره خواندنِ اکسل</button>
+      <button class="ghost" id="update">⬆ به‌روزرسانی با فایل zip</button>
+      <input type="file" id="zip" accept=".zip" hidden>
+    </div>
+    <div class="res" id="install-res"></div>
+  </div>
+
+  <div class="card">
+    <h2>سایت‌ها</h2>
+    <div class="tscroll"><table>
+      <thead><tr><th>نام</th><th>آدرس</th><th>کاربر</th><th>رمز</th><th>سئو</th><th></th></tr></thead>
+      <tbody id="sites"></tbody>
+    </table></div>
+    <div class="muted" id="sites-empty" style="display:none;margin-top:8px">هنوز سایتی در اکسل نیست — اکسل را باز کن، برگهٔ «سایت‌ها» را پر کن و ذخیره کن، بعد «دوباره خواندن».</div>
+  </div>
+
+  <div class="card">
+    <h2>پرامپت‌ها</h2>
+    <div id="prompts" class="muted"></div>
+  </div>
+
+  <div class="card">
+    <h2>تحقیق (گوگل و رقبا)</h2>
+    <div class="row">
+      <button class="ghost" id="google">تستِ گوگل ساجست</button>
+      <button class="ghost" id="browser">🌐 باز کردنِ مرورگرِ ابزار (برای حلِ کپچای گوگل یا لاگین)</button>
+    </div>
+    <div class="res" id="google-res"></div>
+  </div>
+
+  <div class="card">
+    <h2>استفاده در ChatGPT</h2>
+    <ol>
+      <li>بعد از نصب، ChatGPT Desktop را کامل ببند (از System Tray هم) و دوباره باز کن.</li>
+      <li>Plugins ← <b>Local Private Plugins</b> ← «SEO WordPress Connector» را فعال کن.</li>
+      <li>در حالتِ <b>Work</b> کار کن (در چتِ معمولی پلاگینِ محلی کار نمی‌کند).</li>
+      <li>نمونه: «برای سایتِ steeltak با پرامپتِ ‹مقاله جدید› دربارهٔ ‹ورق استیل ۳۰۴› مقاله بنویس و پیش‌نویس کن.»</li>
+      <li>نمونه: «متنِ دستهٔ محصولِ ‹لوله استیل› در steeltak را با پرامپتِ ‹متن دسته‌بندی محصول› بنویس؛ قبل از ذخیره نشانم بده.»</li>
+    </ol>
+  </div>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+async function api(path, data, btn) {
+  if (btn) btn.disabled = true;
+  try {
+    const r = await fetch(path, { method: data === undefined ? 'GET' : 'POST', headers: { 'Content-Type': 'application/json' }, body: data === undefined ? undefined : JSON.stringify(data) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || r.status);
+    return j;
+  } finally { if (btn) btn.disabled = false; }
+}
+const stat = (label, html) => `<div class="stat"><b>${label}</b>${html}</div>`;
+
+async function load() {
+  const s = await api('/api/status');
+  $('#ver').textContent = `نسخهٔ ${s.version} · Node ${s.node}`;
+  const pl = s.plugin.installed
+    ? `<span class="ok">✓ نصب‌شده (${esc(s.plugin.installed)})</span>${s.plugin.installed !== s.version ? ' <span class="warn">— نسخهٔ جدیدتر آماده است</span>' : ''}`
+    : '<span class="bad">✗ نصب نشده</span>';
+  $('#stats').innerHTML =
+    stat('پلاگینِ ChatGPT', pl + (s.plugin.marketplace ? '' : ' <span class="warn">(در فهرستِ محلی ثبت نیست)</span>')) +
+    stat('فایلِ تنظیمات', (s.excel_exists ? '<span class="ok">✓</span> ' : '<span class="bad">✗</span> ') + `<span class="ltr">${esc(s.excel)}</span>`) +
+    stat('سایت‌ها', `${s.sites.length} سایت · ${s.prompts.length} پرامپت`) +
+    (s.error ? stat('هشدار', `<span class="warn">${esc(s.error)}</span>`) : '');
+  $('#sites').innerHTML = s.sites.map(x => `<tr>
+      <td><b>${esc(x.key)}</b></td><td class="ltr">${esc(x.url)}</td><td>${esc(x.user) || '<span class="bad">خالی</span>'}</td>
+      <td>${x.has_password ? '<span class="ok">✓</span>' : '<span class="bad">خالی</span>'}</td><td>${esc(x.seo)}</td>
+      <td><div class="row"><button data-test="${esc(x.key)}">تستِ اتصال</button><button class="ghost" data-site-files="${esc(x.key)}">فایل‌ها</button></div></td>
+    </tr><tr><td colspan="6" class="res" id="res-${CSS.escape(x.key)}" style="display:none"></td></tr>`).join('');
+  $('#sites-empty').style.display = s.sites.length ? 'none' : '';
+  $('#prompts').innerHTML = s.prompts.length ? s.prompts.map(p => `<span class="pill">${p.kind === 'general' ? 'عمومی' : 'اختصاصی'}: ${esc(p.title)} <span class="muted">(${esc(p.site)})</span></span>`).join('') : 'پرامپتی تعریف نشده.';
+}
+
+document.addEventListener('click', async e => {
+  const b = e.target.closest('button'); if (!b) return;
+  try {
+    if (b.dataset.open) await api('/api/open', { what: b.dataset.open }, b);
+    else if (b.dataset.siteFiles) await api('/api/open', { what: 'site-files', site: b.dataset.siteFiles }, b);
+    else if (b.dataset.test) {
+      const box = document.getElementById('res-' + CSS.escape(b.dataset.test));
+      box.style.display = ''; box.innerHTML = 'در حالِ تست…';
+      try {
+        const r = await api('/api/test', { site: b.dataset.test }, b);
+        const can = Object.entries(r.can).map(([k, v]) => `<span class="pill ${v ? 'ok' : 'muted'}">${v ? '✓' : '✗'} ${k}</span>`).join('');
+        box.innerHTML = `<span class="ok">✓ وصل شد</span> — «${esc(r.site_name)}» · کاربر: ${esc(r.user)} (${esc(r.roles.join(', '))}) · سئو: ${esc(r.seo_plugin)} · ووکامرس: ${r.woocommerce ? 'دارد' : 'ندارد'}<br>`
+          + `تعداد: ${Object.entries(r.counts).map(([k, v]) => `${k}=${v ?? '?'}`).join(' · ')}<br>${can}`;
+      } catch (err) { box.innerHTML = `<span class="bad">✗ ${esc(err.message)}</span>`; }
+    } else if (b.id === 'reload') await load();
+    else if (b.id === 'update') $('#zip').click(); else if (b.id === 'google') {
+      $('#google-res').textContent = 'در حالِ تست…';
+      try { const r = await api('/api/google', {}, b); $('#google-res').innerHTML = r.ok ? `<span class="ok">✓ گوگل در دسترس است</span> — ${esc(r.sample.join('، '))}` : '<span class="warn">جوابی نیامد</span>'; }
+      catch (err) { $('#google-res').innerHTML = `<span class="bad">✗ ${esc(err.message)}</span>`; }
+    } else if (b.id === 'browser') {
+      await api('/api/browser', {}, b); $('#google-res').textContent = 'پنجرهٔ مرورگر باز شد. اگر گوگل کپچا داد حلش کن؛ لاگین‌ها در همین پروفایل می‌مانند.';
+    }
+  } catch (err) { alert(err.message); }
+});
+$('#zip').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  const btn = $('#update'); btn.disabled = true;
+  $('#install-res').textContent = 'در حالِ نصبِ نسخهٔ جدید…';
+  try {
+    const r = await fetch('/api/update', { method: 'POST', headers: { 'Content-Type': 'application/zip' }, body: f });
+    const j = await r.json(); if (!r.ok) throw new Error(j.error);
+    $('#install-res').innerHTML = '<span class="ok">' + esc(j.steps.join('\n')) + '</span>';
+    setTimeout(() => location.reload(), 2500);
+  } catch (err) { $('#install-res').innerHTML = `<span class="bad">✗ ${esc(err.message)}</span>`; }
+  finally { btn.disabled = false; e.target.value = ''; }
+});
+window.addEventListener('focus', () => load().catch(() => {}));
+load().catch(e => { $('#stats').innerHTML = `<span class="bad">${esc(e.message)}</span>`; });
+</script>
+</body>
+</html>
