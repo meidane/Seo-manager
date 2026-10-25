@@ -57,6 +57,7 @@
   .toast { position:fixed; bottom:18px; left:18px; background:var(--card2); border:1px solid var(--line); padding:10px 16px; border-radius:10px; opacity:0; transition:.2s; pointer-events:none; }
   .toast.show { opacity:1; }
   .empty { color:var(--muted); padding:16px; text-align:center; }
+  #sync-chip.ok { border-color:var(--ok); } #sync-chip.bad { border-color:var(--warn); color:var(--warn); }
   @media (max-width:800px) {
     .app { grid-template-columns:1fr; } .side { border-left:0; border-bottom:1px solid var(--line); }
     .pcard .head { grid-template-columns:1fr; } .main { padding:14px 16px 60px; }
@@ -66,6 +67,7 @@
 <body>
 <div class="top">
   <h1>ChatGPT-WP</h1><span class="muted" id="ver"></span><span class="sp"></span>
+  <button class="ghost sm" id="sync-chip" title="همگام‌سازی با پنلِ سئو منیجر">🔄 همگام‌سازی</button>
   <button class="ghost sm" data-go="home">🏠 وضعیت و راهنما</button>
   <button class="ghost sm" data-go="settings">⚙ تنظیمات</button>
   <button class="ghost sm" id="update">⬆ به‌روزرسانی با zip</button>
@@ -114,6 +116,7 @@ async function refresh() { S = await api('/api/state'); if (view.name === 'site'
 
 function render() {
   $('#ver').textContent = `نسخهٔ ${S.version}`;
+  syncChip();
   $('#sitelist').innerHTML = S.sites.map(s => `<a data-site="${s.id}" class="${view.name === 'site' && view.site === s.id ? 'on' : ''}">${esc(s.key)}${s.active ? '' : ' <span class="muted">(غیرفعال)</span>'}<small>${esc(s.url.replace(/^https?:\/\//, ''))}</small></a>`).join('')
     || '<div class="muted" style="padding:6px">هنوز سایتی نیست.</div>';
   const m = $('#main');
@@ -146,7 +149,19 @@ function homeView() {
 // ───────── تنظیمات ─────────
 function settingsView() {
   const s = S.settings;
-  return `<h2>تنظیمات</h2><div class="card"><div class="grid">
+  const y = S.sync, st = y.status;
+  const syncCard = `<div class="card"><h3>همگام‌سازی با پنلِ سئو منیجر</h3>
+    <p class="muted" style="margin-top:0;font-size:13px">سایت‌ها، پرامپت‌ها، رقبا و فایل‌ها بینِ همهٔ کامپیوترها یکی می‌شوند. در پنل: تنظیمات ← توکن‌های API ← یک توکن بساز و اینجا بچسبان. اگر پنل در دسترس نبود، برنامه با دادهٔ همین کامپیوتر کار می‌کند و بعداً همگام می‌شود.</p>
+    <div class="grid">
+      <label class="f">آدرسِ پنل<input type="text" id="sy-url" class="ltr" value="${esc(y.url)}" placeholder="https://panel.example.com"></label>
+      <label class="f">توکنِ API<input type="password" id="sy-token" class="ltr" value="${esc(y.token)}" placeholder="توکن را بچسبان"></label>
+      <label class="f">هر چند دقیقه<input type="number" id="sy-int" min="1" max="120" value="${esc(y.interval)}"></label>
+    </div>
+    <label style="display:block;margin-top:10px"><input type="checkbox" id="sy-on" ${y.enabled ? 'checked' : ''}> همگام‌سازیِ خودکار (موقعِ باز شدن، هر چند دقیقه، و بعد از هر تغییر)</label>
+    <div class="row" style="margin-top:12px"><button id="sy-save">ذخیره و همگام‌سازی</button><button class="ghost" id="sy-run">همگام‌سازیِ الان</button>
+      <button class="ghost sm" id="open-log">📄 فایلِ لاگ</button></div>
+    <div id="sy-res" style="margin-top:8px">${syncLine(st)}</div></div>`;
+  return syncCard + `<h2>تنظیمات</h2><div class="card"><div class="grid">
     <label class="f">زبانِ گوگل<input type="text" id="st-hl" value="${esc(s.hl)}" class="ltr"></label>
     <label class="f">کشورِ گوگل<input type="text" id="st-gl" value="${esc(s.gl)}" class="ltr"></label>
     <label class="f">مرورگر<select id="st-browser"><option value="chrome" ${s.browser === 'chrome' ? 'selected' : ''}>Google Chrome</option><option value="msedge" ${s.browser === 'msedge' ? 'selected' : ''}>Microsoft Edge</option></select></label>
@@ -161,6 +176,27 @@ function settingsView() {
     <button class="ghost" id="google">تستِ گوگل ساجست</button>
     <button class="ghost" id="browser">🌐 باز کردنِ مرورگرِ ابزار (حلِ کپچای گوگل / لاگین)</button></div>
     <div id="google-res" style="margin-top:8px"></div></div>`;
+}
+
+function ago(t) {
+  const m = Math.round((Date.now() - t) / 60000);
+  return m < 1 ? 'همین الان' : m < 60 ? `${m} دقیقه پیش` : `${Math.round(m / 60)} ساعت پیش`;
+}
+function syncLine(st) {
+  if (!st) return '<span class="muted">هنوز همگام نشده.</span>';
+  if (st.skipped) return `<span class="muted">${esc(st.message)}</span>`;
+  const errs = (st.errors || []).length ? `<br><span class="warn" style="font-size:12.5px">${st.errors.map(esc).join('<br>')}</span>` : '';
+  return st.ok ? `<span class="ok">✓ ${esc(st.message)}</span> <span class="muted">· ${ago(st.at)}${st.version ? ` · نسخهٔ ${st.version}` : ''}</span>${errs}`
+    : `<span class="bad">✗ ${esc(st.message)}</span> <span class="muted">· ${ago(st.at)} — برنامه با دادهٔ همین کامپیوتر کار می‌کند</span>`;
+}
+function syncChip() {
+  const c = $('#sync-chip'); if (!c || !S) return;
+  const y = S.sync, st = y.status;
+  c.classList.remove('ok', 'bad');
+  if (!y.url || !y.token) { c.textContent = '🔄 همگام‌سازی: تنظیم نشده'; return; }
+  if (!st || st.skipped) { c.textContent = '🔄 همگام‌سازی'; return; }
+  c.classList.add(st.ok ? 'ok' : 'bad');
+  c.textContent = st.ok ? `🔄 همگام ✓ ${ago(st.at)}` : '⚠ همگام‌سازی ناموفق';
 }
 
 // ───────── سایتِ جدید ─────────
@@ -335,6 +371,16 @@ document.addEventListener('click', async e => {
     if (b.dataset.open) return api('/api/open', { what: b.dataset.open, site: view.site }, { btn: b });
     if (b.dataset.togglePass !== undefined) { const i = b.parentElement.querySelector('input'); i.type = i.type === 'password' ? 'text' : 'password'; return; }
     if (b.id === 'update') return $('#zip').click();
+    if (b.id === 'sync-chip') return go({ name: 'settings' });
+    if (b.id === 'open-log') return api('/api/open-log', {});
+    if (b.id === 'sy-save' || b.id === 'sy-run') {
+      $('#sy-res').textContent = 'در حالِ همگام‌سازی…';
+      const r = b.id === 'sy-save'
+        ? await api('/api/sync/save', { url: $('#sy-url').value, token: $('#sy-token').value, interval: $('#sy-int').value, enabled: $('#sy-on').checked }, { btn: b })
+        : await api('/api/sync/run', {}, { btn: b });
+      S = r.state; render();
+      return toast(r.result.ok ? '✓ همگام شد' : '✗ ' + esc(r.result.message), !r.result.ok);
+    }
     if (b.dataset.save !== undefined) return saveSite(b);
     if (b.id === 'test') {
       if (dirty) await saveSite(b);
@@ -393,6 +439,16 @@ document.addEventListener('click', async e => {
     if (b.id === 'browser') { await api('/api/browser', {}, { btn: b }); $('#google-res').textContent = 'پنجرهٔ مرورگر باز شد؛ اگر گوگل کپچا داد حلش کن (لاگین‌ها می‌مانند).'; }
   } catch (err) { toast('✗ ' + esc(err.message), true); }
 });
+
+// اگر همگام‌سازی (در پس‌زمینه) دادهٔ تازه آورد و چیزی در دستِ ویرایش نیست، صفحه خودش تازه می‌شود
+setInterval(async () => {
+  if (!S || document.hidden) return;
+  try {
+    const p = await api('/api/ping');
+    S.sync.status = p.sync; syncChip();
+    if (p.mtime !== S.mtime && !dirty) { await refresh(); }
+  } catch { /* پنل بسته شده */ }
+}, 10000);
 
 refresh().then(() => { if (S.sites.length) go({ name: 'site', site: S.sites[0].id, tab: 'conn' }); }).catch(e => { $('#main').innerHTML = `<div class="bad">${esc(e.message)}</div>`; });
 </script>

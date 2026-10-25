@@ -1,7 +1,7 @@
 // تنظیماتِ برنامه: %USERPROFILE%\ChatGPT-WP\config.json — فقط از طریقِ پنل ویرایش می‌شود (منبعِ واحد).
 // هر سایت: اتصال + پرامپت‌های خودش (عمومی/اختصاصی با مراحل) + فایل‌ها (پوشه‌بندیِ خودکار) + رقبا.
 // با تغییرِ فایل (mtime) دوباره خوانده می‌شود — نیازی به ری‌استارتِ ChatGPT نیست.
-import { readFileSync, writeFileSync, renameSync, statSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, renameSync, statSync, existsSync, mkdirSync, readdirSync, copyFileSync } from 'node:fs';
 import { join, isAbsolute, extname, basename, relative, sep } from 'node:path';
 import { homedir } from 'node:os';
 import { norm, hostOf } from './text.mjs';
@@ -9,6 +9,8 @@ import { DEFAULT_PROMPTS, DEFAULT_COMPETITORS, DEFAULT_SETTINGS, STEP_KEYS } fro
 
 export const HOME = process.env.CWP_HOME || join(homedir(), 'ChatGPT-WP');
 export const CONFIG = join(HOME, 'config.json');
+/** تنظیماتِ فقط همین کامپیوتر (آدرس/توکنِ همگام‌سازی + وضعیت) — همگام نمی‌شود. */
+export const LOCAL = join(HOME, 'local.json');
 export const DIRS = {
   images: join(HOME, 'images'),
   files: join(HOME, 'files'),
@@ -49,6 +51,7 @@ function normalizeSite(s) {
     files: (s.files || []).filter(f => f && f.path).map(f => ({ path: f.path, prompt: f.prompt || '', role: f.role || '', description: f.description || '' })),
     competitors: (s.competitors || []).map(c => ({ domain: hostOf(normUrl(c.domain)) || String(c.domain || '').trim(),
       kind: c.kind === 'ignore' ? 'ignore' : 'competitor', notes: c.notes || '' })).filter(c => c.domain),
+    updated_at: +s.updated_at || 0,
   };
 }
 
@@ -57,7 +60,9 @@ function normalize(data) {
   settings.maxChars = parseInt(settings.maxChars, 10) || 20000;
   settings.browser = /edge/i.test(settings.browser) ? 'msedge' : 'chrome';
   settings.headed = !!settings.headed; settings.insecure = !!settings.insecure;
-  return { version: 2, settings, sites: (data.sites || []).map(normalizeSite) };
+  const cutoff = Date.now() - 90 * 864e5; // نشانهٔ حذفِ قدیمی‌تر از ۹۰ روز لازم نیست
+  return { version: 2, settings, settings_updated_at: +data.settings_updated_at || 0, sites: (data.sites || []).map(normalizeSite),
+    deleted: (data.deleted || []).filter(t => t && t.id && t.at > cutoff) };
 }
 
 function load() {
@@ -67,7 +72,11 @@ function load() {
   if (cache && cache.mtime === mtime) return cache;
   let raw;
   try { raw = JSON.parse(readFileSync(CONFIG, 'utf8').replace(/^﻿/, '')); }
-  catch (e) { if (cache) return cache; throw new Error(`config.json خراب است: ${e.message}`); }
+  catch (e) {
+    if (cache) return cache;
+    // فایلِ خراب (مثلاً قطعِ برق وسطِ ذخیره) → نسخهٔ پشتیبانِ قبلی
+    try { raw = JSON.parse(readFileSync(CONFIG + '.bak', 'utf8')); } catch { throw new Error(`config.json خراب است: ${e.message}`); }
+  }
   const data = normalize(raw);
   if (data.settings.insecure) process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
   if (!data.settings.browserPath && process.env.CWP_BROWSER_PATH) data.settings.browserPath = process.env.CWP_BROWSER_PATH;
@@ -76,22 +85,64 @@ function load() {
   return cache;
 }
 
-function writeConfig(data) {
+function writeConfig(data, { silent = false } = {}) {
   ensureHome();
   const tmp = CONFIG + '.tmp';
   writeFileSync(tmp, JSON.stringify(data, null, 1), 'utf8');
+  if (existsSync(CONFIG)) { try { copyFileSync(CONFIG, CONFIG + '.bak'); } catch { /* مهم نیست */ } }
   renameSync(tmp, CONFIG);
   cache = null;
+  if (!silent) for (const fn of listeners) { try { fn(); } catch { /* شنونده نباید ذخیره را خراب کند */ } }
+}
+
+const listeners = new Set();
+/** خبر از هر ذخیره (برای همگام‌سازیِ خودکار بعد از تغییر). */
+export const onConfigChange = fn => listeners.add(fn);
+
+const strip = s => { const { updated_at, ...rest } = s; void updated_at; return JSON.stringify(rest); };
+/** زمانِ تغییرِ هر سایت/تنظیمات + نشانهٔ حذف — پایهٔ ادغام در همگام‌سازی (sync.mjs). */
+function stamp(before, after) {
+  const now = Date.now();
+  const old = new Map(before.sites.map(s => [s.id, s]));
+  for (const s of after.sites) {
+    const o = old.get(s.id);
+    if (!o || strip(normalizeSite(o)) !== strip(normalizeSite(s))) s.updated_at = now;
+  }
+  const ids = new Set(after.sites.map(s => s.id));
+  after.deleted = [...(after.deleted || []), ...before.sites.filter(s => !ids.has(s.id)).map(s => ({ id: s.id, at: now }))];
+  if (JSON.stringify(before.settings) !== JSON.stringify(after.settings)) after.settings_updated_at = now;
 }
 
 /** داده‌ی خام برای پنل (همه‌ی سایت‌ها، حتی غیرفعال). */
-export function rawConfig() { const c = load(); return { version: 2, settings: c.settings, sites: c.all }; }
-/** تغییر و ذخیره: fn روی کپیِ داده اجرا می‌شود. */
+export function rawConfig() {
+  const c = load();
+  return { version: 2, settings: c.settings, settings_updated_at: c.settings_updated_at, sites: c.all, deleted: c.deleted };
+}
+/** تغییر و ذخیره (از پنل): fn روی کپیِ داده اجرا می‌شود؛ زمانِ تغییر خودکار ثبت می‌شود. */
 export function updateConfig(fn) {
-  const data = structuredClone(rawConfig());
+  const before = rawConfig();
+  const data = structuredClone(before);
   const out = fn(data);
+  stamp(before, data);
   writeConfig(normalize(data));
   return out;
+}
+/** جایگزینیِ کامل (فقط همگام‌سازی، بدونِ ثبتِ زمانِ تغییرِ جدید). */
+export function replaceConfig(data) { writeConfig(normalize(data), { silent: true }); }
+/** زمانِ آخرین تغییرِ config.json (پنل با آن می‌فهمد همگام‌سازی چیزی آورده). */
+export function configMtime() { try { return statSync(CONFIG).mtimeMs; } catch { return 0; } }
+
+// ───────────── تنظیماتِ محلیِ همین کامپیوتر ─────────────
+export function readLocal() {
+  try { return JSON.parse(readFileSync(LOCAL, 'utf8')); } catch { return {}; }
+}
+export function writeLocal(patch) {
+  ensureHome();
+  const next = { ...readLocal(), ...patch };
+  const tmp = LOCAL + '.tmp';
+  writeFileSync(tmp, JSON.stringify(next, null, 1), 'utf8');
+  renameSync(tmp, LOCAL);
+  return next;
 }
 export function config() { return load(); }
 

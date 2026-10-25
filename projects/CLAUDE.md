@@ -3,8 +3,7 @@
 ## مدل‌ها
 - **Project** — `name, domain, track_keyword_rank(چک‌باکس، برای بستهٔ seo), color,
   project_types(CSV), status, archived_at, priority, amount, contract_start/end, description,
-  client_*, manager(FK Colleague), members(M2M به Colleague)`. (اتصالِ وردپرس/MCP روی پروژه
-  نیست — در `aistudio.ProjectAI`، تبِ «AI».)
+  client_*, manager(FK Colleague), members(M2M به Colleague), wp_*(فاز۳)`.
   **`priority`** (`PositiveSmallInt`، اختیاری، ۱=بالاترین، خالی=ته): در فرمِ پروژه ست
   می‌شود؛ **مرتب‌سازیِ صفحهٔ پروژه‌ها و داشبورد** از آن می‌خوانند — لیست با
   `F('priority').asc(nulls_last=True)` (بعد از `_personal`/`status`)، داشبورد با
@@ -37,7 +36,6 @@
 | `project_colleagues_access` | تبِ «دسترسی به همکاران» (`project_members`، مدیریتِ `Project.members`) |
 | `project_credentials` | تبِ «دسترسی‌ها» (`credential_create/reveal/delete`) |
 | `project_reports` | تبِ «گزارش‌ها»ی سینگلِ پروژه |
-| `project_ai` | تبِ «AI» (اتصالِ سایت/MCP، رمزها، پرامپت‌ها — اپِ `aistudio`) |
 | `manage_finance` | تبِ «حسابداری» (پرمیشنِ گروهِ پروژه‌ها، ولی خودِ اپِ `finance` جداست) |
 نقشِ built-in «سرپرست» (manager) همه‌ی این هفت‌تا را دارد؛ «عضو»/«ناظر» هیچ‌کدام را ندارند.
 
@@ -111,8 +109,7 @@
 - تب‌های سینگل: نمای‌کلی(آمار بازه) · تسک‌ها · **کلمات کلیدی**(فقط اگر `track_keyword_rank`؛
   منطق/مدل در `seo/rank.py` + `seo/models.py`) · تقویم(embed) · فایل‌ها(`project_files`) ·
   دسترسی‌ها(`project_credentials`) · **دسترسی به همکاران**(`project_colleagues_access`) ·
-  گزارش‌ها(`project_reports`) · **AI**(`project_ai`؛ پوستهٔ `aistudio/_project_tab.html` +
-  `aistudio.js` با لودِ تنبل، `#ai` در آدرس تب را باز می‌کند) · حسابداری(`manage_finance`، placeholder).
+  گزارش‌ها(`project_reports`) · حسابداری(`manage_finance`، placeholder).
 
 ## لوگوی پروژه
 `Project.logo` (ImageField) — آپلود در فرمِ پروژه؛ نمایش با پارشالِ `projects/_logo.html`

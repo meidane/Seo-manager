@@ -1,9 +1,0 @@
-{% comment %}تبِ «AI»ی سینگلِ پروژه — فقط پوسته؛ محتوا را static/js/aistudio.js با لودِ تنبل (اولین
-بازشدنِ تب) از API می‌سازد (منبعِ واحدِ رندر). گیت: پرمیشنِ project_ai (هم اینجا، هم سرور).{% endcomment %}
-<div class="tab-panel ai-tab" data-panel="ai" id="ai-tab"
-     data-api="{% url 'aistudio:project' project.pk %}"
-     data-test="{% url 'aistudio:test' project.pk %}"
-     data-prompt-create="{% url 'aistudio:prompt_create' project.pk %}"
-     data-project-name="{{ project.name }}">
-  <div class="card glass"><div class="empty" style="padding:30px">در حالِ بارگذاری…</div></div>
-</div>

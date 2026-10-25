@@ -20,5 +20,6 @@ with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
                 continue
             p = os.path.join(base, f)
             z.write(p, f'{root}/{p}')
+import shutil; os.makedirs("release", exist_ok=True); shutil.copyfile(out, "release/ChatGPT-WP.zip")
 print(out, round(os.path.getsize(out) / 1e6, 1), 'MB')
 PY

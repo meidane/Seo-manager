@@ -8,6 +8,8 @@ import * as wp from './wp.mjs';
 import * as rs from './research.mjs';
 import { filesList, fileRead } from './files.mjs';
 import { compact } from './text.mjs';
+import { startAutoSync } from './sync.mjs';
+import { log } from './log.mjs';
 
 const VERSION = '1.0.0';
 const S = (type, description, extra = {}) => ({ type, description, ...extra });
@@ -168,7 +170,7 @@ async function handle(msg) {
         process.stderr.write(`[ok] ${params.name} ${Date.now() - t0}ms\n`);
         return reply(id, toContent(out, config().settings.maxChars));
       } catch (e) {
-        process.stderr.write(`[err] ${params.name}: ${e.stack || e.message}\n`);
+        log('error', `${params.name}: ${e.stack || e.message}`);
         return reply(id, { content: [{ type: 'text', text: `خطا: ${cleanErr(e)}` }], isError: true });
       }
     }
@@ -187,6 +189,8 @@ rl.on('line', line => {
   for (const m of Array.isArray(msg) ? msg : [msg]) handle(m);
 });
 rl.on('close', async () => { await rs.closeBrowser().catch(() => {}); process.exit(0); });
-process.on('uncaughtException', e => process.stderr.write(`[uncaught] ${e.stack || e}\n`));
-process.on('unhandledRejection', e => process.stderr.write(`[unhandled] ${e?.stack || e}\n`));
+process.on('uncaughtException', e => log('error', `uncaught: ${e.stack || e}`));
+process.on('unhandledRejection', e => log('error', `unhandled: ${e?.stack || e}`));
+// همگام‌سازی با پنل در پس‌زمینه (اگر تنظیم شده باشد) — شکستش هیچ ابزاری را متوقف نمی‌کند
+try { startAutoSync({ delay: 1500 }); } catch (e) { log('warn', `auto-sync: ${e.message}`); }
 process.stderr.write(`seo-wp-connector ${VERSION} ready (config: ${CONFIG})\n`);

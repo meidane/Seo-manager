@@ -10,8 +10,10 @@ import { fileURLToPath } from 'node:url';
 import { install, installedVersion, marketplaceOk, DEST, VERSION } from './install.mjs';
 import {
   rawConfig, updateConfig, newSite, getSite, HOME, DIRS, ensureHome, siteFiles, siteDir, promptDir,
-  safeName, relPath, absPath, ROLES, IMG_EXT,
+  safeName, relPath, absPath, ROLES, IMG_EXT, onConfigChange, configMtime,
 } from '../server/config.mjs';
+import { syncNow, syncSettings, saveSyncSettings, syncStatus, startAutoSync, syncSoon } from '../server/sync.mjs';
+import { log, LOG_FILE } from '../server/log.mjs';
 import { STEP_KEYS, STEP_LABELS, DEFAULT_PROMPTS } from '../server/defaults.mjs';
 import { wpCheck } from '../server/wp.mjs';
 import { googleSuggest, browserContext } from '../server/research.mjs';
@@ -33,7 +35,8 @@ function state() {
   return {
     version: VERSION, node: process.versions.node, home: HOME,
     plugin: { installed: installedVersion(), path: DEST, marketplace: marketplaceOk() },
-    settings: cfg.settings, roles: ROLES, steps: STEP_KEYS, step_labels: STEP_LABELS,
+    settings: cfg.settings, roles: ROLES, steps: STEP_KEYS, step_labels: STEP_LABELS, mtime: configMtime(),
+    sync: { ...syncSettings(), token: syncSettings().token ? '••••' + syncSettings().token.slice(-4) : '', status: syncStatus() },
     sites: cfg.sites.map(s => ({ ...s, files: siteFiles(s, null, { all: true }).map(f => ({ ...f, image: IMG_EXT.has(extname(f.name).toLowerCase()) })) })),
   };
 }
@@ -165,6 +168,17 @@ function updateFromZip(buf) {
 let toolPage = null;
 const routes = {
   'GET /api/state': () => state(),
+  // پنجرهٔ مرورگر هر چند ثانیه این را می‌پرسد: اگر همگام‌سازی چیزی آورده بود صفحه تازه می‌شود
+  'GET /api/ping': () => ({ mtime: configMtime(), sync: syncStatus() }),
+  'POST /api/sync/save': async b => {
+    const patch = { url: String(b.url || '').trim(), interval: +b.interval || 5, enabled: b.enabled !== false };
+    if (b.token && !String(b.token).startsWith('••••')) patch.token = String(b.token).trim();
+    saveSyncSettings(patch);
+    const r = await syncNow('manual');
+    return { result: r, state: state() };
+  },
+  'POST /api/sync/run': async () => { const r = await syncNow('manual'); return { result: r, state: state() }; },
+  'POST /api/open-log': () => { openPath(LOG_FILE); return { ok: true }; },
   'POST /api/site/save': b => { const id = saveSite(b.site || {}); return { id, state: state() }; },
   'POST /api/site/delete': b => { updateConfig(d => { d.sites = d.sites.filter(s => s.id !== b.id); }); return state(); },
   'POST /api/site/add-samples': b => {
@@ -237,7 +251,10 @@ const server = createServer(async (req, res) => {
   // فقط خودِ پنل (همین مبدأ) بتواند اکشن بزند
   if (req.method === 'POST' && req.headers.origin && req.headers.origin !== URL_.slice(0, -1)) { res.writeHead(403); return res.end('{}'); }
   try { res.end(JSON.stringify(await fn(await readBody(req), u.searchParams))); }
-  catch (e) { res.writeHead(500); res.end(JSON.stringify({ error: String(e.message).split('\n')[0] })); }
+  catch (e) {
+    log('error', `${key}: ${e.stack || e.message}`);
+    res.writeHead(500); res.end(JSON.stringify({ error: String(e.message).split('\n')[0] }));
+  }
 });
 
 let retries = 0;
@@ -246,7 +263,12 @@ server.on('error', e => {
   if (e.code === 'EADDRINUSE') { console.log('پنل از قبل باز است؛ در مرورگر باز می‌شود.'); openPath(URL_); setTimeout(() => process.exit(0), 500); }
   else { console.error(e); process.exit(1); }
 });
+process.on('uncaughtException', e => log('error', `uncaught: ${e.stack || e}`));
+process.on('unhandledRejection', e => log('error', `unhandled: ${e?.stack || e}`));
+onConfigChange(() => syncSoon()); // هر ذخیره در پنل → چند ثانیه بعد ارسال به پنلِ سئو منیجر
+
 server.listen(PORT, '127.0.0.1', () => {
+  startAutoSync();
   console.log(`ChatGPT-WP panel: ${URL_}`);
   console.log('تا وقتی با پنل کار داری این پنجره را نبند.');
   if (!process.env.CWP_NO_OPEN) openPath(URL_);

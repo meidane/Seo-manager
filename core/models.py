@@ -41,11 +41,6 @@ class Attachment(models.Model):
     size = models.PositiveIntegerField('حجم (بایت)', default=0)
     mime = models.CharField('نوع MIME', max_length=120, blank=True)
     title = models.CharField('عنوان', max_length=255, blank=True)
-    # توضیح + کاربردِ فایل (عمومی؛ فعلاً تبِ AIِ پروژه استفاده می‌کند: «این را تصویرِ شاخص کن»).
-    # role یک برچسبِ کوتاهِ آزاد است؛ گزینه‌های معنادارِ هر مصرف‌کننده در همان اپ تعریف می‌شود
-    # (مثلاً `aistudio.models.FILE_ROLES`).
-    description = models.TextField('توضیح', blank=True)
-    role = models.CharField('کاربرد', max_length=20, blank=True)
 
     uploaded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

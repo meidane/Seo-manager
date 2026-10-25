@@ -27,12 +27,11 @@
   کلیدی (مدل + API برای افزونهٔ مرورگر). الگوی «بسته برای هر شرکت» — برای مشتریِ بعدی یک اپِ مشابه بساز.
 - `rank-tracker-extension/` — **افزونهٔ کروم** (MV3، خارج از جنگو)، سازگار با `seo/api.py`.
   جزئیات در `seo/CLAUDE.md`، بخشِ «افزونهٔ مرورگر».
-- `chatgpt-connector/` — **برنامهٔ ویندوزیِ ChatGPT-WP** (خارج از جنگو، به پنل وصل نیست): پلاگینِ MCPِ محلیِ
-  ChatGPT Desktop (Work) ↔ REST وردپرسِ سایت‌ها + تحقیقِ رقبا با Playwright؛ سایت‌ها/پرامپت‌های هر سایت/فایل‌ها از پنلِ محلیِ خودش (config.json).
-  نصب/به‌روزرسانی یک‌کلیکی. `chatgpt-connector/CLAUDE.md`.
-- `aistudio/` — **تبِ «AI»ی پروژه**: اتصالِ سایت (Application Password) و MCP (رمزها رمزنگاری‌شده و
-  write-only) + پرامپتِ عمومی + پرامپت‌های اختصاصی (متصل به نوعِ تسک) با فایلِ توضیح‌دار. پایهٔ
-  اتوماسیونِ محتوا با ChatGPT — نقشهٔ کامل: **`docs/AI_PLAN.md`**. `aistudio/CLAUDE.md`.
+- `chatgpt-connector/` — **برنامهٔ ویندوزیِ ChatGPT-WP** (خارج از جنگو): پلاگینِ MCPِ محلیِ ChatGPT Desktop (Work)
+  ↔ REST وردپرسِ سایت‌ها + تحقیقِ رقبا با Playwright؛ سایت‌ها/پرامپت‌ها/فایل‌ها از پنلِ محلیِ خودش. نسخهٔ آماده:
+  `chatgpt-connector/release/ChatGPT-WP.zip`. `chatgpt-connector/CLAUDE.md`.
+- `connector/` — **همگام‌سازیِ ChatGPT-WP**: یک انبارِ ساده برای هر سازمان (تنظیمات/سایت‌ها/رمزها رمزنگاری‌شده +
+  فایل‌ها) که برنامهٔ دسکتاپ با توکنِ API پول/پوش می‌کند + صفحهٔ `/settings/chatgpt-sync/`. `connector/CLAUDE.md`.
 - `personal/` — **فضای شخصیِ خصوصی** (فقط سوپریوزر/`admin`): بالای صفحه = **تقویمِ مشترک**
   (همان ماژولِ `calendarapp`؛ پنلِ بدون‌تاریخ = اینباکس) + هبیت ترکر، اهداف، یادداشت،
   ثانیه‌شمارِ عمر. اسکوپ به `user`. `personal/CLAUDE.md`.
@@ -73,11 +72,10 @@
 | کاتالوگِ ستون‌های قابل‌سفارشی‌سازی (تسک/پروژه/همکار) | `core/columns.py: get_catalog/get_columns/cell_value` + `core/models.py: ColumnConfig` + تگ `{% column_cell %}` |
 | ستون‌های دیده‌شونده‌ی جدولِ تسک (عمومی همیشه، سفارشیِ نوع فقط با فیلترِ نوع) | `core/columns.py: visible_task_columns(type_def_id)` — لیست/لودِ تنبل/بردِ سئو |
 | اتصالِ اپ/افزونهٔ بیرونی/AI به API | **توکنِ API** (`accounts.APIToken`، هدرِ `Authorization: Token xxx`، از `/settings/api-tokens/`) — نه سشن+کوکی؛ SameSite=Lax کوکیِ سشن را در fetchِ کراس‌سایتِ افزونه نمی‌فرستد. الگو: `seo/api.py: token_required` / `token_or_login_required`. |
+| همگام‌سازیِ برنامهٔ دسکتاپِ ChatGPT-WP (داده/فایل‌ها، بینِ چند کامپیوتر) | پنل: `connector/` (انبار + API توکنی) · برنامه: `chatgpt-connector/plugin/server/sync.mjs` (ادغام) |
 | گروه‌بندی نوع در گزارش | `reports/models.py: BUCKETS` |
 | فیلدهای قابل‌نمایش به مشتری | `reports/models.py: CLIENT_FIELDS` + `Report.visible_fields` |
 | پاکسازی HTML ادیتور | `core/htmlsan.py: clean_html` |
-| تنظیمات/رمزها/پرامپت‌های AIِ هر پروژه (+ گزینه‌های کاربردِ فایل) | `aistudio/models.py: ProjectAI(set/get/has_secret)/AIPrompt/FILE_ROLES` + `static/js/aistudio.js` (تبِ AI) — نقشه: `docs/AI_PLAN.md` |
-| توضیح/کاربردِ یک فایلِ پیوست | `core.Attachment.description/role` (فایلِ موازی نساز؛ پرامپتِ AI هم همین را با `GenericRelation` دارد) |
 | رنگ/برچسب نوع تسک | `tasks/models.py: Task.type_label / color_rgb` (+ `TYPE_COLORS`) |
 | KPI (تعریف/امتیاز/سقف) | `tasks/models.py: TaskTypeKPI/KPIChecklistItem/TaskKPIScore` |
 | خوداظهاریِ چک‌لیستِ KPI توسطِ مسئول (نمایشی، جدا از امتیازِ نهاییِ مدیر) | `Task.kpi_self_checks` (JSON) + `tasks/api.py: task_kpi_self_check` + `tasks.js: initKpis/wireKpiSelfCheck` |

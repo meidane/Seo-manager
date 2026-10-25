@@ -25,7 +25,7 @@ urlpatterns = [
     path('finance/', include('finance.urls')),
     path('seo/', include('seo.urls')),
     path('personal/', include('personal.urls')),
-    path('ai/', include('aistudio.urls')),
+    path('', include('connector.urls')),  # /settings/chatgpt-sync/ + /connector/api/...
     path('r/<str:token>/', ReportPublicView.as_view(), name='report_public'),
     path('settings/task-types/', include('tasks.type_urls')),
     path('settings/', include('core.urls')),

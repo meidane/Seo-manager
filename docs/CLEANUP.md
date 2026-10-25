@@ -12,7 +12,14 @@
   هاردکدشدنِ اطلاعاتِ حساب در گزارش (`reports/views.py: PAYMENT_INFO`) بلااستفاده شدند.
   حذف در مهاجرتِ `finance/0011`.
 
+- **`core.Attachment.description`** و **`core.Attachment.role`** — برای تبِ «AI»ی پروژه (`aistudio`) اضافه شده
+  بودند؛ با برگرداندنِ آن تب (خواستِ کاربر) در مهاجرتِ `core/0005` حذف شدند (فقط توضیح/کاربردِ فایل‌های پرامپتِ AI).
+
 ## قابلِ‌حذف (هنوز حذف‌نشده — منتظرِ تصمیم)
+- **جدول‌های `aistudio_projectai` و `aistudio_aiprompt`** (+ ردیف‌های `aistudio` در `django_migrations`) — اپِ
+  `aistudio` (تبِ «AI»ی پروژه) به خواستِ کاربر کاملاً برگردانده شد؛ جای آن برنامهٔ دسکتاپِ `chatgpt-connector/` +
+  همگام‌سازیِ `connector/` است. جدول‌ها روی دیتابیسی که آن نسخه رویش اجرا شده یتیم مانده‌اند (بی‌ضرر). حذف با
+  تأییدِ کاربر: `DROP TABLE aistudio_aiprompt; DROP TABLE aistudio_projectai; DELETE FROM django_migrations WHERE app='aistudio';`
 - **اندپوینت‌های اینباکس/گرید‌هفتهٔ شخصی** در `personal/api.py` و `personal/urls.py` —
   بعد از جایگزینیِ «بالای صفحهٔ شخصی» با تقویمِ مشترک (پنلِ «تسک‌های بدون تاریخ» +
   افزودنِ سریع)، این‌ها دیگر از UI صدا زده نمی‌شوند: `ptask_add`, `ptask_plan`,

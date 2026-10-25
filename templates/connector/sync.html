@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}همگام‌سازیِ ChatGPT-WP{% endblock %}
+
+{% block content %}
+  {% include "settings/_nav.html" %}
+  <div class="page-h"><h1>همگام‌سازیِ ChatGPT-WP</h1></div>
+
+  <div class="note glass" style="margin:0 0 14px;padding:12px 16px">
+    تنظیمات، سایت‌ها، پرامپت‌ها، رقبا و فایل‌های برنامهٔ دسکتاپِ <b>ChatGPT-WP</b> اینجا نگه داشته می‌شوند تا بینِ
+    همهٔ کامپیوترها یکی باشند (رمزها رمزنگاری‌شده ذخیره می‌شوند). خودِ ویرایش در برنامهٔ دسکتاپ است.
+  </div>
+
+  <section class="card glass" style="margin-bottom:14px">
+    <div class="card-h"><h3>اتصالِ برنامه</h3></div>
+    <ol style="margin:0;padding:14px 38px 14px 17px;line-height:2.1">
+      <li>در <a href="{% url 'accounts:api_tokens' %}">توکن‌های API</a> یک توکن بساز (مثلاً «ChatGPT-WP») و کپی کن.</li>
+      <li>در برنامهٔ دسکتاپ ← ⚙ تنظیمات ← «همگام‌سازی با پنل»: آدرسِ پنل <code dir="ltr">{{ panel_url }}</code> و توکن را بچسبان و «ذخیره و همگام‌سازی» بزن.</li>
+      <li>روی کامپیوترهای دیگر هم همین کار را بکن (هرکس با توکنِ خودش). از آن به بعد همگام‌سازی خودکار است: موقعِ باز شدن، هر چند دقیقه، و بعد از هر تغییر.</li>
+    </ol>
+  </section>
+
+  <section class="card glass">
+    <div class="card-h"><h3>وضعیت</h3></div>
+    {% if store and store.version %}
+      <p style="padding:12px 17px;margin:0">نسخهٔ <b>{{ store.version }}</b> · آخرین تغییر {{ store.updated_at|timeago }} توسطِ {{ store.updated_by|default:"—" }} · {{ files_count }} فایل</p>
+      <div class="tscroll">
+      <table>
+        <thead><tr><th>سایت</th><th>آدرس</th><th>اتصال</th><th>پرامپت</th><th>فایل</th></tr></thead>
+        <tbody>
+          {% for s in sites %}
+            <tr>
+              <td><b>{{ s.key }}</b>{% if not s.active %} <span class="zero">(غیرفعال)</span>{% endif %}</td>
+              <td dir="ltr">{{ s.url }}</td>
+              <td>{% if s.has_password %}✓{% else %}<span class="zero">بدونِ رمز</span>{% endif %}</td>
+              <td>{{ s.prompts }}</td>
+              <td>{{ s.files }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="zero">سایتی نیست.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    {% else %}
+      <div class="empty"><div class="ico">🔄</div><h4>هنوز هیچ برنامه‌ای همگام نشده</h4></div>
+    {% endif %}
+  </section>
+{% endblock %}
