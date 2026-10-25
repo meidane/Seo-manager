@@ -54,6 +54,16 @@ createServer(async (req, res) => {
   const raw = Buffer.concat(chunks);
   const json = (code, data, headers = {}) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=UTF-8', ...headers }); res.end(JSON.stringify(data)); };
   if (path === '/competitor') return competitor(res);
+  if (u.pathname === '/wp-admin/authorize-application.php') { // شبیهِ صفحهٔ واقعیِ وردپرس (JS → REST → نمایشِ رمز)
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    return res.end(`<html><body><script>var authApp={site_url:'${H}',user_login:'admin',success:'',reject:''};</script>
+<button id="approve">Yes, I approve of this connection</button><div id="out"></div><script>
+document.getElementById('approve').onclick=async()=>{const r=await fetch('/wp-json/wp/v2/users/me/application-passwords?_locale=user',{method:'POST',headers:{'Content-Type':'application/json'},body:'{"name":"x"}'});
+ if(!r.ok){document.getElementById('out').textContent='error '+r.status;return;} const j=await r.json();
+ document.getElementById('out').innerHTML='<input id="new-application-password-value" value="'+j.password+'">';};
+${process.env.MOCK_AUTOAPPROVE ? "setTimeout(()=>document.getElementById('approve').click(), 800);" : ''} // فقط برای تستِ خودکار
+</script></body></html>`);
+  }
   // شبیه‌سازیِ فایروالِ LiteSpeed: MOCK_BLOCK=users (فقط users بسته) | wpjson (کلِ /wp-json/ بسته، rest_route باز)
   const lsBlock = () => { res.writeHead(403, { 'Content-Type': 'text/html', Server: 'LiteSpeed' }); res.end('<html><body><h1>403 Forbidden</h1>Access to this resource on the server is denied!<hr>Proudly powered by LiteSpeed Web Server</body></html>'); };
   if (process.env.MOCK_BLOCK === 'wpjson' && u.pathname.startsWith('/wp-json')) return lsBlock();
@@ -75,6 +85,7 @@ createServer(async (req, res) => {
       : [...posts, ...pages].filter(p => p.title.includes(s) || p.content.includes(s)).map(p => ({ id: p.id, title: p.title, url: link(p.type, p), type: 'post', subtype: p.type }));
     return json(200, fields(items, f));
   }
+  if (r === 'wp/v2/users/me/application-passwords' && req.method === 'POST') return json(201, { uuid: 'u1', name: 'x', password: 'abcd efgh ijkl' });
   if (r === 'rankmath/v1/updateMeta') { if (!authed) return json(401, {}); rm.push(body()); return json(200, true); }
   let m;
   if ((m = r.match(/^wp\/v2\/(posts|pages)(?:\/(\d+))?$/))) {

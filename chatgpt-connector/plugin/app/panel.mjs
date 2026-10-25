@@ -3,7 +3,7 @@
 // تستِ اتصال/گوگل، مرورگرِ ابزار، به‌روزرسانی با zip. داده: ChatGPT-WP\config.json (server/config.mjs).
 import { createServer } from 'node:http';
 import { readFileSync, existsSync, mkdirSync, writeFileSync, rmSync, renameSync, unlinkSync, statSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { tmpdir, hostname } from 'node:os';
 import { join, dirname, extname, basename, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -165,6 +165,60 @@ function updateFromZip(buf) {
   finally { try { rmSync(dir, { recursive: true, force: true }); } catch { /* مهم نیست */ } }
 }
 
+/** اتصالِ خودکار: صفحهٔ «اجازهٔ دسترسیِ برنامه»ِ وردپرس را در مرورگرِ برنامه باز می‌کند، درخواست‌های بستهٔ
+ * /wp-json/ را به ?rest_route= می‌فرستد (همان دورزدنِ فایروال)، و بعد از «تأیید»ِ کاربر رمز و نامِ کاربری را خودش
+ * برمی‌دارد و در سایت ذخیره می‌کند — بدونِ کپی/پیست. */
+async function connectWp(siteId) {
+  const s = rawConfig().sites.find(x => x.id === siteId);
+  if (!s?.url) throw new Error('اول آدرسِ سایت را ذخیره کن');
+  const origin = new URL(s.url).origin;
+  const ctx = await browserContext({ headed: true });
+  const page = await ctx.newPage();
+  await page.route(u => u.origin === origin && u.pathname.includes('/wp-json/'), route => {
+    const u = new URL(route.request().url());
+    const rest = u.pathname.slice(u.pathname.indexOf('/wp-json/') + '/wp-json'.length) || '/';
+    route.continue({ url: `${origin}/?rest_route=${encodeURIComponent(rest)}${u.search ? '&' + u.search.slice(1) : ''}` });
+  });
+  let password = '', failed = '';
+  page.on('response', async r => {
+    if (!/application-passwords/.test(decodeURIComponent(r.url())) || r.request().method() !== 'POST') return;
+    if (!r.ok()) { failed = `وردپرس ساختِ رمز را رد کرد (${r.status()}) — احتمالاً فایروال/افزونهٔ امنیتی؛ از هاست بخواه /wp-json/ را باز کند.`; return; }
+    try { const j = await r.json(); if (j?.password) password = j.password; } catch { /* نه JSON */ }
+  });
+  await page.goto(`${s.url}/wp-admin/authorize-application.php?app_name=${encodeURIComponent('ChatGPT-WP ' + hostname())}`, { waitUntil: 'domcontentloaded' }).catch(() => {});
+  await page.bringToFront().catch(() => {});
+  let login = '';
+  const deadline = Date.now() + 5 * 60e3;
+  while (!password && !failed && Date.now() < deadline && !page.isClosed()) {
+    await new Promise(r => setTimeout(r, 1000));
+    try {
+      const info = await page.evaluate(() => ({
+        login: (window.authApp && window.authApp.user_login) || '',
+        pw: (document.querySelector('#new-application-password-value') || {}).value || '',
+      }));
+      if (info.login) login = info.login;
+      if (info.pw) password = info.pw;
+    } catch { /* وسطِ جابه‌جاییِ صفحه */ }
+  }
+  if (!password) {
+    if (failed) { await page.close().catch(() => {}); throw new Error(failed); }
+    if (!page.isClosed()) await page.close().catch(() => {});
+    throw new Error(page.isClosed() && Date.now() < deadline ? 'پنجره قبل از تأیید بسته شد' : 'تأیید انجام نشد (۵ دقیقه گذشت)');
+  }
+  if (!login) {
+    login = await page.evaluate(async () => {
+      const r = await fetch('/?rest_route=/wp/v2/users/me&context=edit', { headers: { 'X-WP-Nonce': (window.wpApiSettings || {}).nonce || '' } });
+      return r.ok ? (await r.json()).username || '' : '';
+    }).catch(() => '');
+  }
+  await page.close().catch(() => {});
+  if (!login) throw new Error(`رمز ساخته شد ولی نامِ کاربری پیدا نشد؛ نامِ کاربری را دستی بنویس. رمز: ${password}`);
+  updateConfig(d => { const x = d.sites.find(y => y.id === siteId); x.user = login; x.password = password; });
+  log('info', `wp-connect ${s.key}: application password created for ${login}`);
+  const check = await wpCheck(getSite(rawConfig().sites.find(x => x.id === siteId).key)).catch(e => ({ ok: false, error: e.message }));
+  return { ok: true, user: login, check };
+}
+
 let toolPage = null;
 const routes = {
   'GET /api/state': () => state(),
@@ -194,6 +248,7 @@ const routes = {
     const r = await googleSuggest({ query: 'استیل', expand: 'basic' });
     return { ok: r.count > 0, count: r.count, sample: r.suggestions.slice(0, 5) };
   },
+  'POST /api/wp-connect': async b => { const r = await connectWp(b.site); return { ...r, state: state() }; },
   'POST /api/browser': async () => {
     const ctx = await browserContext({ headed: true });
     if (toolPage && !toolPage.isClosed()) { await toolPage.bringToFront(); return { ok: true }; }

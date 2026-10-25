@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "seo-wp-connector",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Connect ChatGPT (Work) to your WordPress sites over REST and research competitors locally. Settings in Excel.",
   "license": "MIT",
   "extensions": {

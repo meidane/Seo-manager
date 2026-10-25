@@ -49,8 +49,11 @@
 - **فایروال/افزونهٔ امنیتی (تجربهٔ واقعی: 403ِ HTMLِ LiteSpeed):** پاسخِ غیرِJSON یعنی وردپرس جواب نداده. `wpFetch` یک بار
   با `?rest_route=` امتحان می‌کند (بعضی‌ها فقط مسیرِ `/wp-json/` را می‌بندند) و پیامِ «فایروال، نه وردپرس» می‌دهد؛ `wpCheck` اگر
   `users/me` بسته بود (ضدِ user enumeration) با `posts?context=edit` اتصال را تأیید می‌کند. تست: `MOCK_BLOCK=users|wpjson node dev/mock_wp.mjs`.
-- **رمزِ برنامه ساخته می‌شود ولی کد نشان داده نمی‌شود** (همان افزونهٔ امنیتی REST را خراب کرده): دکمهٔ «ساختِ رمزِ برنامه» در تبِ اتصال
-  `wp-admin/authorize-application.php?app_name=ChatGPT-WP` را باز می‌کند که رمز را سمتِ سرور می‌سازد و نشان می‌دهد.
+- **رمزِ برنامه ساخته می‌شود ولی کد نشان داده نمی‌شود / بعد از «تأیید» برنمی‌گردد** (افزونهٔ امنیتی `/wp-json/` را بسته و
+  JSِ پیشخوانِ وردپرس از همان مسیر رمز را می‌سازد): «🔑 اتصالِ خودکار» در تبِ اتصال = `panel.mjs: connectWp` — صفحهٔ
+  `wp-admin/authorize-application.php` را در مرورگرِ برنامه باز می‌کند، با `page.route` هر `/wp-json/…`ِ همان دامنه را به
+  `?rest_route=` می‌فرستد، رمز را از پاسخِ `application-passwords` (یا `#new-application-password-value`) و نامِ کاربری را از
+  `window.authApp.user_login` برمی‌دارد، ذخیره و `wpCheck` می‌کند. تست: `MOCK_BLOCK=wpjson MOCK_AUTOAPPROVE=1` + `CWP_FORCE_HEADLESS=1`.
 - `getSite`: کیبوردِ اشتباه (فا↔en)، دامنه/بخشی از نام، پیامِ «غیرفعال است»، «منظورت … بود؟»؛ `SiteNotFound` در `index.mjs` یک
   همگام‌سازی و تلاشِ دوباره می‌گیرد (سایتِ اضافه‌شده روی کامپیوترِ دیگر).
 - همگام‌سازی **هرگز** نباید ابزار یا پنل را متوقف کند: خطا فقط در `sync_status` (چیپِ بالای پنل) و لاگ.
@@ -66,4 +69,5 @@ CWP_HOME=<tmp> CWP_NO_OPEN=1 node app/panel.mjs            # پنل → با Pla
 همگام‌سازی: `runserver` + توکن (`APIToken.generate`) → `CWP_HOME=<A> node ../dev/test_sync.mjs setup <url> <token>` و همین برای B،
 بعد `add-site / add-file / edit-prompt / del-file / del-site / sync / dump` روی A و B.
 گوگل/بینگ از سندباکس در دسترس نیست — SERP/ساجست را فقط روی ویندوزِ کاربر می‌شود واقعاً تست کرد.
-⚠ `pkill -f <الگو>` در همان فرمانی که الگو را دارد شلِ خودش را می‌کشد (exit 144) — از `pkill -f "[m]ock_wp"` استفاده کن.
+⚠ `pkill -f <الگو>` در همان فرمانی که الگو را دارد شلِ خودش را می‌کشد (exit 144) — از `pkill -f "[m]ock_wp"` استفاده کن و فرمانِ
+  شروعِ سرور را در همان خط نیاور. پروسه‌های پس‌زمینهٔ یک تستِ timeoutشده یتیم می‌مانند و پورت را نگه می‌دارند (پنلِ جدید «از قبل باز است» و exit 0).

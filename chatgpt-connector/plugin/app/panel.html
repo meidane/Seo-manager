@@ -212,7 +212,7 @@ function connFields(s) {
     <label class="f">آدرسِ سایت<input type="text" data-k="url" value="${esc(s.url)}" class="ltr" placeholder="https://example.com"></label>
     <label class="f">نامِ کاربریِ وردپرس<input type="text" data-k="user" value="${esc(s.user)}" class="ltr"></label>
     <label class="f">رمزِ برنامه (Application Password)<div class="row" style="flex-wrap:nowrap"><input type="password" data-k="password" value="${esc(s.password)}" class="ltr" placeholder="xxxx xxxx xxxx xxxx xxxx xxxx"><button class="ghost sm" data-toggle-pass type="button">👁</button></div>
-      <a style="cursor:pointer;color:var(--primary);font-size:12.5px" data-mkpass>🔑 ساختِ رمزِ برنامه در وردپرس (اگر در پروفایل کد نشان داده نمی‌شود)</a></label>
+      <a style="cursor:pointer;color:var(--primary);font-size:12.5px" data-mkpass>🔑 اتصالِ خودکار (ساختِ رمزِ برنامه با تأیید در وردپرس)</a></label>
     <label class="f">افزونهٔ سئو<select data-k="seo">${['rankmath', 'yoast', 'auto', 'none'].map(v => `<option ${s.seo === v ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
     <label class="f">یادداشت<input type="text" data-k="notes" value="${esc(s.notes)}"></label>`;
 }
@@ -373,11 +373,24 @@ document.addEventListener('click', async e => {
     if (b.dataset.togglePass !== undefined) { const i = b.parentElement.querySelector('input'); i.type = i.type === 'password' ? 'text' : 'password'; return; }
     if (b.id === 'update') return $('#zip').click();
     if (b.dataset.mkpass !== undefined) {
-      // صفحهٔ «اجازهٔ دسترسیِ برنامه»ِ خودِ وردپرس: رمز را سمتِ سرور می‌سازد و همان‌جا نشان می‌دهد (بدونِ REST/جاوااسکریپت)
-      const u = (b.closest('label').parentElement.querySelector('[data-k=url]')?.value || D?.url || '').trim().replace(/\/+$/, '');
-      if (!u) return toast('اول آدرسِ سایت را بنویس', true);
-      window.open(`${/^https?:/.test(u) ? u : 'https://' + u}/wp-admin/authorize-application.php?app_name=ChatGPT-WP`, '_blank');
-      return toast('در صفحهٔ باز‌شده وارد شو و «تأیید» (Yes, I approve) را بزن؛ رمزِ نشان‌داده‌شده را اینجا بچسبان.');
+      if (view.name !== 'site' || !D?.id) { // سایتِ هنوز ساخته‌نشده → فقط صفحهٔ وردپرس را باز کن
+        const u = (b.closest('label').parentElement.querySelector('[data-k=url]')?.value || '').trim().replace(/\/+$/, '');
+        if (!u) return toast('اول آدرسِ سایت را بنویس', true);
+        window.open(`${/^https?:/.test(u) ? u : 'https://' + u}/wp-admin/authorize-application.php?app_name=ChatGPT-WP`, '_blank');
+        return toast('بعد از ساختِ سایت، همین دکمه اتصال را خودکار انجام می‌دهد.');
+      }
+      if (dirty) await saveSite(b);
+      const box = $('#test-res');
+      box.innerHTML = '<span class="warn">پنجرهٔ مرورگر باز شد: وارد وردپرس شو و «Yes, I approve» را بزن — بقیه خودکار است (تا ۵ دقیقه منتظر می‌ماند).</span>';
+      try {
+        const r = await api('/api/wp-connect', { site: view.site }, { btn: b });
+        S = r.state; D = structuredClone(site()); render();
+        const c = r.check || {};
+        $('#test-res').innerHTML = c.ok ? `<span class="ok">✓ متصل شد</span> — کاربر: ${esc(r.user)}${c.note ? ` <span class="warn">(${esc(c.note)})</span>` : ''}`
+          : `<span class="warn">رمز ساخته و ذخیره شد (کاربر: ${esc(r.user)}) ولی تستِ اتصال خطا داد: ${esc(c.error || '')}</span>`;
+        toast('✓ رمزِ برنامه ذخیره شد');
+      } catch (err) { $('#test-res').innerHTML = `<span class="bad">✗ ${esc(err.message)}</span>`; }
+      return;
     }
     if (b.id === 'sync-chip') return go({ name: 'settings' });
     if (b.id === 'open-log') return api('/api/open-log', {});

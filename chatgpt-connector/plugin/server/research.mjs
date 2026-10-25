@@ -28,7 +28,7 @@ export async function closeBrowser() {
 
 export async function browserContext({ headed } = {}) {
   const s = config().settings;
-  const want = headed ?? s.headed;
+  const want = process.env.CWP_FORCE_HEADLESS ? false : (headed ?? s.headed); // FORCE فقط برای تستِ بی‌نمایشگر
   if (launching) await launching.catch(() => {});
   if (ctx && (!want || ctxHeaded)) { touch(); return ctx; }
   if (ctx) await closeBrowser();
