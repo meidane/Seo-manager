@@ -8,7 +8,8 @@ import * as wp from './wp.mjs';
 import * as rs from './research.mjs';
 import { filesList, fileRead } from './files.mjs';
 import { compact } from './text.mjs';
-import { startAutoSync } from './sync.mjs';
+import { startAutoSync, syncNow, syncSettings } from './sync.mjs';
+import { SiteNotFound } from './config.mjs';
 import { log } from './log.mjs';
 
 const VERSION = '1.0.0';
@@ -166,7 +167,14 @@ async function handle(msg) {
       if (!fn) return reply(id, { content: [{ type: 'text', text: `ابزارِ ناشناخته: ${params.name}` }], isError: true });
       const t0 = Date.now();
       try {
-        const out = await fn(params.arguments || {});
+        let out;
+        try { out = await fn(params.arguments || {}); }
+        catch (e) {
+          // سایتی که روی کامپیوترِ دیگری اضافه شده: یک بار همگام‌سازی و تلاشِ دوباره
+          if (!(e instanceof SiteNotFound) || !syncSettings().token) throw e;
+          await syncNow('lookup');
+          out = await fn(params.arguments || {});
+        }
         process.stderr.write(`[ok] ${params.name} ${Date.now() - t0}ms\n`);
         return reply(id, toContent(out, config().settings.maxChars));
       } catch (e) {

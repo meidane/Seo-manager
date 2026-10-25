@@ -36,7 +36,7 @@ export async function wpFetch(site, path, { method = 'GET', query, body, headers
   let payload = body;
   if (body && !(body instanceof Buffer) && typeof body === 'object') { payload = JSON.stringify(body); h['Content-Type'] = 'application/json'; }
 
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 3; attempt++) {
     const url = build();
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), timeout);
@@ -50,15 +50,22 @@ export async function wpFetch(site, path, { method = 'GET', query, body, headers
     let data;
     try { data = text ? JSON.parse(text.replace(/^﻿/, '')) : null; } catch { data = undefined; }
     if (res.ok && data !== undefined) {
+      if (st.restRoute) st.routeOk = true;
       return { data, status: res.status, total: +res.headers.get('x-wp-total') || undefined, pages: +res.headers.get('x-wp-totalpages') || undefined };
     }
-    // بدونِ پیوندِ یکتا (permalink ساده) /wp-json/ کار نمی‌کند → ?rest_route=
-    if (!st.restRoute && !/^https?:/i.test(path) && data === undefined && (res.status === 404 || res.ok)) { st.restRoute = true; continue; }
-    if (res.ok) throw new Error(`پاسخِ JSON نبود (${res.status}): ${text.slice(0, 200)}`);
-    const msg = data ? `${data.code || ''} ${decodeEntities(data.message || '')}`.trim() : stripTags(text).slice(0, 200);
+    // پاسخِ غیرِJSON (صفحهٔ HTML) از مسیرِ /wp-json/: یا پیوندِ یکتا ساده است (404)، یا فایروال/افزونهٔ امنیتی فقط
+    // مسیرِ /wp-json/ را بسته (403/406/…) → یک بار با ?rest_route= (همان API، آدرسِ دیگر) امتحان کن
+    if (!st.restRoute && !st.routeTried && !/^https?:/i.test(path) && data === undefined) { st.restRoute = true; st.routeTried = true; continue; }
+    if (st.restRoute && st.routeTried && data === undefined && !st.routeOk) { st.restRoute = false; } // آن هم نشد → برگرد به حالتِ عادی
+    if (res.ok) throw new Error(`پاسخِ JSON نبود (${res.status}): ${stripTags(text).slice(0, 200)}`);
+    const server = res.headers.get('server') || '';
+    const firewall = data === undefined; // HTML یعنی خودِ وردپرس جواب نداده، سرور/فایروال جلویش را گرفته
+    const msg = data ? `${data.code || ''} ${decodeEntities(data.message || '')}`.trim()
+      : `صفحهٔ «${(stripTags(text).match(/^[^.!]{0,80}/) || [''])[0].trim() || res.statusText}»${server ? ` از سرورِ ${server}` : ''}`;
     const hint = res.status === 401 ? ' ← نام کاربری/«رمز برنامه» (Application Password) را در پنل (تبِ اتصال) چک کن؛ اگر درست است، هاست هدرِ Authorization را حذف می‌کند.'
-      : res.status === 403 ? ' ← این کاربر دسترسیِ کافی ندارد یا فایروال/امنیتِ سایت درخواست را بسته.'
-        : res.status === 404 ? ' ← مسیر وجود ندارد (افزونه/نوعِ محتوا فعال نیست؟).' : '';
+      : res.status === 403 && firewall ? ' ← این را «فایروالِ هاست یا افزونهٔ امنیتی» بسته، نه وردپرس. در افزونهٔ امنیتی (Wordfence / All-In-One WP Security / iThemes / …) گزینه‌های «غیرفعال‌کردنِ REST API» یا «جلوگیری از user enumeration» را خاموش کن، یا از هاست بخواه مسیرِ /wp-json/ را در ModSecurity/Imunify360 استثنا کند.'
+        : res.status === 403 ? ' ← این کاربر دسترسیِ کافی ندارد (نقشِ «مدیر» لازم است).'
+          : res.status === 404 ? ' ← مسیر وجود ندارد (افزونه/نوعِ محتوا فعال نیست؟).' : '';
     const err = new Error(`WordPress ${res.status}: ${msg}${hint}`);
     err.status = res.status; err.data = data;
     throw err;
@@ -136,7 +143,16 @@ export function backup(site, kind, id, data) {
 // ───────────── بررسیِ اتصال ─────────────
 export async function wpCheck(site) {
   if (!site.user || !site.password) throw new Error(`برای «${site.key}» نام کاربری یا «رمز برنامه» در پنل خالی است.`);
-  const me = await wpFetch(site, 'wp/v2/users/me', { query: { context: 'edit', _fields: 'id,name,slug,roles,capabilities' } });
+  let me, note;
+  try {
+    me = await wpFetch(site, 'wp/v2/users/me', { query: { context: 'edit', _fields: 'id,name,slug,roles,capabilities' } });
+  } catch (e) {
+    if (e.status === 401) throw e;
+    // خیلی از افزونه‌های امنیتی فقط مسیرِ users را می‌بندند (ضدِ user enumeration) — با یک مسیرِ دیگر تأیید کن
+    await wpFetch(site, 'wp/v2/posts', { query: { context: 'edit', per_page: 1, _fields: 'id' } });
+    me = { data: { name: site.user, roles: ['?'], capabilities: null } };
+    note = 'اتصال برقرار است؛ فقط مسیرِ wp/v2/users در این سایت بسته است (افزونهٔ امنیتی) که برای کارِ ما لازم نیست.';
+  }
   const st = await discover(site);
   const caps = me.data.capabilities || {};
   const count = async base => (await wpFetch(site, base, { query: { per_page: 1, _fields: 'id' } }).catch(() => ({}))).total;
@@ -145,8 +161,8 @@ export async function wpCheck(site) {
   if (!st.types.product && st.woo) counts.product = await count('wc/v3/products');
   for (const t of ['category', 'product_cat']) if (st.taxes[t]) counts[t] = await count('wp/v2/' + st.taxes[t]);
   return {
-    ok: true, site: site.key, site_name: st.siteName, user: me.data.name, roles: me.data.roles,
-    can: Object.fromEntries(['edit_posts', 'publish_posts', 'edit_pages', 'upload_files', 'manage_categories', 'edit_products', 'manage_product_terms']
+    ok: true, note, site: site.key, site_name: st.siteName, user: me.data.name, roles: me.data.roles,
+    can: me.data.capabilities === null ? {} : Object.fromEntries(['edit_posts', 'publish_posts', 'edit_pages', 'upload_files', 'manage_categories', 'edit_products', 'manage_product_terms']
       .map(c => [c, !!caps[c]])),
     seo_plugin: site.seo === 'auto' ? (st.seo || 'نامشخص') : site.seo, seo_detected: st.seo || 'none',
     woocommerce: st.woo, rest_mode: st.restRoute ? '?rest_route=' : '/wp-json/',

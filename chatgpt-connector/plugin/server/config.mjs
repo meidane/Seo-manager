@@ -154,17 +154,44 @@ export function newSite(fields = {}) {
   });
 }
 
+// تایپ با کیبوردِ اشتباه (فارسی↔انگلیسی): «سفثثمفشن» ↔ «steeltak»
+const EN = "qwertyuiop[]asdfghjkl;'zxcvbnm,";
+const FA = 'ضصثقفغعهخحجچشسیبلاتنمکگظطزرذدپو';
+const swapLayout = s => [...String(s).toLowerCase()].map(c => {
+  const i = EN.indexOf(c); if (i >= 0) return FA[i];
+  const j = FA.indexOf(c); return j >= 0 ? EN[j] : c;
+}).join('');
+function distance(a, b) {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+function findIn(list, name) {
+  const k = key(name), h = hostOf(normUrl(name)), sw = key(swapLayout(name));
+  const brand = s => key(hostOf(s.url).split('.')[0]);
+  return list.find(s => key(s.key) === k || s.id === name) || list.find(s => hostOf(s.url) === h)
+    || list.find(s => brand(s) === k) || list.find(s => key(s.key) === sw || brand(s) === sw)
+    || list.find(s => k.length >= 3 && (key(s.key).includes(k) || k.includes(key(s.key))));
+}
+
+export class SiteNotFound extends Error {}
+
 export function getSite(name) {
   const cfg = load();
   if (!name) {
     if (cfg.sites.length === 1) return cfg.sites[0];
     throw new Error(`سایت را مشخص کن (site). موجود: ${cfg.sites.map(s => s.key).join('، ') || '— (در پنلِ ChatGPT-WP سایت اضافه کن)'}`);
   }
-  const k = key(name), h = hostOf(normUrl(name));
-  const s = cfg.sites.find(s => key(s.key) === k || s.id === name) || cfg.sites.find(s => hostOf(s.url) === h)
-    || cfg.sites.find(s => key(s.key).includes(k) || k.includes(key(s.key)));
-  if (!s) throw new Error(`سایتِ «${name}» تعریف نشده. موجود: ${cfg.sites.map(s => s.key).join('، ') || '—'} (پنلِ ChatGPT-WP)`);
-  return s;
+  const s = findIn(cfg.sites, name);
+  if (s) return s;
+  const off = findIn(cfg.all.filter(x => !x.active), name);
+  if (off) throw new Error(`سایتِ «${off.key}» غیرفعال است — در پنلِ ChatGPT-WP، تبِ «اتصال»ِ همین سایت، تیکِ «فعال» را بزن.`);
+  const near = cfg.sites.map(x => [x, distance(key(name), key(x.key))]).sort((a, b) => a[1] - b[1])[0];
+  const guess = near && near[1] <= Math.max(2, key(name).length / 3) ? ` منظورت «${near[0].key}» بود؟` : '';
+  throw new SiteNotFound(`سایتِ «${name}» تعریف نشده.${guess} موجود: ${cfg.sites.map(x => `${x.key} (${hostOf(x.url)})`).join('، ') || '—'}. ` +
+    'اگر سایتِ جدید است در پنلِ ChatGPT-WP اضافه‌اش کن (یا اگر روی کامپیوترِ دیگری اضافه شده، همگام‌سازی را بزن).');
 }
 
 // ───────────── فایل‌ها (پوشه‌بندیِ خودکار) ─────────────

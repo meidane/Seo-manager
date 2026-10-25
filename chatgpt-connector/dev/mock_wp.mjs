@@ -54,6 +54,10 @@ createServer(async (req, res) => {
   const raw = Buffer.concat(chunks);
   const json = (code, data, headers = {}) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=UTF-8', ...headers }); res.end(JSON.stringify(data)); };
   if (path === '/competitor') return competitor(res);
+  // شبیه‌سازیِ فایروالِ LiteSpeed: MOCK_BLOCK=users (فقط users بسته) | wpjson (کلِ /wp-json/ بسته، rest_route باز)
+  const lsBlock = () => { res.writeHead(403, { 'Content-Type': 'text/html', Server: 'LiteSpeed' }); res.end('<html><body><h1>403 Forbidden</h1>Access to this resource on the server is denied!<hr>Proudly powered by LiteSpeed Web Server</body></html>'); };
+  if (process.env.MOCK_BLOCK === 'wpjson' && u.pathname.startsWith('/wp-json')) return lsBlock();
+  if (process.env.MOCK_BLOCK === 'users' && path.includes('/wp/v2/users')) return lsBlock();
   if (!path.startsWith('/wp-json')) { res.writeHead(404); return res.end('<html>not found</html>'); }
   const r = path.replace(/^\/wp-json\/?/, '').replace(/\/$/, '');
   const authed = req.headers.authorization === AUTH;

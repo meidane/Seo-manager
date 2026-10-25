@@ -211,7 +211,8 @@ function connFields(s) {
   return `<label class="f">نامِ کوتاه (همان که در ChatGPT می‌گویی)<input type="text" data-k="key" value="${esc(s.key)}" placeholder="steeltak"></label>
     <label class="f">آدرسِ سایت<input type="text" data-k="url" value="${esc(s.url)}" class="ltr" placeholder="https://example.com"></label>
     <label class="f">نامِ کاربریِ وردپرس<input type="text" data-k="user" value="${esc(s.user)}" class="ltr"></label>
-    <label class="f">رمزِ برنامه (Application Password)<div class="row" style="flex-wrap:nowrap"><input type="password" data-k="password" value="${esc(s.password)}" class="ltr" placeholder="xxxx xxxx xxxx xxxx xxxx xxxx"><button class="ghost sm" data-toggle-pass type="button">👁</button></div></label>
+    <label class="f">رمزِ برنامه (Application Password)<div class="row" style="flex-wrap:nowrap"><input type="password" data-k="password" value="${esc(s.password)}" class="ltr" placeholder="xxxx xxxx xxxx xxxx xxxx xxxx"><button class="ghost sm" data-toggle-pass type="button">👁</button></div>
+      <a style="cursor:pointer;color:var(--primary);font-size:12.5px" data-mkpass>🔑 ساختِ رمزِ برنامه در وردپرس (اگر در پروفایل کد نشان داده نمی‌شود)</a></label>
     <label class="f">افزونهٔ سئو<select data-k="seo">${['rankmath', 'yoast', 'auto', 'none'].map(v => `<option ${s.seo === v ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
     <label class="f">یادداشت<input type="text" data-k="notes" value="${esc(s.notes)}"></label>`;
 }
@@ -364,13 +365,20 @@ document.addEventListener('click', async e => {
   if (a?.dataset.site) return go({ name: 'site', site: a.dataset.site, tab: 'conn' });
   if (a?.dataset.tab) { view.tab = a.dataset.tab; return render(); }
   if (a?.dataset.go) return go({ name: a.dataset.go });
-  const b = e.target.closest('button, #drop, [data-openfile]'); if (!b) return;
+  const b = e.target.closest('button, #drop, [data-openfile], [data-mkpass]'); if (!b) return;
   try {
     if (b.id === 'drop') return $('#upfile').click();
     if (b.dataset.openfile !== undefined) return api('/api/open', { what: 'file', path: b.closest('[data-f]').dataset.f });
     if (b.dataset.open) return api('/api/open', { what: b.dataset.open, site: view.site }, { btn: b });
     if (b.dataset.togglePass !== undefined) { const i = b.parentElement.querySelector('input'); i.type = i.type === 'password' ? 'text' : 'password'; return; }
     if (b.id === 'update') return $('#zip').click();
+    if (b.dataset.mkpass !== undefined) {
+      // صفحهٔ «اجازهٔ دسترسیِ برنامه»ِ خودِ وردپرس: رمز را سمتِ سرور می‌سازد و همان‌جا نشان می‌دهد (بدونِ REST/جاوااسکریپت)
+      const u = (b.closest('label').parentElement.querySelector('[data-k=url]')?.value || D?.url || '').trim().replace(/\/+$/, '');
+      if (!u) return toast('اول آدرسِ سایت را بنویس', true);
+      window.open(`${/^https?:/.test(u) ? u : 'https://' + u}/wp-admin/authorize-application.php?app_name=ChatGPT-WP`, '_blank');
+      return toast('در صفحهٔ باز‌شده وارد شو و «تأیید» (Yes, I approve) را بزن؛ رمزِ نشان‌داده‌شده را اینجا بچسبان.');
+    }
     if (b.id === 'sync-chip') return go({ name: 'settings' });
     if (b.id === 'open-log') return api('/api/open-log', {});
     if (b.id === 'sy-save' || b.id === 'sy-run') {
@@ -388,7 +396,7 @@ document.addEventListener('click', async e => {
       try {
         const r = await api('/api/test', { site: view.site }, { btn: b });
         const can = Object.entries(r.can).map(([k, v]) => `<span class="pill ${v ? 'ok' : 'muted'}">${v ? '✓' : '✗'} ${k}</span>`).join('');
-        box.innerHTML = `<span class="ok">✓ وصل شد</span> — «${esc(r.site_name)}» · کاربر: ${esc(r.user)} (${esc(r.roles.join(', '))}) · سئو: ${esc(r.seo_plugin)} · ووکامرس: ${r.woocommerce ? 'دارد' : 'ندارد'}<br>`
+        box.innerHTML = (r.note ? `<span class="warn">${esc(r.note)}</span><br>` : '') + `<span class="ok">✓ وصل شد</span> — «${esc(r.site_name)}» · کاربر: ${esc(r.user)} (${esc(r.roles.join(', '))}) · سئو: ${esc(r.seo_plugin)} · ووکامرس: ${r.woocommerce ? 'دارد' : 'ندارد'}<br>`
           + `تعداد: ${Object.entries(r.counts).map(([k, v]) => `${k}=${v ?? '?'}`).join(' · ')}<br>${can}`;
       } catch (err) { box.innerHTML = `<span class="bad">✗ ${esc(err.message)}</span>`; }
       return;
