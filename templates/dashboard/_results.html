@@ -20,10 +20,12 @@
       <div class="num">{{ cards.minutes|hours }}</div>
       <div class="sub">{% if cards.minutes_pct != None %}<span class="{% if cards.minutes_pct >= 0 %}up{% else %}down{% endif %}">{% if cards.minutes_pct >= 0 %}▲{% else %}▼{% endif %} {{ cards.minutes_pct|fa_digits }}٪</span>{% else %}مجموع در بازه{% endif %}</div>
     </div>
-    <div class="stat glass">
+    {% if cards.balance is not None %}
+    <a class="stat glass stat-link" href="{% url 'finance:dashboard' %}">
       <div class="lab"><i class="dot" style="background:var(--warning)"></i> مانده‌ی مالی</div>
-      <div class="num">{{ cards.balance|money }}</div><div class="sub">به FinanceEntry وصل می‌شود</div>
-    </div>
+      <div class="num">{{ cards.balance|money }}</div><div class="sub">مانده‌ی حساب‌های بانکی</div>
+    </a>
+    {% endif %}
   </div>
 
   {# ── ردیف ۲: نوار هشدارها (فقط وقتی مصداق دارند) ── #}

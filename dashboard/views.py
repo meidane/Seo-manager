@@ -71,8 +71,13 @@ class DashboardView(LoginRequiredMixin, DateRangeMixin, TemplateView):
             'done': done_count, 'done_pct': _pct(done_count, prev_done),
             'remaining': remaining, 'overdue': overdue,
             'minutes': minutes, 'minutes_pct': _pct(minutes, prev_minutes),
-            'balance': 0,  # هینت: از FinanceEntry (گام ۸) محاسبه شود
+            'balance': None,
         }
+        # مانده‌ی مالی = جمعِ مانده‌ی حساب‌های بانکی (همان عددِ داشبوردِ حسابداری) — فقط برای دارندهٔ دسترسیِ حسابداری
+        mm = getattr(self.request, 'membership', None)
+        if mm and mm.can('manage_finance'):
+            from finance.models import BankAccount
+            ctx['cards']['balance'] = sum(b.balance for b in BankAccount.objects.filter(is_active=True))
 
         # ── ردیف ۲: نوار هشدارها ──
         projects_with_plan = set(

@@ -1989,3 +1989,10 @@ input[type=checkbox]:disabled{opacity:.5;cursor:default}
   .page-h{flex-wrap:wrap} .fb-search input[type=text]{width:140px}
   .fb-copy span{display:none} .fb-drop div span{display:none}
 }
+
+/* ===== پولیشِ نهایی: کارتِ آماریِ لینک‌دار + جا برای ویجتِ تایمر + فوکوسِ کیبورد ===== */
+.stat-link{text-decoration:none;color:inherit;transition:border-color .15s,transform .15s}
+.stat-link:hover{border-color:var(--primary-ring);transform:translateY(-1px)}
+.main{padding-bottom:96px}
+:focus-visible{outline:2px solid var(--primary-ring);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}}

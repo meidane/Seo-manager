@@ -355,7 +355,7 @@
       </table>
       </div>
     {% else %}
-      <div class="empty"><div class="ico">▪</div><h4>هنوز گزارشی برای این پروژه ساخته نشده</h4>
+      <div class="empty"><div class="ico">{% icon 'chart' %}</div><h4>هنوز گزارشی برای این پروژه ساخته نشده</h4>
         <a href="{% url 'reports:list' %}" class="btn btn-p" style="margin-top:12px">＋ ساخت گزارش</a></div>
     {% endif %}
   </section>

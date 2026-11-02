@@ -22,5 +22,5 @@
     <div style="padding:10px 14px"><button class="btn btn-sm grp-add" data-add-type="{{ g.add_type }}">＋ افزودن ردیف</button></div>
   </section>
 {% empty %}
-  <section class="card glass"><div class="empty"><div class="ico">▪</div><h4>هنوز ردیفی در گزارش نیست</h4><p>با «ایمپورت تسک‌ها» تسک‌های پروژه را بیاور و موارد را انتخاب کن، یا از دکمهٔ «＋ ردیف دستی» بالای «ایمپورت» استفاده کن.</p></div></section>
+  <section class="card glass"><div class="empty"><div class="ico">{% icon 'clipboard' %}</div><h4>هنوز ردیفی در گزارش نیست</h4><p>با «ایمپورت تسک‌ها» تسک‌های پروژه را بیاور و موارد را انتخاب کن، یا از دکمهٔ «＋ ردیف دستی» بالای «ایمپورت» استفاده کن.</p></div></section>
 {% endfor %}

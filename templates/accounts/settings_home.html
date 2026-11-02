@@ -33,7 +33,7 @@
   <div class="cards-grid">
     {% if 'manage_teams' in org_perms %}
       <a href="{% url 'accounts:teams' %}" class="colleague-card card glass">
-        <span class="ca-avatar ca-fallback" style="--c:#4183F2">◍</span>
+        <span class="ca-avatar ca-fallback" style="--c:#4183F2">{% icon 'users' %}</span>
         <div class="ca-body"><b>تیم‌ها</b><span class="ca-roles">زیرمجموعه‌های سازمان</span></div>
       </a>
     {% endif %}
@@ -45,13 +45,13 @@
     {% endif %}
     {% if 'manage_task_types' in org_perms %}
       <a href="{% url 'task_types:list' %}" class="colleague-card card glass">
-        <span class="ca-avatar ca-fallback" style="--c:#A78BFA">◫</span>
+        <span class="ca-avatar ca-fallback" style="--c:#A78BFA">{% icon 'layers' %}</span>
         <div class="ca-body"><b>انواع تسک</b><span class="ca-roles">فیلد سفارشی + KPI هر نوع</span></div>
       </a>
     {% endif %}
     {% if 'manage_columns' in org_perms %}
       <a href="{% url 'core:columns' %}" class="colleague-card card glass">
-        <span class="ca-avatar ca-fallback" style="--c:#2DD4A7">▥</span>
+        <span class="ca-avatar ca-fallback" style="--c:#2DD4A7">{% icon 'columns' %}</span>
         <div class="ca-body"><b>ستون‌ها</b><span class="ca-roles">سفارشی‌سازیِ جدولِ تسک/پروژه/فرد</span></div>
       </a>
     {% endif %}
