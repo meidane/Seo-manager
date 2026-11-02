@@ -34,7 +34,7 @@
     <div class="stat glass"><div class="lab">انجام‌شده</div><div class="num">{{ stats.done|fa_digits }}</div></div>
     <div class="stat glass"><div class="lab">تعداد کلمه</div><div class="num">{{ stats.words|fa_digits }}</div></div>
     <div class="stat glass"><div class="lab">جمع ساعت</div><div class="num">{{ stats.minutes|hours }}</div></div>
-    <div class="stat glass"><div class="lab">عقب‌افتاده</div><div class="num" style="color:#FF9AAB">{{ stats.overdue|fa_digits }}</div></div>
+    <div class="stat glass"><div class="lab">عقب‌افتاده</div><div class="num" style="color:var(--bad-fg)">{{ stats.overdue|fa_digits }}</div></div>
     <div class="stat glass"><div class="lab">تحویل به‌موقع</div><div class="num">{{ stats.on_time|fa_digits }}٪</div></div>
   </div>
 

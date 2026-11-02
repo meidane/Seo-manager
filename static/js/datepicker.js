@@ -28,7 +28,7 @@
     const dow = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
     pop.innerHTML =
       `<div class="dp-head"><button class="dp-nav" data-nav="prev">‹</button><h4>${d.title}</h4><button class="dp-nav" data-nav="next">›</button></div>` +
-      `<div class="dp-grid">${dow.map((x, i) => `<div class="dp-dow"${i === 6 ? ' style="color:#FF9AAB"' : ''}>${x}</div>`).join('')}` +
+      `<div class="dp-grid">${dow.map((x, i) => `<div class="dp-dow"${i === 6 ? ' style="color:var(--bad-fg)"' : ''}>${x}</div>`).join('')}` +
       d.days.map((c) => {
         const cls = ['dp-day', c.dim ? 'dim' : '', c.is_today ? 'today' : '', c.is_holiday ? 'hol' : '', cur === c.jdate ? 'sel' : ''].filter(Boolean).join(' ');
         return `<div class="${cls}" data-jdate="${c.jdate}" title="${c.holiday_title || ''}">${c.jday_fa}</div>`;
