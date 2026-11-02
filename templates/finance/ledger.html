@@ -25,7 +25,7 @@
       </div>
     </div>
 
-    <select name="project" id="lg-project" class="rich-select"><option value="">— پروژه —</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
+    <select name="project" id="lg-project" class="rich-select"><option value="">— پروژه —</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}" data-search="{{ p.domain|default:"" }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
 
     <span style="color:var(--text-faint);font-size:12px">یا</span>
 

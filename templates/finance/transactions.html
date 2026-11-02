@@ -31,7 +31,7 @@
         <div class="ms-foot"><button type="button" class="btn btn-sm" id="bank-clear">پاک‌کردنِ همه</button></div>
       </div>
     </div>
-    <select name="project" class="rich-select"><option value="">همه‌ی پروژه‌ها</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
+    <select name="project" class="rich-select"><option value="">همه‌ی پروژه‌ها</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}" data-search="{{ p.domain|default:"" }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
 
     {# بابت — چندانتخابی، قابلِ جستجو، اعمالِ فوری #}
     <div class="ms">
@@ -73,7 +73,7 @@
 
   <div class="glass" id="bulkbar" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);gap:8px;align-items:center;padding:10px 16px;z-index:30">
     <span style="font-size:12.5px;color:var(--text-dim)"><b id="bulk-count">0</b> انتخاب شده</span><span style="width:1px;height:20px;background:var(--stroke-soft)"></span>
-    <select id="bulk-project" class="rich-select"><option value="">تعیین پروژه…</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %}>{{ p.name }}</option>{% endfor %}</select>
+    <select id="bulk-project" class="rich-select"><option value="">تعیین پروژه…</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}" data-search="{{ p.domain|default:"" }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %}>{{ p.name }}</option>{% endfor %}</select>
     <select id="bulk-category" class="rich-select"><option value="">＋ افزودن بابت…</option>{% for c in categories %}<option value="{{ c.id }}" data-color="{{ c.color }}">{{ c.name }}</option>{% endfor %}</select>
     <button class="btn btn-sm" style="color:var(--danger)" id="bulk-del">حذف</button>
   </div>
@@ -301,7 +301,7 @@
   document.getElementById('bulk-del').onclick=async()=>{ if(await App.confirm('تراکنش‌های انتخاب‌شده حذف شوند؟')) bulk('delete',{}); };
 
   // ══ تفکیکِ تراکنش (split) ══
-  const PROJ_OPTS = `{% for p in projects %}<option value="{{ p.id }}">{{ p.name|escapejs }}</option>{% endfor %}`;
+  const PROJ_OPTS = `{% for p in projects %}<option value="{{ p.id }}" data-search="{{ p.domain|default:''|escapejs }}">{{ p.name|escapejs }}</option>{% endfor %}`;
   const CAT_OPTS = `{% for c in categories %}<option value="{{ c.id }}">{{ c.name|escapejs }}</option>{% endfor %}`;
   function splitRow(s){ s=s||{}; const d=document.createElement('div'); d.className='sp-row';
     d.style.cssText='display:flex;gap:6px;margin-bottom:6px;align-items:center';

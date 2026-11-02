@@ -11,8 +11,8 @@
 
   const opt = (v, l, sel) => `<option value="${v}"${String(v) === String(sel) ? ' selected' : ''}>${l}</option>`;
   // گزینه با رنگ/تصویر برای دراپ‌داونِ غنی (پروژه/مسئول)
-  const optRich = (v, l, sel, color, img) => `<option value="${v}"${String(v) === String(sel) ? ' selected' : ''}` +
-    `${color ? ` data-color="${color}"` : ''}${img ? ` data-img="${img}"` : ''}>${l}</option>`;
+  const optRich = (v, l, sel, color, img, search) => `<option value="${v}"${String(v) === String(sel) ? ' selected' : ''}` +
+    `${color ? ` data-color="${color}"` : ''}${img ? ` data-img="${img}"` : ''}${search ? ` data-search="${search}"` : ''}>${l}</option>`;
   function field(id, label, inner) {
     return `<div class="field" data-f="${id}"><label>${label}</label>${inner}</div>`;
   }
@@ -127,7 +127,7 @@
           <div class="tm-title-row">${statusCheckBtn(t)}<div class="tm-title-col"><label>عنوان</label><input id="f-title" class="input tm-title" value="${esc(t.title)}" placeholder="عنوان تسک…"></div></div>
         </div>
         <div class="grid2">
-          ${field('project', 'پروژه', `<select id="f-project" class="rich-select"><option value="">— انتخاب —</option>${cfg.projects.map(([v, l, color, img]) => optRich(v, l, t.project_id, color, img)).join('')}</select>`)}
+          ${field('project', 'پروژه', `<select id="f-project" class="rich-select"><option value="">— انتخاب —</option>${cfg.projects.map(([v, l, color, img, domain]) => optRich(v, l, t.project_id, color, img, domain)).join('')}</select>`)}
           ${field('assignee', 'مسئول', assigneeSelect)}
         </div>
         <div class="grid2">

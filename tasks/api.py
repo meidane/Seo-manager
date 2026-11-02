@@ -273,7 +273,7 @@ def form_data(request):
     my_colleague = getattr(request.user, 'colleague', None)
     return JsonResponse({
         # [id, name, color, logo_url] — logo/color برای دراپ‌داونِ غنیِ مودال (richselect)
-        'projects': [[p.id, p.name, p.color, (p.logo.url if p.logo else '')] for p in projects],
+        'projects': [[p.id, p.name, p.color, (p.logo.url if p.logo else ''), p.domain or ''] for p in projects],
         # [id, name, needs_review, color, avatar_url] — بدونِ غیرفعال‌های تسک‌منیجر
         'colleagues': [[c.id, c.full_name, c.needs_review, c.color, (c.avatar.url if c.avatar else '')]
                         for c in Colleague.task_manager_qs()],

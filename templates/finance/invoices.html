@@ -12,7 +12,7 @@
 
   <div id="inv-panel">
   <form method="get" class="glass filters" id="inv-filters">
-    <select name="project" class="rich-select"><option value="">همه‌ی پروژه‌ها</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
+    <select name="project" class="rich-select"><option value="">همه‌ی پروژه‌ها</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}" data-search="{{ p.domain|default:"" }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
   </form>
 
   <div id="inv-results">{% include "finance/_invoices_results.html" %}</div>

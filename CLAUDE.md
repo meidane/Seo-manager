@@ -83,6 +83,7 @@
 | ادیتور غنی | `static/js/richtext.js` (کلاس `rich-editor`) |
 | جلوگیری از دابل‌کلیکِ ذخیره/ایجاد | `static/js/app.js: fetchJSON` (دکمه‌ی آغازگر خودکار disable + `.is-loading` تا پایانِ درخواست؛ نیازی به کد در هر دکمه نیست) |
 | ویرگولِ زندهٔ اینپوت مبلغ (سه‌تاسه‌تا) | `static/js/app.js` — کلاسِ `.money` روی `<input>` (بک‌اند `finance/utils.parse_amount` و فرمِ نیتیو روی submit ویرگول را پاک می‌کنند) |
+| جستجوی دراپ‌داونِ غنی (`rich-select`): نام + `data-search` پنهان (دامنهٔ پروژه → جستجو با نامِ انگلیسی؛ نمایش داده نمی‌شود) | `static/js/richselect.js: itemsHTML` — هر `<option>`ِ پروژهٔ جدید `data-search="{{ p.domain }}"` بگیرد |
 | دیت‌پیکر شمسی | `static/js/datepicker.js` (کلاس `jdate`) |
 | چکِ دسترسیِ سازمانی در ویو/API | `accounts/access.py: require_perm/has_perm` |
 | فهرستِ id پروژه‌های قابل‌دیدنِ کاربرِ جاری (همیشه لیست، دیگر هیچ‌وقت `None` — پروژه‌ی شخصیِ دیگران همیشه حذف) | `projects/access.py: accessible_project_ids` |

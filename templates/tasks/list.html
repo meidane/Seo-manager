@@ -11,7 +11,7 @@
 
   <form method="get" class="glass filters">
     <select name="project" class="rich-select" onchange="this.form.submit()"><option value="">همه‌ی پروژه‌ها</option>
-      {% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
+      {% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}" data-search="{{ p.domain|default:"" }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %} {% if filters.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
     <select name="assignee" class="rich-select" onchange="this.form.submit()"><option value="">همه‌ی همکاران</option>
       {% for c in colleagues %}<option value="{{ c.id }}" data-color="{{ c.color }}"{% if c.avatar %} data-img="{{ c.avatar.url }}"{% endif %} {% if filters.assignee == c.id|stringformat:'s' %}selected{% endif %}>{{ c.full_name }}</option>{% endfor %}</select>
     <select name="type_def" onchange="this.form.submit()"><option value="">همه‌ی انواع</option>

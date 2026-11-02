@@ -38,7 +38,7 @@
 <script>
 document.addEventListener('click',e=>{
   if(!e.target.closest('#new-report'))return;
-  const opts=`{% for p in projects %}<option value="{{ p.id }}">{{ p.name|escapejs }}</option>{% endfor %}`;
+  const opts=`{% for p in projects %}<option value="{{ p.id }}" data-search="{{ p.domain|default:''|escapejs }}">{{ p.name|escapejs }}</option>{% endfor %}`;
   const invOpts=`<option value="">— بدون فاکتور —</option>{% for inv in invoices %}<option value="{{ inv.id }}">فاکتور #{{ inv.number|fa_digits }}{% if inv.project %} · {{ inv.project.name|escapejs }}{% endif %}</option>{% endfor %}`;
   App.openModal(`<div class="modal-h"><h3>گزارش جدید</h3><button class="x" onclick="App.closeModal()">×</button></div>
     <form method="post" action="{% url 'reports:add' %}" class="modal-b">

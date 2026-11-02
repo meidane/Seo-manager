@@ -35,12 +35,14 @@
       btn.innerHTML = o ? (media(o) + '<span class="rs-lb">' + esc(o.textContent) + '</span><span class="rs-caret">▾</span>') : '';
     }
     // فقط آیتم‌ها را می‌سازد (نه اینپوتِ جستجو) — تا موقعِ تایپ فوکوس/متن از دست نرود
+    // جستجو در نامِ گزینه + `data-search` (پنهان؛ مثلاً دامنهٔ پروژه تا با نامِ انگلیسی هم پیدا شود — نمایش داده نمی‌شود)
+    function norm(s) { return String(s || '').toLowerCase().replace(/[يى]/g, 'ی').replace(/ك/g, 'ک').replace(/\u200c/g, ' ').replace(/^https?:\/\/(www\.)?/, ''); }
     function itemsHTML(q) {
-      q = (q || '').trim().toLowerCase();
+      q = norm(q).trim();
       var items = '';
       for (var i = 0; i < sel.options.length; i++) {
         var o = sel.options[i];
-        if (q && o.textContent.toLowerCase().indexOf(q) < 0) continue;
+        if (q && (norm(o.textContent) + ' ' + norm(o.getAttribute('data-search'))).indexOf(q) < 0) continue;
         items += '<div class="rs-item' + (i === sel.selectedIndex ? ' on' : '') + '" data-i="' + i + '">' +
           media(o) + '<span class="rs-lb">' + esc(o.textContent) + '</span></div>';
       }
