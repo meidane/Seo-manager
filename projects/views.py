@@ -660,10 +660,11 @@ def seo_strategy(request, pk):
         return err
     project = get_object_or_404(Project, pk=pk)
     d = json.loads(request.body or '{}')
+    # بدونِ سال/ماه = تسکِ «بدونِ ماهِ گزارش» (ردیفِ افزودنِ بالای برد)
     try:
-        year, month = int(d.get('year')), int(d.get('month'))
+        year, month = (int(d['year']), int(d['month'])) if d.get('year') and d.get('month') else (None, None)
     except (TypeError, ValueError):
-        return JsonResponse({'detail': 'سال و ماه لازم است'}, status=400)
+        return JsonResponse({'detail': 'سال/ماهِ نامعتبر'}, status=400)
     s, _ = ReportMonthStrategy.objects.get_or_create(project=project, year=year, month=month)
     s.description = clean_html(d.get('description', ''))
     s.save()
@@ -680,10 +681,11 @@ def seo_section_add(request, pk):
         return err
     project = get_object_or_404(Project, pk=pk)
     d = json.loads(request.body or '{}')
+    # بدونِ سال/ماه = تسکِ «بدونِ ماهِ گزارش» (ردیفِ افزودنِ بالای برد)
     try:
-        year, month = int(d.get('year')), int(d.get('month'))
+        year, month = (int(d['year']), int(d['month'])) if d.get('year') and d.get('month') else (None, None)
     except (TypeError, ValueError):
-        return JsonResponse({'detail': 'سال و ماه لازم است'}, status=400)
+        return JsonResponse({'detail': 'سال/ماهِ نامعتبر'}, status=400)
     ReportMonthStrategy.objects.get_or_create(project=project, year=year, month=month)
     return JsonResponse({'ok': True})
 
@@ -722,10 +724,11 @@ def seo_section_delete(request, pk):
         return err
     project = get_object_or_404(Project, pk=pk)
     d = json.loads(request.body or '{}')
+    # بدونِ سال/ماه = تسکِ «بدونِ ماهِ گزارش» (ردیفِ افزودنِ بالای برد)
     try:
-        year, month = int(d.get('year')), int(d.get('month'))
+        year, month = (int(d['year']), int(d['month'])) if d.get('year') and d.get('month') else (None, None)
     except (TypeError, ValueError):
-        return JsonResponse({'detail': 'سال و ماه لازم است'}, status=400)
+        return JsonResponse({'detail': 'سال/ماهِ نامعتبر'}, status=400)
     if Task.objects.filter(project=project, report_year=year, report_month=month).exists():
         return JsonResponse({'detail': 'این سکشن تسک دارد؛ اول تسک‌هایش را حذف یا جابه‌جا کن.'}, status=400)
     ReportMonthStrategy.objects.filter(project=project, year=year, month=month).delete()
@@ -746,16 +749,18 @@ def seo_task_add(request, pk):
     title = (d.get('title') or '').strip()
     if not title:
         return JsonResponse({'detail': 'عنوان لازم است'}, status=400)
+    # بدونِ سال/ماه = تسکِ «بدونِ ماهِ گزارش» (ردیفِ افزودنِ بالای برد)
     try:
-        year, month = int(d.get('year')), int(d.get('month'))
+        year, month = (int(d['year']), int(d['month'])) if d.get('year') and d.get('month') else (None, None)
     except (TypeError, ValueError):
-        return JsonResponse({'detail': 'سال و ماه لازم است'}, status=400)
+        return JsonResponse({'detail': 'سال/ماهِ نامعتبر'}, status=400)
     my = getattr(request.user, 'colleague', None)
     td = None
     if d.get('type'):
         td = TaskTypeDef.objects.filter(pk=d['type']).first()
     # ردیفِ جدید ته سکشن
-    last = Task.objects.filter(project=project, report_year=year, report_month=month).order_by('-board_order').first()
+    last = Task.objects.filter(project=project, report_year=year, report_month=month).order_by('-board_order').first() if month \
+        else Task.objects.filter(project=project, report_month__isnull=True).order_by('-board_order').first()
     task = Task(project=project, title=title, report_year=year, report_month=month,
                 planned_date=None, assignee=my, created_by=request.user,
                 board_order=(last.board_order + 1 if last else 0))

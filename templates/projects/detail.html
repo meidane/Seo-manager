@@ -162,8 +162,8 @@
       </div>
     </div>
     <div style="padding:12px 14px">
-      {# ── تسک‌های بدونِ ماهِ گزارش (بالای برد) — نهایتِ ۷ مورد + «مشاهدهٔ همه» ── #}
-      {% if no_month_tasks %}
+      {# ── بدونِ ماهِ گزارش (بالای برد): نهایتِ ۷ + «مشاهدهٔ همه»؛ همیشه هست تا افزودنِ تسک بی‌سکشن ممکن باشد ── #}
+      {% if no_month_tasks or can_edit_task %}
       <div class="no-month-sec" style="margin-bottom:20px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
           <b style="font-size:14.5px">بدونِ ماهِ گزارش</b>
@@ -172,7 +172,15 @@
         <div class="tsheet-wrap">
         <table class="tsheet">
           <thead>{% include "tasks/_task_thead.html" %}</thead>
-          <tbody>{% include "tasks/_rows.html" with tasks=no_month_tasks %}</tbody>
+          <tbody>
+            {% include "tasks/_rows.html" with tasks=no_month_tasks %}
+            {% if can_edit_task %}
+            <tr class="seo-addrow">
+              <td colspan="{% if editable %}2{% else %}3{% endif %}"></td><td class="edit"><input class="seo-newtask" placeholder="افزودنِ تسک… (Enter)" data-year="" data-month=""></td>
+              <td colspan="20" class="zero" style="font-size:11px;text-align:start;padding-inline-start:10px">فقط عنوان لازم است؛ ماهِ گزارش و تاریخ را بعداً بگذار</td>
+            </tr>
+            {% endif %}
+          </tbody>
           {% if no_month_hidden %}<tbody class="nm-hidden" hidden>{% include "tasks/_rows.html" with tasks=no_month_hidden %}</tbody>{% endif %}
         </table>
         </div>
@@ -212,7 +220,7 @@
             {% include "tasks/_rows.html" with tasks=s.tasks %}
             {% if can_edit_task %}
             <tr class="seo-addrow">
-              <td></td><td class="edit"><input class="seo-newtask" placeholder="افزودنِ ایده/تسک… (Enter)" data-year="{{ s.year }}" data-month="{{ s.month }}"></td>
+              <td colspan="{% if editable %}2{% else %}3{% endif %}"></td><td class="edit"><input class="seo-newtask" placeholder="افزودنِ ایده/تسک… (Enter)" data-year="{{ s.year }}" data-month="{{ s.month }}"></td>
               <td colspan="20" class="zero" style="font-size:11px;text-align:start;padding-inline-start:10px">فقط عنوان لازم است؛ تاریخ را بعداً بگذار (ایده)</td>
             </tr>
             {% endif %}
@@ -724,7 +732,7 @@
     const type = new URLSearchParams(location.search).get('seo_type') || '';
     try{
       const r = await App.fetchJSON(`/projects/api/${pid}/seo/task/`, {method:'POST',
-        body:{title, year:+inp.dataset.year, month:+inp.dataset.month, type}});
+        body:{title, year:inp.dataset.year ? +inp.dataset.year : null, month:inp.dataset.month ? +inp.dataset.month : null, type}});
       const addRow = inp.closest('tr');                    // ردیفِ «افزودن»
       addRow.insertAdjacentHTML('beforebegin', r.html);    // ردیفِ جدید قبلِ آن
       const newRow = addRow.previousElementSibling;
