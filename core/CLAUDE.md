@@ -59,15 +59,18 @@
   بازه را می‌سازد). در هر لیستِ صفحه‌بندی‌شده `{% include %}`اش کن؛ CSS: `.pagi/.pg` در `style.css`.
 
 ## اعلان‌ها (`Notification` + `context_processors.notifications`)
-مدلِ سبکِ per-user (نه tenant): `user, text, url, icon, read, created_at`. ساخت با
-`Notification.push(user, text, url, icon, actor=None)` (بی‌خطا؛ اگر گیرنده=عامل باشد یا
-`user=None` چیزی نمی‌سازد). نقاطِ ساخت در `tasks/api.py`: واگذاریِ تسک، needs_fix، approved،
-و «آمادهٔ بازبینی» به مدیرِ مستقیم (`_notify`/`_notify_pending_review`). هر اعلان به
-`/tasks/?task=<id>` لینک می‌دهد (tasks.js مودال را خودکار باز می‌کند). UI: زنگولهٔ هدر
-(`components/header.html`، بَج + دراپ‌داون + پولینگِ ۶۰ثانیه، بازکردن=خوانده‌شدنِ همه) +
-بَجِ کنارِ لینکِ «بازبینی» در سایدبار (`review_pending_count`). API:
-`/api/notifications/` (GET) و `/api/notifications/read/` (POST). context processor
-هر دو شمار (`notif_unread`, `notif_recent`, `review_pending_count`) را بارِ اول می‌دهد.
+مدلِ سبکِ per-user (نه tenant): `user, text, url, icon(قدیمی), kind, task(FK، CASCADE), read, created_at`. ساخت با
+`Notification.push(user, text, url, icon, actor=None, task=None, kind='')` (بی‌خطا؛ اگر گیرنده=عامل باشد یا
+`user=None` چیزی نمی‌سازد). `kind` ∈ `assigned/review/needs_fix/approved` (آیکنِ SVG در UI از همین می‌آید، نه ایموجی).
+نقاطِ ساخت در `tasks/api.py`: `_notify(request, colleague, text, task, icon, kind)`/`_notify_pending_review`.
+- **خودپاک‌شونده — منبعِ واحد `Notification.cleanup(user)`** (در `notifications_api` و context processor، پس هر مسیرِ
+  تغییرِ تسک حتی آپدیتِ گروهی را پوشش می‌دهد): تسکِ حذف‌شده (نرم؛ سخت = CASCADE)، `assigned/needs_fix` وقتی تسک
+  `done/pending` شد، `review` وقتی تسک دیگر `pending` نیست (بازبینی شد)، و خوانده‌شده‌های بالای ۳۰ روز.
+- **نمایش — `Notification.payload()`** (منبعِ واحدِ API و بارِ اول): `kind, ago`(«۳ ساعت پیش»)`, date`(شمسی + ساعت)`, today`.
+  هدر داده‌ی بارِ اول را با `json_script` (`#notif-init`) می‌گیرد و **یک رندرکنندهٔ JS** هم آن و هم پولِ ۶۰ثانیه را
+  می‌سازد (گروهِ «امروز/قبل‌تر»، نقطهٔ خوانده‌نشده، × حذف، «پاک‌کردنِ خوانده‌ها»). باز کردن = خوانده‌شدنِ همه.
+- API: `/api/notifications/` (GET)، `/api/notifications/read/` (POST)، **`/api/notifications/delete/`** (POST `{id}` یا `{read:true}`).
+- `[hidden]{display:none !important}` سراسری در `style.css` — بَجِ `display:flex` قبلاً `hidden` را بی‌اثر می‌کرد («۰»ِ قرمز).
 
 ### به‌روزرسانیِ زنده بدونِ رفرش (پولرِ واحدِ ۶۰ثانیه‌ای)
 **یک پولرِ سراسری بس است — همان پولِ ۶۰ثانیه‌ایِ زنگوله.** پولِ دیگری نساز.

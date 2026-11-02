@@ -438,13 +438,13 @@ def _custom_fields_error(task):
     return None
 
 
-def _notify(request, colleague, text, task=None, icon=''):
+def _notify(request, colleague, text, task=None, icon='', kind=''):
     """اعلان برای کاربرِ متصل به یک Colleague (اگر حساب دارد و خودِ عامل نیست).
     لینک به تسک = `/tasks/?task=<id>` (tasks.js مودال را خودکار باز می‌کند)."""
     from core.models import Notification
     user = getattr(colleague, 'user', None) if colleague else None
     url = f'/tasks/?task={task.id}' if task else ''
-    Notification.push(user, text, url, icon, actor=request.user)
+    Notification.push(user, text, url, icon, actor=request.user, task=task, kind=kind)
 
 
 def _notify_pending_review(request, task):
@@ -453,7 +453,7 @@ def _notify_pending_review(request, task):
     a = getattr(task, 'assignee', None)
     mgr = getattr(a, 'manager', None) if a else None
     if mgr:
-        _notify(request, mgr, f'آمادهٔ بازبینی: «{task.title}» ({a.full_name})', task, '🔎')
+        _notify(request, mgr, f'آمادهٔ بازبینی: «{task.title}» ({a.full_name})', task, '🔎', 'review')
 
 
 @login_required
@@ -491,7 +491,7 @@ def task_create(request):
     taskhistory.record(task, taskhistory.TaskHistory.CREATED, request.user)
     # اعلان: تسک به کسِ دیگری واگذار شد
     if task.assignee_id:
-        _notify(request, task.assignee, f'تسکِ جدید به شما واگذار شد: «{task.title}»', task, '📌')
+        _notify(request, task.assignee, f'تسکِ جدید به شما واگذار شد: «{task.title}»', task, '📌', 'assigned')
     # تکرارشونده: قاعده را بساز و اولین پیش‌نما را تولید کن (تولید تنبل)
     rec = data.get('recurrence')
     if rec and rec.get('freq'):
@@ -605,7 +605,7 @@ def task_detail(request, pk):
         taskhistory.record(task, taskhistory.TaskHistory.UPDATED, request.user, changes)
     # اعلان‌ها: واگذاریِ تسک به فردِ جدید + آماده‌شدنِ بازبینی
     if task.assignee_id and task.assignee_id != old_assignee_id:
-        _notify(request, task.assignee, f'تسکِ «{task.title}» به شما واگذار شد', task, '📌')
+        _notify(request, task.assignee, f'تسکِ «{task.title}» به شما واگذار شد', task, '📌', 'assigned')
     if task.status == Task.PENDING and old_status != Task.PENDING:
         _notify_pending_review(request, task)
     if not was_done and task.status == Task.DONE and task.recurrence_id and not task.is_placeholder:
@@ -801,9 +801,9 @@ def task_review(request, pk):
         TaskReviewNote.objects.create(task=task, note=note_html, author=request.user)
     # اعلان به مسئولِ تسک دربارهٔ نتیجهٔ بازبینی
     if status == Task.NEEDS_FIX:
-        _notify(request, task.assignee, f'تسکِ «{task.title}» نیاز به اصلاح دارد', task, '⚠️')
+        _notify(request, task.assignee, f'تسکِ «{task.title}» نیاز به اصلاح دارد', task, '⚠️', 'needs_fix')
     elif status == Task.APPROVED:
-        _notify(request, task.assignee, f'تسکِ «{task.title}» تایید شد', task, '✅')
+        _notify(request, task.assignee, f'تسکِ «{task.title}» تایید شد', task, '✅', 'approved')
     return JsonResponse({'ok': True, 'review_status': task.review_status, 'status': task.status})
 
 

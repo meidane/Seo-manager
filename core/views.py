@@ -188,11 +188,9 @@ def report_month_reorder(request):
 def notifications_api(request):
     """فهرستِ اعلان‌های اخیر + شمارِ خوانده‌نشده (برای پولینگ/رفرشِ زنگوله)."""
     from .models import Notification
-    qs = Notification.objects.filter(user=request.user)
-    items = [{
-        'id': n.id, 'text': n.text, 'url': n.url, 'icon': n.icon,
-        'read': n.read, 'ago': timezone.localtime(n.created_at).strftime('%m/%d %H:%M'),
-    } for n in qs[:15]]
+    Notification.cleanup(request.user)  # اعلان‌های «انجام‌شده» (تسکِ حذف/تکمیل/بازبینی‌شده) پاک شوند
+    qs = Notification.objects.filter(user=request.user).select_related('task')
+    items = [n.payload() for n in qs[:20]]
     # `review_count` را هم می‌دهیم تا بَجِ «بازبینی»ی سایدبار زنده به‌روز شود (بدونِ رفرش)
     try:
         from tasks.queries import review_pending_count
@@ -218,3 +216,20 @@ def notifications_read(request):
         qs = qs.filter(id__in=ids)
     qs.update(read=True)
     return JsonResponse({'ok': True})
+
+
+@login_required
+@require_http_methods(['POST'])
+def notifications_delete(request):
+    """حذفِ یک اعلان (`{id}`) یا همهٔ خوانده‌شده‌ها (`{read: true}`)."""
+    from .models import Notification
+    try:
+        body = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        body = {}
+    qs = Notification.objects.filter(user=request.user)
+    if body.get('id'):
+        qs.filter(id=body['id']).delete()
+    elif body.get('read'):
+        qs.filter(read=True).delete()
+    return JsonResponse({'ok': True, 'unread': qs.filter(read=False).count()})

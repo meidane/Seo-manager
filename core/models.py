@@ -171,14 +171,20 @@ class ColumnConfig(models.Model):
 
 
 class Notification(models.Model):
-    """اعلانِ درون‌برنامه‌ای — per user (نه tenant). ساده و کاربردی: یک متن + لینک + آیکن.
-    ساخته می‌شود با `Notification.push(user, text, url, icon)` از نقاطِ کلیدیِ tasks/api.
-    عاملِ رویداد در متن می‌آید (بدونِ FKِ اضافه) تا مدل سبک بماند."""
+    """اعلانِ درون‌برنامه‌ای — per user (نه tenant). متن + لینک + نوع (برای آیکنِ SVG) + تسکِ مرتبط.
+    ساخته می‌شود با `Notification.push(...)` از نقاطِ کلیدیِ tasks/api.
+    **خودپاک‌شونده:** اعلانی که «کارش انجام شد» حذف می‌شود (`cleanup`) — تسک حذف شد (نرم یا سخت)،
+    تسکِ واگذارشده/نیازمندِ اصلاح تکمیل شد، یا بازبینیِ تسکِ «آمادهٔ بازبینی» انجام شد."""
+
+    ASSIGNED, REVIEW, NEEDS_FIX, APPROVED = 'assigned', 'review', 'needs_fix', 'approved'
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications')
     text = models.CharField('متن', max_length=255)
     url = models.CharField('لینک', max_length=300, blank=True)
     icon = models.CharField('آیکن', max_length=8, blank=True)
+    kind = models.CharField('نوع', max_length=20, blank=True, db_index=True)
+    task = models.ForeignKey('tasks.Task', verbose_name='تسک', on_delete=models.CASCADE, null=True, blank=True,
+                             related_name='notifications')
     read = models.BooleanField('خوانده‌شده', default=False, db_index=True)
     created_at = models.DateTimeField('ایجاد', auto_now_add=True, db_index=True)
 
@@ -191,12 +197,60 @@ class Notification(models.Model):
         return f'{self.user_id} — {self.text[:40]}'
 
     @classmethod
-    def push(cls, user, text, url='', icon='', actor=None):
+    def push(cls, user, text, url='', icon='', actor=None, task=None, kind=''):
         """یک اعلان بساز. `user` می‌تواند User یا None باشد؛ اگر گیرنده = عاملِ رویداد
         بود (کارِ خودش) اعلانی ساخته نمی‌شود. سبک و بی‌خطا (هرگز جریانِ اصلی را نمی‌شکند)."""
         try:
             if not user or (actor and getattr(actor, 'id', None) == getattr(user, 'id', None)):
                 return None
-            return cls.objects.create(user=user, text=text[:255], url=url or '', icon=icon or '')
+            return cls.objects.create(user=user, text=text[:255], url=url or '', icon=icon or '',
+                                      task=task, kind=kind or '')
         except Exception:  # noqa: BLE001 — اعلان هرگز نباید عملیاتِ اصلی را خراب کند
             return None
+
+    @classmethod
+    def cleanup(cls, user):
+        """اعلان‌های «انجام‌شده» را پاک کن — منبعِ واحد، موقعِ خواندنِ اعلان‌ها صدا زده می‌شود
+        (هر مسیرِ تغییرِ تسک، حتی آپدیتِ گروهی، را پوشش می‌دهد). خوانده‌شده‌های قدیمی‌تر از ۳۰ روز هم."""
+        from datetime import timedelta
+
+        from django.db.models import Q
+        from django.utils import timezone
+        try:
+            qs = cls.objects.filter(user=user)
+            done = ('done', 'pending')
+            qs.filter(
+                Q(task__deleted_at__isnull=False)
+                | Q(kind__in=[cls.ASSIGNED, cls.NEEDS_FIX], task__status__in=done)
+                | (Q(kind=cls.REVIEW) & ~Q(task__status='pending'))
+                | Q(read=True, created_at__lt=timezone.now() - timedelta(days=30))
+            ).delete()
+        except Exception:  # noqa: BLE001
+            pass
+
+    def payload(self):
+        """دادهٔ نمایشِ یک اعلان (منبعِ واحدِ API و بارِ اولِ صفحه)."""
+        from django.utils import timezone
+
+        from core.jalali import g2j
+        local = timezone.localtime(self.created_at)
+        delta = timezone.now() - self.created_at
+        mins = int(delta.total_seconds() // 60)
+        if mins < 1:
+            ago = 'همین الان'
+        elif mins < 60:
+            ago = f'{mins} دقیقه پیش'
+        elif mins < 24 * 60:
+            ago = f'{mins // 60} ساعت پیش'
+        elif mins < 48 * 60:
+            ago = 'دیروز'
+        else:
+            ago = f'{mins // (24 * 60)} روز پیش'
+        try:
+            jd = g2j(local.date())
+            date_fa = f'{jd.year}/{jd.month:02d}/{jd.day:02d} · {local:%H:%M}'
+        except Exception:  # noqa: BLE001
+            date_fa = local.strftime('%Y/%m/%d %H:%M')
+        fa = str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹')
+        return {'id': self.id, 'text': self.text, 'url': self.url, 'kind': self.kind or 'info', 'read': self.read,
+                'ago': ago.translate(fa), 'date': date_fa.translate(fa), 'today': local.date() == timezone.localdate()}

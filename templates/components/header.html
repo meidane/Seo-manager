@@ -19,14 +19,14 @@
 
   <div class="notif-wrap" id="notif-wrap" style="{% if my_orgs|length <= 1 %}margin-inline-start:auto;{% endif %}">
     <button type="button" id="notif-btn" class="notif-btn" title="اعلان‌ها"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="notif-badge" id="notif-badge"{% if not notif_unread %} hidden{% endif %}>{{ notif_unread }}</span></button>
-    <div class="notif-drop glass" id="notif-drop">
-      <div class="notif-h">اعلان‌ها</div>
-      <div class="notif-list" id="notif-list" data-max-id="{% if notif_recent %}{{ notif_recent.0.id }}{% else %}0{% endif %}">
-        {% for n in notif_recent %}
-          <a class="notif-item{% if not n.read %} unread{% endif %}" href="{{ n.url|default:'#' }}"><span class="notif-ico">{{ n.icon|default:'•' }}</span><span class="notif-txt">{{ n.text }}</span></a>
-        {% empty %}<div class="notif-empty">اعلانی نیست</div>{% endfor %}
+    <div class="notif-drop glass" id="notif-drop" role="dialog" aria-label="اعلان‌ها">
+      <div class="notif-h">
+        <b>اعلان‌ها</b><span class="notif-count" id="notif-count"></span>
+        <span class="notif-acts"><button type="button" class="notif-act" id="notif-clear" title="حذفِ اعلان‌های خوانده‌شده">پاک‌کردنِ خوانده‌ها</button></span>
       </div>
+      <div class="notif-list" id="notif-list" data-max-id="{% if notif_recent %}{{ notif_recent.0.id }}{% else %}0{% endif %}"></div>
     </div>
+    {{ notif_recent|json_script:"notif-init" }}
   </div>
 
   <button type="button" id="profile-btn" style="background:0;border:0;padding:0;cursor:pointer;line-height:0" title="ویرایش پروفایل">
@@ -40,16 +40,67 @@
   </button>
 </div>
 <script>
-/* ── زنگولهٔ اعلان‌ها ── سبک: باز/بسته + علامتِ خوانده‌شده هنگام باز شدن + پولینگِ ۶۰ثانیه‌ای */
+/* ── زنگولهٔ اعلان‌ها ── یک رندرکنندهٔ واحد (بارِ اول از json_script، بعد پولِ ۶۰ثانیه‌ای).
+   باز کردن = خوانده‌شدنِ همه؛ کلیک روی اعلان = رفتن به تسک؛ × = حذف. اعلانِ «انجام‌شده» را سرور خودش پاک می‌کند
+   (Notification.cleanup: تسکِ حذف/تکمیل/بازبینی‌شده). */
 (function(){
   var btn=document.getElementById('notif-btn'), drop=document.getElementById('notif-drop'),
-      badge=document.getElementById('notif-badge'), list=document.getElementById('notif-list');
+      badge=document.getElementById('notif-badge'), list=document.getElementById('notif-list'),
+      countEl=document.getElementById('notif-count');
   if(!btn) return;
+  var SV='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">';
+  var ICONS={
+    assigned: SV+'<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>',
+    review: SV+'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+    needs_fix: SV+'<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>',
+    approved: SV+'<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>',
+    info: SV+'<path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>'
+  };
+  var X=SV.replace('width="16" height="16"','width="13" height="13"')+'<path d="M18 6L6 18M6 6l12 12"/></svg>';
+  function esc(t){ return String(t||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function item(n){
+    return '<div class="notif-item'+(n.read?'':' unread')+'" data-id="'+n.id+'" data-url="'+esc(n.url)+'" role="link" tabindex="0">'+
+      '<span class="notif-ico k-'+esc(n.kind)+'">'+(ICONS[n.kind]||ICONS.info)+'</span>'+
+      '<span class="notif-body"><span class="notif-txt">'+esc(n.text)+'</span>'+
+      '<span class="notif-meta" title="'+esc(n.date)+'">'+esc(n.ago)+' · '+esc(n.date)+'</span></span>'+
+      '<button type="button" class="notif-x" title="حذفِ این اعلان" aria-label="حذف">'+X+'</button></div>';
+  }
+  function render(items){
+    var unread=items.filter(function(n){return !n.read;}).length;
+    countEl.textContent = items.length ? (unread ? unread+' خوانده‌نشده' : '') : '';
+    if(!items.length){
+      list.innerHTML='<div class="notif-empty"><span class="notif-empty-ico">'+ICONS.info+'</span><b>اعلانِ تازه‌ای نیست</b><span>اعلان‌های انجام‌شده خودکار پاک می‌شوند.</span></div>';
+      return;
+    }
+    var today=items.filter(function(n){return n.today;}), older=items.filter(function(n){return !n.today;});
+    list.innerHTML=(today.length?'<div class="notif-grp">امروز</div>'+today.map(item).join(''):'')+
+      (older.length?'<div class="notif-grp">قبل‌تر</div>'+older.map(item).join(''):'');
+  }
   function setBadge(n){ if(n>0){ badge.textContent=n; badge.hidden=false; } else { badge.hidden=true; } }
+  var items=[]; try{ items=JSON.parse(document.getElementById('notif-init').textContent)||[]; }catch(_){}
+  render(items);
   async function markRead(){ try{ await App.fetchJSON("{% url 'notifications_read' %}",{method:'POST',body:{}}); }catch(_){}
-    setBadge(0); list.querySelectorAll('.notif-item.unread').forEach(function(el){el.classList.remove('unread');}); }
-  btn.onclick=function(e){ e.stopPropagation(); var open=drop.classList.toggle('open'); if(open && !badge.hidden) markRead(); };
-  document.addEventListener('click',function(e){ if(!e.target.closest('#notif-wrap')) drop.classList.remove('open'); });
+    setBadge(0); }
+  btn.onclick=function(e){ e.stopPropagation(); var open=drop.classList.toggle('open');
+    if(open && !badge.hidden) markRead();
+    if(!open) list.querySelectorAll('.notif-item.unread').forEach(function(el){el.classList.remove('unread');}); };
+  document.addEventListener('click',function(e){ if(!e.target.closest('#notif-wrap') && drop.classList.contains('open')){
+    drop.classList.remove('open'); list.querySelectorAll('.notif-item.unread').forEach(function(el){el.classList.remove('unread');}); } });
+  list.addEventListener('click', async function(e){
+    var it=e.target.closest('.notif-item'); if(!it) return;
+    if(e.target.closest('.notif-x')){
+      e.stopPropagation(); it.classList.add('removing');
+      try{ await App.fetchJSON("{% url 'notifications_delete' %}",{method:'POST',body:{id:+it.dataset.id}}); }catch(_){ it.classList.remove('removing'); return; }
+      items=items.filter(function(n){return n.id!==+it.dataset.id;});
+      setTimeout(function(){ render(items); }, 160);
+      return;
+    }
+    if(it.dataset.url && it.dataset.url!=='#') location.href=it.dataset.url;
+  });
+  list.addEventListener('keydown',function(e){ if(e.key==='Enter'){ var it=e.target.closest('.notif-item'); if(it&&it.dataset.url) location.href=it.dataset.url; } });
+  document.getElementById('notif-clear').onclick=async function(e){ e.stopPropagation();
+    try{ await App.fetchJSON("{% url 'notifications_delete' %}",{method:'POST',body:{read:true}}); }catch(_){ return; }
+    try{ var d=await App.fetchJSON("{% url 'notifications_api' %}"); items=d.items; render(items); setBadge(d.unread); }catch(_){} };
   // بَجِ زندهٔ «بازبینی»ی سایدبار — بدونِ رفرش بالا/پایین می‌شود
   function setReview(n){ var b=document.getElementById('review-badge'); if(!b) return;
     if(n>0){ b.textContent=n; b.hidden=false; } else { b.hidden=true; } }
@@ -58,19 +109,14 @@
   var lastMaxId=parseInt(list.dataset.maxId||'0',10)||0;
   async function refresh(){ try{ var d=await App.fetchJSON("{% url 'notifications_api' %}");
     setBadge(d.unread); setReview(d.review_count);
-    // اعلانِ تازه‌رسیده را (نسبت به آخرین باری که دیدیم) به‌صورتِ توست نشان بده تا کاربر
-    // «بدونِ رفرش متوجه شود» — مثلِ رفتنِ تسک به بازبینی (مدیر) یا برگشتِ تسک (کارمند).
     var maxId = d.items.length ? Math.max.apply(null, d.items.map(function(n){return n.id;})) : 0;
     var fresh=d.items.filter(function(n){ return n.id>lastMaxId; });
     if(fresh.length){
-      if(fresh.length===1) App.toast((fresh[0].icon||'🔔')+' '+fresh[0].text,'',5000);
-      else App.toast('🔔 '+fresh.length+' اعلانِ جدید','',5000);
+      App.toast(fresh.length===1 ? fresh[0].text : fresh.length+' اعلانِ جدید','',5000);
       window.dispatchEvent(new CustomEvent('notif-poll',{detail:{unread:d.unread,review:d.review_count,fresh:fresh.length}}));
     }
     lastMaxId=Math.max(lastMaxId,maxId);
-    list.innerHTML = d.items.length ? d.items.map(function(n){
-      return '<a class="notif-item'+(n.read?'':' unread')+'" href="'+(n.url||'#')+'"><span class="notif-ico">'+(n.icon||'•')+'</span><span class="notif-txt">'+
-        n.text.replace(/</g,'&lt;')+'</span></a>'; }).join('') : '<div class="notif-empty">اعلانی نیست</div>';
+    if(!drop.classList.contains('open')){ items=d.items; render(items); }
   }catch(_){ } }
   setInterval(refresh, 60000);   // هماهنگیِ دوره‌ای (یک پولرِ واحدِ سراسری)
 })();
