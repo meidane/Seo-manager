@@ -109,7 +109,9 @@ def build_task_queryset(request):
         base = base.filter(task_type=filters['type'])
     if filters.get('status'):
         base = base.filter(status=filters['status'])
-    if filters.get('report_month'):
+    if filters.get('report_month') == 'none':  # «بدونِ ماهِ گزارش»
+        base = base.filter(report_month__isnull=True)
+    elif filters.get('report_month'):
         base = base.filter(report_month=filters['report_month'])
     if filters.get('report_year'):
         base = base.filter(report_year=filters['report_year'])

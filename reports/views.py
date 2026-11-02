@@ -274,7 +274,9 @@ def pull_tasks(request, pk):
         )
     # فیلترِ اختیاریِ «ماهِ گزارش» (value = «سال-ماه»، مثلِ مودالِ تسک)
     period = (g.get('period') or '').strip()
-    if period and '-' in period:
+    if period == 'none':  # «بدونِ ماهِ گزارش»
+        qs = qs.filter(report_month__isnull=True)
+    elif period and '-' in period:
         try:
             py, pm = period.split('-')
             qs = qs.filter(report_year=int(py), report_month=int(pm))

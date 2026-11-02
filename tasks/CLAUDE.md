@@ -163,6 +163,8 @@
   ساختار/ویرایشِ inline در همه‌جا کاملاً یکسان است.
 - `templates/tasks/_task_box.html` — یک جعبه‌ی «کارت + جدول» با تیتر/شمارنده/حالتِ خالی؛
   `TaskListView` سه‌بار `{% include %}`ش می‌کند (پایین). دوباره‌نویسیِ ساختارِ جدول نکن.
+  **فیلترِ ماهِ گزارش:** `report_month=none` = «بدونِ ماهِ گزارش» (`report_month__isnull`) — همین مقدار در انتخاب‌گرِ تسکِ
+  گزارش (`reports/views.py`، `period=none`).
 
 ## URLها
 `/tasks/` لیست · `/tasks/review/` بازبینی · `/tasks/api/...` (formdata, create, `<id>/`,

@@ -146,7 +146,7 @@
         <span style="color:var(--text-faint);font-size:11px">بازه (اختیاری):</span>
         <input class="input jdate" id="p-from" style="max-width:120px" dir="ltr" placeholder="از (اختیاری)">
         <input class="input jdate" id="p-to" style="max-width:120px" dir="ltr" placeholder="تا (اختیاری)">
-        <select class="input" id="p-period" style="max-width:150px"><option value="">— ماهِ گزارش —</option>{% for p in report_periods %}<option value="{{ p.value }}">{{ p.label }}</option>{% endfor %}</select>
+        <select class="input" id="p-period" style="max-width:150px"><option value="">— ماهِ گزارش —</option><option value="none">بدونِ ماهِ گزارش</option>{% for p in report_periods %}<option value="{{ p.value }}">{{ p.label }}</option>{% endfor %}</select>
         <button class="btn btn-sm btn-p" id="p-fetch">ایمپورت تسک‌ها</button>
         <button class="btn btn-sm" id="p-manual">＋ ردیف دستی</button>
       </div>
