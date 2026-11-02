@@ -15,7 +15,7 @@
     <div class="card-h"><h3>اتصالِ برنامه</h3></div>
     <ol style="margin:0;padding:14px 38px 14px 17px;line-height:2.1">
       <li>در <a href="{% url 'accounts:api_tokens' %}">توکن‌های API</a> یک توکن بساز (مثلاً «ChatGPT-WP») و کپی کن.</li>
-      <li>در برنامهٔ دسکتاپ ← ⚙ تنظیمات ← «همگام‌سازی با پنل»: آدرسِ پنل <code dir="ltr">{{ panel_url }}</code> و توکن را بچسبان و «ذخیره و همگام‌سازی» بزن.</li>
+      <li>در برنامهٔ دسکتاپ ← تنظیمات ← «همگام‌سازی با پنل»: آدرسِ پنل <code dir="ltr">{{ panel_url }}</code> و توکن را بچسبان و «ذخیره و همگام‌سازی» بزن.</li>
       <li>روی کامپیوترهای دیگر هم همین کار را بکن (هرکس با توکنِ خودش). از آن به بعد همگام‌سازی خودکار است: موقعِ باز شدن، هر چند دقیقه، و بعد از هر تغییر.</li>
     </ol>
   </section>
@@ -43,7 +43,7 @@
       </table>
       </div>
     {% else %}
-      <div class="empty"><div class="ico">🔄</div><h4>هنوز هیچ برنامه‌ای همگام نشده</h4></div>
+      <div class="empty"><div class="ico">{% icon 'sync' %}</div><h4>هنوز هیچ برنامه‌ای همگام نشده</h4></div>
     {% endif %}
   </section>
 {% endblock %}

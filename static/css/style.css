@@ -1833,6 +1833,9 @@ input[type=checkbox]:disabled{opacity:.5;cursor:default}
 /* ── زنگولهٔ اعلان‌ها (هدر) ── */
 /* «hidden» همیشه پنهان کند (بَج‌هایی با display:flex آن را بی‌اثر می‌کردند — «۰»ِ قرمزِ زنگوله) */
 [hidden]{display:none !important}
+/* آیکنِ اسپرایت ({% icon %} / App.icon) — هم‌اندازهٔ متن، رنگِ متن */
+.ic{width:1em;height:1em;display:inline-block;vertical-align:-.14em;flex:none;fill:currentColor}
+.search .ic{width:15px;height:15px;color:var(--text-faint);vertical-align:middle}
 .notif-wrap{position:relative}
 .notif-btn{position:relative;background:0;border:0;cursor:pointer;color:var(--text-dim);font-size:18px;line-height:1;padding:4px;border-radius:8px;transition:var(--ease)}
 .notif-btn:hover{background:var(--glass-hover);color:var(--text)}

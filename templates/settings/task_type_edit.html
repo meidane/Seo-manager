@@ -87,8 +87,8 @@
             {% if k.has_checklist %}<span class="tag t-info" style="font-size:10px">چک‌لیستی</span>{% endif %}
             {% if k.description %}<i class="kpi-info" title="توضیحات" data-desc="{{ k.description }}" style="cursor:pointer">ℹ️</i>{% endif %}
             <span class="kpi-tools">
-              <i class="kpi-edit" data-id="{{ k.id }}" data-title="{{ k.title }}" data-max="{{ k.max_score }}" data-desc="{{ k.description }}" data-cl="{{ k.has_checklist|yesno:'1,0' }}">✏️</i>
-              <i class="kpi-del" data-id="{{ k.id }}">🗑</i>
+              <i class="kpi-edit" data-id="{{ k.id }}" data-title="{{ k.title }}" data-max="{{ k.max_score }}" data-desc="{{ k.description }}" data-cl="{{ k.has_checklist|yesno:'1,0' }}">{% icon 'pen' %}</i>
+              <i class="kpi-del" data-id="{{ k.id }}">{% icon 'trash' %}</i>
             </span>
           </div>
           {% if k.has_checklist %}

@@ -136,7 +136,7 @@ td a:hover{text-decoration:underline}
       <div class="meta">{{ report.project.name }} — {{ report.date_from|jalali }} تا {{ report.date_to|jalali }}</div>
     </div>
     <div class="actions">
-      {% if can_edit %}<a class="btn edit-btn" href="{% url 'reports:detail' report.pk %}">✎ ویرایش</a>{% endif %}
+      {% if can_edit %}<a class="btn edit-btn" href="{% url 'reports:detail' report.pk %}">{% icon 'pen' %} ویرایش</a>{% endif %}
       <button class="btn theme-toggle" id="theme-toggle" title="تغییرِ تم روشن/تاریک" aria-label="تغییر تم"></button>
       <button class="btn print" onclick="window.print()">چاپ / PDF</button>
     </div>

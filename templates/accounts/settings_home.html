@@ -39,7 +39,7 @@
     {% endif %}
     {% if 'manage_people' in org_perms %}
       <a href="{% url 'accounts:roles' %}" class="colleague-card card glass">
-        <span class="ca-avatar ca-fallback" style="--c:#6BA1FF">⚙</span>
+        <span class="ca-avatar ca-fallback" style="--c:#6BA1FF">{% icon 'cog' %}</span>
         <div class="ca-body"><b>نقش‌ها</b><span class="ca-roles">دسترسی‌های سفارشی هر نقش</span></div>
       </a>
     {% endif %}
@@ -57,13 +57,13 @@
     {% endif %}
     {% if 'manage_holidays' in org_perms %}
       <a href="{% url 'core:holidays' %}" class="colleague-card card glass">
-        <span class="ca-avatar ca-fallback" style="--c:#FBBF24">✦</span>
+        <span class="ca-avatar ca-fallback" style="--c:#FBBF24">{% icon 'sparkles' %}</span>
         <div class="ca-body"><b>تعطیلات</b><span class="ca-roles">مدیریتِ تعطیلاتِ تقویم</span></div>
       </a>
     {% endif %}
     {% if 'manage_api_tokens' in org_perms %}
       <a href="{% url 'accounts:api_tokens' %}" class="colleague-card card glass">
-        <span class="ca-avatar ca-fallback" style="--c:#38BDF8">⚿</span>
+        <span class="ca-avatar ca-fallback" style="--c:#38BDF8">{% icon 'key' %}</span>
         <div class="ca-body"><b>توکن‌های API</b><span class="ca-roles">اتصالِ افزونه/اتوماسیون/AI</span></div>
       </a>
     {% endif %}

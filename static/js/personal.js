@@ -142,7 +142,7 @@
 
   // ── اهداف: مودالِ جزئیات (متا + توضیحات + تسک‌های مرتبط + افزودن + جابه‌جایی) ──
   const gtRow = (t) => `<div class="gt-row" data-id="${t.id}" draggable="true"><span class="gt-grip">⋮⋮</span>` +
-    `<span class="gt-title${t.done ? ' is-done' : ''}">${esc(t.title)}</span>${t.planned ? '<span class="gt-date" title="برنامه‌ریزی‌شده">📅</span>' : ''}` +
+    `<span class="gt-title${t.done ? ' is-done' : ''}">${esc(t.title)}</span>${t.planned ? '<span class="gt-date" title="برنامه‌ریزی‌شده">' + App.icon('calendar') + '</span>' : ''}` +
     `<button class="gt-x" title="جدا کردن از هدف">×</button></div>`;
   async function openGoalDetail(id) {
     let g; try { g = await api(`/personal/api/goals/${id}/`); } catch (_) { return; }

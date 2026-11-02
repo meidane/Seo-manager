@@ -220,7 +220,7 @@
     // برچسب/آیکنِ دکمه‌ها را هم‌گام کن (سایدبار + هر کنترلِ دیگر)
     const next = t === 'light' ? 'dark' : 'light';
     document.querySelectorAll('[data-theme-label]').forEach((el) => { el.textContent = next === 'light' ? 'تمِ روشن' : 'تمِ تیره'; });
-    document.querySelectorAll('[data-theme-ico]').forEach((el) => { el.textContent = t === 'light' ? '☀' : '◐'; });
+    document.querySelectorAll('[data-theme-ico]').forEach((el) => { el.innerHTML = icon(t === 'light' ? 'sun' : 'moon'); });
     document.querySelectorAll('[data-theme-radio]').forEach((el) => { el.checked = el.value === t; });
   }
   function toggleTheme() { applyTheme(currentTheme() === 'light' ? 'dark' : 'light'); }
@@ -320,7 +320,13 @@
   });
 
   /* ── نمای عمومی ── */
+  // آیکنِ SVG از اسپرایت (همان `{% icon %}`ِ تمپلیت؛ فهرست: core/icons.py) — به‌جای ایموجی
+  function icon(name, cls) {
+    return '<svg class="ic' + (cls ? ' ' + cls : '') + '" aria-hidden="true"><use href="' + (window.ICON_SPRITE || '/static/img/icons.svg') + '#' + name + '"/></svg>';
+  }
+
   window.App = {
+    icon,
     csrf: CSRF,
     fetchJSON,
     toast,

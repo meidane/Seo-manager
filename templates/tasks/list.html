@@ -21,8 +21,8 @@
     <select name="report_month" onchange="this.form.submit()"><option value="">همه‌ی ماه‌های گزارش</option><option value="none" {% if filters.report_month == 'none' %}selected{% endif %}>بدونِ ماهِ گزارش</option>
       {% for v,l in report_months %}<option value="{{ v }}" {% if filters.report_month == v|stringformat:'s' %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
     <span class="sep"></span>
-    <a href="?overdue=1" class="chip {% if filters.overdue == '1' %}on{% endif %}" style="border-color:rgba(251,87,115,.4);color:var(--bad-fg)">🔴 عقب‌افتاده‌ها</a>
-    <a href="?group=day" class="chip {% if grouped_by_day %}on{% endif %}">📅 تفکیکِ روزانه (انجام‌شده)</a>
+    <a href="?overdue=1" class="chip {% if filters.overdue == '1' %}on{% endif %}" style="border-color:rgba(251,87,115,.4);color:var(--bad-fg)">{% icon 'alarm' %} عقب‌افتاده‌ها</a>
+    <a href="?group=day" class="chip {% if grouped_by_day %}on{% endif %}">{% icon 'calendar-day' %} تفکیکِ روزانه (انجام‌شده)</a>
     {% if grouped_by_day %}<a href="{% url 'tasks:list' %}" class="chip">✕ خروج از تفکیک</a>{% endif %}
   </form>
 
@@ -37,29 +37,29 @@
         {% for grp in day_groups %}{% include "tasks/_day_group.html" %}{% endfor %}
       </section>
     {% else %}
-      <section class="card glass"><div class="empty"><div class="ico">📅</div><h4>تسکِ انجام‌شده‌ای در این بازه نیست</h4></div></section>
+      <section class="card glass"><div class="empty"><div class="ico">{% icon 'calendar' %}</div><h4>تسکِ انجام‌شده‌ای در این بازه نیست</h4></div></section>
     {% endif %}
   {% else %}
 
   {% if range_active %}
   {# ── جعبهٔ واحدِ «تسک‌های بازه» (وقتی کاربر بازه انتخاب کرده) ── #}
-  {% include "tasks/_task_box.html" with title="تسک‌های بازه" tasks=box_range day_gap=True empty_icon="🗓" empty_text="تسکی در این بازه نیست" %}
+  {% include "tasks/_task_box.html" with title="تسک‌های بازه" tasks=box_range day_gap=True empty_icon="calendar" empty_text="تسکی در این بازه نیست" %}
   {% else %}
   {# ── جعبه‌ی ۱: این‌هفته + عقب‌افتاده‌ها (قدیمی‌ترین/عقب‌افتاده‌ترین اول) ── #}
   {% include "tasks/_task_box.html" with title="این هفته و عقب‌افتاده‌ها" tasks=box_recent day_gap=True empty_icon="✅" empty_text="کاری برای این هفته یا عقب‌افتاده‌ای نیست" %}
 
   {# ── جعبه‌ی ۲: آینده، بیش از ۱ هفته (نزدیک‌ترین تاریخ اول) ── #}
-  {% include "tasks/_task_box.html" with title="تسک‌های آینده (بیش از ۱ هفته)" tasks=box_future day_gap=True empty_icon="📆" empty_text="تسکِ آینده‌ای بیش از یک هفته نیست" %}
+  {% include "tasks/_task_box.html" with title="تسک‌های آینده (بیش از ۱ هفته)" tasks=box_future day_gap=True empty_icon="calendar-week" empty_text="تسکِ آینده‌ای بیش از یک هفته نیست" %}
 
   {# ── جعبه‌ی ۳: انجام‌شده‌ها (جدیدترین اول، لودِ تنبل) ── #}
-  {% include "tasks/_task_box.html" with title="تسک‌های انجام‌شده" tasks=box_done table_id="done-tsheet" empty_icon="☑" empty_text="هنوز تسکِ انجام‌شده‌ای ثبت نشده" %}
+  {% include "tasks/_task_box.html" with title="تسک‌های انجام‌شده" tasks=box_done table_id="done-tsheet" empty_icon="check-square" empty_text="هنوز تسکِ انجام‌شده‌ای ثبت نشده" %}
   <script>window.TASKS_LAZY = {hasMore: {{ has_more_done|yesno:"true,false" }}, page: 1};</script>
   {% endif %}
 
   {# ── سطلِ زباله: تسک‌های حذف‌شده (آخرِ همه) ── #}
   {% if box_deleted %}
   <section class="card glass" style="margin-top:14px">
-    <div class="card-h"><h3>🗑 تسک‌های حذف‌شده</h3><span class="chip">{{ box_deleted|length|fa_digits }} مورد</span></div>
+    <div class="card-h"><h3>{% icon 'trash' %} تسک‌های حذف‌شده</h3><span class="chip">{{ box_deleted|length|fa_digits }} مورد</span></div>
     <div class="tsheet-wrap">
     <table class="tsheet">
       <thead><tr><th style="min-width:200px">عنوان</th><th>پروژه</th><th>مسئول</th><th>حذف توسط</th><th></th></tr></thead>

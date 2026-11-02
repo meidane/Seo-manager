@@ -30,7 +30,7 @@ def _asset_version():
     تغییر می‌کند (مستقل از DEBUG/هش‌دارشدنِ نامِ فایل). deploy پروسه را ری‌استارت می‌کند،
     پس lru_cache در تولید همیشه تازه محاسبه می‌شود."""
     h = hashlib.md5()
-    for rel in ('css/style.css', 'js/app.js', 'js/tasks.js'):
+    for rel in ('css/style.css', 'js/app.js', 'js/tasks.js', 'img/icons.svg'):
         for base in settings.STATICFILES_DIRS:
             p = Path(base) / rel
             if p.exists():

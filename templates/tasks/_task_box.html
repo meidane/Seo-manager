@@ -11,6 +11,6 @@
     </table>
     </div>
   {% else %}
-    <div class="empty"><div class="ico">{{ empty_icon }}</div><h4>{{ empty_text }}</h4></div>
+    <div class="empty"><div class="ico">{% icon empty_icon|default:"clipboard" %}</div><h4>{{ empty_text }}</h4></div>
   {% endif %}
 </section>

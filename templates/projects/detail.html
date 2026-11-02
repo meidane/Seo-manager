@@ -135,8 +135,8 @@
             <td dir="ltr" style="text-align:right">{{ c.username|default:"—" }}</td>
             <td><span class="pw" data-pw="••••••">••••••</span></td>
             <td style="white-space:nowrap">
-              <button class="mini reveal">👁 نمایش</button>
-              <button class="mini copy">📋 کپی</button>
+              <button class="mini reveal">{% icon 'eye' %} نمایش</button>
+              <button class="mini copy">{% icon 'copy' %} کپی</button>
               <button class="mini del">حذف</button>
             </td>
           </tr>
@@ -144,7 +144,7 @@
       </tbody>
     </table>
     </div>
-    {% if not credentials %}<div class="empty" id="cred-empty"><div class="ico">🔑</div><h4>دسترسی‌ای ثبت نشده</h4></div>{% endif %}
+    {% if not credentials %}<div class="empty" id="cred-empty"><div class="ico">{% icon 'key' %}</div><h4>دسترسی‌ای ثبت نشده</h4></div>{% endif %}
   </section>
   {% endif %}
 
@@ -208,7 +208,7 @@
             <button class="mini sec-up" title="بالا">▲</button>
             <button class="mini sec-down" title="پایین">▼</button>
           </span>
-          <button class="chip seo-strategy{% if s.has_strategy %} on{% endif %}" data-year="{{ s.year }}" data-month="{{ s.month }}">📋 استراتژی</button>
+          <button class="chip seo-strategy{% if s.has_strategy %} on{% endif %}" data-year="{{ s.year }}" data-month="{{ s.month }}">{% icon 'clipboard' %} استراتژی</button>
           <span style="color:var(--text-faint);font-size:11px">{{ s.tasks|length|fa_digits }} تسک</span>
           {% if can_edit_task and not s.tasks %}<button class="mini sec-del" data-year="{{ s.year }}" data-month="{{ s.month }}" title="حذف سکشن (خالی)" style="color:var(--danger)">حذف</button>{% endif %}
           <textarea class="seo-strat-data" hidden>{{ s.strategy }}</textarea>
@@ -229,7 +229,7 @@
         </div>
       </div>
       {% empty %}
-      <div class="empty"><div class="ico">🗓️</div><h4>هنوز ماهِ گزارشی اضافه نشده</h4>
+      <div class="empty"><div class="ico">{% icon 'calendar' %}</div><h4>هنوز ماهِ گزارشی اضافه نشده</h4>
         <p style="color:var(--text-faint);font-size:12px;margin-top:6px">از بالا یک ماه را انتخاب و «＋ سکشن» بزن تا شروع کنی.</p></div>
       {% endfor %}
     </div>
@@ -259,7 +259,7 @@
         <tbody>
           {% for r in keyword_rows %}
             <tr data-id="{{ r.id }}" class="kw-row" style="cursor:pointer" title="کلیک: تسک‌های انجام‌شده برای این کلمه">
-              <td><i class="star {% if r.is_starred %}on{% endif %}" data-star-kw="{{ r.id }}">★</i></td>
+              <td><i class="star {% if r.is_starred %}on{% endif %}" data-star-kw="{{ r.id }}">{% icon 'star-solid' %}</i></td>
               <td>{{ r.keyword }}<br><span class="rk-url" dir="ltr">{{ r.page_url }}</span>
                 {% if r.progress and r.progress.delta is not None %}
                   <br><span class="chg {% if r.progress.delta > 0 %}up{% elif r.progress.delta < 0 %}down{% endif %}" title="جایگاه در {{ r.progress.near_date|jalali }}: #{{ r.progress.near_position|fa_digits }}">
@@ -270,7 +270,7 @@
               <td class="num-c">{% if r.last_position %}{{ r.last_position|fa_digits }}{% else %}<span class="zero">—</span>{% endif %}</td>
               <td>{% if r.spark %}{{ r.spark }}{% else %}<span class="zero">—</span>{% endif %}</td>
               <td>{% if r.change is not None %}<span class="chg {% if r.change > 0 %}up{% elif r.change < 0 %}down{% endif %}">{% if r.change > 0 %}▲{% elif r.change < 0 %}▼{% else %}—{% endif %} {{ r.change|fa_digits }}</span>{% else %}<span class="zero">—</span>{% endif %}</td>
-              <td><i class="mini-edit" data-edit-kw="{{ r.id }}" title="ویرایش">✏️</i></td>
+              <td><i class="mini-edit" data-edit-kw="{{ r.id }}" title="ویرایش">{% icon 'pen' %}</i></td>
             </tr>
           {% empty %}
             <tr><td colspan="6" class="zero" style="padding:24px;text-align:center">هنوز کلمه‌ای ردیابی نمی‌شود</td></tr>
@@ -303,13 +303,13 @@
         <tbody>
           {% for r in page_rows %}
             <tr data-url="{{ r.page_url }}" class="pglink-row" style="cursor:pointer" title="کلیک: تسک‌های انجام‌شده برای این صفحه">
-              <td><i class="star {% if r.is_starred %}on{% endif %}" data-star-page="{{ r.page_url }}">★</i></td>
+              <td><i class="star {% if r.is_starred %}on{% endif %}" data-star-page="{{ r.page_url }}">{% icon 'star-solid' %}</i></td>
               <td dir="ltr" style="text-align:right"><a href="{{ r.page_url }}" target="_blank" rel="noopener" style="color:var(--primary-400)">{{ r.page_url }}</a></td>
               <td class="num-c">{% if r.avg_position %}{{ r.avg_position|fa_digits }}{% else %}<span class="zero">—</span>{% endif %}</td>
               <td class="num-c">{{ r.keyword_count|fa_digits }}</td>
               <td>{% if r.spark %}{{ r.spark }}{% else %}<span class="zero">—</span>{% endif %}</td>
               <td>{% if r.change is not None %}<span class="chg {% if r.change > 0 %}up{% elif r.change < 0 %}down{% endif %}">{% if r.change > 0 %}▲{% elif r.change < 0 %}▼{% else %}—{% endif %} {{ r.change|fa_digits }}</span>{% else %}<span class="zero">—</span>{% endif %}</td>
-              <td><i class="mini-edit" data-edit-page="{{ r.page_url }}" title="ویرایشِ لینکِ صفحه">✏️</i></td>
+              <td><i class="mini-edit" data-edit-page="{{ r.page_url }}" title="ویرایشِ لینکِ صفحه">{% icon 'pen' %}</i></td>
             </tr>
           {% empty %}
             <tr><td colspan="7" class="zero" style="padding:24px;text-align:center">هنوز صفحه‌ای ردیابی نمی‌شود</td></tr>
@@ -326,7 +326,7 @@
     <div class="card-h"><h3>فایل‌های پروژه</h3></div>
     <div style="padding:16px">
       <div class="drop" id="file-drop"><input type="file" id="file-input" multiple hidden>
-        <div class="ico">📎</div><b>فایل‌ها را اینجا رها کن یا کلیک کن</b>
+        <div class="ico">{% icon 'paperclip' %}</div><b>فایل‌ها را اینجا رها کن یا کلیک کن</b>
         <div style="font-size:12px;margin-top:4px;color:var(--text-faint)">حداکثر ۲۰ مگابایت برای هر فایل</div>
       </div>
       <div class="files-grid" id="file-grid" style="margin-top:14px"></div>
@@ -376,7 +376,7 @@
           {% for r in fin_rows %}
             <tr>
               <td class="num-c">{{ r.date|jalali }}</td>
-              <td style="text-align:start">{% if r.kind == 'invoice' %}🧾 {% endif %}{{ r.title }}</td>
+              <td style="text-align:start">{% if r.kind == 'invoice' %}{% icon 'invoice' %} {% endif %}{{ r.title }}</td>
               <td>{{ r.bank|default:'—' }}</td>
               <td class="num-c dep">{% if r.deposit %}{{ r.deposit|money }}{% else %}—{% endif %}</td>
               <td class="num-c wd">{% if r.withdrawal %}{{ r.withdrawal|money }}{% else %}—{% endif %}</td>
@@ -408,7 +408,7 @@
   const drop=document.getElementById('file-drop'), input=document.getElementById('file-input'), grid=document.getElementById('file-grid');
   if(!drop) return;
   function card(f){
-    const thumb=f.is_image?`<img src="${f.url}">`:'📄';
+    const thumb=f.is_image?`<img src="${f.url}">`:App.icon('file');
     return `<div class="file-card" data-id="${f.id}"><button class="del" title="حذف">×</button>
       <a class="thumb" href="${f.url}" target="_blank" rel="noopener">${thumb}</a>
       <div class="meta"><b title="${f.name}">${f.name}</b><span>${f.size}</span></div></div>`;
@@ -473,8 +473,8 @@
       <td dir="ltr" style="text-align:right">${c.username||'—'}</td>
       <td><span class="pw" data-pw="••••••">••••••</span></td>
       <td style="white-space:nowrap">
-        <button class="mini reveal">👁 نمایش</button>
-        <button class="mini copy">📋 کپی</button>
+        <button class="mini reveal">{% icon 'eye' %} نمایش</button>
+        <button class="mini copy">{% icon 'copy' %} کپی</button>
         <button class="mini del">حذف</button>
       </td></tr>`;
   }
@@ -511,8 +511,8 @@
     const tr = e.target.closest('tr'); if(!tr) return;
     const id = tr.dataset.id, pw = tr.querySelector('.pw');
     if(e.target.classList.contains('reveal')){
-      if(pw.dataset.shown){ pw.textContent='••••••'; delete pw.dataset.shown; e.target.textContent='👁 نمایش'; return; }
-      try{ const d = await App.fetchJSON(revealUrl(id)); pw.textContent=d.password; pw.dataset.shown='1'; pw.dataset.val=d.password; e.target.textContent='🙈 پنهان'; }catch(_){}
+      if(pw.dataset.shown){ pw.textContent='••••••'; delete pw.dataset.shown; e.target.innerHTML=App.icon('eye')+' نمایش'; return; }
+      try{ const d = await App.fetchJSON(revealUrl(id)); pw.textContent=d.password; pw.dataset.shown='1'; pw.dataset.val=d.password; e.target.innerHTML=App.icon('eye-off')+' پنهان'; }catch(_){}
     }
     if(e.target.classList.contains('copy')){
       try{ let v = pw.dataset.val; if(!v){ const d=await App.fetchJSON(revealUrl(id)); v=d.password; pw.dataset.val=v; } await navigator.clipboard.writeText(v); App.toast('کپی شد','ok'); }catch(_){ App.toast('کپی ناموفق','err'); }

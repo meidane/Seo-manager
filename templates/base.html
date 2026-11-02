@@ -87,6 +87,7 @@ if(b)b.addEventListener('click',close);
 document.addEventListener('keydown',function(e){if(e.key==='Escape')close();});
 document.querySelectorAll('.side .nav a').forEach(function(a){a.addEventListener('click',close);});})();
 </script>
+<script>window.ICON_SPRITE="{% static 'img/icons.svg' %}?v={% asset_v %}";</script>
 <script src="{% static 'js/app.js' %}?v={% asset_v %}"></script>
 {% if user.is_authenticated %}
 <script src="{% static 'js/timer-widget.js' %}"></script>

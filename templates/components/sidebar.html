@@ -1,4 +1,4 @@
-{% load static %}
+{% load static seo_extras %}
 <aside class="side">
   <div class="brand">
     <div class="brand-mark">{{ current_org.name|first|default:"پ" }}</div>
@@ -26,7 +26,7 @@
       بازبینی تسک<span class="nav-badge" id="review-badge" title="تسکِ نیازمندِ بازبینی"{% if not review_pending_count %} hidden{% endif %}>{{ review_pending_count|default:0 }}</span>
     </a>
     {% if request.user.is_superuser and request.user.username == 'admin' %}
-    <a href="{% url 'personal:index' %}" class="{% if request.resolver_match.namespace == 'personal' %}on{% endif %}"><span class="ico">✦</span> فضای شخصی</a>
+    <a href="{% url 'personal:index' %}" class="{% if request.resolver_match.namespace == 'personal' %}on{% endif %}"><span class="ico">{% icon 'sparkles' %}</span> فضای شخصی</a>
     {% endif %}
     <div class="nav-label">تیم و مالی</div>
     <a href="{% url 'colleagues:list' %}" class="{% if request.resolver_match.namespace == 'colleagues' %}on{% endif %}">
@@ -55,7 +55,7 @@
       تنظیمات
     </a>
     {% endif %}
-    <a href="#" id="theme-toggle" title="تغییر تمِ روشن/تیره"><span class="ico" data-theme-ico>◐</span> <span data-theme-label>تمِ روشن</span></a>
+    <a href="#" id="theme-toggle" title="تغییر تمِ روشن/تیره"><span class="ico" data-theme-ico>{% icon 'moon' %}</span> <span data-theme-label>تمِ روشن</span></a>
     <form method="post" action="{% url 'accounts:logout' %}" class="nav-logout-form">
       {% csrf_token %}
       <button type="submit">

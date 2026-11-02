@@ -14,8 +14,8 @@
           <option value="done" {% if sort == 'done' %}selected{% endif %}>بیشترین انجام‌شده</option>
           <option value="activity" {% if sort == 'activity' %}selected{% endif %}>آخرین فعالیت</option>
         </select>
-        <button type="button" class="chip" id="rm-toggle" title="نمایشِ ماه‌های گزارش زیرِ هر پروژه">📅 ماه‌های گزارش</button>
-        <a href="{% url 'core:columns' %}" class="mini" title="سفارشی‌سازی ستون‌ها">⚙ ستون‌ها</a>
+        <button type="button" class="chip" id="rm-toggle" title="نمایشِ ماه‌های گزارش زیرِ هر پروژه">{% icon 'calendar' %} ماه‌های گزارش</button>
+        <a href="{% url 'core:columns' %}" class="mini" title="سفارشی‌سازی ستون‌ها">{% icon 'cog' %} ستون‌ها</a>
       </div>
     </div>
     {% if projects %}

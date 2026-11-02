@@ -36,7 +36,7 @@
 
   {# ── ردیف ۳: وضعیت پروژه‌ها ── #}
   <section class="card glass">
-    <div class="card-h"><h3>وضعیت پروژه‌ها</h3><div class="side-c"><span class="chip on">بدترین وضعیت بالا</span><a href="{% url 'core:columns' %}" class="mini" title="سفارشی‌سازی ستون‌ها">⚙ ستون‌ها</a></div></div>
+    <div class="card-h"><h3>وضعیت پروژه‌ها</h3><div class="side-c"><span class="chip on">بدترین وضعیت بالا</span><a href="{% url 'core:columns' %}" class="mini" title="سفارشی‌سازی ستون‌ها">{% icon 'cog' %} ستون‌ها</a></div></div>
     {% if projects %}
       <table>
         <thead><tr><th>پروژه</th>{% for c in project_columns %}<th>{{ c.label }}</th>{% endfor %}</tr></thead>
@@ -57,7 +57,7 @@
   {# ── ردیف ۴: دو ستون ── #}
   <div class="duo">
     <section class="card glass">
-      <div class="card-h"><h3>عملکرد همکاران</h3><div class="side-c"><span class="chip on">بازه‌ی انتخابی</span><a href="{% url 'core:columns' %}" class="mini" title="سفارشی‌سازی ستون‌ها">⚙</a></div></div>
+      <div class="card-h"><h3>عملکرد همکاران</h3><div class="side-c"><span class="chip on">بازه‌ی انتخابی</span><a href="{% url 'core:columns' %}" class="mini" title="سفارشی‌سازی ستون‌ها">{% icon 'cog' %}</a></div></div>
       {% if colleagues %}
         <table>
           <thead><tr><th>همکار</th>{% for c in colleague_columns %}<th>{{ c.label }}</th>{% endfor %}</tr></thead>
@@ -94,6 +94,6 @@
     {% if daily_groups %}
       {% for grp in daily_groups %}{% include "tasks/_day_group.html" %}{% endfor %}
     {% else %}
-      <div class="empty" style="padding:20px"><div class="ico">📅</div><h4>در ۷ روز اخیر تسکِ انجام‌شده‌ای نیست</h4></div>
+      <div class="empty" style="padding:20px"><div class="ico">{% icon 'calendar' %}</div><h4>در ۷ روز اخیر تسکِ انجام‌شده‌ای نیست</h4></div>
     {% endif %}
   </section>

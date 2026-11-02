@@ -15,7 +15,7 @@
   <form method="get" class="glass filters" id="tx-filters">
     <input type="hidden" name="unassigned" id="f-unassigned" value="{{ filters.unassigned }}">
     <div class="search" style="max-width:280px;padding:6px 10px">
-      <span>⌕</span>
+      <span>{% icon 'search' %}</span>
       <input type="text" name="q" value="{{ q }}" placeholder="جستجو در شرح سند و توضیحات…" autocomplete="off"
              style="border:0;background:transparent;color:var(--text);flex:1;outline:none;font-family:inherit;font-size:13px">
     </div>
@@ -37,7 +37,7 @@
     <div class="ms">
       <button type="button" class="btn btn-sm ms-btn" id="cat-toggle">بابت{% if selected_categories %} (<span id="cat-count">{{ selected_categories|length|fa_digits }}</span>){% else %}: همه{% endif %} ▾</button>
       <div class="ms-drop glass" id="cat-box">
-        <input type="text" id="cat-search" placeholder="🔍 جستجوی بابت…" autocomplete="off" class="input ms-search">
+        <input type="text" id="cat-search" placeholder="جستجوی بابت…" autocomplete="off" class="input ms-search">
         <div class="ms-opts" id="cat-list">
         {% for c in categories %}
           <label class="ms-opt cat-opt" data-name="{{ c.name }}">
@@ -185,7 +185,7 @@
   // ══ ذخیره + هشدارِ نرم ══
   async function txSave(id, body){
     const r=await App.fetchJSON(`/finance/api/tx/${id}/`,{method:'PATCH',body});
-    if(r&&r.warning) App.toast('⚠ '+r.warning,'warn',6000); else App.toast('ذخیره شد','ok');
+    if(r&&r.warning) App.toast(r.warning,'warn',6000); else App.toast('ذخیره شد','ok');
     return r;
   }
   const chipIds = cell => [...cell.querySelectorAll('.txcat-chip')].map(c=>c.dataset.cid);

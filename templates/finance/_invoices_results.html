@@ -29,7 +29,7 @@
     </table>
     </div>
   {% else %}
-    <div class="empty"><div class="ico">🧾</div><h4>فاکتوری نیست</h4>{% if can_edit_finance %}<a href="{% url 'finance:invoice_new' %}" class="btn btn-p" style="margin-top:12px">＋ افزودن فاکتور</a>{% endif %}</div>
+    <div class="empty"><div class="ico">{% icon 'invoice' %}</div><h4>فاکتوری نیست</h4>{% if can_edit_finance %}<a href="{% url 'finance:invoice_new' %}" class="btn btn-p" style="margin-top:12px">＋ افزودن فاکتور</a>{% endif %}</div>
   {% endif %}
 </section>
 

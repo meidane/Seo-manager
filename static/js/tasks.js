@@ -239,7 +239,7 @@
   //    داخلِ بخشِ جمع‌شونده‌ی «تکرار»؛ فقط با کلیک روی تولبار باز می‌شود). ──
   function recurBannerHtml(t) {
     if (!(t.id && t.recurrence)) return '';
-    return `<div class="rec-bar" style="color:var(--text-dim);margin-top:8px">🔁 این تسک بخشی از یک سری تکرار است.
+    return `<div class="rec-bar" style="color:var(--text-dim);margin-top:8px">${App.icon('repeat')} این تسک بخشی از یک سری تکرار است.
       <button type="button" class="btn btn-sm" id="rec-del" data-id="${t.recurrence}" style="color:var(--danger)">حذف کل سریِ آینده</button></div>`;
   }
   function recurPickerHtml() {
@@ -364,11 +364,11 @@
     const canEdit = !!(t && t.review_can_edit);
     // note از سرور با clean_html پاکسازی شده؛ درج مستقیم HTML امن است
     const item = (n, i) => `<div class="fixnote-item" data-fix-item${i > 0 ? ' style="display:none"' : ''} data-note-id="${n.id}">
-        <div class="fixnote-meta">${esc(n.author)}${n.author ? ' · ' : ''}${esc(n.when)}${i === 0 ? ' <b>(آخرین)</b>' : ''}${canEdit ? ` <i class="fixnote-edit" data-note-edit="${n.id}" title="ویرایشِ یادداشت">✏️</i>` : ''}</div>
+        <div class="fixnote-meta">${esc(n.author)}${n.author ? ' · ' : ''}${esc(n.when)}${i === 0 ? ' <b>(آخرین)</b>' : ''}${canEdit ? ` <i class="fixnote-edit" data-note-edit="${n.id}" title="ویرایشِ یادداشت">${App.icon('pen')}</i>` : ''}</div>
         <div class="rich" data-note-body="${n.id}">${n.note}</div></div>`;
     const more = ns.length > 1
       ? `<button type="button" class="mini" id="fix-hist-toggle" style="margin-top:6px">نمایش سوابق قبلی (${ns.length - 1})</button>` : '';
-    return `<div class="fixnote-box"><div class="fixnote-h">⚠ موارد نیاز به اصلاح</div>${ns.map(item).join('')}${more}</div>`;
+    return `<div class="fixnote-box"><div class="fixnote-h">${App.icon('warning')} موارد نیاز به اصلاح</div>${ns.map(item).join('')}${more}</div>`;
   }
 
   // ── تاریخچهٔ تسک (داخلِ بخشِ جمع‌شونده‌ی تولبار؛ تعداد در چیپ) ──
@@ -552,8 +552,8 @@
   // ── بخش «گزارش» ته مودال تسک (ادیتور TinyMCE + لیست ساده + ویرایش/حذف) ──
   function reportItemHtml(r) {
     const tools = r.mine ? `<span class="report-tools">
-        <i class="rep-edit" data-id="${r.id}" title="ویرایش">✏️</i>
-        <i class="rep-del" data-id="${r.id}" title="حذف">🗑</i></span>` : '';
+        <i class="rep-edit" data-id="${r.id}" title="ویرایش">${App.icon('pen')}</i>
+        <i class="rep-del" data-id="${r.id}" title="حذف">${App.icon('trash')}</i></span>` : '';
     return `<div class="report-item" data-id="${r.id}">
         <div class="report-meta">${esc(r.author)}${r.author ? ' · ' : ''}${esc(r.at)}${tools}</div>
         <div class="rich report-body">${r.body}</div></div>`;
@@ -718,7 +718,7 @@
         App.toast('ذخیره شد', 'ok');
         // اخطارِ نرمِ فیلدهای الزامیِ خالی (ذخیره انجام شد، فقط هشدار)
         if (resp && resp.warnings && resp.warnings.length) {
-          App.toast('⚠ فیلدهای الزامیِ خالی: ' + resp.warnings.join('، '), 'warn', 6000);
+          App.toast('فیلدهای الزامیِ خالی: ' + resp.warnings.join('، '), 'warn', 6000);
         }
         if (again) { openTask(null); return; }
         App.closeModal();
@@ -835,7 +835,7 @@
     const cell = tr.querySelector('.tcell'); if (!cell) return;
     let badge = cell.querySelector('.miss-req');
     if (warnings && warnings.length) {
-      if (!badge) { badge = document.createElement('span'); badge.className = 'tag miss-req'; badge.textContent = '⚠ ناقص'; cell.appendChild(badge); }
+      if (!badge) { badge = document.createElement('span'); badge.className = 'tag miss-req'; badge.innerHTML = App.icon('warning') + ' ناقص'; cell.appendChild(badge); }
       badge.title = 'فیلدهای الزامیِ خالی: ' + warnings.join('، ');
     } else if (badge) { badge.remove(); }
   }
@@ -955,8 +955,8 @@
     const base = +cell.dataset.spent || 0;
     if (running && started) {
       val.textContent = fmtMin(base + (Date.now() - started.getTime()) / 60000);
-      if (btn) btn.textContent = '⏸'; cell.classList.add('running');
-    } else { val.textContent = fmtMin(base); if (btn) btn.textContent = '▶'; cell.classList.remove('running'); }
+      if (btn) btn.innerHTML = App.icon('pause-solid'); cell.classList.add('running');
+    } else { val.textContent = fmtMin(base); if (btn) btn.innerHTML = App.icon('play'); cell.classList.remove('running'); }
   }
   function renderAllTimerCells() { document.querySelectorAll('.timer-cell').forEach(renderTimerCell); }
   renderAllTimerCells();

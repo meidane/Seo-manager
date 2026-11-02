@@ -1,7 +1,7 @@
 {% load seo_extras %}
 <span hidden data-range-key="{{ range_key }}" data-range-note="{% if range_start_fa %}{{ range_start_fa }} تا {{ range_end_fa }} — {{ range_days|fa_digits }} روز{% endif %}"></span>
   <section class="card glass">
-    <div class="card-h"><h3>افراد و عملکردشان در بازه</h3><a href="{% url 'core:columns' %}" class="mini" title="سفارشی‌سازی ستون‌ها">⚙ ستون‌ها</a></div>
+    <div class="card-h"><h3>افراد و عملکردشان در بازه</h3><a href="{% url 'core:columns' %}" class="mini" title="سفارشی‌سازی ستون‌ها">{% icon 'cog' %} ستون‌ها</a></div>
     {% if colleagues %}
       <div class="tscroll">
       <table>

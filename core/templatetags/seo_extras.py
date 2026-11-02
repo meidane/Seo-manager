@@ -264,3 +264,17 @@ def asset_v():
     هر deploy، کشِ مرورگر و سرویس‌ورکر هر دو باطل شوند (رفعِ «کاربران آپدیت نمی‌بینند»)."""
     from core.pwa import _asset_version
     return _asset_version()
+
+
+@register.simple_tag(name='icon')
+def icon(name, cls='', title=''):
+    """آیکنِ SVG از اسپرایتِ `static/img/icons.svg` (فونت‌اوسامِ پرو؛ فهرست: `core/icons.py`) — به‌جای ایموجی.
+    رنگ = currentColor، اندازه = 1em (با کلاسِ `.ic` در style.css). `{% icon 'trash' %}`."""
+    from django.templatetags.static import static
+    from django.utils.html import escape
+    from django.utils.safestring import mark_safe
+
+    from core.pwa import _asset_version
+    t = f'<title>{escape(title)}</title>' if title else ''
+    aria = '' if title else ' aria-hidden="true"'
+    return mark_safe(f'<svg class="ic {escape(cls)}"{aria}>{t}<use href="{static("img/icons.svg")}?v={_asset_version()}#{escape(name)}"/></svg>')

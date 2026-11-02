@@ -39,7 +39,7 @@
       </table>
       </div>
     {% else %}
-      <div class="empty"><div class="ico">💰</div><h4>هنوز صورت‌حساب حقوقی نیست</h4><a href="{% url 'finance:payroll_new' %}" class="btn btn-p" style="margin-top:12px">＋ صدور حقوق</a></div>
+      <div class="empty"><div class="ico">{% icon 'wallet' %}</div><h4>هنوز صورت‌حساب حقوقی نیست</h4><a href="{% url 'finance:payroll_new' %}" class="btn btn-p" style="margin-top:12px">＋ صدور حقوق</a></div>
     {% endif %}
   </section>
 {% endblock %}

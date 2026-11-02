@@ -4,8 +4,8 @@
   <span class="team-count">{{ node.count|fa_digits }} نفر</span>
   <span class="team-tools">
     <i class="t-sub" data-id="{{ node.id }}" title="افزودن زیرمجموعه">＋</i>
-    <i class="t-ren" data-id="{{ node.id }}" data-name="{{ node.name }}" title="تغییر نام">✏️</i>
-    <i class="t-del" data-id="{{ node.id }}" title="حذف">🗑</i>
+    <i class="t-ren" data-id="{{ node.id }}" data-name="{{ node.name }}" title="تغییر نام">{% icon 'pen' %}</i>
+    <i class="t-del" data-id="{{ node.id }}" title="حذف">{% icon 'trash' %}</i>
   </span>
 </div>
 {% for child in node.children %}

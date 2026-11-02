@@ -30,7 +30,7 @@
     <span style="color:var(--text-faint);font-size:12px">یا</span>
 
     {# بابت — قابلِ جستجو (datalist) #}
-    <input class="input" id="lg-cat-search" list="lg-cats" placeholder="🔍 بابت…" autocomplete="off" style="max-width:200px"
+    <input class="input" id="lg-cat-search" list="lg-cats" placeholder="بابت…" autocomplete="off" style="max-width:200px"
            value="{% for c in categories %}{% if filters.category == c.id|stringformat:'s' %}{{ c.name }}{% endif %}{% endfor %}">
     <input type="hidden" name="category" id="lg-category" value="{{ filters.category }}">
     <datalist id="lg-cats">{% for c in categories %}<option value="{{ c.name }}"></option>{% endfor %}</datalist>
