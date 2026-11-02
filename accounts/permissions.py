@@ -42,6 +42,7 @@ _PROJECT_PERMS = {
     'project_colleagues_access': 'دسترسی به تبِ «همکاران» پروژه',
     'project_credentials': 'دسترسی به تبِ «دسترسی‌ها» (رمزهای پروژه)',
     'project_reports': 'دسترسی به تبِ «گزارش‌ها»ی پروژه',
+    'shared_files': 'بخشِ «فایل‌ها» (آپلود، لینکِ اشتراکی، تغییرِ نام، حذف)',
     'manage_finance': 'دسترسی به حسابداری',
     'view_invoices': 'مشاهده‌ی فاکتورها و گزارشِ مالیِ پروژه (فقط دیدن، بدونِ ویرایش)',
 }
@@ -76,7 +77,7 @@ ROLE_PERMS = {
     ADMIN: _ALL,  # «مدیر» — دسترسیِ کامل (مالک علاوه‌براین همیشه wildcard `{'*'}` هم دارد)
     MANAGER: {
         'add_project', 'edit_project', 'view_all_projects', 'project_files',
-        'project_colleagues_access', 'project_credentials', 'project_reports',
+        'project_colleagues_access', 'project_credentials', 'project_reports', 'shared_files',
         'edit_task', 'delete_task', 'view_other_tasks', 'edit_time', 'review', 'view_reports',
     },
     MEMBER: {'edit_task', 'view_reports'},  # view_other_tasks ندارد → فقط تسکِ خودش

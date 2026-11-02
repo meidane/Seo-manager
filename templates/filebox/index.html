@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}فایل‌ها{% endblock %}
+
+{% block content %}
+  <div class="page-h"><h1>فایل‌ها</h1>
+    <div class="side-c">
+      <div class="fb-search">{% icon 'search' %}<input type="text" id="fb-q" placeholder="جستجو در نامِ فایل‌ها…" autocomplete="off"></div>
+      <button class="btn btn-p" id="fb-pick">{% icon 'upload' %} آپلودِ فایل</button>
+    </div>
+  </div>
+  <input type="file" id="fb-input" multiple hidden>
+
+  <section class="card glass fb-card">
+    <div class="fb-drop" id="fb-drop">
+      <span class="fb-drop-ico">{% icon 'upload' %}</span>
+      <div><b>فایل‌ها را اینجا رها کن</b><span>یا روی «آپلودِ فایل» بزن — حداکثر {{ max_mb|fa_digits }} مگابایت. لینکِ هر فایل بدونِ ورود باز می‌شود.</span></div>
+    </div>
+    <div class="fb-progress" id="fb-progress" hidden></div>
+    <div id="fb-list"></div>
+  </section>
+  {{ files|json_script:"fb-init" }}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  const API = "{% url 'filebox:api_list' %}";
+  const list = document.getElementById('fb-list'), input = document.getElementById('fb-input'),
+        drop = document.getElementById('fb-drop'), prog = document.getElementById('fb-progress'), q = document.getElementById('fb-q');
+  let files = JSON.parse(document.getElementById('fb-init').textContent || '[]');
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  // fetch با CSRF؛ برخلافِ App.fetchJSON روی 409 توست نمی‌دهد تا «جایگزین شود؟» پرسیده شود
+  async function send(url, opts = {}) {
+    const headers = Object.assign({'X-CSRFToken': App.csrf, 'X-Requested-With': 'XMLHttpRequest'}, opts.headers || {});
+    let body = opts.body;
+    if (body && !(body instanceof FormData)) { headers['Content-Type'] = 'application/json'; body = JSON.stringify(body); }
+    const r = await fetch(url, {method: opts.method || 'GET', headers, body, credentials: 'same-origin'});
+    let data = {}; try { data = await r.json(); } catch (_) {}
+    return {status: r.status, ok: r.ok, data};
+  }
+
+  function row(f) {
+    const media = f.thumb ? `<img src="${esc(f.thumb)}" alt="" loading="lazy">` : App.icon(f.kind);
+    return `<div class="fb-row" data-id="${f.id}">
+      <a class="fb-media k-${esc(f.kind)}" href="${esc(f.link)}" target="_blank" rel="noopener" title="باز کردن">${media}</a>
+      <div class="fb-main">
+        <a class="fb-name" href="${esc(f.link)}" target="_blank" rel="noopener" title="${esc(f.name)}">${esc(f.name)}</a>
+        <div class="fb-meta"><span dir="ltr">${esc(f.size)}</span>${f.by ? ' · ' + esc(f.by) : ''} · ${esc(f.ago)}</div>
+      </div>
+      <div class="fb-acts">
+        <button class="fb-btn fb-copy" title="کپیِ لینک">${App.icon('link')}<span>کپیِ لینک</span></button>
+        <button class="fb-btn fb-ren" title="تغییرِ نام">${App.icon('pen')}</button>
+        <button class="fb-btn fb-del" title="حذف">${App.icon('trash')}</button>
+      </div>
+    </div>`;
+  }
+  function render() {
+    const term = q.value.trim().toLowerCase();
+    const shown = term ? files.filter(f => f.name.toLowerCase().includes(term)) : files;
+    if (!files.length) {
+      list.innerHTML = `<div class="empty"><div class="ico">${App.icon('folder-open')}</div><h4>هنوز فایلی آپلود نشده</h4></div>`;
+    } else if (!shown.length) {
+      list.innerHTML = `<div class="empty" style="padding:28px"><h4>فایلی با این نام پیدا نشد</h4></div>`;
+    } else {
+      list.innerHTML = `<div class="fb-count">${shown.length.toLocaleString('fa')} فایل</div>` + shown.map(row).join('');
+    }
+  }
+  const upsert = f => { files = [f, ...files.filter(x => x.id !== f.id)]; render(); };
+
+  async function uploadOne(file) {
+    const fd = new FormData(); fd.append('file', file);
+    let r = await send(API, {method: 'POST', body: fd});
+    if (r.status === 409 && r.data.conflict) {
+      const yes = await App.confirm(`فایلی با نامِ «${esc(r.data.name)}» از قبل هست.<br>جایگزین شود؟ (لینکِ قبلی همان می‌ماند)`, {okText: 'جایگزین کن', cancelText: 'نه'});
+      if (!yes) return;
+      fd.append('replace', '1');
+      r = await send(API, {method: 'POST', body: fd});
+    }
+    if (!r.ok) { App.toast(r.data.detail || 'آپلود ناموفق بود', 'err'); return; }
+    upsert(r.data.file);
+    App.toast(r.data.replaced ? 'جایگزین شد' : 'آپلود شد', 'ok');
+  }
+  async function uploadAll(fileList) {
+    const arr = [...fileList]; if (!arr.length) return;
+    prog.hidden = false;
+    for (let i = 0; i < arr.length; i++) {
+      prog.textContent = `در حالِ آپلود ${(i + 1).toLocaleString('fa')} از ${arr.length.toLocaleString('fa')}: ${arr[i].name}`;
+      try { await uploadOne(arr[i]); } catch (_) { App.toast('آپلود ناموفق بود', 'err'); }
+    }
+    prog.hidden = true;
+  }
+
+  document.getElementById('fb-pick').onclick = () => input.click();
+  input.onchange = () => { uploadAll(input.files); input.value = ''; };
+  q.oninput = render;
+  ['dragenter', 'dragover'].forEach(ev => document.addEventListener(ev, e => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { e.preventDefault(); drop.classList.add('over'); } }));
+  ['dragleave', 'drop'].forEach(ev => document.addEventListener(ev, e => { if (ev === 'dragleave' && e.relatedTarget) return; drop.classList.remove('over'); }));
+  document.addEventListener('drop', e => { if (e.dataTransfer?.files?.length) { e.preventDefault(); uploadAll(e.dataTransfer.files); } });
+
+  list.addEventListener('click', async e => {
+    const el = e.target.closest('.fb-row'); if (!el) return;
+    const f = files.find(x => x.id === +el.dataset.id); if (!f) return;
+    if (e.target.closest('.fb-copy')) {
+      try { await navigator.clipboard.writeText(f.link); } catch (_) {
+        const t = document.createElement('textarea'); t.value = f.link; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove();
+      }
+      const b = e.target.closest('.fb-copy'); b.classList.add('done'); b.querySelector('span').textContent = 'کپی شد';
+      setTimeout(() => { b.classList.remove('done'); b.querySelector('span').textContent = 'کپیِ لینک'; }, 1600);
+    } else if (e.target.closest('.fb-ren')) {
+      startRename(el, f);
+    } else if (e.target.closest('.fb-del')) {
+      if (!await App.confirm(`«${esc(f.name)}» حذف شود؟<br>لینکِ آن دیگر کار نمی‌کند.`, {okText: 'حذف', cancelText: 'انصراف'})) return;
+      const r = await send(`${API}${f.id}/`, {method: 'DELETE'});
+      if (!r.ok) return App.toast(r.data.detail || 'حذف نشد', 'err');
+      files = files.filter(x => x.id !== f.id); render(); App.toast('حذف شد', 'ok');
+    }
+  });
+
+  // تغییرِ نام درجا: Enter = ذخیره، Esc = انصراف
+  function startRename(el, f) {
+    const nameEl = el.querySelector('.fb-name');
+    const inp = document.createElement('input');
+    inp.className = 'input fb-ren-input'; inp.value = f.name;
+    nameEl.replaceWith(inp); inp.focus();
+    const dot = f.name.lastIndexOf('.'); inp.setSelectionRange(0, dot > 0 ? dot : f.name.length);
+    let busy = false;
+    const finish = async (save) => {
+      if (busy) return; busy = true;
+      const name = inp.value.trim();
+      if (!save || !name || name === f.name) { render(); return; }
+      let r = await send(`${API}${f.id}/`, {method: 'PATCH', body: {name}});
+      if (r.status === 409 && r.data.conflict) {
+        const yes = await App.confirm(`فایلی با نامِ «${esc(r.data.name)}» از قبل هست.<br>جایگزین شود؟ (فایلِ قبلی حذف می‌شود)`, {okText: 'جایگزین کن', cancelText: 'نه'});
+        if (!yes) { render(); return; }
+        r = await send(`${API}${f.id}/`, {method: 'PATCH', body: {name, replace: true}});
+        if (r.ok) files = files.filter(x => x.name !== r.data.file.name || x.id === f.id);
+      }
+      if (!r.ok) { App.toast(r.data.detail || 'تغییرِ نام نشد', 'err'); render(); return; }
+      upsert(r.data.file); App.toast('نام عوض شد', 'ok');
+    };
+    inp.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); finish(true); } if (ev.key === 'Escape') finish(false); });
+    inp.addEventListener('blur', () => finish(true));
+  }
+
+  render();
+})();
+</script>
+{% endblock %}
