@@ -1996,3 +1996,15 @@ input[type=checkbox]:disabled{opacity:.5;cursor:default}
 .main{padding-bottom:96px}
 :focus-visible{outline:2px solid var(--primary-ring);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}}
+
+/* ===== دروازهٔ MCP (/settings/mcp/) ===== */
+.mcp-switch{display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;margin:0}
+.mcp-url-wrap{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:14px 17px 4px}
+.mcp-url-wrap code{flex:1 1 320px;min-width:0;overflow-wrap:anywhere;padding:9px 12px;border-radius:var(--r-sm,8px);
+  background:var(--fill);border:1px solid var(--stroke-soft);font-size:12.5px;color:var(--text)}
+.mcp-guide{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;padding:10px 17px}
+.mcp-guide>div{background:var(--fill);border:1px solid var(--stroke-soft);border-radius:var(--r-md,12px);padding:10px 14px;font-size:13px}
+.mcp-guide ol{margin:6px 0 0;padding-inline-start:20px;line-height:1.9;color:var(--text-dim)}
+.mcp-hint{margin:0;padding:4px 17px 14px;font-size:12px;color:var(--text-faint)}
+.mcp-acts{white-space:nowrap;text-align:left}
+.mcp-sum{max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

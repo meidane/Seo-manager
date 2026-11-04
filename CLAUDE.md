@@ -32,6 +32,8 @@
   `chatgpt-connector/release/ChatGPT-WP.zip`. `chatgpt-connector/CLAUDE.md`.
 - `connector/` — **همگام‌سازیِ ChatGPT-WP**: یک انبارِ ساده برای هر سازمان (تنظیمات/سایت‌ها/رمزها رمزنگاری‌شده +
   فایل‌ها) که برنامهٔ دسکتاپ با توکنِ API پول/پوش می‌کند + صفحهٔ `/settings/chatgpt-sync/`. `connector/CLAUDE.md`.
+- `mcpgate/` — **دروازهٔ MCP**: ChatGPT/Claude → `/mcp/<token>/` (پنل) → سایت‌ها (REST با Application Password +
+  پراکسیِ MCPِ افزونهٔ Novamira برای PHP/فایل/قالب). بدونِ محدودیت. صفحه `/settings/mcp/`. `mcpgate/CLAUDE.md`.
 - `filebox/` — **«فایل‌ها»ی سایدبار**: آپلود + لینکِ اشتراکیِ بدونِ ورود (`/f/<token>/`، ثابت با جایگزینی/تغییرِ نام) +
   تغییرِ نام/حذف؛ هشدارِ جایگزینیِ هم‌نام. گیت `shared_files`. `filebox/CLAUDE.md`.
 - `personal/` — **فضای شخصیِ خصوصی** (فقط سوپریوزر/`admin`): بالای صفحه = **تقویمِ مشترک**
@@ -74,6 +76,7 @@
 | کاتالوگِ ستون‌های قابل‌سفارشی‌سازی (تسک/پروژه/همکار) | `core/columns.py: get_catalog/get_columns/cell_value` + `core/models.py: ColumnConfig` + تگ `{% column_cell %}` |
 | ستون‌های دیده‌شونده‌ی جدولِ تسک (عمومی همیشه، سفارشیِ نوع فقط با فیلترِ نوع) | `core/columns.py: visible_task_columns(type_def_id)` — لیست/لودِ تنبل/بردِ سئو |
 | اتصالِ اپ/افزونهٔ بیرونی/AI به API | **توکنِ API** (`accounts.APIToken`، هدرِ `Authorization: Token xxx`، از `/settings/api-tokens/`) — نه سشن+کوکی؛ SameSite=Lax کوکیِ سشن را در fetchِ کراس‌سایتِ افزونه نمی‌فرستد. الگو: `seo/api.py: token_required` / `token_or_login_required`. |
+| اتصالِ ChatGPT/Claude به سایت‌ها از راهِ پنل (MCP سرورِ خودِ پنل) | `mcpgate/` (`tools.py: TOOLS/run` + `wp.py: request/mcp`) — توکن در آدرس، نه `APIToken` (باید همیشه قابلِ نمایش باشد) |
 | همگام‌سازیِ برنامهٔ دسکتاپِ ChatGPT-WP (داده/فایل‌ها، بینِ چند کامپیوتر) | پنل: `connector/` (انبار + API توکنی) · برنامه: `chatgpt-connector/plugin/server/sync.mjs` (ادغام) |
 | گروه‌بندی نوع در گزارش | `reports/models.py: BUCKETS` |
 | فیلدهای قابل‌نمایش به مشتری | `reports/models.py: CLIENT_FIELDS` + `Report.visible_fields` |

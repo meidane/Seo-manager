@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}اتصالِ MCP{% endblock %}
+
+{% block content %}
+  {% include "settings/_nav.html" %}
+  <div class="page-h"><h1>اتصالِ MCP</h1></div>
+
+  <section class="card glass" style="margin-bottom:14px">
+    <div class="card-h"><h3>آدرسِ اتصال</h3>
+      <label class="mcp-switch"><input type="checkbox" id="gate-on" {% if gate.enabled %}checked{% endif %}> فعال</label>
+    </div>
+    <div class="mcp-url-wrap">
+      <code dir="ltr" id="mcp-url">{{ mcp_url }}</code>
+      <button class="btn btn-sm btn-p" id="copy-url">{% icon 'copy' %} کپی</button>
+      <button class="btn btn-sm" id="regen">{% icon 'refresh' %} توکنِ جدید</button>
+    </div>
+    <div class="mcp-guide">
+      <div><b>ChatGPT (دسکتاپ یا وب)</b>
+        <ol><li>Settings ← Apps &amp; Connectors ← Advanced settings ← <b>Developer mode</b> را روشن کن.</li>
+          <li>در Apps &amp; Connectors گزینهٔ <b>Create</b>: یک نام (مثلاً «سایت‌ها»)، همین آدرس در <b>MCP Server URL</b>، و Authentication = <b>No authentication</b>.</li>
+          <li>در هر گفت‌وگو از «＋» ← Developer mode همین کانکتور را روشن کن.</li></ol></div>
+      <div><b>Claude (دسکتاپ یا وب)</b>
+        <ol><li>Settings ← Connectors ← <b>Add custom connector</b>.</li>
+          <li>یک نام و همین آدرس را بچسبان ← Add.</li></ol></div>
+    </div>
+    <p class="mcp-hint">مسیر: ChatGPT/Claude ← <b>پنل</b> ← سایت. توکن داخلِ همین آدرس است؛ اگر لو رفت «توکنِ جدید» بزن و آدرسِ تازه را در کانکتورها عوض کن.</p>
+  </section>
+
+  <section class="card glass" style="margin-bottom:14px">
+    <div class="card-h"><h3>سایت‌ها</h3>
+      <div class="side-c">
+        {% if sync_sites %}<button class="btn btn-sm" id="import">{% icon 'download' %} دریافت از ChatGPT-WP ({{ sync_sites|fa_digits }})</button>{% endif %}
+        <button class="btn btn-sm btn-p" id="add-site">{% icon 'plus' %} سایتِ جدید</button>
+      </div>
+    </div>
+    <div class="tscroll"><table class="mcp-sites">
+      <thead><tr><th>سایت</th><th>آدرس</th><th>کاربر</th><th>REST</th><th>Novamira</th><th></th></tr></thead>
+      <tbody id="site-rows"></tbody>
+    </table></div>
+  </section>
+
+  <section class="card glass">
+    <div class="card-h"><h3>آخرین درخواست‌ها</h3></div>
+    {% if logs %}
+    <div class="tscroll"><table>
+      <thead><tr><th>زمان</th><th>سایت</th><th>ابزار</th><th>جزئیات</th><th>مدت</th><th>نتیجه</th></tr></thead>
+      <tbody>
+      {% for l in logs %}
+        <tr>
+          <td>{{ l.created_at|timeago }}</td>
+          <td>{{ l.site|default:"—" }}</td>
+          <td dir="ltr" style="text-align:right">{{ l.tool }}</td>
+          <td dir="auto" class="mcp-sum">{{ l.summary|default:"" }}{% if l.backup %} <span class="tag t-mute" title="نسخهٔ قبلی ذخیره شد">بک‌آپ</span>{% endif %}</td>
+          <td><span dir="ltr">{{ l.ms }}ms</span></td>
+          <td>{% if l.ok %}<span class="tag t-ok">موفق</span>{% else %}<span class="tag t-bad" title="{{ l.error }}">خطا</span>{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}
+      <div class="empty"><div class="ico">{% icon 'link' %}</div><h4>هنوز درخواستی نیامده</h4></div>
+    {% endif %}
+  </section>
+  {{ sites|json_script:"mcp-sites" }}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  const URLS = {gate: "{% url 'mcpgate:gate' %}", save: "{% url 'mcpgate:site_save' %}", imp: "{% url 'mcpgate:site_import' %}",
+                test: id => `/settings/mcp/site/${id}/test/`, del: id => `/settings/mcp/site/${id}/delete/`};
+  let sites = JSON.parse(document.getElementById('mcp-sites').textContent || '[]');
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const rows = document.getElementById('site-rows');
+
+  function badge(lc, key) {
+    if (!lc) return '<span class="zero">تست نشده</span>';
+    const ok = key === 'rest' ? lc.ok : lc.novamira;
+    const err = key === 'rest' ? lc.error : lc.novamira_error;
+    return ok ? '<span class="tag t-ok">وصل</span>' : `<span class="tag ${key === 'rest' ? 't-bad' : 't-mute'}" title="${esc(err)}">${key === 'rest' ? 'خطا' : 'ندارد'}</span>`;
+  }
+  function render() {
+    rows.innerHTML = sites.length ? sites.map(s => `<tr data-id="${s.id}">
+      <td><b>${esc(s.key)}</b>${s.active ? '' : ' <span class="zero">(غیرفعال)</span>'}</td>
+      <td dir="ltr" style="text-align:right">${esc(s.url)}</td>
+      <td dir="ltr" style="text-align:right">${esc(s.user) || '<span class="zero">—</span>'}${s.has_password ? '' : ' <span class="tag t-warn">بدونِ رمز</span>'}</td>
+      <td>${badge(s.last_check, 'rest')}</td>
+      <td>${badge(s.last_check, 'nova')}</td>
+      <td class="mcp-acts"><button class="btn btn-sm s-test">تستِ اتصال</button>
+        <button class="btn btn-sm s-edit" title="ویرایش">${App.icon('pen')}</button>
+        <button class="btn btn-sm s-del" title="حذف">${App.icon('trash')}</button></td></tr>`).join('')
+      : '<tr><td colspan="6" class="zero" style="text-align:center;padding:22px">هنوز سایتی تعریف نشده.</td></tr>';
+  }
+  const upsert = s => { const i = sites.findIndex(x => x.id === s.id); i < 0 ? sites.push(s) : sites[i] = s; render(); };
+
+  function openForm(s = {}) {
+    App.openModal(`<div class="modal-h"><h3>${s.id ? 'ویرایشِ سایت' : 'سایتِ جدید'}</h3><button class="x" onclick="App.closeModal()">×</button></div>
+      <div class="modal-b">
+        <div class="grid2"><div class="field"><label>نامِ کوتاه (برای صدا زدن)</label><input class="input" id="f-key" dir="ltr" value="${esc(s.key)}" placeholder="steeltak"></div>
+          <div class="field"><label>آدرسِ سایت</label><input class="input" id="f-url" dir="ltr" value="${esc(s.url)}" placeholder="https://example.com"></div></div>
+        <div class="grid2"><div class="field"><label>نامِ کاربریِ وردپرس</label><input class="input" id="f-user" dir="ltr" value="${esc(s.user)}"></div>
+          <div class="field"><label>رمزِ برنامه (Application Password)</label><input class="input" id="f-pass" dir="ltr" placeholder="${s.has_password ? 'ذخیره شده — برای تغییر بنویس' : 'xxxx xxxx xxxx xxxx'}"></div></div>
+        <div class="field"><label>مسیرِ MCPِ Novamira (معمولاً دست نزن)</label><input class="input" id="f-mcp" dir="ltr" value="${esc(s.mcp_path || 'mcp/novamira')}"></div>
+        <div class="field"><label>یادداشت</label><input class="input" id="f-notes" value="${esc(s.notes)}"></div>
+        <label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="f-active" ${s.active === false ? '' : 'checked'}> فعال</label>
+      </div>
+      <div class="modal-f"><button class="btn btn-p" id="f-save">ذخیره</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+    document.getElementById('f-save').onclick = async () => {
+      const v = id => document.getElementById(id).value.trim();
+      const r = await App.fetchJSON(URLS.save, {method: 'POST', body: {id: s.id, key: v('f-key'), url: v('f-url'), user: v('f-user'),
+        password: v('f-pass'), mcp_path: v('f-mcp'), notes: v('f-notes'), active: document.getElementById('f-active').checked}});
+      upsert(r.site); App.closeModal(); App.toast('ذخیره شد', 'ok');
+      test(r.site.id);
+    };
+  }
+
+  async function test(id) {
+    const tr = rows.querySelector(`tr[data-id="${id}"]`);
+    tr && (tr.querySelector('.s-test').textContent = 'در حالِ تست…');
+    try {
+      const r = await App.fetchJSON(URLS.test(id), {method: 'POST'});
+      upsert(r.site);
+      const res = r.result;
+      App.toast(res.ok ? `اتصال برقرار است${res.novamira.ok ? ` · Novamira: ${res.novamira.tools} ابزار` : ''}` : (res.rest.error || 'اتصال برقرار نشد'), res.ok ? 'ok' : 'err', 6000);
+    } catch (_) { render(); }
+  }
+
+  rows.addEventListener('click', async e => {
+    const tr = e.target.closest('tr[data-id]'); if (!tr) return;
+    const s = sites.find(x => x.id === +tr.dataset.id);
+    if (e.target.closest('.s-test')) test(s.id);
+    else if (e.target.closest('.s-edit')) openForm(s);
+    else if (e.target.closest('.s-del')) {
+      if (!await App.confirm(`سایتِ «${esc(s.key)}» از پنل حذف شود؟`, {okText: 'حذف'})) return;
+      await App.fetchJSON(URLS.del(s.id), {method: 'POST'});
+      sites = sites.filter(x => x.id !== s.id); render();
+    }
+  });
+  document.getElementById('add-site').onclick = () => openForm();
+  const imp = document.getElementById('import');
+  if (imp) imp.onclick = async () => {
+    const r = await App.fetchJSON(URLS.imp, {method: 'POST'});
+    sites = r.sites; render(); App.toast(`${r.added} سایتِ جدید، ${r.updated} به‌روز شد`, 'ok');
+  };
+  document.getElementById('copy-url').onclick = async () => {
+    const t = document.getElementById('mcp-url').textContent;
+    try { await navigator.clipboard.writeText(t); } catch (_) {}
+    App.toast('آدرس کپی شد', 'ok');
+  };
+  document.getElementById('regen').onclick = async () => {
+    if (!await App.confirm('توکنِ جدید ساخته شود؟<br>آدرسِ فعلی دیگر کار نمی‌کند و باید در ChatGPT/Claude عوضش کنی.', {okText: 'بساز'})) return;
+    const r = await App.fetchJSON(URLS.gate, {method: 'POST', body: {regenerate: true}});
+    document.getElementById('mcp-url').textContent = r.url; App.toast('توکنِ جدید ساخته شد', 'ok');
+  };
+  document.getElementById('gate-on').onchange = async e => {
+    await App.fetchJSON(URLS.gate, {method: 'POST', body: {enabled: e.target.checked}});
+    App.toast(e.target.checked ? 'فعال شد' : 'غیرفعال شد', 'ok');
+  };
+  render();
+})();
+</script>
+{% endblock %}

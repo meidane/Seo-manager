@@ -46,6 +46,7 @@ LOCAL_APPS = [
     'personal',  # فضای شخصیِ خصوصی (فقط سوپریوزر) — داشبورد/هبیت/اهداف
     'connector',  # انبارِ همگام‌سازیِ برنامهٔ دسکتاپِ ChatGPT-WP
     'filebox',  # بخشِ «فایل‌ها»: آپلود + لینکِ اشتراکی
+    'mcpgate',  # دروازهٔ MCP: ChatGPT/Claude → پنل → سایت‌ها
 ]
 
 THIRD_PARTY_APPS = [
