@@ -126,7 +126,9 @@
   با done شدنِ تسکِ واقعی، پیش‌نما واقعی و پیش‌نمای بعدی ساخته می‌شود (در `task_status` و
   `task_detail` PATCH، فقط در گذارِ به done). **`Task.objects` پیش‌نماها را پنهان می‌کند**
   (`TaskManager`)؛ تقویم با `Task.objects.with_placeholders()` نشانشان می‌دهد (کلاس `.placeholder`).
-  حذف سری: `api.recurrence_delete` (تسک‌های done می‌مانند). ساخت: نوار تکرار در مودال (تسک جدید).
+  حذف سری: `api.recurrence_delete` (تسک‌های done می‌مانند). ساخت: نوار تکرار در مودال — هم تسکِ جدید، **هم تسکِ موجودی
+  که هنوز سری ندارد** (چیپِ «تکرار» در مودالِ ویرایش؛ `task_detail` PATCH با کلیدِ `recurrence` → `_attach_recurrence`؛
+  بدونِ `planned_date` → ۴۰۰). تسکِ از قبل تکرارشونده فقط بنرِ «حذف سری» دارد.
   - **بازکردن/ویرایشِ رخدادِ آینده:** `task_detail` از `Task.objects.with_placeholders()`
     می‌خواند تا **پیش‌نما (رخدادِ بعدی) هم در مودال باز/ویرایش شود** (قبلاً ۴۰۴ می‌داد).
     رخدادهای **مجازیِ** تقویم (`_virtual_recurrence`، `id=None`) کلیدِ `series_task_id`

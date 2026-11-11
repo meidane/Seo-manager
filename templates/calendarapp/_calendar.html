@@ -10,6 +10,7 @@ cal_fixed_assignee?, cal_undated_default?, cal_quick_add?, cal_personal?, cal_qu
      data-undated="{% if cal_undated_default %}1{% else %}0{% endif %}"
      {% if cal_quick_add %}data-quickadd="1"{% endif %}
      {% if cal_personal %}data-personal="1"{% endif %}
+     data-hide-done="{% if cal_personal %}0{% else %}1{% endif %}"
      {% if cal_quick_project %}data-quick-project="{{ cal_quick_project }}"{% endif %}
      {% if cal_quick_type %}data-quick-type="{{ cal_quick_type }}"{% endif %}>
   <div class="calx-top">
@@ -24,6 +25,7 @@ cal_fixed_assignee?, cal_undated_default?, cal_quick_add?, cal_personal?, cal_qu
       <select class="rich-select calx-fsel" data-cf="project"><option value="">همه‌ی پروژه‌ها</option>{% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}" data-search="{{ p.domain|default:"" }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %}>{{ p.name }}</option>{% endfor %}</select>
       {% if not cal_fixed_assignee %}<select class="rich-select calx-fsel" data-cf="assignee"><option value="">همه‌ی همکاران</option>{% for c in colleagues %}<option value="{{ c.id }}" data-color="{{ c.color }}"{% if c.avatar %} data-img="{{ c.avatar.url }}"{% endif %}>{{ c.full_name }}</option>{% endfor %}</select>{% endif %}
       <select class="input calx-fsel calx-type" data-cf="type_def"><option value="">همه‌ی انواع</option>{% for t in task_types %}<option value="{{ t.id }}">{{ t.icon }} {{ t.name }}</option>{% endfor %}</select>
+      <button type="button" class="chip calx-undated-btn" data-cal-hidedone title="پنهان/نمایشِ تسک‌های انجام‌شده">{% icon 'eye-off' %} مخفی‌کردنِ انجام‌شده‌ها</button>
       <button type="button" class="chip calx-undated-btn" data-cal-undated-toggle title="نمایشِ تسک‌های بدون تاریخ">تسک‌های بدون تاریخ<span class="calx-ubadge" data-undated-count hidden>0</span></button>
     </div>
   </div>

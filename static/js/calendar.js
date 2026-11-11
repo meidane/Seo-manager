@@ -80,6 +80,11 @@
     const uBadge = root.querySelector('[data-undated-count]');
     let year = +root.dataset.year, month = +root.dataset.month;
     let showUndated = root.dataset.undated === '1';
+    // «مخفی‌کردنِ انجام‌شده‌ها»: پیش‌فرض در فضای شخصی خاموش، بقیه‌جا روشن؛ انتخابِ کاربر در localStorage می‌ماند
+    const hdKey = 'calHideDone:' + (root.dataset.personal ? 'personal' : 'main');
+    let hideDone = root.dataset.hideDone === '1';
+    try { const v = localStorage.getItem(hdKey); if (v !== null) hideDone = v === '1'; } catch (_) {}
+    let lastDays = null;
 
     const monthSel = root.querySelector('.calx-month');
     const yearSel = root.querySelector('.calx-year');
@@ -135,6 +140,15 @@
       wrap.scrollLeft += (tr.left + tr.width / 2) - (wr.left + wr.width / 2);
     }
 
+    function renderGrid() {
+      if (!lastDays) return;
+      const days = hideDone ? lastDays.map((c) => Object.assign({}, c, { tasks: c.tasks.filter((t) => !t.done) })) : lastDays;
+      grid.innerHTML = days.map((c) => cellHtml(c, canCreate)).join('');
+      bindGridDnd();
+      const b = root.querySelector('[data-cal-hidedone]');
+      if (b) b.classList.toggle('on', hideDone);
+    }
+
     let seq = 0;
     async function load() {
       const s = ++seq;
@@ -142,8 +156,9 @@
         const d = await App.fetchJSON('/calendar/api/?' + q());
         if (s !== seq) return;
         year = d.year; month = d.month;
-        grid.innerHTML = d.days.map((c) => cellHtml(c, canCreate)).join('');
-        syncNav(); bindGridDnd();
+        lastDays = d.days;
+        renderGrid();
+        syncNav();
         if (showUndated) renderUndated(d.undated);
         maybeScrollToToday();
       } catch (_) {}
@@ -156,6 +171,11 @@
     if (monthSel) monthSel.onchange = () => { month = +monthSel.value; load(); };
     if (yearSel) yearSel.onchange = () => { year = +yearSel.value; load(); };
     root.querySelectorAll('[data-cf]').forEach((el) => el.addEventListener('change', load));
+    const hdBtn = root.querySelector('[data-cal-hidedone]');
+    if (hdBtn) {
+      hdBtn.classList.toggle('on', hideDone);
+      hdBtn.onclick = () => { hideDone = !hideDone; try { localStorage.setItem(hdKey, hideDone ? '1' : '0'); } catch (_) {} renderGrid(); };
+    }
     const uToggle = root.querySelector('[data-cal-undated-toggle]');
     if (uToggle) uToggle.onclick = () => {
       showUndated = !showUndated;

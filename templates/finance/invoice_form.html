@@ -11,6 +11,15 @@
   </div>
   {% include "finance/_nav.html" %}
 
+  {% if not invoice and can_edit_finance %}
+  <section class="card glass inv-copy">
+    <div class="inv-copy-in">
+      <span class="inv-copy-lab">{% icon 'copy' %} کپی از فاکتورِ قبلی</span>
+      <select id="inv-copy-src" class="rich-select"><option value="">— انتخابِ فاکتور (پروژه، توضیحات و ردیف‌ها کپی می‌شوند) —</option>{% for c in copy_sources %}<option value="{{ c.id }}" data-color="{{ c.project.color|default:'' }}" data-search="{{ c.number }} {{ c.project.domain|default:'' }}" {% if c.id|stringformat:'s' == copy_from %}selected{% endif %}>#{{ c.number|fa_digits }} — {{ c.project.name|default:'بدونِ پروژه' }} — {{ c.issue_date|jalali }}{% if c.description %} — {{ c.description|truncatechars:40 }}{% endif %}</option>{% endfor %}</select>
+    </div>
+  </section>
+  {% endif %}
+
   {# ── مشخصات کلیِ فاکتور ── #}
   <section class="card glass" data-invoice="{{ invoice.pk|default:'' }}">
     <div class="card-h"><h3>مشخصات فاکتور</h3>
@@ -182,6 +191,33 @@
     else { addRow(); const last=body.querySelector('.inv-row:last-child'); const f=last&&last.querySelector('.li-cat'); if(f) f.focus(); }
   });
 
+  // ── کپی از فاکتورِ قبلی: پروژه + توضیحات + ردیف‌ها (تاریخ‌ها همان پیش‌فرضِ فاکتورِ جدید) ──
+  const copySel = document.getElementById('inv-copy-src');
+  async function copyFrom(id){
+    if(!id) return;
+    const hasData = [...body.querySelectorAll('.inv-row')].some(r=>r.querySelector('.li-desc').value.trim()||toNum(r.querySelector('.li-unit').value));
+    if(hasData && !await App.confirm('ردیف‌های فعلی با ردیف‌های فاکتورِ انتخابی جایگزین شوند؟',{okText:'جایگزین کن'})){ return; }
+    let d; try{ d = await App.fetchJSON(`/finance/api/invoices/${id}/data/`); }catch(_){ return; }
+    const proj=document.getElementById('inv-project');
+    if(d.project){ proj.value=String(d.project); proj.dispatchEvent(new Event('rs-refresh',{bubbles:true})); proj.dispatchEvent(new Event('change',{bubbles:true})); }
+    document.getElementById('inv-desc').value = d.description || '';
+    body.innerHTML='';
+    (d.lines.length?d.lines:[{}]).forEach(li=>{
+      body.insertAdjacentHTML('beforeend', rowHTML());
+      const r=body.lastElementChild;
+      r.querySelector('.li-cat').value = li.category ?? '';
+      r.querySelector('.li-desc').value = li.description || '';
+      r.querySelector('.li-qty').value = li.qty ?? 1;
+      r.querySelector('.li-unit').value = li.unit_price || '';
+      r.querySelector('.li-tax').value = li.tax || '';
+      r.querySelector('.li-disc').value = li.discount || '';
+    });
+    if(App.initMoney) App.initMoney(body);
+    recalc();
+    App.toast(`اطلاعاتِ فاکتورِ #${d.number} آمد — تاریخ‌ها را چک کن و ذخیره بزن`,'ok',4500);
+  }
+  if(copySel){ copySel.addEventListener('change', ()=>copyFrom(copySel.value)); }
+
   // شروع: اگر خالی است یک ردیف بگذار، سپس محاسبه
   if(!body.querySelector('.inv-row')) addRow(); else recalc();
 
@@ -201,6 +237,7 @@
   dueEl.addEventListener('change', ()=>{ if(issueEl.value.trim() && dueEl.value.trim()){ const d=daysBetweenJ(issueEl.value, dueEl.value); if(d!=null) dueOffset=d; } });
   function syncDue(){ if(issueEl.value.trim()){ dueEl.value=addDaysJ(issueEl.value, dueOffset); } }
   issueEl.addEventListener('change', syncDue);
+  if(copySel && copySel.value) copyFrom(copySel.value);  // از دکمهٔ «کپی» در فهرست (?copy=)
   if(!INV_ID){ // فاکتورِ جدید: پیش‌فرض تاریخِ ثبت=امروز، پرداخت=+۱۰ روز
     if(!issueEl.value){ const t=new Date(); issueEl.value=jFmt(gToJ(t.getFullYear(),t.getMonth()+1,t.getDate())); }
     if(!dueEl.value) syncDue();

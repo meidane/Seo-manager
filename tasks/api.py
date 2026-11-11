@@ -611,6 +611,12 @@ def task_detail(request, pk):
     if not was_done and task.status == Task.DONE and task.recurrence_id and not task.is_placeholder:
         from .recurrence import advance
         advance(task)
+    # تبدیلِ تسکِ موجود به تکرارشونده (از مودالِ ویرایش، فقط اگر هنوز سری ندارد)
+    rec = data.get('recurrence')
+    if rec and rec.get('freq') and not task.recurrence_id and not task.is_placeholder:
+        if not task.planned_date:
+            return JsonResponse({'detail': 'برای تکرار، اول «تاریخ برنامه» را مشخص کن'}, status=400)
+        _attach_recurrence(task, rec)
     # تکرار: تغییرِ محتوایی روی کلِ رخدادهای غیرِ-انجام‌شدهٔ سری اعمال شود
     _propagate_series(task)
     resp = task.to_dict()

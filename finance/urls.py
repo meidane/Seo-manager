@@ -34,6 +34,7 @@ urlpatterns = [
     path('api/payroll/<int:pk>/', views.payroll_edit, name='payroll_edit'),
     path('api/invoices/', views.invoice_create, name='invoice_create'),
     path('api/invoices/<int:pk>/', views.invoice_edit, name='invoice_edit'),
+    path('api/invoices/<int:pk>/data/', views.invoice_data, name='invoice_data'),
     path('api/project-ledger/', views.project_ledger_api, name='project_ledger'),
     path('api/notes/', views.note_create, name='note_create'),
     path('api/notes/<int:pk>/', views.note_edit, name='note_edit'),

@@ -2008,3 +2008,22 @@ input[type=checkbox]:disabled{opacity:.5;cursor:default}
 .mcp-hint{margin:0;padding:4px 17px 14px;font-size:12px;color:var(--text-faint)}
 .mcp-acts{white-space:nowrap;text-align:left}
 .mcp-sum{max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ===== فاکتور: «کپی از فاکتورِ قبلی» بالای فرمِ فاکتورِ جدید ===== */
+.inv-copy{margin-bottom:12px}
+.inv-copy-in{display:flex;align-items:center;gap:12px;padding:10px 14px;flex-wrap:wrap}
+.inv-copy-lab{font-size:13px;color:var(--text-dim);display:flex;align-items:center;gap:6px;white-space:nowrap}
+.inv-copy-in .rs, .inv-copy-in select{flex:1 1 320px;min-width:0}
+
+/* ===== فایل‌ها: پوشه‌ها + مسیرِ بالای فهرست ===== */
+.fb-crumbs{display:flex;align-items:center;flex-wrap:wrap;gap:4px;padding:2px 4px 10px;font-size:13px}
+.fb-crumbs a{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:8px;color:var(--text-dim);text-decoration:none}
+.fb-crumbs a:hover{background:var(--fill);color:var(--text)}
+.fb-crumbs a:last-child{color:var(--text);font-weight:600}
+.fb-crumbs .sep{color:var(--text-faint);font-size:12px}
+.fb-dir{cursor:pointer}
+.fb-media.k-folder{color:var(--amber-fg);background:color-mix(in srgb,var(--warning) 14%,transparent)}
+.fb-path{display:inline-flex;align-items:center;gap:4px;color:var(--text-dim)}
+
+/* ===== تقویم: دکمهٔ «مخفی‌کردنِ انجام‌شده‌ها» (تقویمِ جاسازی‌شده — تبِ پروژه/همکار) ===== */
+.cal-bar .cal-hd{margin-inline-start:auto;height:30px;font-size:12px}

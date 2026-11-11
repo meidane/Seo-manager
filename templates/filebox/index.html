@@ -5,7 +5,8 @@
 {% block content %}
   <div class="page-h"><h1>فایل‌ها</h1>
     <div class="side-c">
-      <div class="fb-search">{% icon 'search' %}<input type="text" id="fb-q" placeholder="جستجو در نامِ فایل‌ها…" autocomplete="off"></div>
+      <div class="fb-search">{% icon 'search' %}<input type="text" id="fb-q" placeholder="جستجو در همهٔ فایل‌ها…" autocomplete="off"></div>
+      <button class="btn" id="fb-newdir">{% icon 'folder' %} پوشهٔ جدید</button>
       <button class="btn btn-p" id="fb-pick">{% icon 'upload' %} آپلودِ فایل</button>
     </div>
   </div>
@@ -14,12 +15,13 @@
   <section class="card glass fb-card">
     <div class="fb-drop" id="fb-drop">
       <span class="fb-drop-ico">{% icon 'upload' %}</span>
-      <div><b>فایل‌ها را اینجا رها کن</b><span>یا روی «آپلودِ فایل» بزن — حداکثر {{ max_mb|fa_digits }} مگابایت. لینکِ هر فایل بدونِ ورود باز می‌شود.</span></div>
+      <div><b>فایل‌ها را اینجا رها کن</b><span>یا روی «آپلودِ فایل» بزن — حداکثر {{ max_mb|fa_digits }} مگابایت. لینکِ هر فایل یک آدرسِ ثابت است که به نامِ فایل ختم می‌شود و بدونِ ورود باز می‌شود.</span></div>
     </div>
+    <div class="fb-crumbs" id="fb-crumbs"></div>
     <div class="fb-progress" id="fb-progress" hidden></div>
     <div id="fb-list"></div>
   </section>
-  {{ files|json_script:"fb-init" }}
+  {{ state|json_script:"fb-init" }}
 {% endblock %}
 
 {% block scripts %}
@@ -28,7 +30,20 @@
   const API = "{% url 'filebox:api_list' %}";
   const list = document.getElementById('fb-list'), input = document.getElementById('fb-input'),
         drop = document.getElementById('fb-drop'), prog = document.getElementById('fb-progress'), q = document.getElementById('fb-q');
-  let files = JSON.parse(document.getElementById('fb-init').textContent || '[]');
+  const init = JSON.parse(document.getElementById('fb-init').textContent || '{}');
+  let files = init.files || [], folders = init.folders || [];
+  let cur = +(new URLSearchParams(location.search).get('folder')) || null;   // پوشهٔ جاری (null = ریشه)
+  if (cur && !folders.some(d => d.id === cur)) cur = null;
+  const crumbs = document.getElementById('fb-crumbs');
+  const fById = id => folders.find(d => d.id === id);
+  const chain = id => { const out = []; let d = fById(id), g = 0; while (d && g++ < 50) { out.unshift(d); d = fById(d.parent); } return out; };
+  const pathOf = id => chain(id).map(d => d.name).join(' / ');
+  const countIn = id => files.filter(f => f.folder === id).length + folders.filter(d => d.parent === id).length;
+  function go(id) {
+    cur = id || null;
+    const u = new URL(location.href); cur ? u.searchParams.set('folder', cur) : u.searchParams.delete('folder');
+    history.replaceState(null, '', u); render();
+  }
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
   // fetch با CSRF؛ برخلافِ App.fetchJSON روی 409 توست نمی‌دهد تا «جایگزین شود؟» پرسیده شود
@@ -41,39 +56,59 @@
     return {status: r.status, ok: r.ok, data};
   }
 
+  function folderRow(d) {
+    const n = countIn(d.id);
+    return `<div class="fb-row fb-dir" data-dir="${d.id}">
+      <span class="fb-media k-folder">${App.icon('folder')}</span>
+      <div class="fb-main"><a class="fb-name fb-open" href="?folder=${d.id}">${esc(d.name)}</a>
+        <div class="fb-meta">${n ? n.toLocaleString('fa') + ' مورد' : 'خالی'}</div></div>
+      <div class="fb-acts">
+        <button class="fb-btn fb-dren" title="تغییرِ نام">${App.icon('pen')}</button>
+        <button class="fb-btn fb-dmove" title="انتقال به پوشهٔ دیگر">${App.icon('folder-open')}</button>
+        <button class="fb-btn fb-del fb-ddel" title="حذفِ پوشه">${App.icon('trash')}</button>
+      </div></div>`;
+  }
+  let showPath = false;
   function row(f) {
     const media = f.thumb ? `<img src="${esc(f.thumb)}" alt="" loading="lazy">` : App.icon(f.kind);
     return `<div class="fb-row" data-id="${f.id}">
       <a class="fb-media k-${esc(f.kind)}" href="${esc(f.link)}" target="_blank" rel="noopener" title="باز کردن">${media}</a>
       <div class="fb-main">
         <a class="fb-name" href="${esc(f.link)}" target="_blank" rel="noopener" title="${esc(f.name)}">${esc(f.name)}</a>
-        <div class="fb-meta"><span dir="ltr">${esc(f.size)}</span>${f.by ? ' · ' + esc(f.by) : ''} · ${esc(f.ago)}</div>
+        <div class="fb-meta">${showPath && f.folder ? `<span class="fb-path">${App.icon('folder')} ${esc(pathOf(f.folder))}</span> · ` : ''}<span dir="ltr">${esc(f.size)}</span>${f.by ? ' · ' + esc(f.by) : ''} · ${esc(f.ago)}</div>
       </div>
       <div class="fb-acts">
         <button class="fb-btn fb-copy" title="کپیِ لینک">${App.icon('link')}<span>کپیِ لینک</span></button>
         <button class="fb-btn fb-ren" title="تغییرِ نام">${App.icon('pen')}</button>
+        <button class="fb-btn fb-move" title="انتقال به پوشه">${App.icon('folder-open')}</button>
         <button class="fb-btn fb-del" title="حذف">${App.icon('trash')}</button>
       </div>
     </div>`;
   }
   function render() {
     const term = q.value.trim().toLowerCase();
-    const shown = term ? files.filter(f => f.name.toLowerCase().includes(term)) : files;
-    if (!files.length) {
-      list.innerHTML = `<div class="empty"><div class="ico">${App.icon('folder-open')}</div><h4>هنوز فایلی آپلود نشده</h4></div>`;
-    } else if (!shown.length) {
-      list.innerHTML = `<div class="empty" style="padding:28px"><h4>فایلی با این نام پیدا نشد</h4></div>`;
+    showPath = !!term;
+    crumbs.innerHTML = [`<a href="?" data-go="">${App.icon('folder-open')} همهٔ فایل‌ها</a>`]
+      .concat(chain(cur).map(d => `<a href="?folder=${d.id}" data-go="${d.id}">${esc(d.name)}</a>`)).join('<span class="sep">‹</span>');
+    let html = '';
+    if (term) {
+      const shown = files.filter(f => f.name.toLowerCase().includes(term) || pathOf(f.folder).toLowerCase().includes(term));
+      html = shown.length ? `<div class="fb-count">${shown.length.toLocaleString('fa')} نتیجه در همهٔ پوشه‌ها</div>` + shown.map(row).join('')
+        : `<div class="empty" style="padding:28px"><h4>فایلی با این نام پیدا نشد</h4></div>`;
     } else {
-      list.innerHTML = `<div class="fb-count">${shown.length.toLocaleString('fa')} فایل</div>` + shown.map(row).join('');
+      const ds = folders.filter(d => d.parent === cur), fs = files.filter(f => f.folder === cur);
+      html = (ds.length || fs.length) ? ds.map(folderRow).join('') + fs.map(row).join('')
+        : `<div class="empty"><div class="ico">${App.icon('folder-open')}</div><h4>${cur ? 'این پوشه خالی است' : 'هنوز فایلی آپلود نشده'}</h4></div>`;
     }
+    list.innerHTML = html;
   }
   const upsert = f => { files = [f, ...files.filter(x => x.id !== f.id)]; render(); };
 
   async function uploadOne(file) {
-    const fd = new FormData(); fd.append('file', file);
+    const fd = new FormData(); fd.append('file', file); if (cur) fd.append('folder', cur);
     let r = await send(API, {method: 'POST', body: fd});
     if (r.status === 409 && r.data.conflict) {
-      const yes = await App.confirm(`فایلی با نامِ «${esc(r.data.name)}» از قبل هست.<br>جایگزین شود؟ (لینکِ قبلی همان می‌ماند)`, {okText: 'جایگزین کن', cancelText: 'نه'});
+      const yes = await App.confirm(`فایلی با نامِ «${esc(r.data.name)}» در این پوشه هست.<br>جایگزین شود؟ (لینکِ قبلی همان می‌ماند)`, {okText: 'جایگزین کن', cancelText: 'نه'});
       if (!yes) return;
       fd.append('replace', '1');
       r = await send(API, {method: 'POST', body: fd});
@@ -99,7 +134,75 @@
   ['dragleave', 'drop'].forEach(ev => document.addEventListener(ev, e => { if (ev === 'dragleave' && e.relatedTarget) return; drop.classList.remove('over'); }));
   document.addEventListener('drop', e => { if (e.dataTransfer?.files?.length) { e.preventDefault(); uploadAll(e.dataTransfer.files); } });
 
+  crumbs.addEventListener('click', e => { const a = e.target.closest('[data-go]'); if (a) { e.preventDefault(); q.value = ''; go(+a.dataset.go || null); } });
+  document.getElementById('fb-newdir').onclick = async () => {
+    const name = await askName('پوشهٔ جدید', '', 'ساختن');
+    if (!name) return;
+    const r = await send("{% url 'filebox:folder_create' %}", {method: 'POST', body: {name, parent: cur}});
+    if (!r.ok) return App.toast(r.data.detail || 'ساخته نشد', 'err');
+    folders.push(r.data.folder); render(); App.toast('پوشه ساخته شد', 'ok');
+  };
+  function askName(title, value, ok) {
+    return new Promise(res => {
+      App.openModal(`<div class="modal-h"><h3>${title}</h3><button class="x" onclick="App.closeModal()">×</button></div>
+        <div class="modal-b"><div class="field"><label>نام</label><input class="input" id="fb-nm" value="${esc(value)}"></div></div>
+        <div class="modal-f"><button class="btn btn-p" id="fb-nm-ok">${ok}</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+      const inp = document.getElementById('fb-nm'); inp.focus(); inp.select();
+      const done = () => { const v = inp.value.trim(); App.closeModal(); res(v); };
+      document.getElementById('fb-nm-ok').onclick = done;
+      inp.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); done(); } });
+    });
+  }
+  // انتخابِ پوشهٔ مقصد (برای انتقالِ فایل/پوشه)؛ `exclude` = خودِ پوشه و زیرپوشه‌هایش
+  function pickFolder(title, current, exclude) {
+    return new Promise(res => {
+      const bad = new Set(); if (exclude) { const walk = id => { bad.add(id); folders.filter(d => d.parent === id).forEach(d => walk(d.id)); }; walk(exclude); }
+      const opts = [`<option value="">همهٔ فایل‌ها (ریشه)</option>`].concat(folders.filter(d => !bad.has(d.id))
+        .map(d => ({d, p: pathOf(d.id)})).sort((a, b) => a.p.localeCompare(b.p, 'fa'))
+        .map(({d, p}) => `<option value="${d.id}" ${d.id === current ? 'selected' : ''}>${esc(p)}</option>`)).join('');
+      App.openModal(`<div class="modal-h"><h3>${title}</h3><button class="x" onclick="App.closeModal()">×</button></div>
+        <div class="modal-b"><div class="field"><label>پوشهٔ مقصد</label><select id="fb-dst">${opts}</select></div>
+        <p style="font-size:12px;color:var(--text-faint);margin:6px 0 0">با جابه‌جایی، لینکِ فایل هم عوض می‌شود (مسیرِ پوشه جزوِ آدرس است).</p></div>
+        <div class="modal-f"><button class="btn btn-p" id="fb-dst-ok">انتقال</button><button class="btn" onclick="App.closeModal()">انصراف</button></div>`);
+      document.getElementById('fb-dst-ok').onclick = () => { const v = document.getElementById('fb-dst').value; App.closeModal(); res({id: v ? +v : null}); };
+    });
+  }
+  async function moveFile(f) {
+    const dst = await pickFolder(`انتقالِ «${esc(f.name)}»`, f.folder); if (!dst || dst.id === f.folder) return;
+    let r = await send(`${API}${f.id}/`, {method: 'PATCH', body: {folder: dst.id}});
+    if (r.status === 409 && r.data.conflict) {
+      if (!await App.confirm(`در مقصد فایلی با نامِ «${esc(r.data.name)}» هست.<br>جایگزین شود؟`, {okText: 'جایگزین کن', cancelText: 'نه'})) return;
+      r = await send(`${API}${f.id}/`, {method: 'PATCH', body: {folder: dst.id, replace: true}});
+    }
+    if (!r.ok) return App.toast(r.data.detail || 'منتقل نشد', 'err');
+    if (r.data.removed) files = files.filter(x => x.id !== r.data.removed);
+    upsert(r.data.file); App.toast('منتقل شد', 'ok');
+  }
+  const FAPI = id => `{% url 'filebox:folder_create' %}${id}/`;
+  async function folderAction(e, el) {
+    const d = fById(+el.dataset.dir); if (!d) return;
+    if (e.target.closest('.fb-open')) { e.preventDefault(); go(d.id); return; }
+    if (e.target.closest('.fb-dren')) {
+      const name = await askName('تغییرِ نامِ پوشه', d.name, 'ذخیره'); if (!name || name === d.name) return;
+      const r = await send(FAPI(d.id), {method: 'PATCH', body: {name}});
+      if (!r.ok) return App.toast(r.data.detail || 'ذخیره نشد', 'err');
+      files = r.data.files; folders = r.data.folders; render(); App.toast('نامِ پوشه عوض شد (لینکِ فایل‌های داخلش هم)', 'ok');
+    } else if (e.target.closest('.fb-dmove')) {
+      const dst = await pickFolder(`انتقالِ پوشهٔ «${esc(d.name)}»`, d.parent, d.id); if (!dst || dst.id === d.parent) return;
+      const r = await send(FAPI(d.id), {method: 'PATCH', body: {parent: dst.id}});
+      if (!r.ok) return App.toast(r.data.detail || 'منتقل نشد', 'err');
+      files = r.data.files; folders = r.data.folders; render(); App.toast('منتقل شد', 'ok');
+    } else if (e.target.closest('.fb-ddel')) {
+      const n = countIn(d.id);
+      if (!await App.confirm(`پوشهٔ «${esc(d.name)}» ${n ? `و <b>همهٔ ${n.toLocaleString('fa')} موردِ داخلش</b> ` : ''}حذف شود؟`, {okText: 'حذف', cancelText: 'انصراف'})) return;
+      const r = await send(FAPI(d.id), {method: 'DELETE'});
+      if (!r.ok) return App.toast(r.data.detail || 'حذف نشد', 'err');
+      const st = await send(API); files = st.data.files; folders = st.data.folders; render(); App.toast('حذف شد', 'ok');
+    } else if (!e.target.closest('button,a')) go(d.id);
+  }
+
   list.addEventListener('click', async e => {
+    const dir = e.target.closest('.fb-dir'); if (dir) return folderAction(e, dir);
     const el = e.target.closest('.fb-row'); if (!el) return;
     const f = files.find(x => x.id === +el.dataset.id); if (!f) return;
     if (e.target.closest('.fb-copy')) {
@@ -110,6 +213,8 @@
       setTimeout(() => { b.classList.remove('done'); b.querySelector('span').textContent = 'کپیِ لینک'; }, 1600);
     } else if (e.target.closest('.fb-ren')) {
       startRename(el, f);
+    } else if (e.target.closest('.fb-move')) {
+      moveFile(f);
     } else if (e.target.closest('.fb-del')) {
       if (!await App.confirm(`«${esc(f.name)}» حذف شود؟<br>لینکِ آن دیگر کار نمی‌کند.`, {okText: 'حذف', cancelText: 'انصراف'})) return;
       const r = await send(`${API}${f.id}/`, {method: 'DELETE'});
@@ -132,10 +237,10 @@
       if (!save || !name || name === f.name) { render(); return; }
       let r = await send(`${API}${f.id}/`, {method: 'PATCH', body: {name}});
       if (r.status === 409 && r.data.conflict) {
-        const yes = await App.confirm(`فایلی با نامِ «${esc(r.data.name)}» از قبل هست.<br>جایگزین شود؟ (فایلِ قبلی حذف می‌شود)`, {okText: 'جایگزین کن', cancelText: 'نه'});
+        const yes = await App.confirm(`فایلی با نامِ «${esc(r.data.name)}» در همین پوشه هست.<br>جایگزین شود؟ (فایلِ قبلی حذف می‌شود)`, {okText: 'جایگزین کن', cancelText: 'نه'});
         if (!yes) { render(); return; }
         r = await send(`${API}${f.id}/`, {method: 'PATCH', body: {name, replace: true}});
-        if (r.ok) files = files.filter(x => x.name !== r.data.file.name || x.id === f.id);
+        if (r.ok && r.data.removed) files = files.filter(x => x.id !== r.data.removed);
       }
       if (!r.ok) { App.toast(r.data.detail || 'تغییرِ نام نشد', 'err'); render(); return; }
       upsert(r.data.file); App.toast('نام عوض شد', 'ok');

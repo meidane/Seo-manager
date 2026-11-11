@@ -74,5 +74,10 @@
 ## URLها
 `/calendar/` · `/calendar/api/` · `/calendar/api/quick-add/` · `/calendar/api/picker/` · `/calendar/api/workload/`
 
+## مخفی‌کردنِ انجام‌شده‌ها
+دکمهٔ `[data-cal-hidedone]` در نوارِ فیلترِ `_calendar.html` (و `.cal-hd` در `calendar-embed.js`). فیلترِ **سمتِ کلاینت**
+روی `t.done` (`renderGrid` از `lastDays`، بدونِ درخواستِ دوباره؛ `pending` نمایش می‌ماند). پیش‌فرض: `data-hide-done` =
+روشن همه‌جا، **خاموش در فضای شخصی** (`cal_personal`)؛ انتخابِ کاربر در `localStorage` (`calHideDone:main|personal|embed`).
+
 ## TODO
 نمای هفته و لیست (فقط ماه ساخته شده) · اتصال workload به دیت‌پیکرِ مودال.

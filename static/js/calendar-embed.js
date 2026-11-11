@@ -27,9 +27,12 @@
     if (el.dataset.project) fixed.project = el.dataset.project;
     if (el.dataset.assignee) fixed.assignee = el.dataset.assignee;
     let year, month; // با اولین لود از پاسخ پر می‌شوند
+    let hideDone = true, lastDays = null;   // پیش‌فرض: انجام‌شده‌ها مخفی
+    try { const v = localStorage.getItem('calHideDone:embed'); if (v !== null) hideDone = v === '1'; } catch (_) {}
 
     el.innerHTML =
-      `<div class="cal-bar"><button class="nav-b" data-nav="next">›</button><h3 data-title>—</h3><button class="nav-b" data-nav="prev">‹</button></div>` +
+      `<div class="cal-bar"><button class="nav-b" data-nav="next">›</button><h3 data-title>—</h3><button class="nav-b" data-nav="prev">‹</button>` +
+      `<button type="button" class="chip calx-undated-btn cal-hd" data-hd title="پنهان/نمایشِ تسک‌های انجام‌شده">مخفی‌کردنِ انجام‌شده‌ها</button></div>` +
       DOW + `<div class="grid7" data-grid></div>`;
     const grid = el.querySelector('[data-grid]');
     const title = el.querySelector('[data-title]');
@@ -40,9 +43,17 @@
       try {
         const d = await App.fetchJSON('/calendar/api/?' + p.toString());
         year = d.year; month = d.month; title.textContent = d.title;
-        grid.innerHTML = d.days.map(cell).join('');
+        lastDays = d.days; render();
       } catch (_) {}
     }
+    function render() {
+      if (!lastDays) return;
+      const days = hideDone ? lastDays.map((c) => Object.assign({}, c, { tasks: c.tasks.filter((t) => !t.done) })) : lastDays;
+      grid.innerHTML = days.map(cell).join('');
+      hd.classList.toggle('on', hideDone);
+    }
+    const hd = el.querySelector('[data-hd]');
+    hd.onclick = () => { hideDone = !hideDone; try { localStorage.setItem('calHideDone:embed', hideDone ? '1' : '0'); } catch (_) {} render(); };
     el.querySelector('[data-nav="prev"]').onclick = () => { month--; if (month < 1) { month = 12; year--; } load(year, month); };
     el.querySelector('[data-nav="next"]').onclick = () => { month++; if (month > 12) { month = 1; year++; } load(year, month); };
     load();

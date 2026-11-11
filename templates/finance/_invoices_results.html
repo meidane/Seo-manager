@@ -21,7 +21,8 @@
             {% endwith %}{% else %}<td class="num-c">—</td>{% endif %}
             <td style="white-space:nowrap">
               <a class="mini" href="{% url 'finance:invoice_edit_page' inv.pk %}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="بازکردن در تبِ جدید">↗</a>
-              {% if can_edit_finance %}<button class="mini inv-del" data-id="{{ inv.id }}">حذف</button>{% endif %}
+              {% if can_edit_finance %}<a class="mini" href="{% url 'finance:invoice_new' %}?copy={{ inv.pk }}" onclick="event.stopPropagation()" title="ساختِ فاکتورِ جدید با همین اطلاعات">کپی</a>
+              <button class="mini inv-del" data-id="{{ inv.id }}">حذف</button>{% endif %}
             </td>
           </tr>
         {% endfor %}

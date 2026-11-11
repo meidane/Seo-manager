@@ -152,7 +152,7 @@
         <div class="topt-bar" id="topt-bar">
           <button type="button" class="topt" data-sec="description">${ICON.description} توضیحات</button>
           <button type="button" class="topt" data-sec="checklist">${ICON.checklist} چک‌لیست</button>
-          ${isNew ? `<button type="button" class="topt" data-sec="recur">${ICON.recur} تکرار</button>` : ''}
+          ${(isNew || !t.recurrence) ? `<button type="button" class="topt" data-sec="recur">${ICON.recur} تکرار</button>` : ''}
           ${t.id ? `<button type="button" class="topt" data-sec="report">${ICON.report} گزارش کار</button>` : ''}
           <button type="button" class="topt topt-rev" data-rev>${ICON.review} نیاز به بازبینی</button>
           ${t.id ? `<button type="button" class="topt" data-sec="history">${ICON.history} تاریخچه <span class="topt-count">${String((t.history || []).length)}</span></button>` : ''}
@@ -161,7 +161,7 @@
           <textarea id="f-description" class="rich-editor" rows="4">${esc(t.description)}</textarea>
         </div>
         <div id="sec-checklist" class="topt-sec" style="display:none">${checklistHtml(t)}</div>
-        ${isNew ? `<div id="sec-recur" class="topt-sec" style="display:none">${recurPickerHtml()}</div>` : ''}
+        ${(isNew || !t.recurrence) ? `<div id="sec-recur" class="topt-sec" style="display:none">${recurPickerHtml()}</div>` : ''}
         ${t.id ? `<div id="sec-report" class="topt-sec" style="display:none">
           <div class="report-sec">
             <textarea id="f-report" class="rich-editor" rows="3"></textarea>
@@ -534,7 +534,7 @@
     if (ty && ty.fields && ty.fields.length) {
       p.custom = readCustomValues();
     }
-    // تکرار (فقط تسک جدید)
+    // تکرار (تسکِ جدید، یا تسکِ موجودی که هنوز سری ندارد → تبدیل به تکرارشونده)
     const recOpts = document.getElementById('rec-opts');
     if (recOpts) {
       const freq = recOpts.querySelector('.rec-opt.on').dataset.freq;

@@ -380,6 +380,10 @@ class InvoiceFormView(LoginRequiredMixin, InvoiceViewPermMixin, TemplateView):
         # پیش‌انتخابِ پروژه برای فاکتورِ جدید که از دکمه‌ی «＋ فاکتور جدید»ِ گزارش آمده
         if not invoice:
             ctx['prefill_project_id'] = self.request.GET.get('project') or ''
+            # «کپی از فاکتور»: فهرستِ فاکتورهای قبلی برای دراپ‌داون + پیش‌انتخاب از ?copy=<id>
+            ctx['copy_sources'] = (Invoice.objects.select_related('project')
+                                   .order_by('-number')[:300])
+            ctx['copy_from'] = self.request.GET.get('copy') or ''
         # گزارشِ مالیِ پروژه (۳ ماهِ اخیر) — فقط برای فاکتورِ موجود
         if invoice and invoice.project_id:
             from .balances import project_balance
@@ -1223,6 +1227,23 @@ def _save_lines(invoice, lines):
             tax=parse_amount(li.get('tax', 0)),
             discount=parse_amount(li.get('discount', 0)),
         )
+
+
+def invoice_payload(inv):
+    """دادهٔ کاملِ یک فاکتور برای «کپی از فاکتور» (پروژه + توضیحات + ردیف‌ها؛ تاریخ‌ها کپی نمی‌شوند)."""
+    return {
+        'id': inv.id, 'number': inv.number, 'project': inv.project_id, 'description': inv.description,
+        'lines': [{'category': li.category_id or '', 'description': li.description,
+                   'qty': float(li.qty), 'unit_price': int(li.unit_price or 0),
+                   'tax': int(li.tax or 0), 'discount': int(li.discount or 0)} for li in inv.lines.all()],
+    }
+
+
+@login_required
+@require_invoice_view
+@require_http_methods(['GET'])
+def invoice_data(request, pk):
+    return JsonResponse(invoice_payload(get_object_or_404(Invoice.objects.prefetch_related('lines'), pk=pk)))
 
 
 def _invoice_totals(inv):
