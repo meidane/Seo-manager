@@ -26,9 +26,11 @@ def reviewable_q(request):
     # مدیرِ زنجیره‌ای: تسکِ زیرمجموعه که **یا** خودش needs_review است **یا** نوعش
     # requires_review — قبلاً فقط needs_review بود، پس تسکِ نوعِ «نیاز به بازبینی»ِ
     # زیرمجموعه (بدونِ needs_reviewِ فردی) برای مدیرِ بدونِ پرمیشنِ سازمانیِ review نمی‌آمد.
-    q = Q(assignee_id__in=sub_ids) & (Q(needs_review=True) | Q(type_def__requires_review=True))
+    # **فقط تیکِ خودِ تسک (`needs_review`) تصمیم می‌گیرد** (خواستِ کاربر: تسکِ بدونِ تیک — حتی بدونِ مسئول —
+    # نباید در صفِ بازبینی بیاید). «نیاز به بازبینی»ِ نوع (`requires_review`) فقط پیش‌فرضِ همین تیک است موقعِ ساخت.
+    q = Q(assignee_id__in=sub_ids) & Q(needs_review=True)
     if m and m.can('review'):
-        q |= Q(needs_review=True) | Q(type_def__requires_review=True)
+        q |= Q(needs_review=True)
     # کسی تسکِ خودش را بازبینی نمی‌کند (خودتاییدی) — تسک‌های خودِ کاربر همیشه از صف حذف
     # می‌شوند. باگِ رفع‌شده: تسکِ خودِ مدیر (نوعش requires_review یا با دسترسیِ سازمانیِ
     # review) در صفِ بازبینیِ خودش می‌آمد، حتی اگر needs_review نداشت و مدیری هم نداشت.

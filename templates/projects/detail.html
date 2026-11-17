@@ -698,7 +698,15 @@
 
   // «مشاهدهٔ همه»ی تسک‌های بدونِ ماهِ گزارش (نمایشِ ردیف‌های مخفی)
   (function(){ const btn=document.getElementById('nm-showall'); if(!btn) return;
-    btn.addEventListener('click', ()=>{ board.querySelectorAll('.nm-hidden').forEach(t=>t.hidden=false); btn.remove(); });
+    // ردیف‌های مخفی قبل از ردیفِ «افزودنِ تسک» درج می‌شوند تا فیلدِ افزودن ته لیست بماند (نه وسطِ آن)
+    btn.addEventListener('click', ()=>{
+      board.querySelectorAll('.nm-hidden').forEach(hid=>{
+        const main=hid.parentNode.querySelector('tbody:not(.nm-hidden)'), add=main && main.querySelector('.seo-addrow');
+        if(main){ [...hid.children].forEach(r=>main.insertBefore(r, add||null)); hid.remove(); } else hid.hidden=false;
+      });
+      btn.remove();
+      if(window.initAllGutters) initAllGutters(board);   // ارتفاعِ متن‌های ردیف‌های تازه‌نمایش
+    });
   })();
 
   // بالا/پایین بردنِ سکشنِ ماهِ گزارش (بدونِ رفرش، جابه‌جاییِ DOM + ذخیرهٔ ترتیب)

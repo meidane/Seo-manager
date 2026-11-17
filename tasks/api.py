@@ -285,7 +285,7 @@ def form_data(request):
         'reportPeriods': _visible_report_periods(),
         'customTypes': [
             {'id': t.id, 'name': t.name, 'color': t.color, 'icon': t.icon,
-             'builtin_key': t.builtin_key, 'fields': t.schema(),
+             'builtin_key': t.builtin_key, 'fields': t.schema(), 'requires_review': t.requires_review,
              'kpis': [k.to_dict() for k in t.kpis.prefetch_related('items')]}
             for t in TaskTypeDef.objects.filter(is_active=True).prefetch_related('kpis')
         ],
@@ -477,11 +477,13 @@ def task_create(request):
     # پیش‌فرضِ «نیاز به بازبینی»: اگر کلاینت صریحاً نفرستاده بود، از تنظیمِ خودِ
     # مسئول (Colleague.needs_review) می‌آید — مودال معمولاً این را از قبل پر می‌فرستد،
     # این‌جا فقط برای مسیرهای دیگر (بولک/افزونه) که مودال را دور می‌زنند.
-    if 'needs_review' not in data and data.get('assignee'):
+    if 'needs_review' not in data:
         from colleagues.models import Colleague
-        assignee = Colleague.objects.filter(pk=data['assignee']).first()
-        if assignee:
-            data['needs_review'] = assignee.needs_review
+        from .models import TaskTypeDef
+        assignee = Colleague.objects.filter(pk=data['assignee']).first() if data.get('assignee') else None
+        td = TaskTypeDef.objects.filter(pk=data['type_def']).first() if data.get('type_def') else None
+        # پیش‌فرض = تنظیمِ مسئول یا «نیاز به بازبینی»ِ نوع؛ بعدش فقط همین تیکِ خودِ تسک تصمیم می‌گیرد
+        data['needs_review'] = bool((assignee and assignee.needs_review) or (td and td.requires_review))
     task = Task(created_by=request.user, planned_date=date.today())
     apply_fields(task, data, request)
     err = _publish_url_error(task) or _custom_fields_error(task)

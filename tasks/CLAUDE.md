@@ -75,6 +75,12 @@
 - تغییرِ نوع در ردیف → `apply_fields` علاوه بر `type_def`، `task_type`(builtin_key) را هم
   هم‌گام می‌کند (رنگ/BUCKET/فیلتر از آن می‌آید).
 
+## ردیف‌های چندخطیِ جدولِ ویرایشی (بردِ سئو/فیلترِ نوع)
+عنوان در حالتِ ویرایشی `textarea.ttl-in` است (می‌شکند، Enter = ذخیره/blur)؛ عنوان + `cf-ta` + `cf-desc` با `tasks.js: autoFit/fit`
+به‌اندازهٔ محتوا تا **۳ خط** (هنگامِ فوکوس کامل تا ۲۶۰px؛ بیشتر از ۳ خط = محوِ پایین `.is-clipped`)؛ بدونِ اسکرول‌بار/resize؛ همهٔ
+سلول‌ها `vertical-align:top`؛ اینپوت‌های تک‌خطی ۲۸px (نه کادرِ بلندِ خاکستری)؛ شماره‌گذاریِ خطوط فقط برای متنِ چندخطی (`.ta-wrap.multi`).
+تکست‌اریای داخلِ تب/لیستِ مخفی با IntersectionObserver وقتی دیده شد اندازه می‌گیرد. بلوکِ «جدولِ تسک: ردیف‌های چندخطی» در `style.css`.
+
 ## مدل‌ها (`models.py`)
 - **Task** — یک مدل واحد، فیلدهای `null=True`. **هسته‌ی عمومی همیشه در مودال دیده می‌شود:**
   `project, assignee, task_type, title, description, planned_date, planned_time(default
@@ -297,6 +303,10 @@ _field_dict` منبعِ واحدِ پاسخِ create/edit است تا مودال
   نمی‌شوند (ثبت در `docs/CLEANUP.md`).
 
 ## بازبینی تسک (review) — «بازبینی محتوا»ی قبلی، تغییرِ نام + مسیرِ مدیر
+> **تغییرِ مهم (خواستِ کاربر):** حالا **فقط تیکِ خودِ تسک (`Task.needs_review`)** تعیین می‌کند تسک به صفِ بازبینی برود
+> (`queries.reviewable_q`). `TaskTypeDef.requires_review` دیگر مستقیماً صف را پر نمی‌کند — فقط **پیش‌فرضِ همان تیک** موقعِ ساخت
+> است (کنارِ `Colleague.needs_review`: `task_create` + مودال `tasks.js: defaultNeedsReview` + MCP). تسکِ بدونِ تیک — حتی بدونِ
+> مسئول، حتی از نوعِ «نیاز به بازبینی» — در صف نمی‌آید. توضیحاتِ زیر دربارهٔ «مسیرِ ۱: type_def.requires_review» قدیمی است.
 `TaskReviewView` (`/tasks/review/`) دو مسیرِ مستقلِ OR‌شده دارد که با هم فرق دارند:
 ۱) **`type_def.requires_review`** (سطحِ نوعِ تسک) → صفِ عمومی، تسکِ `done`/`pending`، فقط
    اگر ویوکننده دسترسیِ سازمانیِ `review` را داشته باشد.

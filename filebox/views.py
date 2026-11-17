@@ -13,7 +13,7 @@ from django.views.decorators.http import require_http_methods
 from accounts.access import require_perm
 from core.templatetags.seo_extras import timeago
 
-from .models import SharedFile, SharedFolder, org_key
+from .models import SharedFile, SharedFolder
 
 MAX_SIZE = 20 * 1024 * 1024  # سقفِ nginx: 25M
 
@@ -177,8 +177,9 @@ def public(request, token):
 def public_path(request, org, path):
     """لینکِ ثابت: `/f/<سازمان>/<پوشه‌ها…>/<نام.پسوند>` — بدونِ ورود."""
     from accounts.models import Organization
-    o = Organization.objects.filter(slug=org).first() or (Organization.objects.filter(pk=org).first() if org.isdigit() else None)
-    if not o or org_key(o) != org:
+    # id سازمان (لینکِ فعلی)؛ slug فقط برای لینک‌های قدیمی‌ای که قبلاً با نامِ سازمان پخش شده‌اند
+    o = Organization.objects.filter(pk=int(org)).first() if org.isdigit() else Organization.objects.filter(slug=org).first()
+    if not o:
         raise Http404
     parts = [p for p in path.split('/') if p]
     if not parts:

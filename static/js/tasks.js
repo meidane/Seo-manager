@@ -78,6 +78,11 @@
     const c = (cfg.colleagues || []).find((x) => String(x[0]) === String(id));
     return !!(c && c[2]);
   }
+  // پیش‌فرضِ تیکِ «نیاز به بازبینی» = تنظیمِ مسئول یا «نیاز به بازبینی»ِ نوعِ تسک
+  function defaultNeedsReview(assigneeId, typeId) {
+    const ty = findType(typeId);
+    return colleagueNeedsReview(assigneeId) || !!(ty && ty.requires_review);
+  }
 
   // گزینه‌های وضعیت — تسکِ needs_review هرگز «انجام‌شده» ندارد (فقط «تکمیل»)، برعکسش هم همین‌طور
   const STATUS_LABELS = [['todo', 'در انتظار'], ['doing', 'در حال انجام'], ['pending', 'تکمیل — در انتظار بازبینی'], ['done', 'انجام شده']];
@@ -116,7 +121,7 @@
       : `<select id="f-assignee" class="rich-select"><option value="">—</option>${cfg.colleagues.map(([v, l, , color, img]) => optRich(v, l, assigneeSel, color, img)).join('')}</select>`;
     // نیاز به بازبینی: پیش‌فرض از تسکِ موجود (t.needs_review)، وگرنه از تنظیمِ خودِ
     // مسئولِ فعلاً انتخاب‌شده (Colleague.needs_review) — هربار قابلِ‌تغییرِ دستی است.
-    const needsReviewDefault = t.id ? !!t.needs_review : colleagueNeedsReview(assigneeSel);
+    const needsReviewDefault = t.id ? !!t.needs_review : (t.needs_review != null ? !!t.needs_review : defaultNeedsReview(assigneeSel, typeSel));
     return `
     <div class="modal-h"><h3>${t.id ? 'ویرایش تسک' : 'تسک جدید'}</h3><button class="x" onclick="App.closeModal()">×</button></div>
     <div class="modal-b tmodal" id="tform">
@@ -453,12 +458,40 @@
       const n = Math.max(1, (ta.value.match(/\n/g) || []).length + 1);
       let s = ''; for (let i = 1; i <= n; i++) s += i + '\n';
       gut.textContent = s; gut.scrollTop = ta.scrollTop;
+      wrap.classList.toggle('multi', n > 1);   // شماره‌گذاری فقط وقتی بیش از یک خط است (تک‌خط = بی‌شلوغی)
     };
     ta.addEventListener('input', upd);
     ta.addEventListener('scroll', () => { gut.scrollTop = ta.scrollTop; });
     upd();
   }
-  function initAllGutters(root) { (root || document).querySelectorAll('textarea.cf-ta:not([data-gut])').forEach(initLineGutter); }
+  function initAllGutters(root) {
+    (root || document).querySelectorAll('textarea.cf-ta:not([data-gut])').forEach(initLineGutter);
+    (root || document).querySelectorAll('.tsheet textarea.ttl-in, .tsheet textarea.cf-ta, .tsheet textarea.cf-desc').forEach(autoFit);
+  }
+  // ── متن‌های چندخطیِ جدولِ تسک: ارتفاع به‌اندازهٔ محتوا (بسته: حداکثر ۳ خط؛ هنگامِ ویرایش: کامل) ──
+  //    به‌جای اسکرول‌بار/دستگیرهٔ resize و ارتفاعِ ثابت که ردیف‌ها را ناهمسان و شلوغ می‌کرد.
+  const FIT_LINES = 3;
+  // تکست‌اریای داخلِ تب/لیستِ مخفی ارتفاع ندارد → وقتی دیده شد اندازه بگیر
+  const fitIO = ('IntersectionObserver' in window) ? new IntersectionObserver((ents) => ents.forEach((en) => {
+    if (en.isIntersecting) { fitIO.unobserve(en.target); fit(en.target); }
+  })) : null;
+  function fit(ta) {
+    if (!ta.offsetParent) { if (fitIO) fitIO.observe(ta); return; }
+    const lh = parseFloat(getComputedStyle(ta).lineHeight) || 19;
+    const pad = ta.offsetHeight - ta.clientHeight + (parseFloat(getComputedStyle(ta).paddingTop) || 0) * 2;
+    ta.style.height = 'auto';
+    const full = ta.scrollHeight + (ta.offsetHeight - ta.clientHeight);
+    const cap = document.activeElement === ta ? 260 : Math.ceil(lh * FIT_LINES + pad);
+    ta.style.height = Math.min(full, cap) + 'px';
+    ta.classList.toggle('is-clipped', full > cap + 1);
+  }
+  function autoFit(ta) {
+    if (ta.dataset.fit) { fit(ta); return; }
+    ta.dataset.fit = '1';
+    ['input', 'focus', 'blur'].forEach((ev) => ta.addEventListener(ev, () => fit(ta)));
+    if (ta.classList.contains('ttl-in')) ta.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); ta.blur(); } });
+    fit(ta);
+  }
   window.initAllGutters = initAllGutters;
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { kwHighlightAll(); initAllGutters(); });
@@ -639,8 +672,14 @@
       statusInput.value = complete ? 'done' : 'todo';   // سرور با needs_review به pending کلمپ می‌کند
       renderStatus();
     };
+    const curType = () => (document.getElementById('f-task_type') || {}).value;
     document.getElementById('f-assignee').addEventListener('change', (e) => {
-      needsReviewBox.checked = colleagueNeedsReview(e.target.value);
+      needsReviewBox.checked = defaultNeedsReview(e.target.value, curType());
+      renderStatus(); syncRevChip();
+    });
+    // تسکِ جدید: با عوض‌کردنِ نوع، پیش‌فرضِ تیکِ بازبینی هم از نوعِ جدید (تسکِ موجود دست نمی‌خورد)
+    if (!data.id) document.getElementById('f-task_type').addEventListener('change', (e) => {
+      needsReviewBox.checked = defaultNeedsReview((document.getElementById('f-assignee') || {}).value, e.target.value);
       renderStatus(); syncRevChip();
     });
     // چیپِ «نیاز به بازبینی» در تولبار = تاگلِ همان چک‌باکسِ مخفی

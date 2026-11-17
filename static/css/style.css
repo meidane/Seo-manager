@@ -2047,3 +2047,47 @@ input[type=checkbox]:disabled{opacity:.5;cursor:default}
 .mcp-diff b{color:var(--text);font-weight:600}
 .mcp-batch-row.on td{background:var(--primary-soft)}
 .sheet td:has(> .ai-ghost),.sheet td:has(> .ai-sug){position:relative}
+
+/* ===== تقویم: پنلِ «تسک‌های بدون تاریخ» بالای تقویم (نه ستونِ کنار؛ فضا نگیرد) =====
+   سرتیتر + افزودنِ سریع در یک ردیف، کارت‌ها افقی و چندستونه با سقفِ ارتفاع (اسکرول). */
+.calx-body{flex-direction:column}
+.calx-undated{width:auto;flex-direction:row;flex-wrap:wrap;align-items:center;border-inline-start:0;border-bottom:1px solid var(--stroke-soft)}
+.calx-undated-h{border-bottom:0;padding:10px 14px}
+.calx-qadd{border-bottom:0;flex:1 1 260px;max-width:420px;padding:8px 12px}
+.calx-undated-list{flex:1 1 100%;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;
+  max-height:132px;padding:0 12px 10px;align-content:start}
+.calx-undated-list .calx-uitem{margin-bottom:0}
+.calx-undated-list .calx-undated-empty{grid-column:1/-1;padding:8px}
+@media(max-width:860px){.calx-undated{border-top:0}.calx-undated-list{max-height:180px}}
+
+/* ===== جدولِ تسک (حالتِ ویرایشی/بردِ سئو): ردیف‌های چندخطیِ مرتب =====
+   عنوان می‌شکند (نه «…»)، متن‌های چندخطی به‌اندازهٔ محتوا تا ۳ خط (هنگامِ ویرایش کامل؛ `tasks.js: autoFit`)،
+   بدونِ اسکرول‌بار/دستگیرهٔ resize، همهٔ سلول‌ها بالا-تراز تا ردیفِ بلند هم مثلِ شیت خوانا بماند. */
+.tsheet tbody td{vertical-align:top;padding-top:5px;padding-bottom:5px}
+.tsheet tbody td.st-col,.tsheet tbody td.row-lead,.tsheet tbody td.chk-col{padding-top:9px}
+.tsheet .tcell{align-items:flex-start}
+.tsheet .tcell .row-open,.tsheet .tcell .ttype-sel,.tsheet .tcell .tag,.tsheet .tcell .lnk-icon{margin-top:4px}
+.tsheet textarea.ttl-in{resize:none;overflow:hidden;white-space:pre-wrap;word-break:break-word;font:inherit;font-size:13px;
+  font-weight:600;line-height:1.55;min-height:28px;padding:3px 6px;background:transparent;border:1px solid transparent;
+  border-radius:6px;color:var(--text)}
+.tsheet textarea.ttl-in:hover{border-color:var(--stroke-soft)}
+.tsheet textarea.ttl-in:focus{border-color:var(--primary-ring);background:var(--fill);outline:none}
+.tsheet .cf-desc,.tsheet .cf-ta{resize:none;overflow:hidden;min-height:28px;max-height:none;line-height:1.55;word-break:break-word}
+.tsheet .cf-desc:focus,.tsheet .cf-ta:focus{overflow-y:auto}
+/* متنِ بیش از ۳ خط: یک سایهٔ محو پایینِ کادر تا معلوم باشد ادامه دارد (با کلیک کامل باز می‌شود) */
+.tsheet textarea.is-clipped:not(:focus){-webkit-mask-image:linear-gradient(to bottom,#000 70%,transparent);mask-image:linear-gradient(to bottom,#000 70%,transparent)}
+.tsheet .cf-ta[dir=auto]{unicode-bidi:plaintext}
+/* اینپوت‌های تک‌خطی (عدد/لینک/متن): هم‌قدِ یک خط، نه کادرِ بلندِ خاکستری */
+.tsheet .dcell input.cf-inline,.tsheet .dcell select.cf-inline{height:28px;padding:3px 7px;background:transparent;
+  border:1px solid transparent;border-radius:6px;font-size:12px}
+.tsheet .dcell input.cf-inline:hover,.tsheet .dcell select.cf-inline:hover{border-color:var(--stroke-soft)}
+.tsheet .dcell input.cf-inline:focus{border-color:var(--primary-ring);background:var(--fill);outline:none}
+.tsheet .dcell input.cf-inline::placeholder{color:var(--text-faint)}
+/* شماره‌گذاریِ خطوط فقط برای متنِ چندخطی (تک‌خط = بدونِ ستونِ «۱») */
+.ta-wrap:not(.multi) .ta-gut{display:none}
+.ta-wrap:not(.multi) .cf-ta{padding-inline-start:6px}
+.ta-gut{padding-top:4px}
+.tsheet .dcell:has(.cf-ta){min-width:230px}
+.tsheet td.tcell{min-width:300px}
+.tsheet .tcell textarea.ttl-in{flex:1 1 180px;min-width:150px}
+.tsheet .tcell .ttype-sel{max-width:78px;min-width:0;flex:none}

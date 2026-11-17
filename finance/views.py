@@ -126,7 +126,8 @@ class FinanceDashboardView(LoginRequiredMixin, FinancePermMixin, DateRangeMixin,
             'banks': banks, 'bank_total': bank_total, 'cats': cats, 'cats_total': cats_total,
             'income_mode': income_mode,
             'salary_rows': salary_rows, 'salary_total': salary_total,
-            'unassigned': tx.filter(project__isnull=True, categories__isnull=True).count(),
+            # تفکیک‌شده = تخصیص‌یافته (پروژه/بابت در اسپلیت‌هاست)، نه «بدونِ پروژه/بابت»
+            'unassigned': tx.filter(project__isnull=True, categories__isnull=True, splits__isnull=True).distinct().count(),
             'fin_alerts': compute_alerts(),
             'page_title': 'حسابداری',
         })
@@ -165,7 +166,8 @@ class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
         if cat_ids:
             qs = qs.filter(Q(categories__in=cat_ids) | Q(splits__category_id__in=cat_ids)).distinct()
         if g.get('unassigned') == '1':
-            qs = qs.filter(project__isnull=True, categories__isnull=True)
+            # تراکنشِ تفکیک‌شده (اسپلیت دارد) بی‌تخصیص نیست — پروژه/بابتش در ردیف‌های تفکیک است
+            qs = qs.filter(project__isnull=True, categories__isnull=True, splits__isnull=True).distinct()
         # جستجو روی شرح سند + توضیحات
         q = (g.get('q') or '').strip()
         if q:

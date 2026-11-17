@@ -241,10 +241,10 @@ def _build(gate, req, R, item, defaults, task=None):
     if 'report_month' in it:
         y, m = report_month(it['report_month'])
         data['report_year'], data['report_month'] = y, m
-    if new and 'needs_review' not in data and data.get('assignee'):
+    if new and 'needs_review' not in data:   # پیش‌فرض = تنظیمِ مسئول یا «نیاز به بازبینی»ِ نوع (مثلِ مودال)
         from colleagues.models import Colleague
-        c = Colleague.objects.filter(pk=data['assignee']).first()
-        data['needs_review'] = bool(c and c.needs_review)
+        c = Colleague.objects.filter(pk=data['assignee']).first() if data.get('assignee') else None
+        data['needs_review'] = bool((c and c.needs_review) or (td and td.requires_review))
     # فیلدهای سفارشیِ نوع (با برچسب یا key) + `link` → فیلدِ «لینکِ صفحه»ی نوع
     fields = dict(it.get('fields') or {})
     if it.get('link') and td:

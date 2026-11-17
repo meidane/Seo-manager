@@ -12,6 +12,10 @@
 :root{--bg:#0E1420;--card:#161E2E;--text:#E7ECF5;--dim:#9AA6BC;--faint:#6B7688;--stroke:#26324A;--th-bg:#1B2536;--primary:#6BA1FF;--ok:#34D399;--pink:#F472B6;--grad2:#7C3AED}
 :root[data-theme="light"]{--bg:#F7F8FB;--card:#fff;--text:#1F2937;--dim:#6B7280;--faint:#9CA3AF;--stroke:#E5E7EB;--th-bg:#F3F4F6;--primary:#2E6BD9;--ok:#059669;--pink:#DB2777;--grad2:#7C3AED}
 *{box-sizing:border-box;margin:0;padding:0}
+/* آیکنِ اسپرایت (این صفحه style.css را لود نمی‌کند) — بدونِ این، SVG بزرگ و نامرتب می‌شد */
+.ic{width:1em;height:1em;display:inline-block;vertical-align:-.14em;flex:none;fill:currentColor}
+.btn .ic{width:14px;height:14px}
+.edit-btn{display:inline-flex;align-items:center;gap:6px;text-decoration:none}
 body{font-family:Vazirmatn,system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.9;font-size:14px}
 .wrap{max-width:920px;margin:0 auto;padding:30px 20px 64px}
 .head{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--stroke);

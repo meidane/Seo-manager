@@ -74,6 +74,10 @@
 ## URLها
 `/calendar/` · `/calendar/api/` · `/calendar/api/quick-add/` · `/calendar/api/picker/` · `/calendar/api/workload/`
 
+## پنلِ «تسک‌های بدون تاریخ» = بالای تقویم
+دیگر ستونِ ۲۵۰پیکسلیِ کنار نیست (فضا می‌گرفت): `.calx-body` ستونی، پنل یک نوارِ بالای گرید با سرتیتر + افزودنِ سریع در یک ردیف و
+کارت‌ها در گریدِ چندستونه با سقفِ ارتفاع ۱۳۲px (اسکرول). بلوکِ «تقویم: پنلِ بدون تاریخ بالای تقویم» در `style.css`.
+
 ## مخفی‌کردنِ انجام‌شده‌ها
 دکمهٔ `[data-cal-hidedone]` در نوارِ فیلترِ `_calendar.html` (و `.cal-hd` در `calendar-embed.js`). فیلترِ **سمتِ کلاینت**
 روی `t.done` (`renderGrid` از `lastDays`، بدونِ درخواستِ دوباره؛ `pending` نمایش می‌ماند). پیش‌فرض: `data-hide-done` =

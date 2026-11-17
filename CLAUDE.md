@@ -36,7 +36,7 @@
   پراکسیِ MCPِ افزونهٔ Novamira برای PHP/فایل/قالب) + **`/mcp/<token>/panel/`** = MCPِ خودِ پنل (تسک/پروژه/ورود از اکسل/
   گزارش/تحلیل/پیشنهادِ تراکنش) با لاگ و بازگردانی (`/settings/mcp/log/`). بدونِ محدودیت. `mcpgate/CLAUDE.md`.
 - `filebox/` — **«فایل‌ها»ی سایدبار**: پوشه‌بندی + آپلود + لینکِ اشتراکیِ بدونِ ورود با آدرسِ ثابتِ
-  `/f/<سازمان>/<پوشه>/<نام.پسوند>` + تغییرِ نام/جابه‌جایی/حذف؛ هشدارِ جایگزینیِ هم‌نام. گیت `shared_files`. `filebox/CLAUDE.md`.
+  `/f/<id سازمان>/<پوشه>/<نام.پسوند>` + تغییرِ نام/جابه‌جایی/حذف؛ هشدارِ جایگزینیِ هم‌نام. گیت `shared_files`. `filebox/CLAUDE.md`.
 - `personal/` — **فضای شخصیِ خصوصی** (فقط سوپریوزر/`admin`): بالای صفحه = **تقویمِ مشترک**
   (همان ماژولِ `calendarapp`؛ پنلِ بدون‌تاریخ = اینباکس) + هبیت ترکر، اهداف، یادداشت،
   ثانیه‌شمارِ عمر. اسکوپ به `user`. `personal/CLAUDE.md`.
@@ -110,7 +110,7 @@
 | تسک‌های در حالِ اجرای تایمر برای کاربر/زیرمجموعه‌هایش | `tasks/queries.py: running_timers_payload` (ویجت + API) |
 | نوارِ تبِ صفحاتِ تنظیمات + هابِ سایدبار | `templates/settings/_nav.html` + `accounts:settings_home` — لینکِ سایدبار «تنظیمات» یکی است، گیت‌شده با `has_settings_access` (context processor، از `accounts/permissions.py: SETTINGS_PERMS`) |
 | دادنِ دسترسیِ سیستم به یک فرد | `colleagues.views._grant_access` (`mode=invite` فقط شماره / `mode=password` مدیر خودش رمز می‌سازد) |
-| «این تسک نیاز به بازبینی دارد و باید `pending` بماند نه `done`؟» | `Task.needs_review` (فیلدِ تسک، پیش‌فرضش از `Colleague.needs_review` موقعِ ساخت) + کلمپِ سرور در `tasks/api.py: task_status/apply_fields` |
+| «این تسک نیاز به بازبینی دارد و باید `pending` بماند نه `done`؟» (و آیا به صفِ بازبینی می‌رود) | `Task.needs_review` — **تنها تصمیم‌گیرنده** (پیش‌فرضش موقعِ ساخت از `Colleague.needs_review` یا `TaskTypeDef.requires_review`) + کلمپِ سرور در `tasks/api.py: task_status/apply_fields` |
 | چک‌باکسِ چندحالتهٔ وضعیت (ردیفِ جدول اولِ ردیف + مودال؛ جای ستون/دراپ‌داونِ قدیمی) | `templates/tasks/_status_check.html` + `tasks.js: statusCheckField/renderStatus` + هندلرِ delegatedِ `.st-check[data-id]` + CSS `.st-check.st-<status>` (کلیک=تکمیل/لغو؛ سرور pending/done را تعیین می‌کند) |
 | توقفِ خودکارِ تایمر با تکمیلِ تسک | `tasks/api.py: _stop_timer` (صدا زده می‌شود از `apply_fields`, `task_status`, `task_review`) |
 | جمع‌های فاکتور (جمع/مالیات/تخفیف/کل) | `finance/models.py: Invoice.subtotal/tax_total/discount_total/grand_total` + `InvoiceLine.base/total` (property؛ فرانت هم همین را محاسبه می‌کند) |

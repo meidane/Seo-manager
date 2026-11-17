@@ -142,7 +142,7 @@
 
     function renderGrid() {
       if (!lastDays) return;
-      const days = hideDone ? lastDays.map((c) => Object.assign({}, c, { tasks: c.tasks.filter((t) => !t.done) })) : lastDays;
+      const days = hideDone ? lastDays.map((c) => { const ts = c.tasks.filter((t) => !t.done); return Object.assign({}, c, { tasks: ts, people: ts.length ? c.people : [] }); }) : lastDays;
       grid.innerHTML = days.map((c) => cellHtml(c, canCreate)).join('');
       bindGridDnd();
       const b = root.querySelector('[data-cal-hidedone]');

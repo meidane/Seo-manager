@@ -47,7 +47,8 @@ class SharedFolder(models.Model):
 
 
 def org_key(org):
-    return (org.slug if org and org.slug else str(getattr(org, 'pk', '') or '0'))
+    """بخشِ سازمان در لینکِ عمومی = id (نه نامِ سازمان — خواستِ کاربر: نام در لینک دیده نشود)."""
+    return str(getattr(org, 'pk', '') or '0')
 
 
 class SharedFile(models.Model):
@@ -77,7 +78,7 @@ class SharedFile(models.Model):
         return self.name
 
     def public_path(self):
-        """مسیرِ ثابتِ لینکِ عمومی: /f/<سازمان>/<پوشه‌ها>/<نام.پسوند> (URL-encoded)."""
+        """مسیرِ ثابتِ لینکِ عمومی: /f/<id سازمان>/<پوشه‌ها>/<نام.پسوند> (URL-encoded)."""
         from accounts.models import Organization
         org = Organization.objects.filter(pk=self.organization_id).first()
         parts = [org_key(org)] + [d.name for d in (self.folder.chain() if self.folder_id else [])] + [self.name]
