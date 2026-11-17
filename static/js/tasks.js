@@ -466,31 +466,54 @@
   }
   function initAllGutters(root) {
     (root || document).querySelectorAll('textarea.cf-ta:not([data-gut])').forEach(initLineGutter);
-    (root || document).querySelectorAll('.tsheet textarea.ttl-in, .tsheet textarea.cf-ta, .tsheet textarea.cf-desc').forEach(autoFit);
+    const tas = [...(root || document).querySelectorAll('.tsheet textarea.ttl-in, .tsheet textarea.cf-ta, .tsheet textarea.cf-desc')];
+    tas.forEach(autoFit);
+    new Set(tas.map((t) => t.closest('tr'))).forEach(fitRow);
   }
   // ── متن‌های چندخطیِ جدولِ تسک: ارتفاع به‌اندازهٔ محتوا (بسته: حداکثر ۳ خط؛ هنگامِ ویرایش: کامل) ──
   //    به‌جای اسکرول‌بار/دستگیرهٔ resize و ارتفاعِ ثابت که ردیف‌ها را ناهمسان و شلوغ می‌کرد.
   const FIT_LINES = 3;
   // تکست‌اریای داخلِ تب/لیستِ مخفی ارتفاع ندارد → وقتی دیده شد اندازه بگیر
   const fitIO = ('IntersectionObserver' in window) ? new IntersectionObserver((ents) => ents.forEach((en) => {
-    if (en.isIntersecting) { fitIO.unobserve(en.target); fit(en.target); }
+    if (en.isIntersecting) { fitIO.unobserve(en.target); fitRow(en.target.closest('tr')); }
   })) : null;
-  function fit(ta) {
+  // stretch=false: فقط به‌اندازهٔ محتوا (تا ۳ خط)؛ stretch=true: علاوه بر آن تا ته سلول کش بیاید تا کادر هم‌قدِ ردیف باشد
+  function fit(ta, stretch = true) {
     if (!ta.offsetParent) { if (fitIO) fitIO.observe(ta); return; }
-    const lh = parseFloat(getComputedStyle(ta).lineHeight) || 19;
-    const pad = ta.offsetHeight - ta.clientHeight + (parseFloat(getComputedStyle(ta).paddingTop) || 0) * 2;
+    const cs = getComputedStyle(ta);
+    const lh = parseFloat(cs.lineHeight) || 19;
+    const pad = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0) + (ta.offsetHeight - ta.clientHeight);
     ta.style.height = 'auto';
     const full = ta.scrollHeight + (ta.offsetHeight - ta.clientHeight);
     const cap = document.activeElement === ta ? 260 : Math.ceil(lh * FIT_LINES + pad);
-    ta.style.height = Math.min(full, cap) + 'px';
-    ta.classList.toggle('is-clipped', full > cap + 1);
+    let h = Math.min(full, cap);
+    ta.style.height = h + 'px';
+    const td = ta.closest('td');
+    if (stretch && td) {
+      const tcs = getComputedStyle(td);
+      const inner = td.clientHeight - (parseFloat(tcs.paddingTop) || 0) - (parseFloat(tcs.paddingBottom) || 0);
+      const box = ta.closest('.ta-wrap') || ta.closest('.tcell') || ta;
+      const extra = box.offsetHeight - ta.offsetHeight;   // سایرِ اجزای کنارِ کادر (در عمل ۰)
+      h = Math.max(h, inner - Math.max(0, extra));
+      ta.style.height = h + 'px';
+    }
+    ta.classList.toggle('is-clipped', full > h + 1);
+  }
+  // ردیف: اول همه به‌اندازهٔ محتوا، بعد همه تا ارتفاعِ نهاییِ ردیف (ترتیبِ ستون‌ها اثری نداشته باشد)
+  const ROW_TA = 'textarea.ttl-in, textarea.cf-ta, textarea.cf-desc';
+  function fitRow(tr) {
+    if (!tr) return;
+    const tas = [...tr.querySelectorAll(ROW_TA)];
+    tas.forEach((t) => fit(t, false));
+    tas.forEach((t) => fit(t, true));
   }
   function autoFit(ta) {
-    if (ta.dataset.fit) { fit(ta); return; }
+    if (ta.dataset.fit) return;
     ta.dataset.fit = '1';
-    ['input', 'focus', 'blur'].forEach((ev) => ta.addEventListener(ev, () => fit(ta)));
+    ['input', 'focus'].forEach((ev) => ta.addEventListener(ev, () => fitRow(ta.closest('tr'))));
+    // با بستن/تغییر، کلِ ردیف دوباره اندازه بگیرد (ارتفاعِ ردیف ممکن است عوض شده باشد)
+    ta.addEventListener('blur', () => fitRow(ta.closest('tr')));
     if (ta.classList.contains('ttl-in')) ta.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); ta.blur(); } });
-    fit(ta);
   }
   window.initAllGutters = initAllGutters;
 

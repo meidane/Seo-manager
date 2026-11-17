@@ -2088,6 +2088,9 @@ input[type=checkbox]:disabled{opacity:.5;cursor:default}
 .ta-wrap:not(.multi) .cf-ta{padding-inline-start:6px}
 .ta-gut{padding-top:4px}
 .tsheet .dcell:has(.cf-ta){min-width:230px}
-.tsheet td.tcell{min-width:300px}
+.tsheet td.tcell-td{min-width:300px}
+/* سلولِ عنوان خودش جدول‌سلول می‌ماند (فلکس روی div داخلی) — قبلاً td.tcell خودش flex بود و
+   هم‌قدِ ردیف نمی‌شد؛ کادرِ عنوان کوتاه‌تر از ردیف بود و متنِ دوخطی از آن بیرون می‌زد (باگِ رفع‌شده) */
+.tsheet td.tcell-td{vertical-align:top}
 .tsheet .tcell textarea.ttl-in{flex:1 1 180px;min-width:150px}
 .tsheet .tcell .ttype-sel{max-width:78px;min-width:0;flex:none}
