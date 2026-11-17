@@ -562,7 +562,7 @@ processor + `api.running_timers`، منبعِ واحد) پر می‌شود — �
   `task_detail` DELETE دیگر hard-delete نمی‌کند — `deleted_at` می‌گذارد + تایمر را استاپ.
   بازیابی: `task_restore` (POST، `delete_task`). تبِ «تسک‌های حذف‌شده» آخرِ لیست
   (`box_deleted`، فقط با `delete_task`).
-- **`TaskHistory`** (ساخت/ویرایش/حذف/بازیابی + `changes`={برچسب:[قدیم,جدید]}). منبعِ واحدِ
+- **`TaskHistory`** (ساخت/ویرایش/حذف/بازیابی + `changes`={برچسب:[قدیم,جدید]} + `source`('mcp' اگر از MCPِ پنل) + `batch_id` → برچسبِ «MCP #n» در مودال). منبعِ واحدِ
   ثبت: `tasks/history.py` (`snapshot`/`diff`/`record`) — از `task_create`/`task_detail`
   PATCH/DELETE/`task_status`/`task_restore` صدا زده می‌شود. `task_detail` GET آن را در
   `history` می‌فرستد؛ `tasks.js: historyHtml(t)` آیکنِ 🕐 جمع‌شونده پایینِ مودال را می‌سازد.

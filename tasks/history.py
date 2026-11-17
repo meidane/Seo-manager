@@ -67,5 +67,10 @@ def diff(task, before):
 
 
 def record(task, action, user, changes=None):
+    """اگر این تغییر داخلِ یک دستهٔ MCP رخ داده باشد (`mcpgate.journal.current_batch`)، منبع = mcp
+    و شمارهٔ دسته ثبت می‌شود — هر مسیری (حتی توابعِ مشترکِ پنل) خودکار برچسب می‌خورد."""
+    from mcpgate.journal import current_batch
     u = user if getattr(user, 'is_authenticated', False) else None
-    TaskHistory.objects.create(task=task, action=action, user=u, changes=changes or {})
+    b = current_batch()
+    TaskHistory.objects.create(task=task, action=action, user=u, changes=changes or {},
+                               source='mcp' if b else '', batch_id=b.pk if b else None)

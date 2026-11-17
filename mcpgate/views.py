@@ -33,17 +33,24 @@ def _gate_from(request, token):
     return MCPGate.objects.filter(token=token, enabled=True).select_related('organization').first() if token else None
 
 
-def _handle(gate, msg):
+def _handle(gate, msg, panel=False):
+    """panel=True → ابزارهای پنل (`mcpgate/panel/registry.py`)؛ وگرنه ابزارهای سایت‌ها (`tools.py`)."""
+    from .panel import registry as PR
+    from .panel.ctx import ToolError as PanelError
     mid, method, params = msg.get('id'), msg.get('method'), msg.get('params') or {}
+    tools_list = PR.TOOLS if panel else T.TOOLS
+    instructions = PR.INSTRUCTIONS if panel else T.INSTRUCTIONS
+    runner = PR.run if panel else T.run
     ok = lambda result: {'jsonrpc': '2.0', 'id': mid, 'result': result}  # noqa: E731
     if method == 'initialize':
         v = params.get('protocolVersion')
         return ok({'protocolVersion': v if v in VERSIONS else VERSIONS[0], 'capabilities': {'tools': {'listChanged': False}},
-                   'serverInfo': {'name': 'seo-manager', 'version': '1.0.0'}, 'instructions': T.INSTRUCTIONS})
+                   'serverInfo': {'name': 'seo-manager-panel' if panel else 'seo-manager', 'version': '1.1.0'},
+                   'instructions': instructions})
     if method == 'ping':
         return ok({})
     if method == 'tools/list':
-        return ok({'tools': T.TOOLS})
+        return ok({'tools': tools_list})
     if method in ('resources/list', 'prompts/list', 'resources/templates/list'):
         key = {'resources/list': 'resources', 'prompts/list': 'prompts'}.get(method, 'resourceTemplates')
         return ok({key: []})
@@ -51,14 +58,18 @@ def _handle(gate, msg):
         name, args = params.get('name'), params.get('arguments') or {}
         log, t0 = {}, time.monotonic()
         try:
-            out = T.to_content(T.run(gate.organization, name, args, log))
+            res = runner(gate, name, args, log) if panel else runner(gate.organization, name, args, log)
+            out = T.to_content(res)
             err = ''
-        except (T.ToolError, wp.WPError, KeyError, ValueError, TypeError) as e:
+        except (T.ToolError, PanelError, wp.WPError, KeyError, ValueError, TypeError) as e:
             err = f'{type(e).__name__}: {e}' if isinstance(e, (KeyError, TypeError)) else str(e)
             out = {'content': [{'type': 'text', 'text': f'خطا: {err}'}], 'isError': True}
         except Exception as e:  # noqa: BLE001 — هیچ خطایی نباید endpoint را بخواباند
             err = f'{type(e).__name__}: {e}'
             out = {'content': [{'type': 'text', 'text': f'خطای داخلی: {err}'}], 'isError': True}
+        if panel and not log.get('summary'):
+            log['summary'] = json.dumps({k: (v if not isinstance(v, list) else f'[{len(v)}]') for k, v in (args or {}).items()},
+                                        ensure_ascii=False, default=str)[:300]
         MCPLog.objects.create(organization=gate.organization, site=log.get('site', ''), tool=str(name)[:80],
                               summary=log.get('summary', '')[:300], ok=not err, error=err[:2000],
                               ms=int((time.monotonic() - t0) * 1000), backup=log.get('backup'))
@@ -69,7 +80,12 @@ def _handle(gate, msg):
 
 
 @csrf_exempt
-def endpoint(request, token=''):
+def endpoint_panel(request, token=''):
+    return endpoint(request, token, panel=True)
+
+
+@csrf_exempt
+def endpoint(request, token='', panel=False):
     if request.method == 'OPTIONS':
         return _cors(HttpResponse(status=204))
     gate = _gate_from(request, token)
@@ -85,8 +101,9 @@ def endpoint(request, token=''):
         msg = json.loads(request.body or b'null')
     except ValueError:
         return _cors(JsonResponse({'jsonrpc': '2.0', 'id': None, 'error': {'code': -32700, 'message': 'Parse error'}}, status=400))
+    gate._base = request.build_absolute_uri('/')
     batch = isinstance(msg, list)
-    replies = [r for r in (_handle(gate, m) for m in (msg if batch else [msg]) if isinstance(m, dict)) if r is not None]
+    replies = [r for r in (_handle(gate, m, panel) for m in (msg if batch else [msg]) if isinstance(m, dict)) if r is not None]
     if not replies:
         return _cors(HttpResponse(status=202))
     resp = JsonResponse(replies if batch else replies[0], safe=False, json_dumps_params={'ensure_ascii': False})
@@ -94,8 +111,11 @@ def endpoint(request, token=''):
 
 
 # ───────────── صفحهٔ تنظیمات ─────────────
-def _gate(org):
+def _gate(org, user=None):
     gate, _ = MCPGate.objects.get_or_create(organization=org)
+    if user is not None and gate.user_id is None:
+        gate.user = user          # کارهای MCPِ پنل به نامِ همین کاربر ثبت می‌شود
+        gate.save(update_fields=['user'])
     return gate
 
 
@@ -125,7 +145,7 @@ def import_from_sync(org):
 @login_required
 def page(request):
     org = require_perm(request, PERM)
-    gate = _gate(org)
+    gate = _gate(org, request.user)
     from connector.models import SyncStore
     store = SyncStore.objects.filter(organization=org).first()
     sync_sites = len((store.get_data() if store else {}).get('sites') or [])
@@ -135,6 +155,7 @@ def page(request):
         'page_title': 'اتصالِ MCP',
         'gate': gate,
         'mcp_url': request.build_absolute_uri(f'/mcp/{gate.token}/'),
+        'mcp_panel_url': request.build_absolute_uri(f'/mcp/{gate.token}/panel/'),
         'sites': [s.brief() for s in MCPSite.objects.filter(organization=org)],
         'logs': MCPLog.objects.filter(organization=org)[:40],
         'sync_sites': sync_sites,
@@ -217,3 +238,31 @@ def site_import(request):
     added, updated = import_from_sync(org)
     return JsonResponse({'added': added, 'updated': updated,
                          'sites': [s.brief() for s in MCPSite.objects.filter(organization=org)]})
+
+
+# ───────────── لاگ و بازگردانیِ تغییراتِ MCPِ پنل ─────────────
+@login_required
+def log_page(request, pk=None):
+    from django.core.paginator import Paginator
+
+    from .models import MCPBatch
+    org = require_perm(request, PERM)
+    qs = MCPBatch.objects.filter(organization=org).select_related('user', 'undone_by')
+    if request.GET.get('tool'):
+        qs = qs.filter(tool=request.GET['tool'])
+    page = Paginator(qs, 40).get_page(request.GET.get('page'))
+    current = qs.filter(pk=pk).first() if pk else None
+    changes = list(current.changes.all()[:500]) if current else []
+    return render(request, 'mcpgate/log.html', {'page_title': 'لاگِ MCP', 'page_obj': page, 'batches': page.object_list,
+                                                'current': current, 'changes': changes})
+
+
+@login_required
+@require_http_methods(['POST'])
+def log_undo(request, pk):
+    from . import journal
+    from .models import MCPBatch
+    org = require_perm(request, PERM)
+    b = get_object_or_404(MCPBatch, pk=pk, organization=org)
+    res = journal.undo(b, request.user, force=bool(_body(request).get('force')))
+    return JsonResponse(res)

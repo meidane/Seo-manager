@@ -377,7 +377,8 @@
     const item = (h) => {
       const ch = Object.keys(h.changes || {}).map((k) =>
         `<div class="hist-ch"><b>${esc(k)}</b>: <span class="hist-old">${esc(h.changes[k][0])}</span> ← <span class="hist-new">${esc(h.changes[k][1])}</span></div>`).join('');
-      return `<div class="hist-item"><div class="hist-meta"><span class="hist-badge hist-${h.action}">${esc(h.action_label)}</span> · ${esc(h.user)} · ${esc(h.when)}</div>${ch}</div>`;
+      const mcp = h.source === 'mcp' ? ` <a class="hist-mcp" href="/settings/mcp/log/${h.batch || ''}/" target="_blank" rel="noopener" title="این تغییر از طریقِ MCP (ChatGPT/Claude) انجام شد — دستهٔ #${h.batch || ''} (قابلِ بازگردانی)">MCP #${h.batch || ''}</a>` : '';
+      return `<div class="hist-item"><div class="hist-meta"><span class="hist-badge hist-${h.action}">${esc(h.action_label)}</span>${mcp} · ${esc(h.user)} · ${esc(h.when)}</div>${ch}</div>`;
     };
     return hs.length ? hs.map(item).join('') : '<div class="zero" style="padding:8px">تاریخچه‌ای نیست</div>';
   }

@@ -77,6 +77,11 @@ SEO_TYPES = [
              'is_keyword_source': True, 'placeholder': 'هر انکر در یک خط'},
             {'label': 'لینک', 'kind': TEXTAREA, 'required': False,
              'is_link_source': True, 'placeholder': 'هر لینک در یک خط'},
+            # برای ورودِ رپورتاژهای قدیمی + تحلیلِ هزینه (سازمان‌های موجود: مهاجرتِ seo/0002)
+            {'label': 'رسانه', 'kind': TEXT, 'required': False, 'placeholder': 'نامِ سایت/رسانهٔ منتشرکننده'},
+            {'label': 'هزینه', 'kind': NUMBER, 'required': False, 'placeholder': 'ریال'},
+            {'label': 'لینک رپورتاژ', 'kind': URL, 'required': False, 'is_page_link': True,
+             'placeholder': 'آدرسِ رپورتاژِ منتشرشده'},
         ],
         'kpis': [],
     },

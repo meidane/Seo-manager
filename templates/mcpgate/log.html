@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}لاگِ MCP{% endblock %}
+
+{% block content %}
+  {% include "settings/_nav.html" %}
+  <div class="page-h"><h1>لاگِ تغییراتِ MCP</h1>
+    <div class="side-c"><a href="{% url 'mcpgate:page' %}" class="btn btn-sm">{% icon 'link' %} اتصالِ MCP</a></div>
+  </div>
+  <p class="mcp-hint" style="padding:0 2px 12px">هر کاری که ChatGPT/Claude از طریقِ کانکتورِ «پنل» انجام داد، یک «دسته» است. با «بازگردانی» همهٔ تغییراتِ آن دسته برمی‌گردد؛ رکوردی که بعد از آن دستی ویرایش شده رد می‌شود تا کارِ دستی از بین نرود (مگر «بازگردانیِ اجباری»).</p>
+
+  {% if current %}
+  <section class="card glass" style="margin-bottom:14px" id="batch-card" data-id="{{ current.id }}">
+    <div class="card-h">
+      <h3>دستهٔ #{{ current.id|fa_digits }} — {{ current.tool }}</h3>
+      <div class="side-c">
+        {% if current.undone_at %}<span class="tag t-mute">بازگردانی شد {{ current.undone_at|timeago }}</span>{% else %}
+        <button class="btn btn-sm" id="undo-btn">{% icon 'refresh' %} بازگردانی</button>
+        <button class="btn btn-sm" id="undo-force" title="حتی رکوردهایی که بعداً دستی تغییر کرده‌اند">بازگردانیِ اجباری</button>{% endif %}
+      </div>
+    </div>
+    <p class="mcp-hint" style="padding:10px 17px 0">{{ current.summary }} · {{ current.user|default:"—" }} · {{ current.created_at|jalali }} {{ current.created_at|date:"H:i" }}{% if current.undo_note %} · {{ current.undo_note }}{% endif %}</p>
+    <div class="tscroll"><table>
+      <thead><tr><th>عمل</th><th>رکورد</th><th>قبل</th><th>بعد</th><th>وضعیت</th></tr></thead>
+      <tbody>
+      {% for ch in changes %}
+        <tr>
+          <td><span class="tag {% if ch.op == 'create' %}t-ok{% elif ch.op == 'update' %}t-info{% else %}t-bad{% endif %}">{% if ch.op == 'create' %}ساخت{% elif ch.op == 'update' %}ویرایش{% elif ch.op == 'delete' %}حذف{% else %}حذفِ کامل{% endif %}</span></td>
+          <td>{% if ch.model == 'tasks.Task' %}<a class="lnk" href="#" data-open-task="{{ ch.object_id }}">{{ ch.label }}</a>{% else %}{{ ch.label }}{% endif %} <span class="zero" dir="ltr">{{ ch.model }}#{{ ch.object_id }}</span></td>
+          <td class="mcp-diff">{% if ch.op == 'update' or ch.op == 'delete' %}{% for k, v in ch.before.items %}<div><b>{{ k }}</b>: {{ v|default:"—"|truncatechars:80 }}</div>{% endfor %}{% else %}—{% endif %}</td>
+          <td class="mcp-diff">{% if ch.op == 'update' or ch.op == 'delete' %}{% for k, v in ch.after.items %}<div><b>{{ k }}</b>: {{ v|default:"—"|truncatechars:80 }}</div>{% endfor %}{% elif ch.op == 'create' %}رکوردِ تازه{% else %}—{% endif %}</td>
+          <td>{% if ch.undone %}<span class="tag t-mute">برگشت</span>{% elif ch.undo_skip %}<span class="tag t-warn" title="{{ ch.undo_skip }}">رد شد</span>{% else %}—{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+  {% endif %}
+
+  <section class="card glass">
+    <div class="card-h"><h3>دسته‌ها</h3></div>
+    {% if batches %}
+    <div class="tscroll"><table>
+      <thead><tr><th>#</th><th>زمان</th><th>ابزار</th><th>خلاصه</th><th>تغییرات</th><th>کاربر</th><th>وضعیت</th></tr></thead>
+      <tbody>
+      {% for b in batches %}
+        <tr class="mcp-batch-row{% if current and b.id == current.id %} on{% endif %}" onclick="location.href='{% url 'mcpgate:log_detail' b.id %}'" style="cursor:pointer">
+          <td>{{ b.id|fa_digits }}</td>
+          <td>{{ b.created_at|timeago }}</td>
+          <td dir="ltr" style="text-align:right">{{ b.tool }}</td>
+          <td class="mcp-sum">{{ b.summary }}</td>
+          <td>{% for k, v in b.counts.items %}<span class="tag t-mute">{% if k == 'create' %}ساخت{% elif k == 'update' %}ویرایش{% else %}حذف{% endif %} {{ v|fa_digits }}</span> {% endfor %}</td>
+          <td>{{ b.user|default:"—" }}</td>
+          <td>{% if b.undone_at %}<span class="tag t-mute">بازگردانی شد</span>{% else %}<span class="tag t-ok">فعال</span>{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% include "components/_pagination.html" %}
+    {% else %}
+      <div class="empty"><div class="ico">{% icon 'sync' %}</div><h4>هنوز تغییری از طریقِ MCP انجام نشده</h4></div>
+    {% endif %}
+  </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  const card = document.getElementById('batch-card'); if (!card) return;
+  async function undo(force){
+    if (!await App.confirm(force ? 'همهٔ تغییراتِ این دسته برگردد، <b>حتی</b> رکوردهایی که بعداً دستی ویرایش شده‌اند؟' : 'تغییراتِ این دسته بازگردانی شود؟', {okText: 'بازگردانی'})) return;
+    const d = await App.fetchJSON(`/settings/mcp/log/${card.dataset.id}/undo/`, {method: 'POST', body: {force}});
+    App.toast(`${d.undone} مورد برگشت` + (d.skipped && d.skipped.length ? ` · ${d.skipped.length} رد شد (دستی تغییر کرده)` : ''), d.skipped && d.skipped.length ? 'warn' : 'ok', 6000);
+    setTimeout(() => location.reload(), 900);
+  }
+  const u = document.getElementById('undo-btn'); if (u) u.onclick = () => undo(false);
+  const f = document.getElementById('undo-force'); if (f) f.onclick = () => undo(true);
+})();
+</script>
+{% endblock %}

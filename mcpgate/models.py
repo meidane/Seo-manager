@@ -6,6 +6,7 @@
 """
 import secrets
 
+from django.conf import settings
 from django.db import models
 
 from core.crypto import decrypt, encrypt
@@ -20,6 +21,8 @@ class MCPGate(models.Model):
     organization = models.OneToOneField('accounts.Organization', on_delete=models.CASCADE, related_name='mcp_gate')
     token = models.CharField('توکن', max_length=64, unique=True, default=new_token)
     enabled = models.BooleanField('فعال', default=True)
+    # کاربری که کارهای MCPِ پنل به نامِ او ثبت می‌شود (سازنده/آخرین تنظیم‌کنندهٔ صفحه)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name='اجراکننده', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -77,7 +80,45 @@ class MCPLog(models.Model):
     error = models.TextField(blank=True)
     ms = models.PositiveIntegerField(default=0)
     backup = models.JSONField(null=True, blank=True)
+    batch = models.ForeignKey('MCPBatch', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
         ordering = ['-created_at']
+
+
+class MCPBatch(models.Model):
+    """یک «دسته» = یک فراخوانیِ ابزارِ نویسندهٔ MCPِ پنل (ساخت/ویرایش/حذف/ایمپورت). واحدِ بازگردانی.
+    هر رکوردِ تغییرکرده یک `MCPChange` با نسخهٔ قبل/بعد دارد (`mcpgate/journal.py`)."""
+    organization = models.ForeignKey('accounts.Organization', on_delete=models.CASCADE, related_name='+')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    tool = models.CharField(max_length=80)
+    summary = models.CharField(max_length=300, blank=True)
+    counts = models.JSONField(default=dict, blank=True)   # {'create': n, 'update': n, 'delete': n}
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    undone_at = models.DateTimeField(null=True, blank=True)
+    undone_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    undo_note = models.CharField(max_length=300, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'دستهٔ تغییرِ MCP'
+
+    def __str__(self):
+        return f'#{self.pk} {self.tool}'
+
+
+class MCPChange(models.Model):
+    CREATE, UPDATE, DELETE = 'create', 'update', 'delete'
+    batch = models.ForeignKey(MCPBatch, on_delete=models.CASCADE, related_name='changes')
+    model = models.CharField(max_length=60)          # 'tasks.Task'
+    object_id = models.PositiveIntegerField()
+    label = models.CharField(max_length=200, blank=True)   # عنوانِ خوانا
+    op = models.CharField(max_length=8)
+    before = models.JSONField(null=True, blank=True)       # فقط فیلدهای تغییرکرده (برای update)
+    after = models.JSONField(null=True, blank=True)
+    undone = models.BooleanField(default=False)
+    undo_skip = models.CharField(max_length=200, blank=True)  # دلیلِ رد شدنِ بازگردانیِ این رکورد
+
+    class Meta:
+        ordering = ['id']

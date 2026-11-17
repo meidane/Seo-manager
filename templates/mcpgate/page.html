@@ -10,10 +10,16 @@
     <div class="card-h"><h3>آدرسِ اتصال</h3>
       <label class="mcp-switch"><input type="checkbox" id="gate-on" {% if gate.enabled %}checked{% endif %}> فعال</label>
     </div>
+    <div class="mcp-url-row"><b>سایت‌ها</b><span>وردپرس/Novamira — نوشتن و ویرایشِ محتوای سایت‌ها</span></div>
     <div class="mcp-url-wrap">
       <code dir="ltr" id="mcp-url">{{ mcp_url }}</code>
-      <button class="btn btn-sm btn-p" id="copy-url">{% icon 'copy' %} کپی</button>
+      <button class="btn btn-sm btn-p mcp-copy" data-target="mcp-url">{% icon 'copy' %} کپی</button>
       <button class="btn btn-sm" id="regen">{% icon 'refresh' %} توکنِ جدید</button>
+    </div>
+    <div class="mcp-url-row"><b>پنل</b><span>تسک، پروژه، ورود از اکسل، گزارش، تحلیل و پیشنهادِ تراکنش — <a href="{% url 'mcpgate:log' %}">لاگ و بازگردانی</a></span></div>
+    <div class="mcp-url-wrap">
+      <code dir="ltr" id="mcp-panel-url">{{ mcp_panel_url }}</code>
+      <button class="btn btn-sm btn-p mcp-copy" data-target="mcp-panel-url">{% icon 'copy' %} کپی</button>
     </div>
     <div class="mcp-guide">
       <div><b>ChatGPT (دسکتاپ یا وب)</b>
@@ -24,7 +30,7 @@
         <ol><li>Settings ← Connectors ← <b>Add custom connector</b>.</li>
           <li>یک نام و همین آدرس را بچسبان ← Add.</li></ol></div>
     </div>
-    <p class="mcp-hint">مسیر: ChatGPT/Claude ← <b>پنل</b> ← سایت. توکن داخلِ همین آدرس است؛ اگر لو رفت «توکنِ جدید» بزن و آدرسِ تازه را در کانکتورها عوض کن.</p>
+    <p class="mcp-hint">هر آدرس را یک کانکتورِ جدا اضافه کن (مثلاً «سایت‌ها» و «پنل») تا هر گفتگو فقط ابزارهای لازم را بار کند و توکن کمتر مصرف شود. کارهای کانکتورِ پنل به نامِ <b>{{ gate.user|default:"مالک" }}</b> و با برچسبِ «MCP» در تاریخچه ثبت می‌شوند. توکن داخلِ همین آدرس‌هاست؛ اگر لو رفت «توکنِ جدید» بزن و آدرسِ تازه را در کانکتورها عوض کن.</p>
   </section>
 
   <section class="card glass" style="margin-bottom:14px">
@@ -143,15 +149,16 @@
     const r = await App.fetchJSON(URLS.imp, {method: 'POST'});
     sites = r.sites; render(); App.toast(`${r.added} سایتِ جدید، ${r.updated} به‌روز شد`, 'ok');
   };
-  document.getElementById('copy-url').onclick = async () => {
-    const t = document.getElementById('mcp-url').textContent;
+  document.querySelectorAll('.mcp-copy').forEach(b => b.onclick = async () => {
+    const t = document.getElementById(b.dataset.target).textContent;
     try { await navigator.clipboard.writeText(t); } catch (_) {}
     App.toast('آدرس کپی شد', 'ok');
-  };
+  });
   document.getElementById('regen').onclick = async () => {
     if (!await App.confirm('توکنِ جدید ساخته شود؟<br>آدرسِ فعلی دیگر کار نمی‌کند و باید در ChatGPT/Claude عوضش کنی.', {okText: 'بساز'})) return;
     const r = await App.fetchJSON(URLS.gate, {method: 'POST', body: {regenerate: true}});
-    document.getElementById('mcp-url').textContent = r.url; App.toast('توکنِ جدید ساخته شد', 'ok');
+    document.getElementById('mcp-url').textContent = r.url; document.getElementById('mcp-panel-url').textContent = r.url + 'panel/';
+    App.toast('توکنِ جدید ساخته شد', 'ok');
   };
   document.getElementById('gate-on').onchange = async e => {
     await App.fetchJSON(URLS.gate, {method: 'POST', body: {enabled: e.target.checked}});

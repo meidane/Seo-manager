@@ -198,12 +198,18 @@ class TransactionListView(LoginRequiredMixin, FinancePermMixin, TemplateView):
 
         ctx['page_obj'] = page_obj
         transactions = list(page_obj.object_list)
-        # ── پیشنهادِ هوشمندِ پروژه/بابت برای تراکنش‌های بی‌تخصیص (روشِ A: امضا + حافظه) ──
-        from .tx_suggest import suggestions_for
-        sugg = suggestions_for(transactions)
+        # ── پیشنهادِ ماندگار (حافظه/MCP): برای بی‌تخصیص‌های این صفحه حافظه ذخیره می‌شود، بعد پیشنهادهای
+        #    در انتظار در ستونِ خودشان (پروژه/بابت/توضیح) با یک گروه دکمهٔ تأیید/رد نشان داده می‌شوند ──
+        from .models import TxSuggestion
+        from .tx_suggest import payload, persist_memory
+        persist_memory(transactions)
+        pend = {s.transaction_id: s for s in TxSuggestion.objects.filter(
+            transaction__in=transactions, status=TxSuggestion.PENDING).select_related('project')}
         for t in transactions:
-            t.ai_suggestion = sugg.get(t.id)
-        ctx['ai_suggest_count'] = len(sugg)
+            s = pend.get(t.id)
+            t.ai_suggestion = payload(s) if s and not t.splits.all() else None
+        ctx['ai_suggest_count'] = sum(1 for t in transactions if t.ai_suggestion)
+        ctx['ai_pending_total'] = TxSuggestion.objects.filter(status=TxSuggestion.PENDING).count()
         ctx['transactions'] = transactions
         ctx['total_count'] = paginator.count
         ctx['banks'] = BankAccount.objects.filter(is_active=True)
@@ -752,28 +758,32 @@ def tx_edit(request, pk):
 @require_finance
 @require_http_methods(['POST'])
 def tx_apply_suggestions(request):
-    """تأییدِ گروهیِ پیشنهادهای هوشمند برای فهرستی از تراکنش‌ها.
+    """تأیید/رد پیشنهادها. بدنه: `{ids: [txid...], action: accept|reject}` — فقط پیشنهادهای «در انتظار»؛
+    تأیید = پروژه + بابت + توضیح با هم (`tx_suggest.apply_suggestion`)."""
+    from .models import TxSuggestion
+    from .tx_suggest import apply_suggestion, reject_suggestion
+    d = _body(request)
+    ids = [int(x) for x in (d.get('ids') or []) if str(x).isdigit()]
+    action = d.get('action') or 'accept'
+    done, rows = 0, []
+    for sg in TxSuggestion.objects.filter(transaction_id__in=ids, status=TxSuggestion.PENDING).select_related('transaction'):
+        if action == 'reject':
+            reject_suggestion(sg, request.user)
+        else:
+            t = apply_suggestion(sg, request.user)
+            rows.append({'id': t.id, 'project': t.project_id or '', 'categories': sg.categories, 'note': t.note})
+        done += 1
+    return JsonResponse({'ok': True, 'applied': done, 'rows': rows})
 
-    بدنه: `{ids: [...]}` (idهای تراکنش‌های نمایش‌دادهٔ صفحه). پیشنهاد **سرورساید دوباره
-    محاسبه می‌شود** (نه اعتماد به مقدارِ کلاینت) و روی تراکنش‌های هنوز-بی‌تخصیص نشانده می‌شود.
-    """
-    from .tx_suggest import suggestions_for
-    ids = [int(x) for x in (_body(request).get('ids') or []) if str(x).isdigit()]
-    txs = list(Transaction.objects.filter(id__in=ids, project__isnull=True, categories__isnull=True)
-               .prefetch_related('categories', 'splits').distinct())
-    sugg = suggestions_for(txs)
-    applied = 0
-    for t in txs:
-        s = sugg.get(t.id)
-        if not s:
-            continue
-        if s.get('project_id'):
-            t.project_id = s['project_id']
-            t.save(update_fields=['project', 'updated_at'])
-        if s.get('category_id'):
-            t.categories.set([s['category_id']])
-        applied += 1
-    return JsonResponse({'ok': True, 'applied': applied})
+
+@login_required
+@require_finance
+@require_http_methods(['POST'])
+def tx_rereview(request):
+    """دکمهٔ «بازبینیِ مجدد با AI»: حافظه روی همهٔ تراکنش‌های بی‌تخصیص + شمارشِ صفِ MCP."""
+    from .tx_suggest import rereview_all
+    made, queue = rereview_all()
+    return JsonResponse({'ok': True, 'made': made, 'queue': queue})
 
 
 @login_required

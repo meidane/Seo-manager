@@ -242,7 +242,7 @@
     const vw=e.target.closest('.ai-view'); if(vw){ e.stopPropagation(); showRefs(vw); return; }
     // AI: تأیید (درجا، بدونِ رفرش)
     const ok=e.target.closest('.ai-ok'); if(ok){ e.stopPropagation(); acceptSug(ok.closest('.ai-sug')); return; }
-    const no=e.target.closest('.ai-no'); if(no){ e.stopPropagation(); no.closest('.ai-sug').remove(); pruneBanner(); return; }
+    const no=e.target.closest('.ai-no'); if(no){ e.stopPropagation(); rejectSug(no.closest('.ai-sug')); return; }
     // تفکیک
     const sp=e.target.closest('.tx-split-btn'); if(sp){ e.preventDefault(); e.stopPropagation(); openSplit(sp.dataset.id, +sp.dataset.amount||0); return; }
     // شیفت-کلیکِ چک‌باکس
@@ -253,33 +253,49 @@
     }
     // تأییدِ همهٔ پیشنهادها
     if(e.target.closest('#ai-apply-all')){ applyAllSug(); return; }
+    if(e.target.closest('#ai-rereview')){ rereview(); return; }
   });
 
-  // ── AI: تأییدِ تکی (درجا) ──
+  // ── پیشنهاد (AI/MCP): یک تأیید برای هر سه ستون (پروژه + بابت + توضیح)، درجا بدونِ رفرش ──
+  const SUG_URL="{% url 'finance:tx_apply_suggestions' %}";
+  function clearSug(row){ row.querySelectorAll('.ai-ghost,.ai-sug').forEach(x=>x.remove()); pruneBanner(); }
   async function acceptSug(sug){
     if(!sug) return;
-    const body={ project: sug.dataset.project || '' };
-    if(sug.dataset.category) body.categories=[sug.dataset.category];
+    const row=sug.closest('tr');
     try{
-      await txSave(sug.dataset.id, body);
-      const row=sug.closest('tr');
-      if(sug.dataset.project){ const sel=row.querySelector('.tx-f[data-f="project"]'); if(sel){ sel.value=sug.dataset.project; sel.dispatchEvent(new Event('rs-refresh')); } }
-      if(sug.dataset.category){ const cell=row.querySelector('.txcat-cell'); if(cell) addChip(cell, sug.dataset.category); }
-      sug.remove(); pruneBanner();
+      const d=await App.fetchJSON(SUG_URL,{method:'POST',body:{ids:[+sug.dataset.id],action:'accept'}});
+      const r=(d.rows||[])[0];
+      if(r){
+        const sel=row.querySelector('.tx-f[data-f="project"]'); if(sel && r.project){ sel.value=String(r.project); sel.dispatchEvent(new Event('rs-refresh')); }
+        const cell=row.querySelector('.txcat-cell'); if(cell) (r.categories||[]).forEach(c=>addChip(cell, String(c)));
+        const note=row.querySelector('.tx-f[data-f="note"]'); if(note) note.value=r.note||'';
+      }
+      clearSug(row); App.toast('ثبت شد','ok');
     }catch(_){}
+  }
+  async function rejectSug(sug){
+    if(!sug) return;
+    try{ await App.fetchJSON(SUG_URL,{method:'POST',body:{ids:[+sug.dataset.id],action:'reject'}}); clearSug(sug.closest('tr')); }catch(_){}
   }
   async function applyAllSug(){
     const ids=[...results.querySelectorAll('.ai-sug')].map(s=>+s.dataset.id);
     if(!ids.length) return;
-    if(!await App.confirm(`${ids.length} پیشنهادِ هوشمند تأیید و نشانده شود؟`)) return;
-    try{ const d=await App.fetchJSON("{% url 'finance:tx_apply_suggestions' %}",{method:'POST',body:{ids}}); App.toast(`${d.applied} مورد نشست`,'ok'); reloadTx(); }catch(_){}
+    if(!await App.confirm(`${ids.length} پیشنهاد (پروژه + بابت + توضیح) تأیید و ثبت شود؟`)) return;
+    try{ const d=await App.fetchJSON(SUG_URL,{method:'POST',body:{ids,action:'accept'}}); App.toast(`${d.applied} مورد ثبت شد`,'ok'); reloadTx(); }catch(_){}
   }
-  function pruneBanner(){ if(!results.querySelector('.ai-sug')){ const b=document.getElementById('ai-banner'); if(b) b.remove(); } }
+  async function rereview(){
+    try{
+      const d=await App.fetchJSON("{% url 'finance:tx_rereview' %}",{method:'POST'});
+      App.toast(`${d.made} پیشنهادِ تازه از حافظه ساخته شد · ${d.queue} تراکنش در صفِ بررسیِ MCP — در ChatGPT/Claude بگو «صفِ تراکنش‌ها را بررسی و پیشنهاد بده»`,'ok',9000);
+      reloadTx();
+    }catch(_){}
+  }
+  function pruneBanner(){}
   // ── AI: مشاهدهٔ رفرنس ──
   const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   function showRefs(btn){
     let refs=[]; try{ refs=JSON.parse(btn.dataset.refs||'[]'); }catch(_){}
-    const why=btn.dataset.why||'';
+    const why=(btn.dataset.source==='mcp'?'پیشنهادِ MCP (ChatGPT/Claude): ':'')+(btn.dataset.why||'');
     const rows = refs.length ? refs.map(r=>`<tr><td style="white-space:nowrap">${esc(r.date)}</td><td>${esc(r.dir)}</td><td class="num" style="white-space:nowrap">${esc(r.amount)}</td><td>${esc(r.label)}</td><td style="color:var(--text-dim);max-width:280px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.desc)}">${esc(r.desc)}</td></tr>`).join('')
       : '<tr><td colspan="5" style="text-align:center;color:var(--text-faint);padding:14px">رفرنسی برای این پیشنهاد ثبت نشده</td></tr>';
     App.openModal(`<div class="modal-h"><h3>رفرنسِ پیشنهادِ هوشمند</h3><button class="x" onclick="App.closeModal()">×</button></div>

@@ -33,7 +33,8 @@
 - `connector/` — **همگام‌سازیِ ChatGPT-WP**: یک انبارِ ساده برای هر سازمان (تنظیمات/سایت‌ها/رمزها رمزنگاری‌شده +
   فایل‌ها) که برنامهٔ دسکتاپ با توکنِ API پول/پوش می‌کند + صفحهٔ `/settings/chatgpt-sync/`. `connector/CLAUDE.md`.
 - `mcpgate/` — **دروازهٔ MCP**: ChatGPT/Claude → `/mcp/<token>/` (پنل) → سایت‌ها (REST با Application Password +
-  پراکسیِ MCPِ افزونهٔ Novamira برای PHP/فایل/قالب). بدونِ محدودیت. صفحه `/settings/mcp/`. `mcpgate/CLAUDE.md`.
+  پراکسیِ MCPِ افزونهٔ Novamira برای PHP/فایل/قالب) + **`/mcp/<token>/panel/`** = MCPِ خودِ پنل (تسک/پروژه/ورود از اکسل/
+  گزارش/تحلیل/پیشنهادِ تراکنش) با لاگ و بازگردانی (`/settings/mcp/log/`). بدونِ محدودیت. `mcpgate/CLAUDE.md`.
 - `filebox/` — **«فایل‌ها»ی سایدبار**: پوشه‌بندی + آپلود + لینکِ اشتراکیِ بدونِ ورود با آدرسِ ثابتِ
   `/f/<سازمان>/<پوشه>/<نام.پسوند>` + تغییرِ نام/جابه‌جایی/حذف؛ هشدارِ جایگزینیِ هم‌نام. گیت `shared_files`. `filebox/CLAUDE.md`.
 - `personal/` — **فضای شخصیِ خصوصی** (فقط سوپریوزر/`admin`): بالای صفحه = **تقویمِ مشترک**
@@ -76,6 +77,8 @@
 | کاتالوگِ ستون‌های قابل‌سفارشی‌سازی (تسک/پروژه/همکار) | `core/columns.py: get_catalog/get_columns/cell_value` + `core/models.py: ColumnConfig` + تگ `{% column_cell %}` |
 | ستون‌های دیده‌شونده‌ی جدولِ تسک (عمومی همیشه، سفارشیِ نوع فقط با فیلترِ نوع) | `core/columns.py: visible_task_columns(type_def_id)` — لیست/لودِ تنبل/بردِ سئو |
 | اتصالِ اپ/افزونهٔ بیرونی/AI به API | **توکنِ API** (`accounts.APIToken`، هدرِ `Authorization: Token xxx`، از `/settings/api-tokens/`) — نه سشن+کوکی؛ SameSite=Lax کوکیِ سشن را در fetchِ کراس‌سایتِ افزونه نمی‌فرستد. الگو: `seo/api.py: token_required` / `token_or_login_required`. |
+| نوشتنِ MCPِ پنل + لاگ/بازگردانی (هر تغییر در یک «دسته»، همه‌یا‌هیچ؛ برچسبِ MCP در تاریخچهٔ تسک) | `mcpgate/journal.py: Batch/snap/note_*/undo` + `MCPBatch/MCPChange` (`tasks.history.record` خودش از `current_batch()` می‌فهمد) — ابزارِ نویسندهٔ جدید فقط داخلِ `with journal.Batch(...)` |
+| پیشنهادِ پروژه/بابت/توضیحِ تراکنش (ماندگار؛ حافظه یا MCP؛ یک تأیید برای هر سه ستون) | `finance.models.TxSuggestion` + `finance/tx_suggest.py: persist_memory/rereview_all/apply_suggestion` (`suggestions_for` = موتورِ حافظه) |
 | اتصالِ ChatGPT/Claude به سایت‌ها از راهِ پنل (MCP سرورِ خودِ پنل) | `mcpgate/` (`tools.py: TOOLS/run` + `wp.py: request/mcp`) — توکن در آدرس، نه `APIToken` (باید همیشه قابلِ نمایش باشد) |
 | همگام‌سازیِ برنامهٔ دسکتاپِ ChatGPT-WP (داده/فایل‌ها، بینِ چند کامپیوتر) | پنل: `connector/` (انبار + API توکنی) · برنامه: `chatgpt-connector/plugin/server/sync.mjs` (ادغام) |
 | گروه‌بندی نوع در گزارش | `reports/models.py: BUCKETS` |

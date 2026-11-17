@@ -827,6 +827,7 @@ def _history_payload(task):
             'user': (h.user.get_full_name() or h.user.get_username()) if h.user else 'سیستم',
             'when': format_jalali(lt) + ' ' + lt.strftime('%H:%M'),
             'changes': h.changes or {},
+            'source': h.source, 'batch': h.batch_id,
         })
     # تسک‌های قدیمی (پیش از افزودنِ تاریخچه) رکوردِ «ساخته شد» ندارند — از created_at بساز
     if not has_created and task.created_at:

@@ -651,6 +651,9 @@ class TaskHistory(models.Model):
     action = models.CharField('عمل', max_length=10, choices=ACTION_CHOICES)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name='کاربر', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     changes = models.JSONField('تغییرات', default=dict, blank=True)
+    # منبعِ تغییر: '' = پنل، 'mcp' = از طریقِ MCP (ChatGPT/Claude) + شمارهٔ دسته برای بازگردانی
+    source = models.CharField('منبع', max_length=10, blank=True, default='')
+    batch_id = models.PositiveIntegerField('دستهٔ MCP', null=True, blank=True)
     created_at = models.DateTimeField('زمان', auto_now_add=True)
 
     class Meta:

@@ -236,3 +236,89 @@ def suggestions_for(page_txs):
         s['refs_json'] = json.dumps(refs, ensure_ascii=False)
         out[t.id] = s
     return out
+
+
+# ───────────── پیشنهادِ ماندگار (TxSuggestion): حافظه + MCP، تأیید/رد در جدول ─────────────
+def unassigned_qs():
+    """تراکنش‌های بدونِ پروژه/بابت/تفکیک."""
+    from .models import Transaction
+    return (Transaction.objects.filter(project__isnull=True, categories__isnull=True, splits__isnull=True)
+            .distinct())
+
+
+def persist_memory(txs):
+    """برای تراکنش‌های بی‌تخصیصِ بدونِ پیشنهادِ فعال، پیشنهادِ حافظه را ذخیره کن.
+    پیشنهادِ «رد‌شده» با همان مقدار دوباره ساخته نمی‌شود؛ پیشنهادِ MCPِ در انتظار دست نمی‌خورد. خروجی: تعدادِ تازه."""
+    from .models import TxSuggestion
+    txs = [t for t in txs if _is_unassigned(t)]
+    if not txs:
+        return 0
+    existing = {s.transaction_id: s for s in TxSuggestion.objects.filter(transaction__in=txs)}
+    todo = [t for t in txs if t.id not in existing or existing[t.id].status != TxSuggestion.PENDING]
+    if not todo:
+        return 0
+    sugg = suggestions_for(todo)
+    made = 0
+    for t in todo:
+        s = sugg.get(t.id)
+        if not s:
+            continue
+        cats = [s['category_id']] if s.get('category_id') else []
+        old = existing.get(t.id)
+        if old and old.status == TxSuggestion.REJECTED and old.project_id == s.get('project_id') and old.categories == cats:
+            continue
+        obj = old or TxSuggestion(transaction=t)
+        obj.source, obj.project_id, obj.categories, obj.note = TxSuggestion.MEMORY, s.get('project_id'), cats, ''
+        obj.why, obj.refs, obj.status, obj.decided_at, obj.decided_by = s.get('why', ''), s.get('refs', []), TxSuggestion.PENDING, None, None
+        obj.save()
+        made += 1
+    return made
+
+
+def rereview_all():
+    """دکمهٔ «بازبینیِ مجدد با AI»: حافظه روی **همهٔ** تراکنش‌های بی‌تخصیص (نه فقط صفحهٔ جاری).
+    خروجی: (پیشنهادِ تازه، تعدادِ صفِ MCP = بی‌تخصیص‌های بدونِ پیشنهادِ فعال)."""
+    from .models import TxSuggestion
+    txs = list(unassigned_qs().prefetch_related('categories', 'splits'))
+    made = 0
+    for i in range(0, len(txs), 400):
+        made += persist_memory(txs[i:i + 400])
+    queue = unassigned_qs().exclude(suggestion__status=TxSuggestion.PENDING).count()
+    return made, queue
+
+
+def payload(s):
+    """دادهٔ نمایشِ پیشنهاد در جدول (پروژه/بابت/توضیح در ستونِ خودشان + یک گروه دکمه)."""
+    from .models import Category
+    cats = list(Category.objects.filter(id__in=s.categories or []))
+    return {'id': s.id, 'source': s.source, 'project_id': s.project_id or '', 'project_name': s.project.name if s.project_id else '',
+            'categories': [{'id': c.id, 'name': c.name, 'color': c.color} for c in cats],
+            'category_ids': ','.join(str(c.id) for c in cats), 'note': s.note, 'why': s.why,
+            'refs_json': json.dumps(s.refs or [], ensure_ascii=False)}
+
+
+def apply_suggestion(s, user):
+    """تأیید: پروژه می‌نشیند، بابت‌ها اضافه می‌شوند، توضیح اگر خالی بود نوشته می‌شود (وگرنه اضافه)."""
+    from django.utils import timezone
+    t = s.transaction
+    fields = []
+    if s.project_id:
+        t.project_id = s.project_id
+        fields.append('project')
+    if s.note:
+        t.note = s.note if not t.note else (t.note if s.note in t.note else f'{t.note} — {s.note}')[:255]
+        fields.append('note')
+    if fields:
+        t.save(update_fields=fields + ['updated_at'])
+    if s.categories:
+        from .models import Category
+        t.categories.add(*Category.objects.filter(id__in=s.categories))
+    s.status, s.decided_at, s.decided_by = s.ACCEPTED, timezone.now(), user if getattr(user, 'pk', None) else None
+    s.save(update_fields=['status', 'decided_at', 'decided_by'])
+    return t
+
+
+def reject_suggestion(s, user):
+    from django.utils import timezone
+    s.status, s.decided_at, s.decided_by = s.REJECTED, timezone.now(), user if getattr(user, 'pk', None) else None
+    s.save(update_fields=['status', 'decided_at', 'decided_by'])

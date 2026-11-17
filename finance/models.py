@@ -132,6 +132,41 @@ class Transaction(TimeStampedModel):
         return hashlib.sha256(raw.encode('utf-8')).hexdigest()
 
 
+class TxSuggestion(models.Model):
+    """پیشنهادِ پروژه/بابت/توضیح برای یک تراکنش — **ماندگار** (نه محاسبهٔ لحظه‌ایِ صفحه).
+    منبع: `memory` (حافظهٔ امضای شبا/کارت در `tx_suggest.py`) یا `mcp` (ChatGPT/Claude از طریقِ MCPِ پنل).
+    فقط پیشنهاد است — نشاندن با تأییدِ کاربر در جدولِ تراکنش‌ها (`tx_suggest.apply_suggestion`)."""
+    MEMORY, MCP = 'memory', 'mcp'
+    PENDING, ACCEPTED, REJECTED = 'pending', 'accepted', 'rejected'
+    transaction = models.OneToOneField(Transaction, on_delete=models.CASCADE, related_name='suggestion')
+    source = models.CharField('منبع', max_length=10, default=MEMORY)
+    project = models.ForeignKey('projects.Project', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    categories = models.JSONField('بابت‌ها (id)', default=list, blank=True)
+    note = models.CharField('توضیح', max_length=255, blank=True)
+    why = models.TextField('چرا', blank=True)
+    refs = models.JSONField('رفرنس‌ها', default=list, blank=True)
+    status = models.CharField('وضعیت', max_length=10, default=PENDING, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+    decided_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+
+    organization = models.ForeignKey('accounts.Organization', verbose_name='سازمان', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
+    objects = TenantManager()
+    all_objects = models.Manager()
+
+    class Meta:
+        verbose_name = 'پیشنهادِ تراکنش'
+        base_manager_name = 'all_objects'
+
+    def __str__(self):
+        t = self.transaction
+        return f'پیشنهاد برای تراکنشِ {t.date} — {(t.description or "")[:60]}'
+
+    def save(self, *args, **kwargs):
+        stamp_org(self)
+        super().save(*args, **kwargs)
+
+
 class TransactionSplit(models.Model):
     """تفکیکِ یک تراکنشِ بزرگ به چند جزء (مثلاً واریزِ ۱۰۰م: ۲۰م سئو، ۴۰م شخصی، …).
     فقط **نمایش/تفکیک** است — مبلغِ خودِ تراکنش یک‌بار در مانده می‌شمارد؛ اسپلیت‌ها

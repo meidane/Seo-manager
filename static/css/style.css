@@ -2027,3 +2027,23 @@ input[type=checkbox]:disabled{opacity:.5;cursor:default}
 
 /* ===== تقویم: دکمهٔ «مخفی‌کردنِ انجام‌شده‌ها» (تقویمِ جاسازی‌شده — تبِ پروژه/همکار) ===== */
 .cal-bar .cal-hd{margin-inline-start:auto;height:30px;font-size:12px}
+
+/* ===== تاریخچهٔ تسک: برچسبِ «MCP» (تغییر از ChatGPT/Claude، لینک به لاگِ دسته) ===== */
+.hist-mcp{display:inline-flex;align-items:center;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:var(--r-full);
+  background:color-mix(in srgb,var(--primary) 16%,transparent);color:var(--primary-400);text-decoration:none;margin-inline-start:4px}
+.hist-mcp:hover{background:color-mix(in srgb,var(--primary) 26%,transparent)}
+
+/* ===== تراکنش‌ها: پیشنهادِ AI/MCP در ستونِ خودش (پروژه/بابت/توضیح) + یک گروه دکمه ===== */
+.ai-ghost{position:absolute;inset:0;display:flex;align-items:center;gap:6px;padding:0 8px;background:var(--card-solid);
+  border:1px dashed var(--primary-ring);border-radius:var(--r-sm);pointer-events:none;z-index:2;overflow:hidden}
+.ai-ghost .ai-sug-txt{font-size:11.5px;color:var(--primary-400)}
+.ai-ghost-cats{gap:4px;flex-wrap:nowrap}
+.ai-ghost-chip{font-size:10.5px;background:var(--fill);white-space:nowrap}
+.ai-badge.mcp{background:color-mix(in srgb,var(--success) 22%,transparent);color:var(--ok-fg)}
+.ai-sug{border:1px dashed var(--primary-ring);border-radius:var(--r-sm)}
+.mcp-url-row{display:flex;align-items:baseline;gap:10px;padding:12px 17px 0;font-size:13px}
+.mcp-url-row span{color:var(--text-faint);font-size:12px}
+.mcp-diff{font-size:12px;max-width:320px;color:var(--text-dim)}
+.mcp-diff b{color:var(--text);font-weight:600}
+.mcp-batch-row.on td{background:var(--primary-soft)}
+.sheet td:has(> .ai-ghost),.sheet td:has(> .ai-sug){position:relative}
