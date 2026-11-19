@@ -26,6 +26,7 @@ urlpatterns = [
     path('finance/', include('finance.urls')),
     path('seo/', include('seo.urls')),
     path('personal/', include('personal.urls')),
+    path('skills/', include('skills.urls')),
     path('', include('connector.urls')),
     path('', include('mcpgate.urls')),  # /mcp/<token>/ + /settings/mcp/
     path('', include('filebox.urls')),  # /files/ + لینکِ عمومیِ /f/<token>/  # /settings/chatgpt-sync/ + /connector/api/...

@@ -33,20 +33,38 @@ def _gate_from(request, token):
     return MCPGate.objects.filter(token=token, enabled=True).select_related('organization').first() if token else None
 
 
-def _handle(gate, msg, panel=False):
-    """panel=True → ابزارهای پنل (`mcpgate/panel/registry.py`)؛ وگرنه ابزارهای سایت‌ها (`tools.py`)."""
+def _server(kind):
+    """kind: site (ابزارهای سایت‌ها، `tools.py`) | panel (`panel/registry.py`) | skills (`skills/mcp.py`)."""
+    from skills import mcp as SK
+
     from .panel import registry as PR
+    if kind == 'panel':
+        return PR.TOOLS, PR.INSTRUCTIONS, PR.run, 'seo-manager-panel'
+    if kind == 'skills':
+        return SK.TOOLS, None, SK.run, 'seo-manager-skills'
+    return T.TOOLS, T.INSTRUCTIONS, (lambda gate, name, args, log: T.run(gate.organization, name, args, log)), 'seo-manager'
+
+
+def _instructions(gate, kind, base):
+    """متنِ اسکیل‌های «اجباری» (must use) در instructionsِ هر سه کانکتور — تا در هر گفتگو رعایت شود."""
+    from skills import mcp as SK
+    from skills.text import must_use_text
+    if kind == 'skills':
+        return SK.instructions(gate.organization)
+    must = must_use_text(gate.organization)
+    return base + ('\n\n' + must if must else '')
+
+
+def _handle(gate, msg, kind='site'):
     from .panel.ctx import ToolError as PanelError
     mid, method, params = msg.get('id'), msg.get('method'), msg.get('params') or {}
-    tools_list = PR.TOOLS if panel else T.TOOLS
-    instructions = PR.INSTRUCTIONS if panel else T.INSTRUCTIONS
-    runner = PR.run if panel else T.run
+    tools_list, base_instructions, runner, server_name = _server(kind)
     ok = lambda result: {'jsonrpc': '2.0', 'id': mid, 'result': result}  # noqa: E731
     if method == 'initialize':
         v = params.get('protocolVersion')
         return ok({'protocolVersion': v if v in VERSIONS else VERSIONS[0], 'capabilities': {'tools': {'listChanged': False}},
-                   'serverInfo': {'name': 'seo-manager-panel' if panel else 'seo-manager', 'version': '1.1.0'},
-                   'instructions': instructions})
+                   'serverInfo': {'name': server_name, 'version': '1.2.0'},
+                   'instructions': _instructions(gate, kind, base_instructions)})
     if method == 'ping':
         return ok({})
     if method == 'tools/list':
@@ -58,7 +76,7 @@ def _handle(gate, msg, panel=False):
         name, args = params.get('name'), params.get('arguments') or {}
         log, t0 = {}, time.monotonic()
         try:
-            res = runner(gate, name, args, log) if panel else runner(gate.organization, name, args, log)
+            res = runner(gate, name, args, log)
             out = T.to_content(res)
             err = ''
         except (T.ToolError, PanelError, wp.WPError, KeyError, ValueError, TypeError) as e:
@@ -67,7 +85,7 @@ def _handle(gate, msg, panel=False):
         except Exception as e:  # noqa: BLE001 — هیچ خطایی نباید endpoint را بخواباند
             err = f'{type(e).__name__}: {e}'
             out = {'content': [{'type': 'text', 'text': f'خطای داخلی: {err}'}], 'isError': True}
-        if panel and not log.get('summary'):
+        if kind != 'site' and not log.get('summary'):
             log['summary'] = json.dumps({k: (v if not isinstance(v, list) else f'[{len(v)}]') for k, v in (args or {}).items()},
                                         ensure_ascii=False, default=str)[:300]
         MCPLog.objects.create(organization=gate.organization, site=log.get('site', ''), tool=str(name)[:80],
@@ -81,11 +99,16 @@ def _handle(gate, msg, panel=False):
 
 @csrf_exempt
 def endpoint_panel(request, token=''):
-    return endpoint(request, token, panel=True)
+    return endpoint(request, token, kind='panel')
 
 
 @csrf_exempt
-def endpoint(request, token='', panel=False):
+def endpoint_skills(request, token=''):
+    return endpoint(request, token, kind='skills')
+
+
+@csrf_exempt
+def endpoint(request, token='', kind='site'):
     if request.method == 'OPTIONS':
         return _cors(HttpResponse(status=204))
     gate = _gate_from(request, token)
@@ -103,7 +126,7 @@ def endpoint(request, token='', panel=False):
         return _cors(JsonResponse({'jsonrpc': '2.0', 'id': None, 'error': {'code': -32700, 'message': 'Parse error'}}, status=400))
     gate._base = request.build_absolute_uri('/')
     batch = isinstance(msg, list)
-    replies = [r for r in (_handle(gate, m, panel) for m in (msg if batch else [msg]) if isinstance(m, dict)) if r is not None]
+    replies = [r for r in (_handle(gate, m, kind) for m in (msg if batch else [msg]) if isinstance(m, dict)) if r is not None]
     if not replies:
         return _cors(HttpResponse(status=202))
     resp = JsonResponse(replies if batch else replies[0], safe=False, json_dumps_params={'ensure_ascii': False})
@@ -156,6 +179,7 @@ def page(request):
         'gate': gate,
         'mcp_url': request.build_absolute_uri(f'/mcp/{gate.token}/'),
         'mcp_panel_url': request.build_absolute_uri(f'/mcp/{gate.token}/panel/'),
+        'mcp_skills_url': request.build_absolute_uri(f'/mcp/{gate.token}/skills/'),
         'sites': [s.brief() for s in MCPSite.objects.filter(organization=org)],
         'logs': MCPLog.objects.filter(organization=org)[:40],
         'sync_sites': sync_sites,

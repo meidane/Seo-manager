@@ -58,3 +58,7 @@ OpenAI/Anthropic در دسترس نیستند). **عمداً بدونِ محدو
 ### تست
 اسکریپتِ ساده با `django.test.Client`: `POST /mcp/<token>/panel/` با `tools/call` برای هر ابزار (همهٔ ابزارها + dry_run + undo + رکوردِ
 دستی‌تغییرکرده → skip → force). اکسلِ آزمایشی با openpyxl بساز و در `SharedFile` بگذار.
+
+## کانکتورِ سوم: اسکیل‌ها — `/mcp/<token>/skills/`
+`views._server(kind)` (site|panel|skills) ابزار/اجراکننده را انتخاب می‌کند؛ ابزارها در `skills/mcp.py` (`skills/CLAUDE.md`).
+`views._instructions` متنِ اسکیل‌های **اجباری** را به instructionsِ **هر سه** کانکتور اضافه می‌کند. صفحهٔ `/settings/mcp/` آدرسِ سوم را نشان می‌دهد.

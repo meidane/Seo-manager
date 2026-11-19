@@ -28,6 +28,7 @@
     {% if request.user.is_superuser and request.user.username == 'admin' %}
     <a href="{% url 'personal:index' %}" class="{% if request.resolver_match.namespace == 'personal' %}on{% endif %}"><span class="ico">{% icon 'sparkles' %}</span> فضای شخصی</a>
     {% endif %}
+    <a href="{% url 'skills:index' %}" class="{% if request.resolver_match.namespace == 'skills' %}on{% endif %}"><span class="ico">{% icon 'book' %}</span> اسکیل‌ها</a>
     {% if 'shared_files' in org_perms %}
     <a href="{% url 'filebox:page' %}" class="{% if request.resolver_match.namespace == 'filebox' %}on{% endif %}"><span class="ico">{% icon 'folder' %}</span> فایل‌ها</a>
     {% endif %}

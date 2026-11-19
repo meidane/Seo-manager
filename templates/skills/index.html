@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}اسکیل‌ها{% endblock %}
+
+{% block content %}
+  <div class="page-h"><h1>اسکیل‌ها</h1>
+    <div class="side-c">
+      {% if mcp_ok %}<a href="{% url 'mcpgate:page' %}" class="btn btn-sm">{% icon 'link' %} اتصالِ MCP</a>{% endif %}
+      {% if can_edit %}<button class="btn btn-p" id="sk-new">{% icon 'plus' %} اسکیلِ جدید</button>{% endif %}
+    </div>
+  </div>
+  <p class="sk-hint">قواعد و دانشِ کاری که همه (و هوش مصنوعی از کانکتورِ «اسکیل‌ها») طبقِ آن کار می‌کنند.
+    <b>اجباری</b> در هر دستور به هوش مصنوعی گفته می‌شود؛ <b>عمومی</b> برای همهٔ پروژه‌ها؛ <b>پروژه</b> فقط برای همان سایت.</p>
+
+  <div class="sk-bar">
+    <div class="sk-scopes">
+      <button class="chip on" data-scope="">همه</button>
+      <button class="chip" data-scope="must">اجباری</button>
+      <button class="chip" data-scope="general">عمومی</button>
+      <button class="chip" data-scope="project">پروژه</button>
+    </div>
+    <select id="sk-proj" class="rich-select"><option value="">همهٔ پروژه‌ها</option>
+      {% for p in projects %}<option value="{{ p.id }}" data-color="{{ p.color }}" data-search="{{ p.domain|default:'' }}"{% if p.logo %} data-img="{{ p.logo.url }}"{% endif %}{% if sel_project == p.id|stringformat:'s' %} selected{% endif %}>{{ p.name }}</option>{% endfor %}
+    </select>
+    <input class="input sk-q" id="sk-q" placeholder="جستجو در عنوان و متن…">
+  </div>
+
+  <div id="sk-list"></div>
+  {{ skills|json_script:"sk-data" }}
+  {{ can_edit|yesno:"1,"|json_script:"sk-edit" }}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  let skills = JSON.parse(document.getElementById('sk-data').textContent);
+  const canEdit = !!JSON.parse(document.getElementById('sk-edit').textContent);
+  const projSel = document.getElementById('sk-proj');
+  const projects = [...projSel.options].filter(o => o.value).map(o => ({id: +o.value, name: o.textContent.trim()}));
+  const SC = {must: 'اجباری', general: 'عمومی', project: 'پروژه'};
+  let scope = '', q = '';
+
+  function card(s){
+    return `<div class="sk-item${s.active ? '' : ' off'}" data-id="${s.id}">
+      <div class="sk-main"><div class="sk-t">${esc(s.title)}${s.active ? '' : ' <span class="tag t-mute">غیرفعال</span>'}</div>
+        ${s.summary ? `<div class="sk-s">${esc(s.summary)}</div>` : ''}</div>
+      <div class="sk-meta">${s.by ? esc(s.by) + ' · ' : ''}${esc(s.ago)}</div></div>`;
+  }
+  function group(title, cls, items, extra){
+    if (!items.length) return '';
+    return `<section class="card glass sk-grp ${cls}"><div class="card-h"><h3>${title}</h3><span class="zero">${items.length}</span>${extra||''}</div>
+      <div class="sk-items">${items.map(card).join('')}</div></section>`;
+  }
+  function render(){
+    const pid = projSel.value ? +projSel.value : null;
+    const n = s => (s.title + ' ' + s.summary + ' ' + s.body).toLowerCase();
+    const vis = skills.filter(s => (!scope || s.scope === scope) && (!q || n(s).includes(q))
+      && (s.scope !== 'project' || !pid || s.project === pid));
+    let html = group(`${App.icon('warning')} اجباری (Must use)`, 'sk-must', vis.filter(s => s.scope === 'must'))
+             + group(`${App.icon('book')} عمومی`, '', vis.filter(s => s.scope === 'general'));
+    const byP = {};
+    vis.filter(s => s.scope === 'project').forEach(s => (byP[s.project] = byP[s.project] || []).push(s));
+    Object.keys(byP).sort((a, b) => byP[a][0].project_name.localeCompare(byP[b][0].project_name, 'fa'))
+      .forEach(k => html += group(`${App.icon('folder')} ${esc(byP[k][0].project_name)}`, '', byP[k],
+        canEdit ? `<button class="btn btn-sm sk-add-p" data-project="${k}" style="margin-inline-start:auto">${App.icon('plus')} افزودن</button>` : ''));
+    document.getElementById('sk-list').innerHTML = html || `<div class="card glass"><div class="empty"><div class="ico">${App.icon('book')}</div>
+      <h4>${skills.length ? 'چیزی با این فیلتر نیست' : 'هنوز اسکیلی ثبت نشده'}</h4>
+      ${!skills.length && canEdit ? '<p style="color:var(--text-faint);font-size:12px;margin-top:6px">با یک اسکیلِ «اجباری» شروع کن: اطلاعاتِ حیاتی که هوش مصنوعی باید همیشه بداند.</p>' : ''}</div></div>`;
+  }
+
+  document.querySelector('.sk-scopes').onclick = e => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    document.querySelectorAll('.sk-scopes .chip').forEach(c => c.classList.toggle('on', c === b));
+    scope = b.dataset.scope; render();
+  };
+  projSel.addEventListener('change', () => {
+    const u = new URL(location.href); projSel.value ? u.searchParams.set('project', projSel.value) : u.searchParams.delete('project');
+    history.replaceState(null, '', u); render();
+  });
+  document.getElementById('sk-q').addEventListener('input', e => { q = e.target.value.trim().toLowerCase(); render(); });
+
+  function form(s){
+    const p = projects.map(x => `<option value="${x.id}"${s.project === x.id ? ' selected' : ''}>${esc(x.name)}</option>`).join('');
+    return `<div class="sk-form">
+      <div class="grid2"><div class="field"><label>سطح</label><select id="sk-f-scope">
+          ${Object.entries(SC).map(([k, v]) => `<option value="${k}"${s.scope === k ? ' selected' : ''}>${v}</option>`).join('')}</select></div>
+        <div class="field" id="sk-f-pw"><label>پروژه</label><select id="sk-f-project"><option value="">—</option>${p}</select></div></div>
+      <div class="field"><label>عنوان</label><input class="input" id="sk-f-title" value="${esc(s.title)}"></div>
+      <div class="field"><label>خلاصهٔ یک‌خطی <span class="zero">(هوش مصنوعی اول همین را می‌بیند)</span></label><input class="input" id="sk-f-summary" dir="auto" value="${esc(s.summary)}"></div>
+      <div class="field"><label>متن</label><textarea class="input sk-body" id="sk-f-body" dir="auto" rows="14">${esc(s.body)}</textarea></div>
+      <div class="grid2"><div class="field"><label>ترتیب</label><input class="input" type="number" id="sk-f-order" value="${s.order || 0}"></div>
+        <div class="field"><label>&nbsp;</label><label class="mcp-switch"><input type="checkbox" id="sk-f-active"${s.active !== false ? ' checked' : ''}> فعال</label></div></div>
+    </div>`;
+  }
+  function view(s){
+    return `<div class="sk-view">
+      <div class="sk-view-m"><span class="tag ${s.scope === 'must' ? 't-warn' : 't-info'}">${SC[s.scope]}</span>${s.project_name ? ` <span class="tag t-mute">${esc(s.project_name)}</span>` : ''}
+        ${s.by ? ` · ${esc(s.by)}` : ''} · ${esc(s.ago)}</div>
+      ${s.summary ? `<p class="sk-view-s">${esc(s.summary)}</p>` : ''}
+      <div class="sk-view-b" dir="auto">${esc(s.body) || '<span class="zero">بدونِ متن</span>'}</div></div>`;
+  }
+
+  function open(s, edit){
+    const isNew = !s.id;
+    const tabs = isNew ? '' : `<div class="subtabs sk-tabs"><button class="subtab on" data-t="body">متن</button><button class="subtab" data-t="hist">${App.icon('history')} تاریخچه</button></div>`;
+    App.openModal(`<div class="modal-h"><h3>${isNew ? 'اسکیلِ جدید' : esc(s.title)}</h3><button class="x" onclick="App.closeModal()">×</button></div>
+      <div class="modal-b">${tabs}<div id="sk-pane">${edit ? form(s) : view(s)}</div></div>
+      <div class="modal-f">${edit ? '<button class="btn btn-p" id="sk-save">ذخیره</button>' : (canEdit ? '<button class="btn btn-p" id="sk-edit-btn">ویرایش</button>' : '')}
+        <button class="btn" onclick="App.closeModal()">بستن</button>
+        ${!isNew && canEdit ? `<button class="btn" id="sk-del" style="margin-inline-start:auto;color:var(--danger)">${App.icon('trash')} حذف</button>` : ''}</div>`, {wide: true});
+    const pane = document.getElementById('sk-pane');
+    const syncProj = () => { const w = document.getElementById('sk-f-pw'); if (w) w.style.visibility = document.getElementById('sk-f-scope').value === 'project' ? '' : 'hidden'; };
+    if (edit) { syncProj(); document.getElementById('sk-f-scope').onchange = syncProj; (isNew ? document.getElementById('sk-f-title') : document.getElementById('sk-f-body')).focus(); }
+    const eb = document.getElementById('sk-edit-btn'); if (eb) eb.onclick = () => open(s, true);
+    const sv = document.getElementById('sk-save'); if (sv) sv.onclick = async () => {
+      const g = id => document.getElementById(id);
+      const body = {id: s.id || null, scope: g('sk-f-scope').value, project: g('sk-f-project').value || null, title: g('sk-f-title').value,
+                    summary: g('sk-f-summary').value, body: g('sk-f-body').value, order: +g('sk-f-order').value || 0, active: g('sk-f-active').checked};
+      const r = await App.fetchJSON('{% url "skills:api_save" %}', {method: 'POST', body});
+      const i = skills.findIndex(x => x.id === r.skill.id); i >= 0 ? skills[i] = r.skill : skills.push(r.skill);
+      App.closeModal(); render(); App.toast('ذخیره شد', 'ok');
+    };
+    const del = document.getElementById('sk-del'); if (del) del.onclick = async () => {
+      if (!await App.confirm(`اسکیلِ «${esc(s.title)}» حذف شود؟`, {okText: 'حذف'})) return;
+      await App.fetchJSON(`/skills/api/${s.id}/`, {method: 'DELETE'});
+      skills = skills.filter(x => x.id !== s.id); App.closeModal(); render(); App.toast('حذف شد', 'ok');
+    };
+    const tb = document.querySelector('.sk-tabs'); if (tb) tb.onclick = async e => {
+      const b = e.target.closest('.subtab'); if (!b) return;
+      tb.querySelectorAll('.subtab').forEach(x => x.classList.toggle('on', x === b));
+      if (b.dataset.t === 'body') { pane.innerHTML = edit ? form(s) : view(s); if (edit) { syncProj(); document.getElementById('sk-f-scope').onchange = syncProj; } return; }
+      pane.innerHTML = '<div class="zero" style="padding:14px">…</div>';
+      const d = await App.fetchJSON(`/skills/api/${s.id}/`);
+      pane.innerHTML = `<div class="sk-vers">${d.versions.map((v, i) => `<div class="sk-ver" data-v="${v.id}">
+          <div class="sk-ver-h"><b>#${v.id}</b> ${esc(v.date)} ${esc(v.time)} · ${esc(v.by || '—')} ${v.source === 'mcp' ? '<span class="ai-badge mcp">MCP</span>' : ''}
+            ${v.note ? `<span class="zero">${esc(v.note)}</span>` : ''}${i === 0 ? ' <span class="tag t-ok">فعلی</span>' : ''}
+            <span style="margin-inline-start:auto;display:inline-flex;gap:6px"><button class="btn btn-sm sk-ver-see">مشاهده</button>
+            ${canEdit && i > 0 ? '<button class="btn btn-sm sk-ver-rs">بازگردانی</button>' : ''}</span></div>
+          <div class="sk-view-b" dir="auto" hidden>${esc(v.body)}</div></div>`).join('')}</div>`;
+      pane.querySelectorAll('.sk-ver-see').forEach(x => x.onclick = () => { const b2 = x.closest('.sk-ver').querySelector('.sk-view-b'); b2.hidden = !b2.hidden; });
+      pane.querySelectorAll('.sk-ver-rs').forEach(x => x.onclick = async () => {
+        const vid = x.closest('.sk-ver').dataset.v;
+        if (!await App.confirm(`اسکیل به نسخهٔ #${vid} برگردد؟ (نسخهٔ فعلی در تاریخچه می‌ماند)`, {okText: 'بازگردانی'})) return;
+        const r = await App.fetchJSON(`/skills/api/${s.id}/restore/${vid}/`, {method: 'POST'});
+        const i = skills.findIndex(y => y.id === r.skill.id); skills[i] = r.skill; App.closeModal(); render(); App.toast('بازگردانی شد', 'ok');
+      });
+    };
+  }
+
+  document.getElementById('sk-list').addEventListener('click', e => {
+    const add = e.target.closest('.sk-add-p');
+    if (add) return open({scope: 'project', project: +add.dataset.project, title: '', summary: '', body: '', active: true}, true);
+    const it = e.target.closest('.sk-item'); if (!it) return;
+    open(skills.find(s => s.id === +it.dataset.id), false);
+  });
+  const nb = document.getElementById('sk-new');
+  if (nb) nb.onclick = () => open({scope: scope || (projSel.value ? 'project' : 'general'), project: projSel.value ? +projSel.value : null,
+                                   title: '', summary: '', body: '', active: true}, true);
+  render();
+})();
+</script>
+{% endblock %}

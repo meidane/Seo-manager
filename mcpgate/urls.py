@@ -8,6 +8,8 @@ urlpatterns = [
     path('mcp/', views.endpoint, name='endpoint_header'),  # توکن در هدرِ Authorization: Bearer
     path('mcp/<str:token>/panel/', views.endpoint_panel, name='endpoint_panel'),  # ابزارهای پنل (تسک/گزارش/تراکنش)
     path('mcp/<str:token>/panel', views.endpoint_panel),
+    path('mcp/<str:token>/skills/', views.endpoint_skills, name='endpoint_skills'),  # اسکیل‌ها (skills/mcp.py)
+    path('mcp/<str:token>/skills', views.endpoint_skills),
     path('mcp/<str:token>/', views.endpoint, name='endpoint'),
     path('mcp/<str:token>', views.endpoint),  # بدونِ اسلشِ آخر هم (POST ریدایرکت نمی‌شود)
     path('settings/mcp/', views.page, name='page'),

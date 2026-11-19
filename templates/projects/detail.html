@@ -14,6 +14,14 @@
     </div>
   {% endif %}
 
+  {# جابه‌جاییِ سریع بینِ پروژه‌ها (خواستِ کاربر) — تبِ باز (hash) حفظ می‌شود #}
+  <div class="proj-switch">
+    <span class="ps-lb">{% icon 'folder' %} پروژه</span>
+    <select id="proj-switch" class="rich-select">
+      {% for sp in switch_projects %}<option value="{{ sp.get_absolute_url }}" data-color="{{ sp.color }}" data-search="{{ sp.domain|default:'' }}"{% if sp.logo %} data-img="{{ sp.logo.url }}"{% endif %}{% if sp.pk == project.pk %} selected{% endif %}>{{ sp.name }}{% if sp.status != 'active' %} (غیرفعال){% endif %}</option>{% endfor %}
+    </select>
+  </div>
+
   <section class="card glass" style="padding:20px;display:flex;gap:14px;align-items:center;margin-bottom:14px">
     {# لوگوی پروژه/سایت بالای صفحه (خواستِ کاربر) — لوگو یا fallbackِ رنگی از رنگِ پروژه #}
     <span class="proj-logo-lg">
@@ -51,6 +59,7 @@
     <button class="tab on" data-tab="tasks">تسک‌ها</button>
     {% if project.track_keyword_rank %}<button class="tab" data-tab="keywords">کلمات کلیدی</button>{% endif %}
     <button class="tab" data-tab="calendar">تقویم</button>
+    <button class="tab" data-tab="skills">اسکیل‌ها{% if project_skills %} <span class="zero">{{ project_skills|length|fa_digits }}</span>{% endif %}</button>
     {% if 'project_files' in org_perms %}<button class="tab" data-tab="files">فایل‌ها</button>{% endif %}
     {% if 'project_colleagues_access' in org_perms %}<button class="tab" data-tab="members">دسترسی به همکاران</button>{% endif %}
     {% if 'project_credentials' in org_perms %}<button class="tab" data-tab="creds">دسترسی‌ها</button>{% endif %}
@@ -320,6 +329,20 @@
   </section>
   {% endif %}
 
+  {# اسکیل‌های این پروژه (+ اجباری/عمومی که روی همه اعمال می‌شوند) — ویرایش در صفحهٔ «اسکیل‌ها» #}
+  <section class="card glass tab-panel ps-skills" data-panel="skills">
+    <div class="card-h"><h3>اسکیل‌های این پروژه</h3>
+      <a href="{% url 'skills:index' %}?project={{ project.pk }}" class="btn btn-sm" style="margin-inline-start:auto">{% icon 'book' %} مدیریت در «اسکیل‌ها»</a></div>
+    {% for s in project_skills %}
+      <a class="sk-item" href="{% url 'skills:index' %}?project={{ project.pk }}" style="color:inherit;cursor:pointer">
+        <div class="sk-main"><div class="sk-t">{{ s.title }}</div>{% if s.summary %}<div class="sk-s">{{ s.summary }}</div>{% endif %}</div>
+        <span class="tag {% if s.scope == 'must' %}t-warn{% elif s.scope == 'project' %}t-ok{% else %}t-info{% endif %}">{{ s.scope_label }}</span></a>
+    {% empty %}
+      <div class="empty"><div class="ico">{% icon 'book' %}</div><h4>هنوز اسکیلی برای این پروژه نیست</h4>
+        <p style="color:var(--text-faint);font-size:12px;margin-top:6px">لحن و برند، کلماتِ ممنوع، صفحه‌های مهم برای لینکِ داخلی، رقبا…</p></div>
+    {% endfor %}
+  </section>
+
   <section class="card glass tab-panel cal" data-panel="calendar"><div data-cal-embed data-project="{{ project.pk }}"></div></section>
   {% if 'project_files' in org_perms %}
   <section class="card glass tab-panel" data-panel="files">
@@ -448,6 +471,15 @@
   tabs.addEventListener('click', e=>{
     const b = e.target.closest('.tab'); if(!b) return;
     activate(b.dataset.tab);
+    history.replaceState(null, '', location.pathname + location.search + '#' + b.dataset.tab);  // تبِ باز با جابه‌جاییِ پروژه/رفرش حفظ شود
+  });
+  { const h = location.hash.slice(1); if (h && tabs.querySelector(`.tab[data-tab="${h}"]`)) activate(h); }
+  // دراپ‌داونِ جابه‌جایی بینِ پروژه‌ها: همان تب و همان فیلترِ نوع (seo_type) در پروژهٔ مقصد
+  const sw = document.getElementById('proj-switch');
+  if (sw) sw.addEventListener('change', ()=>{
+    const on = tabs.querySelector('.tab.on'), q = new URLSearchParams(location.search), keep = new URLSearchParams();
+    if (q.get('seo_type')) keep.set('seo_type', q.get('seo_type'));
+    location.href = sw.value + (keep.toString() ? '?' + keep : '') + (on ? '#' + on.dataset.tab : '');
   });
   // بعد از تغییرِ بازهٔ کلمات کلیدی و رفرشِ صفحه، همان تب باز بماند
   if (new URLSearchParams(location.search).has('kw_period')) activate('keywords');

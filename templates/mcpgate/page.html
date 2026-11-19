@@ -21,6 +21,11 @@
       <code dir="ltr" id="mcp-panel-url">{{ mcp_panel_url }}</code>
       <button class="btn btn-sm btn-p mcp-copy" data-target="mcp-panel-url">{% icon 'copy' %} کپی</button>
     </div>
+    <div class="mcp-url-row"><b>اسکیل‌ها</b><span>خواندن و به‌روزرسانیِ اسکیل‌های اجباری/عمومی/پروژه — <a href="{% url 'skills:index' %}">صفحهٔ اسکیل‌ها</a></span></div>
+    <div class="mcp-url-wrap">
+      <code dir="ltr" id="mcp-skills-url">{{ mcp_skills_url }}</code>
+      <button class="btn btn-sm btn-p mcp-copy" data-target="mcp-skills-url">{% icon 'copy' %} کپی</button>
+    </div>
     <div class="mcp-guide">
       <div><b>ChatGPT (دسکتاپ یا وب)</b>
         <ol><li>Settings ← Apps &amp; Connectors ← Advanced settings ← <b>Developer mode</b> را روشن کن.</li>
@@ -157,7 +162,7 @@
   document.getElementById('regen').onclick = async () => {
     if (!await App.confirm('توکنِ جدید ساخته شود؟<br>آدرسِ فعلی دیگر کار نمی‌کند و باید در ChatGPT/Claude عوضش کنی.', {okText: 'بساز'})) return;
     const r = await App.fetchJSON(URLS.gate, {method: 'POST', body: {regenerate: true}});
-    document.getElementById('mcp-url').textContent = r.url; document.getElementById('mcp-panel-url').textContent = r.url + 'panel/';
+    document.getElementById('mcp-url').textContent = r.url; document.getElementById('mcp-panel-url').textContent = r.url + 'panel/'; document.getElementById('mcp-skills-url').textContent = r.url + 'skills/';
     App.toast('توکنِ جدید ساخته شد', 'ok');
   };
   document.getElementById('gate-on').onchange = async e => {

@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
-from django.db.models import Q
+from django.db.models import F, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.http import require_http_methods
@@ -294,6 +294,12 @@ class ProjectDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
             for r in rows]
 
         ctx['page_title'] = p.name
+        # دراپ‌داونِ جابه‌جایی بینِ پروژه‌ها (بالای صفحه) — فقط پروژه‌های قابلِ‌دیدن، فعال‌ها اول
+        ctx['switch_projects'] = (Project.objects.filter(id__in=accessible_project_ids(self.request))
+                                  .order_by('status', F('priority').asc(nulls_last=True), 'name')
+                                  .only('id', 'name', 'domain', 'color', 'logo', 'status'))
+        from skills.text import for_project
+        ctx['project_skills'] = for_project(self.request.organization, p.pk)
         ctx['credentials'] = p.credentials.all()
         from colleagues.models import Colleague
         ctx['all_colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)
@@ -330,7 +336,8 @@ class ProjectDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
         nm_active = list(nm.exclude(status=Task.DONE).order_by('board_order', 'id'))
         nm_done = list(nm.filter(status=Task.DONE).order_by('-done_date', '-id'))
         no_month = nm_active + nm_done
-        NM_SHOW = 7   # فعلاً نهایتِ ۶-۷ مورد؛ بقیه با «مشاهدهٔ همه»
+        # بدونِ فیلترِ نوع: نهایتِ ۷ + «مشاهدهٔ همه»؛ با فیلترِ نوع (مثلاً تبِ رپورتاژ) همه یک‌جا، فقط بالای ۵۰۰ «مشاهدهٔ بیشتر»
+        NM_SHOW = 500 if seo_type else 7
         ctx['no_month_tasks'] = no_month[:NM_SHOW]
         ctx['no_month_hidden'] = no_month[NM_SHOW:]
         ctx['no_month_total'] = len(no_month)

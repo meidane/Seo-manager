@@ -2094,3 +2094,41 @@ input[type=checkbox]:disabled{opacity:.5;cursor:default}
 .tsheet td.tcell-td{vertical-align:top}
 .tsheet .tcell textarea.ttl-in{flex:1 1 180px;min-width:150px}
 .tsheet .tcell .ttype-sel{max-width:78px;min-width:0;flex:none}
+
+/* ── سینگلِ پروژه: دراپ‌داونِ جابه‌جایی بینِ پروژه‌ها (بالای صفحه) ── */
+.proj-switch{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.proj-switch .ps-lb{display:inline-flex;align-items:center;gap:5px;color:var(--text-dim);font-size:12px}
+.proj-switch .rs{min-width:240px;max-width:100%}
+@media(max-width:600px){.proj-switch .rs{flex:1;min-width:0}}
+
+/* ── بخشِ اسکیل‌ها (`templates/skills/index.html`) ── */
+.sk-hint{color:var(--text-dim);font-size:12.5px;line-height:1.9;padding:0 2px 12px}
+.sk-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.sk-scopes{display:flex;gap:6px;flex-wrap:wrap}
+.sk-scopes .chip{font-size:12px;padding:5px 12px}
+.sk-bar .rs{min-width:200px}
+.sk-bar .sk-q{width:auto;flex:1 1 200px;max-width:320px}
+.sk-grp{margin-bottom:14px}
+.sk-grp .card-h{gap:8px}
+.sk-grp .card-h h3{display:inline-flex;align-items:center;gap:7px}
+.sk-must{border-color:color-mix(in srgb,var(--warning) 45%,transparent)}
+.sk-must .card-h h3{color:var(--warning)}
+.sk-items{display:flex;flex-direction:column}
+.sk-item{display:flex;gap:12px;align-items:center;padding:11px 17px;border-top:1px solid var(--stroke-soft);cursor:pointer}
+.sk-item:hover{background:var(--fill)}
+.sk-item.off{opacity:.55}
+.sk-main{flex:1;min-width:0}
+.sk-t{font-weight:600;font-size:13.5px}
+.sk-s{color:var(--text-dim);font-size:12px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sk-meta{color:var(--text-faint);font-size:11px;flex:none}
+.sk-body{font-size:13px;line-height:1.9;min-height:260px;resize:vertical}
+.sk-view-m{color:var(--text-faint);font-size:12px;margin-bottom:10px}
+.sk-view-s{color:var(--text-dim);font-size:13px;margin:0 0 10px}
+.sk-view-b{white-space:pre-wrap;line-height:2;font-size:13.5px;background:var(--fill);border:1px solid var(--stroke-soft);border-radius:10px;padding:12px 14px;max-height:60vh;overflow:auto}
+.sk-tabs{margin-bottom:12px}
+.sk-vers{display:flex;flex-direction:column;gap:8px}
+.sk-ver{border:1px solid var(--stroke-soft);border-radius:10px;padding:8px 10px}
+.sk-ver-h{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px}
+.sk-ver .sk-view-b{margin-top:8px;max-height:40vh}
+.ps-skills .sk-item{cursor:default}
+@media(max-width:600px){.sk-meta{display:none}.sk-bar .sk-q{max-width:none}}

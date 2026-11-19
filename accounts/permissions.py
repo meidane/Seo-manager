@@ -55,6 +55,7 @@ _TASK_PERMS = {
     'edit_time': 'امکانِ ویرایشِ زمان (زمانِ دیگران)',
     'review': 'بازبینیِ تسک',
     'view_reports': 'مشاهده‌ی گزارش‌ها',
+    'manage_skills': 'ویرایشِ اسکیل‌ها (اجباری/عمومی/پروژه) — دیدنشان برای همه آزاد است',
 }
 
 PERM_GROUPS = [
@@ -78,7 +79,7 @@ ROLE_PERMS = {
     MANAGER: {
         'add_project', 'edit_project', 'view_all_projects', 'project_files',
         'project_colleagues_access', 'project_credentials', 'project_reports', 'shared_files',
-        'edit_task', 'delete_task', 'view_other_tasks', 'edit_time', 'review', 'view_reports',
+        'edit_task', 'delete_task', 'view_other_tasks', 'edit_time', 'review', 'view_reports', 'manage_skills',
     },
     MEMBER: {'edit_task', 'view_reports'},  # view_other_tasks ندارد → فقط تسکِ خودش
     VIEWER: {'view_reports'},

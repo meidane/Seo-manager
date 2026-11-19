@@ -65,4 +65,6 @@ ICONS = {
     'calendar-week': ('calendar-week', 'regular'),
     'circle-dot': ('dot-circle', 'regular'),
     'refresh': ('redo-alt', 'regular'),
+    'book': ('book-open', 'regular'),
+    'history': ('history', 'regular'),
 }
