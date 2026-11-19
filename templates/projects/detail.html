@@ -59,7 +59,7 @@
     <button class="tab on" data-tab="tasks">تسک‌ها</button>
     {% if project.track_keyword_rank %}<button class="tab" data-tab="keywords">کلمات کلیدی</button>{% endif %}
     <button class="tab" data-tab="calendar">تقویم</button>
-    <button class="tab" data-tab="skills">اسکیل‌ها{% if project_skills %} <span class="zero">{{ project_skills|length|fa_digits }}</span>{% endif %}</button>
+    <button class="tab" data-tab="skills">اسکیل‌ها{% if project_skills_n %} <span class="zero">{{ project_skills_n|fa_digits }}</span>{% endif %}</button>
     {% if 'project_files' in org_perms %}<button class="tab" data-tab="files">فایل‌ها</button>{% endif %}
     {% if 'project_colleagues_access' in org_perms %}<button class="tab" data-tab="members">دسترسی به همکاران</button>{% endif %}
     {% if 'project_credentials' in org_perms %}<button class="tab" data-tab="creds">دسترسی‌ها</button>{% endif %}
@@ -329,17 +329,19 @@
   </section>
   {% endif %}
 
-  {# اسکیل‌های این پروژه (+ اجباری/عمومی که روی همه اعمال می‌شوند) — ویرایش در صفحهٔ «اسکیل‌ها» #}
+  {# اسکیل‌های این پروژه = همان `skills.text.select` که هوش مصنوعی می‌گیرد (اول «کامل داده می‌شود»، بعد «فقط عنوان») #}
   <section class="card glass tab-panel ps-skills" data-panel="skills">
-    <div class="card-h"><h3>اسکیل‌های این پروژه</h3>
+    <div class="card-h"><h3>اسکیل‌هایی که هوش مصنوعی برای این پروژه می‌گیرد</h3>
       <a href="{% url 'skills:index' %}?project={{ project.pk }}" class="btn btn-sm" style="margin-inline-start:auto">{% icon 'book' %} مدیریت در «اسکیل‌ها»</a></div>
-    {% for s in project_skills %}
-      <a class="sk-item" href="{% url 'skills:index' %}?project={{ project.pk }}" style="color:inherit;cursor:pointer">
+    {% for s, why in project_skills %}
+      {% if forloop.counter0 == project_skills_n %}<div class="zero" style="padding:10px 17px 4px;font-size:11.5px">فقط عنوان (وقتی نوعِ تسک یا کلیدواژه جور شود کامل داده می‌شود):</div>{% endif %}
+      <a class="sk-item" href="{% url 'skills:index' %}?project={{ project.pk }}&s={{ s.pk }}" style="color:inherit;{% if forloop.counter0 >= project_skills_n %}opacity:.7{% endif %}">
         <div class="sk-main"><div class="sk-t">{{ s.title }}</div>{% if s.summary %}<div class="sk-s">{{ s.summary }}</div>{% endif %}</div>
+        <span class="zero" style="font-size:11px">{{ why }}</span>
         <span class="tag {% if s.scope == 'must' %}t-warn{% elif s.scope == 'project' %}t-ok{% else %}t-info{% endif %}">{{ s.scope_label }}</span></a>
     {% empty %}
-      <div class="empty"><div class="ico">{% icon 'book' %}</div><h4>هنوز اسکیلی برای این پروژه نیست</h4>
-        <p style="color:var(--text-faint);font-size:12px;margin-top:6px">لحن و برند، کلماتِ ممنوع، صفحه‌های مهم برای لینکِ داخلی، رقبا…</p></div>
+      <div class="empty"><div class="ico">{% icon 'book' %}</div><h4>هنوز اسکیلی نیست</h4>
+        <p style="color:var(--text-faint);font-size:12px;margin-top:6px">از «اسکیل‌ها» پروفایلِ این پروژه (برند، لحن، کلماتِ ممنوع، صفحه‌های مهم) را بساز.</p></div>
     {% endfor %}
   </section>
 

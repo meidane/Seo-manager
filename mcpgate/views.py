@@ -51,7 +51,11 @@ def _instructions(gate, kind, base):
     from skills.text import must_use_text
     if kind == 'skills':
         return SK.instructions(gate.organization)
+    from skills.text import live
     must = must_use_text(gate.organization)
+    if live(gate.organization).exists():
+        must = ('قبل از تولید/ویرایشِ محتوا، از کانکتورِ «اسکیل‌ها» skills_start(text=درخواستِ کاربر، site/project) را بزن '
+                'و اسکیل‌های load را رعایت کن.' + ('\n\n' + must if must else ''))
     return base + ('\n\n' + must if must else '')
 
 

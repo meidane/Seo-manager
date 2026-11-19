@@ -298,8 +298,10 @@ class ProjectDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
         ctx['switch_projects'] = (Project.objects.filter(id__in=accessible_project_ids(self.request))
                                   .order_by('status', F('priority').asc(nulls_last=True), 'name')
                                   .only('id', 'name', 'domain', 'color', 'logo', 'status'))
-        from skills.text import for_project
-        ctx['project_skills'] = for_project(self.request.organization, p.pk)
+        from skills.text import select as skill_select
+        sk_load, sk_avail = skill_select(self.request.organization, p.pk)
+        ctx['project_skills'] = sk_load + sk_avail   # [(skill, why)] — همان چیزی که هوش مصنوعی برای این پروژه می‌گیرد
+        ctx['project_skills_n'] = len(sk_load)
         ctx['credentials'] = p.credentials.all()
         from colleagues.models import Colleague
         ctx['all_colleagues'] = Colleague.objects.filter(status=Colleague.ACTIVE)

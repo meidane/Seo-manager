@@ -8,6 +8,9 @@
 هر تغییر یک `SkillVersion` می‌سازد (چه از وب چه از MCP) → تاریخچه + بازگردانی به هر نسخه. حذف نرم (`deleted_at`)
 تا بازگردانیِ ژورنالِ MCP هم کار کند.
 """
+import os
+import secrets
+
 from django.conf import settings
 from django.db import models
 
@@ -28,6 +31,15 @@ class Skill(models.Model):
     summary = models.CharField('خلاصهٔ یک‌خطی', max_length=300, blank=True,
                                help_text='هوش مصنوعی اول فقط همین را می‌بیند و اگر لازم بود متنِ کامل را می‌خواند')
     body = models.TextField('متن', blank=True)
+    # کِی به هوش مصنوعی داده شود (برای عمومی/پروژه؛ «اجباری» همیشه): always = همیشه کامل (مثلِ humanize/نحوهٔ نگارش)،
+    # auto = وقتی مرتبط بود (نوعِ تسک یا کلیدواژه‌ها در متنِ درخواست)، manual = فقط وقتی صریحاً خواسته شود
+    ALWAYS, AUTO, MANUAL = 'always', 'auto', 'manual'
+    APPLY = [(ALWAYS, 'همیشه'), (AUTO, 'خودکار وقتی مرتبط است'), (MANUAL, 'فقط با درخواست')]
+    apply = models.CharField('کِی استفاده شود', max_length=8, choices=APPLY, default=AUTO)
+    category = models.CharField('دسته', max_length=60, blank=True, help_text='مثلاً نگارش، رپورتاژ، سئوی فنی')
+    tags = models.CharField('کلیدواژه‌های تشخیص', max_length=400, blank=True,
+                            help_text='با ویرگول؛ اگر یکی در درخواست بیاید اسکیل خودکار بار می‌شود (مثلاً مقاله، بلاگ، محصول)')
+    task_types = models.ManyToManyField('tasks.TaskTypeDef', verbose_name='انواعِ تسک', blank=True, related_name='skills')
     order = models.PositiveIntegerField('ترتیب', default=0)
     active = models.BooleanField('فعال', default=True)
     updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
@@ -45,6 +57,10 @@ class Skill(models.Model):
 
     def __str__(self):
         return self.title
+
+    @property
+    def tag_list(self):
+        return [t.strip() for t in self.tags.replace('،', ',').split(',') if t.strip()]
 
     @property
     def scope_label(self):
@@ -82,3 +98,50 @@ class SkillVersion(models.Model):
 
     class Meta:
         ordering = ['-id']
+
+
+def _token():
+    return secrets.token_urlsafe(12)
+
+
+class SkillFile(models.Model):
+    """فایلِ ضمیمهٔ اسکیل (نمونه‌کد، عکسِ نمونه، قالب). لینکِ توکنی بدونِ ورود (`/skills/f/<token>/<نام>`) تا
+    هوش مصنوعی/ابزارِ آپلودِ وردپرس بتواند بخواندش. حذف = نرم (بازگردانیِ MCP)."""
+    organization = models.ForeignKey('accounts.Organization', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
+    skill = models.ForeignKey(Skill, on_delete=models.CASCADE, related_name='files')
+    name = models.CharField('نام', max_length=200)
+    file = models.FileField(upload_to='skills/%Y/%m/')
+    size = models.PositiveBigIntegerField(default=0)
+    note = models.CharField('توضیح', max_length=300, blank=True)
+    token = models.CharField(max_length=24, unique=True, default=_token, editable=False)
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    objects = TenantManager()
+    all_objects = models.Manager()
+
+    TEXT_EXT = {'txt', 'md', 'html', 'htm', 'css', 'js', 'json', 'php', 'py', 'xml', 'csv', 'svg', 'yml', 'yaml', 'ts', 'sql'}
+    IMAGE_EXT = {'jpg', 'jpeg', 'png', 'webp', 'gif', 'avif'}
+
+    class Meta:
+        ordering = ['id']
+
+    def save(self, *args, **kwargs):
+        stamp_org(self)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def ext(self):
+        return os.path.splitext(self.name)[1].lstrip('.').lower()
+
+    @property
+    def kind(self):
+        return 'image' if self.ext in self.IMAGE_EXT else 'text' if self.ext in self.TEXT_EXT else 'file'
+
+    def public_path(self):
+        from urllib.parse import quote
+        return f'/skills/f/{self.token}/{quote(self.name)}'
