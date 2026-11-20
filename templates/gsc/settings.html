@@ -21,7 +21,11 @@
     </div>
     <div class="gsc-form">
       <div class="field"><label>فایلِ کلید (JSON)</label><input type="file" id="g-file" accept=".json,application/json"></div>
-      <div class="field"><label>پراکسی <span class="zero">اختیاری — اگر سرور به گوگل دسترسی ندارد (واسطِ سرورِ خارج)</span></label>
+      <div class="field"><label>آدرسِ واسط <span class="zero">اگر سرور در ایران است — دامنهٔ خودت روی سرورِ خارج</span></label>
+        <input class="input" id="g-relay" dir="ltr" value="{{ acc.relay_url }}" placeholder="https://middle.lomin.co"></div>
+      <div class="field" style="max-width:260px"><label>کلیدِ واسط</label>
+        <input class="input" id="g-relay-key" dir="ltr" value="{% if acc.relay_key %}••••{% endif %}" placeholder="همان کلیدِ اسکریپتِ نصب"></div>
+      <div class="field"><label>یا پراکسی <span class="zero">اختیاری — فقط اگر واسط نداری</span></label>
         <input class="input" id="g-proxy" dir="ltr" value="{{ acc.proxy }}" placeholder="http://user:pass@host:port"></div>
       <div class="field" style="max-width:200px"><label>روزهای سابقه (بارِ اول)</label><input class="input" id="g-days" type="number" value="{{ acc.days_back }}" min="7" max="480"></div>
     </div>
@@ -79,7 +83,7 @@
   const $ = id => document.getElementById(id);
   const err = m => { $('g-err').hidden = !m; $('g-err').querySelector('span').textContent = m || ''; };
   $('g-save').onclick = async () => {
-    const f = $('g-file').files[0], body = {proxy: $('g-proxy').value, days_back: +$('g-days').value};
+    const f = $('g-file').files[0], body = {proxy: $('g-proxy').value, relay_url: $('g-relay').value, relay_key: $('g-relay-key').value, days_back: +$('g-days').value};
     if (f) body.json = await f.text();
     const r = await App.fetchJSON('{% url "gsc:save" %}', {method: 'POST', body});
     App.toast('ذخیره شد' + (r.email ? ' — ' + r.email : ''), 'ok'); setTimeout(() => location.reload(), 700);

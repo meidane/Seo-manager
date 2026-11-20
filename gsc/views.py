@@ -68,6 +68,10 @@ def save(request):
         acc.credentials = cred
     if 'proxy' in d:
         acc.proxy = (d.get('proxy') or '').strip()
+    if 'relay_url' in d:
+        acc.relay_url = (d.get('relay_url') or '').strip().rstrip('/')
+    if 'relay_key' in d and d.get('relay_key') != '••••':
+        acc.relay_key = (d.get('relay_key') or '').strip()
     if d.get('days_back'):
         acc.days_back = max(7, min(int(d['days_back']), 480))
     acc.save()

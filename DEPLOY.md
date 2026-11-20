@@ -113,7 +113,12 @@ cd /var/www/teams
 ```
 اگر سرور به گوگل دسترسی ندارد، در `/settings/gsc/` فیلدِ «پراکسی» را با آدرسِ یک پراکسیِ HTTP روی سرورِ خارج پر کن.
 
-### پراکسیِ سرچ کنسول روی سرورِ خارج (tinyproxy)
+### واسطِ سرچ کنسول (پیشنهادی برای سرورِ ایران)
+1. DNS: رکوردِ A برای `middle.lomin.co` → IPِ سرورِ خارج.
+2. روی سرورِ خارج: `sudo bash deploy/gsc-relay.sh middle.lomin.co you@example.com` → «کلیدِ واسط» را چاپ می‌کند.
+3. در پنل (تنظیمات ← سرچ کنسول): آدرسِ واسط `https://middle.lomin.co` + همان کلید.
+
+### (جایگزین) پراکسیِ سرچ کنسول روی سرورِ خارج (tinyproxy)
 ```
 sudo apt install -y tinyproxy
 # در /etc/tinyproxy/tinyproxy.conf:

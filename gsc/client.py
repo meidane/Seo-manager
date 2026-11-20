@@ -31,7 +31,12 @@ class Client:
         if not self.cred.get('private_key') or not self.cred.get('client_email'):
             raise GSCError('کلیدِ Service Account ثبت نشده یا ناقص است')
         self.s = requests.Session()
-        if account.proxy:
+        self.relay = (account.relay_url or '').strip().rstrip('/')
+        if self.relay:
+            if '://' not in self.relay:
+                self.relay = 'https://' + self.relay
+            self.s.headers['X-Relay-Key'] = account.relay_key or ''
+        elif account.proxy:
             # تله: requests پراکسیِ متغیرهای محیطی (HTTPS_PROXY) را بر proxiesِ سشن مقدم می‌کند → trust_env خاموش
             self.s.trust_env = False
             self.s.proxies = {'https': account.proxy, 'http': account.proxy}
@@ -42,17 +47,20 @@ class Client:
         if tok:
             return tok
         now = int(time.time())
-        uri = self.cred.get('token_uri') or 'https://oauth2.googleapis.com/token'
+        uri = self.cred.get('token_uri') or 'https://oauth2.googleapis.com/token'   # aud همیشه آدرسِ واقعیِ گوگل
         claims = {'iss': self.cred['client_email'], 'scope': SCOPE, 'aud': uri, 'iat': now, 'exp': now + 3600}
         head = _b64(json.dumps({'alg': 'RS256', 'typ': 'JWT'}).encode()) + '.' + _b64(json.dumps(claims).encode())
         pk = serialization.load_pem_private_key(self.cred['private_key'].encode(), password=None)
         jwt = head + '.' + _b64(pk.sign(head.encode(), padding.PKCS1v15(), hashes.SHA256()))
         try:
-            r = self.s.post(uri, data={'grant_type': 'urn:ietf:params:oauth:grant-type:jwt-bearer', 'assertion': jwt}, timeout=30)
+            r = self.s.post(self.relay + '/oauth2/token' if self.relay else uri, data={'grant_type': 'urn:ietf:params:oauth:grant-type:jwt-bearer', 'assertion': jwt}, timeout=30)
         except requests.RequestException as e:
-            hint = ('پراکسی جواب نداد — آدرس/پورت/رمزِ پراکسی و فایروالِ سرورِ خارج را چک کن' if self.acc.proxy
+            hint = ('واسط جواب نداد — DNS/گواهیِ HTTPS/nginxِ سرورِ خارج را چک کن' if self.relay else
+                    'پراکسی جواب نداد — آدرس/پورت/رمزِ پراکسی و فایروالِ سرورِ خارج را چک کن' if self.acc.proxy
                     else 'اگر سرور در ایران است پراکسی لازم است')
             raise GSCError(f'اتصال به گوگل برقرار نشد ({type(e).__name__}) — {hint}') from e
+        if self.relay and r.status_code == 403 and 'relay' in r.text.lower():
+            raise GSCError('واسط درخواست را رد کرد — «کلیدِ واسط» در پنل با کلیدِ روی سرورِ خارج یکی نیست')
         if r.status_code != 200:
             raise GSCError(f'گرفتنِ توکن ناموفق ({r.status_code}): {r.text[:300]}')
         tok = r.json()['access_token']
@@ -63,7 +71,7 @@ class Client:
         # سهمیه: 429/500/503 یا 403ِ «quota/rate» → صبر و تلاشِ دوباره (۲، ۴، ۸، ۱۶، ۳۲ ثانیه)
         for attempt in range(6):
             try:
-                r = self.s.request(method, API + path, json=body, timeout=90, headers={'Authorization': 'Bearer ' + self._token()})
+                r = self.s.request(method, (self.relay + '/googleapis/webmasters/v3' if self.relay else API) + path, json=body, timeout=90, headers={'Authorization': 'Bearer ' + self._token()})
             except requests.RequestException as e:
                 if attempt < 2:
                     time.sleep(3)
@@ -75,6 +83,8 @@ class Client:
                 continue
             break
         time.sleep(PAUSE)
+        if self.relay and r.status_code == 403 and 'relay' in r.text.lower():
+            raise GSCError('واسط درخواست را رد کرد — «کلیدِ واسط» در پنل با کلیدِ روی سرورِ خارج یکی نیست')
         if r.status_code >= 400:
             try:
                 msg = r.json().get('error', {}).get('message', '')

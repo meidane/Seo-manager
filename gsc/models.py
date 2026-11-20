@@ -19,6 +19,10 @@ class GSCAccount(models.Model):
     client_email = models.CharField(max_length=300, blank=True)
     proxy = models.CharField('پراکسی (اختیاری)', max_length=300, blank=True,
                              help_text='مثلاً http://user:pass@host:port — برای وقتی سرور به گوگل دسترسی ندارد')
+    # واسط (relay): یک دامنهٔ خودت روی سرورِ خارج (مثلاً https://middle.lomin.co) که با nginx درخواست را به گوگل می‌رساند —
+    # پنل فقط HTTPSِ عادی به آن می‌زند. اگر پر باشد بر پراکسی مقدم است. `relay_key` = هدرِ X-Relay-Key (تا واسط عمومی نشود).
+    relay_url = models.CharField('آدرسِ واسط', max_length=300, blank=True)
+    relay_key = models.CharField('کلیدِ واسط', max_length=200, blank=True)
     days_back = models.PositiveIntegerField('روزهای سابقه در اولین همگام‌سازی', default=95)
     last_sync = models.DateTimeField(null=True, blank=True)
     last_error = models.TextField(blank=True)
