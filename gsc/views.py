@@ -15,7 +15,7 @@ from projects.access import accessible_project_ids
 
 from . import analysis
 from .client import GSCError
-from .models import GSCAccount, GSCCredential, GSCPageDay, GSCSite
+from .models import GSCAccount, GSCCredential, GSCSite
 from .sync import refresh_sites, sync_account
 
 PERM = 'manage_api_tokens'
@@ -38,7 +38,7 @@ def page(request):
     sites = list(GSCSite.objects.filter(organization=org).select_related('project'))
     counts = {}
     for s in sites:
-        counts[s.id] = GSCPageDay.objects.filter(site=s).values('page_key').distinct().count() if s.synced_until else 0
+        counts[s.id] = s.pages.count()
     return render(request, 'gsc/settings.html', {
         'page_title': 'سرچ کنسول', 'acc': acc,
         'sites': [{**_site_row(s), 'pages': counts[s.id]} for s in sites],
@@ -73,7 +73,7 @@ def save(request):
     if 'relay_key' in d and d.get('relay_key') != '••••':
         acc.relay_key = (d.get('relay_key') or '').strip()
     if d.get('days_back'):
-        acc.days_back = max(7, min(int(d['days_back']), 480))
+        acc.days_back = max(7, min(int(d['days_back']), 180))   # حداکثر ۶ ماه (sync.KEEP_DAYS)
     acc.save()
     return JsonResponse({'ok': True, 'email': acc.client_email})
 

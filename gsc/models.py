@@ -86,29 +86,38 @@ class GSCSite(models.Model):
         return host_of(self.site_url)
 
 
+class GSCPage(models.Model):
+    """هر صفحه یک بار (آدرس طولانی است و در هر ردیفِ روزانه تکرار می‌شد → حجم ۳-۴ برابر). `key` = `urls_norm.page_key`."""
+    site = models.ForeignKey(GSCSite, on_delete=models.CASCADE, related_name='pages')
+    key = models.CharField(max_length=700)
+    url = models.CharField(max_length=1000)
+
+    class Meta:
+        unique_together = [('site', 'key')]
+
+
 class GSCQueryDay(models.Model):
     site = models.ForeignKey(GSCSite, on_delete=models.CASCADE, related_name='query_days')
     date = models.DateField()
-    page = models.CharField(max_length=1000)
-    page_key = models.CharField(max_length=700, db_index=False)
+    page = models.ForeignKey(GSCPage, on_delete=models.CASCADE, related_name='+')
     query = models.CharField(max_length=400)
     clicks = models.PositiveIntegerField(default=0)
     impressions = models.PositiveIntegerField(default=0)
     position = models.FloatField(default=0)
 
     class Meta:
-        indexes = [models.Index(fields=['site', 'page_key', 'date']), models.Index(fields=['site', 'date']),
-                   models.Index(fields=['site', 'query'])]
+        indexes = [models.Index(fields=['page', 'date'], name='gsc_qday_page_date'),
+                   models.Index(fields=['site', 'date'], name='gsc_qday_site_date')]
 
 
 class GSCPageDay(models.Model):
     site = models.ForeignKey(GSCSite, on_delete=models.CASCADE, related_name='page_days')
     date = models.DateField()
-    page = models.CharField(max_length=1000)
-    page_key = models.CharField(max_length=700)
+    page = models.ForeignKey(GSCPage, on_delete=models.CASCADE, related_name='+')
     clicks = models.PositiveIntegerField(default=0)
     impressions = models.PositiveIntegerField(default=0)
     position = models.FloatField(default=0)
 
     class Meta:
-        indexes = [models.Index(fields=['site', 'page_key', 'date']), models.Index(fields=['site', 'date'])]
+        indexes = [models.Index(fields=['page', 'date'], name='gsc_pday_page_date'),
+                   models.Index(fields=['site', 'date'], name='gsc_pday_site_date')]

@@ -27,7 +27,7 @@
         <input class="input" id="g-relay-key" dir="ltr" value="{% if acc.relay_key %}••••{% endif %}" placeholder="همان کلیدِ اسکریپتِ نصب"></div>
       <div class="field"><label>یا پراکسی <span class="zero">اختیاری — فقط اگر واسط نداری</span></label>
         <input class="input" id="g-proxy" dir="ltr" value="{{ acc.proxy }}" placeholder="http://user:pass@host:port"></div>
-      <div class="field" style="max-width:200px"><label>روزهای سابقه (بارِ اول)</label><input class="input" id="g-days" type="number" value="{{ acc.days_back }}" min="7" max="480"></div>
+      <div class="field" style="max-width:200px"><label>روزهای سابقه (بارِ اول، حداکثر ۱۸۰)</label><input class="input" id="g-days" type="number" value="{{ acc.days_back }}" min="7" max="180"></div>
     </div>
     <div class="gsc-actions">
       <button class="btn btn-p" id="g-save">ذخیره</button>

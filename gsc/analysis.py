@@ -13,7 +13,7 @@ from datetime import timedelta
 from django.db.models import F, FloatField, Sum
 from django.db.models.functions import Cast
 
-from .models import GSCPageDay, GSCQueryDay, GSCSite
+from .models import GSCPage, GSCPageDay, GSCQueryDay, GSCSite
 from .urls_norm import host_of, page_key
 
 WIN = 28
@@ -83,11 +83,16 @@ def _end(site):
     return site.synced_until
 
 
+def _pid(site, key):
+    """شمارهٔ صفحه (GSCPage) یا 0 اگر این صفحه در داده نیست — فیلترِ `page_id=0` نتیجهٔ خالی می‌دهد."""
+    return GSCPage.objects.filter(site=site, key=key).values_list('id', flat=True).first() or 0
+
+
 def page_queries(site, key, days=90, limit=200):
     end = _end(site)
     if not end:
         return []
-    rows = (GSCQueryDay.objects.filter(site=site, page_key=key, date__gt=end - timedelta(days=days))
+    rows = (GSCQueryDay.objects.filter(page_id=_pid(site, key), date__gt=end - timedelta(days=days))
             .values('query').annotate(**_agg()).order_by('-c', '-i')[:limit])
     return [{'query': r['query'], **_fmt(r['c'], r['i'], r['pw'])} for r in rows]
 
@@ -96,7 +101,7 @@ def page_series(site, key, days=90):
     end = _end(site)
     if not end:
         return []
-    rows = {r['date']: r for r in GSCPageDay.objects.filter(site=site, page_key=key, date__gt=end - timedelta(days=days))
+    rows = {r['date']: r for r in GSCPageDay.objects.filter(page_id=_pid(site, key), date__gt=end - timedelta(days=days))
             .values('date').annotate(**_agg())}
     out, d = [], end - timedelta(days=days - 1)
     while d <= end:
@@ -107,7 +112,7 @@ def page_series(site, key, days=90):
 
 
 def window(site, key, start, end):
-    r = GSCPageDay.objects.filter(site=site, page_key=key, date__range=(start, end)).aggregate(**_agg())
+    r = GSCPageDay.objects.filter(page_id=_pid(site, key), date__range=(start, end)).aggregate(**_agg())
     return _fmt(r['c'], r['i'], r['pw'])
 
 
@@ -139,8 +144,8 @@ def task_card(task):
 
 # ───────────── تحلیلِ پروژه ─────────────
 def _pages_window(sites, start, end):
-    return {(r['site'], r['page_key']): r for r in GSCPageDay.objects.filter(site__in=sites, date__range=(start, end))
-            .values('site', 'page_key').annotate(**_agg(), page=F('page_key'))}
+    return {(r['site'], r['page__key']): r for r in GSCPageDay.objects.filter(site__in=sites, date__range=(start, end))
+            .values('site', 'page__key').annotate(**_agg())}
 
 
 def project_analysis(project):
@@ -175,8 +180,8 @@ def project_analysis(project):
 
     # کلمه×صفحهٔ ۲۸ روزِ اخیر (پایهٔ بقیه)
     qp = list(GSCQueryDay.objects.filter(site__in=sites, date__range=(cur0, end))
-              .values('query', 'page_key').annotate(**_agg()).filter(i__gte=20).order_by('-i')[:5000])
-    rows = [{'query': r['query'], 'page': r['page_key'], **_fmt(r['c'], r['i'], r['pw'])} for r in qp]
+              .values('query', 'page__key').annotate(**_agg()).filter(i__gte=20).order_by('-i')[:5000])
+    rows = [{'query': r['query'], 'page': r['page__key'], **_fmt(r['c'], r['i'], r['pw'])} for r in qp]
 
     # ۲) نزدیکِ صفحهٔ اول: جایگاه ۸ تا ۲۰ با نمایشِ زیاد
     striking = sorted([r for r in rows if r['position'] and 8 <= r['position'] <= 20 and r['impressions'] >= 50],

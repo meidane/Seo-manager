@@ -6,9 +6,10 @@ from django.db import transaction
 from django.utils import timezone
 
 from .client import Client, GSCError
-from .models import GSCAccount, GSCCredential, GSCPageDay, GSCQueryDay, GSCSite
+from .models import GSCAccount, GSCCredential, GSCPage, GSCPageDay, GSCQueryDay, GSCSite
 from .urls_norm import host_of, page_key
 
+KEEP_DAYS = 180   # حداکثر ۶ ماه داده (هم دریافت، هم نگه‌داری) — خواستِ کاربر
 CHUNK_DAYS = 1   # روز‌به‌روز: هر درخواست سبک‌تر (سهمیهٔ «بار»ِ گوگل) و سقفِ ردیفِ هر پاسخ کمتر پر می‌شود
 
 
@@ -43,9 +44,37 @@ def _f(v):
     return float(v or 0)
 
 
+def _page_ids(site, urls):
+    """{url: page_id} — صفحه‌های تازه یک‌جا ساخته می‌شوند (هر صفحه یک بار، با کلیدِ نرمال‌شده)."""
+    by_key = {}
+    for u in urls:
+        by_key.setdefault(page_key(u), u)
+    have = dict(GSCPage.objects.filter(site=site, key__in=list(by_key)).values_list('key', 'id'))
+    new = [GSCPage(site=site, key=k, url=u[:1000]) for k, u in by_key.items() if k not in have]
+    if new:
+        GSCPage.objects.bulk_create(new, batch_size=1000, ignore_conflicts=True)
+        have = dict(GSCPage.objects.filter(site=site, key__in=list(by_key)).values_list('key', 'id'))
+    return {u: have[page_key(u)] for u in urls}
+
+
+def prune(site, until):
+    """قدیمی‌تر از ۶ ماه پاک + صفحه‌هایی که دیگر هیچ داده‌ای ندارند."""
+    cut = until - timedelta(days=KEEP_DAYS - 1)
+    GSCQueryDay.objects.filter(site=site, date__lt=cut).delete()
+    GSCPageDay.objects.filter(site=site, date__lt=cut).delete()
+    used = set(GSCQueryDay.objects.filter(site=site).values_list('page_id', flat=True).distinct()) | \
+        set(GSCPageDay.objects.filter(site=site).values_list('page_id', flat=True).distinct())
+    GSCPage.objects.filter(site=site).exclude(id__in=used).delete()
+    if site.first_date and site.first_date < cut:
+        site.first_date = cut
+        site.save(update_fields=['first_date'])
+
+
 def sync_site(client, site, days_back=95, until=None):
     until = until or (date.today() - timedelta(days=2))
+    days_back = min(days_back, KEEP_DAYS)
     start = (site.synced_until - timedelta(days=3)) if site.synced_until else (until - timedelta(days=days_back - 1))
+    start = max(start, until - timedelta(days=KEEP_DAYS - 1))
     n = 0
     cur = start
     while cur <= until:
@@ -53,14 +82,15 @@ def sync_site(client, site, days_back=95, until=None):
         q_rows = client.query(site.site_url, cur, end, ['date', 'page', 'query'])
         p_rows = client.query(site.site_url, cur, end, ['date', 'page'])
         with transaction.atomic():
+            pid = _page_ids(site, {r['keys'][1] for r in q_rows} | {r['keys'][1] for r in p_rows})
             GSCQueryDay.objects.filter(site=site, date__range=(cur, end)).delete()
             GSCPageDay.objects.filter(site=site, date__range=(cur, end)).delete()
             GSCQueryDay.objects.bulk_create([GSCQueryDay(
-                site=site, date=date.fromisoformat(r['keys'][0]), page=r['keys'][1][:1000], page_key=page_key(r['keys'][1]),
+                site=site, date=date.fromisoformat(r['keys'][0]), page_id=pid[r['keys'][1]],
                 query=r['keys'][2][:400], clicks=int(r.get('clicks', 0)), impressions=int(r.get('impressions', 0)),
                 position=round(_f(r.get('position')), 2)) for r in q_rows], batch_size=2000)
             GSCPageDay.objects.bulk_create([GSCPageDay(
-                site=site, date=date.fromisoformat(r['keys'][0]), page=r['keys'][1][:1000], page_key=page_key(r['keys'][1]),
+                site=site, date=date.fromisoformat(r['keys'][0]), page_id=pid[r['keys'][1]],
                 clicks=int(r.get('clicks', 0)), impressions=int(r.get('impressions', 0)),
                 position=round(_f(r.get('position')), 2)) for r in p_rows], batch_size=2000)
             site.synced_until = end
@@ -69,6 +99,7 @@ def sync_site(client, site, days_back=95, until=None):
             site.save(update_fields=['synced_until', 'first_date', 'last_error'])
         n += len(q_rows)
         cur = end + timedelta(days=1)
+    prune(site, until)
     return n
 
 
