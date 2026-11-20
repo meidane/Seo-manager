@@ -17,7 +17,7 @@ from django.utils import timezone
 from mcpgate.panel.ctx import Resolver, ToolError, fake_request, jd, table
 
 from .models import Skill, SkillFile, SkillVersion
-from .text import detect, live, must_use_text, select
+from .text import detect, live, select
 
 S = lambda t, d='', **x: {'type': t, **({'description': d} if d else {}), **x}  # noqa: E731
 ANY = {}
@@ -55,17 +55,18 @@ TOOLS = [
      'inputSchema': obj({'batch': S('integer'), 'force': S('boolean')}, ['batch'])},
 ]
 
-BASE_INSTRUCTIONS = (
+BASE_INSTRUCTIONS = (   # ثابت — هرگز با داده عوض نشود (ChatGPT فقط موقعِ وصل‌شدن می‌خواند؛ محتوای تازه از جوابِ ابزار)
     'اسکیل‌های سازمان (دانش و قواعدِ کار، به‌خصوص تولیدِ محتوا). سطح‌ها: «اجباری» (همیشه)، «عمومی»، «پروژه». '
-    'اولِ هر کار skills_start را با text = خودِ درخواستِ کاربر (و site/project اگر معلوم است) بزن؛ پروژه خودکار تشخیص داده می‌شود. '
+    'قبل از هر کاری، اول ابزارِ skills_start را با text = متنِ درخواستِ کاربر (و site/project اگر معلوم است) صدا بزن و هر چه در load '
+    'برگشت (از جمله قواعدِ اجباری) را کامل رعایت کن؛ متنِ اسکیل‌ها فقط از همین جواب بیاید چون همیشه تازه است. پروژه خودکار تشخیص داده می‌شود. '
     'اسکیل‌های load را کامل و دقیق رعایت کن؛ از available فقط اگر لازم شد skill_get بگیر. فایل‌های نمونه با skill_file_get. '
     'اگر کاربر نکتهٔ ماندگاری گفت، با skill_save (append) به اسکیلِ مناسب اضافه کن و به کاربر بگو.'
 )
 
 
 def instructions(org):
-    must = must_use_text(org)
-    return BASE_INSTRUCTIONS + ('\n\n' + must if must else '')
+    """ثابت (org برای سازگاری) — اسکیل‌ها عمداً اینجا نیستند تا تغییرشان بدونِ رفرشِ کانکتور برسد."""
+    return BASE_INSTRUCTIONS
 
 
 def _scope(v):

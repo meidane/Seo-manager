@@ -38,25 +38,42 @@ def _server(kind):
     from skills import mcp as SK
 
     from .panel import registry as PR
+    def with_rules(run):
+        return lambda gate, name, args, log: rules_payload(gate.organization) if name == 'rules' else run(gate, name, args, log)
     if kind == 'panel':
-        return PR.TOOLS, PR.INSTRUCTIONS, PR.run, 'seo-manager-panel'
+        return [RULES_TOOL] + PR.TOOLS, PR.INSTRUCTIONS, with_rules(PR.run), 'seo-manager-panel'
     if kind == 'skills':
         return SK.TOOLS, None, SK.run, 'seo-manager-skills'
-    return T.TOOLS, T.INSTRUCTIONS, (lambda gate, name, args, log: T.run(gate.organization, name, args, log)), 'seo-manager'
+    return ([RULES_TOOL] + T.TOOLS, T.INSTRUCTIONS,
+            with_rules(lambda gate, name, args, log: T.run(gate.organization, name, args, log)), 'seo-manager')
+
+
+RULES_LINE = ('قبل از هر کاری ابزارِ rules را یک بار صدا بزن و قواعدِ اجباریِ برگشتی را در کلِ گفتگو رعایت کن؛ '
+              'برای تولید/ویرایشِ محتوا، اگر کانکتورِ «اسکیل‌ها» وصل است، skills_start(text=درخواستِ کاربر) را هم بزن.')
 
 
 def _instructions(gate, kind, base):
-    """متنِ اسکیل‌های «اجباری» (must use) در instructionsِ هر سه کانکتور — تا در هر گفتگو رعایت شود."""
+    """دستورالعملِ سرور **ثابت** است و هرگز با داده عوض نمی‌شود — ChatGPT آن را فقط موقعِ وصل‌شدن می‌خواند و تا رفرش نگه
+    می‌دارد. محتوای متغیر (اسکیل‌های اجباری/همیشه) فقط در **جوابِ ابزار** می‌آید (`rules` / `skills_start`) که هر بار تازه است؛
+    پس تغییرِ اسکیل‌ها بدونِ رفرشِ کانکتور به ChatGPT می‌رسد. رفرش فقط وقتی لازم است که خودِ ابزارها عوض شوند."""
     from skills import mcp as SK
-    from skills.text import must_use_text
     if kind == 'skills':
-        return SK.instructions(gate.organization)
+        return SK.BASE_INSTRUCTIONS
+    return base + '\n\n' + RULES_LINE
+
+
+RULES_TOOL = {'name': 'rules', 'description': 'قواعدِ اجباریِ سازمان (همیشه به‌روز). اولِ هر گفتگو یک بار صدا بزن و در کلِ گفتگو رعایت کن.',
+              'inputSchema': {'type': 'object', 'properties': {}, 'required': []}}
+
+
+def rules_payload(org):
+    """متنِ تازهٔ اسکیل‌های اجباری + نامِ عمومی‌های «همیشه» — از ابزارِ `rules` در کانکتورهای سایت/پنل."""
+    from skills.models import Skill
     from skills.text import live
-    must = must_use_text(gate.organization)
-    if live(gate.organization).exists():
-        must = ('قبل از تولید/ویرایشِ محتوا، از کانکتورِ «اسکیل‌ها» skills_start(text=درخواستِ کاربر، site/project) را بزن '
-                'و اسکیل‌های load را رعایت کن.' + ('\n\n' + must if must else ''))
-    return base + ('\n\n' + must if must else '')
+    rows = list(live(org).filter(scope__in=[Skill.MUST, Skill.GENERAL]).order_by('order', 'id'))
+    return {'must_use': [{'title': x.title, 'body': x.body} for x in rows if x.scope == Skill.MUST],
+            'always_skills': [x.title for x in rows if x.scope == Skill.GENERAL and x.apply == Skill.ALWAYS] or None,
+            'note': 'متنِ کاملِ اسکیل‌های «همیشه» و اسکیل‌های پروژه با skills_start از کانکتورِ «اسکیل‌ها».'}
 
 
 def _handle(gate, msg, kind='site'):

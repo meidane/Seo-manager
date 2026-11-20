@@ -61,6 +61,7 @@ OpenAI/Anthropic در دسترس نیستند). **عمداً بدونِ محدو
 
 ## کانکتورِ سوم: اسکیل‌ها — `/mcp/<token>/skills/`
 `views._server(kind)` (site|panel|skills) ابزار/اجراکننده را انتخاب می‌کند؛ ابزارها در `skills/mcp.py` (`skills/CLAUDE.md`).
-`views._instructions` متنِ اسکیل‌های **اجباری** را به instructionsِ **هر سه** کانکتور اضافه می‌کند. صفحهٔ `/settings/mcp/` آدرسِ سوم را نشان می‌دهد.
+`views._instructions` **ثابت** است (فقط `RULES_LINE`) — دادهٔ متغیر هرگز در instructions نمی‌رود (ChatGPT تا رفرشِ کانکتور نسخهٔ قدیمی را نگه
+می‌دارد). قواعدِ اجباری از ابزارِ `rules` (اولِ فهرستِ ابزارهای سایت/پنل) و `skills_start` می‌آیند که هر بار تازه‌اند. `skills/CLAUDE.md`. صفحهٔ `/settings/mcp/` آدرسِ سوم را نشان می‌دهد.
 
 - **سرچ کنسول در پنل:** `gsc_page(url|task)` و `gsc_project(project)` (`registry.py` → `gsc/analysis.py`).
