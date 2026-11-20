@@ -59,7 +59,6 @@
       تنظیمات
     </a>
     {% endif %}
-    <a href="#" id="theme-toggle" title="تغییر تمِ روشن/تیره"><span class="ico" data-theme-ico>{% icon 'moon' %}</span> <span data-theme-label>تمِ روشن</span></a>
     <form method="post" action="{% url 'accounts:logout' %}" class="nav-logout-form">
       {% csrf_token %}
       <button type="submit">
