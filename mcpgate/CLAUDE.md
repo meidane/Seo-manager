@@ -62,3 +62,5 @@ OpenAI/Anthropic در دسترس نیستند). **عمداً بدونِ محدو
 ## کانکتورِ سوم: اسکیل‌ها — `/mcp/<token>/skills/`
 `views._server(kind)` (site|panel|skills) ابزار/اجراکننده را انتخاب می‌کند؛ ابزارها در `skills/mcp.py` (`skills/CLAUDE.md`).
 `views._instructions` متنِ اسکیل‌های **اجباری** را به instructionsِ **هر سه** کانکتور اضافه می‌کند. صفحهٔ `/settings/mcp/` آدرسِ سوم را نشان می‌دهد.
+
+- **سرچ کنسول در پنل:** `gsc_page(url|task)` و `gsc_project(project)` (`registry.py` → `gsc/analysis.py`).

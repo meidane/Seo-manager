@@ -77,6 +77,10 @@ TOOLS = [
                          'limit': S('integer'), 'offset': S('integer')})},
     {'name': 'finance_stats', 'description': 'جمعِ واریز/برداشت بر اساسِ category|project|month|bank (+ فاکتور در category).',
      'inputSchema': obj({'by': S('string'), 'from': S('string'), 'to': S('string'), 'project': ANY})},
+    {'name': 'gsc_page', 'description': 'سرچ کنسولِ یک صفحه (url یا task): کلماتِ ۳ ماهِ اخیر با کلیک/ایمپرشن/CTR/جایگاه + جمعِ ۲۸ روز.',
+     'inputSchema': obj({'url': S('string'), 'task': S('integer'), 'days': S('integer')})},
+    {'name': 'gsc_project', 'description': 'تحلیلِ سرچ کنسولِ پروژه: افت، نزدیکِ صفحهٔ اول، CTR پایین، رقابتِ صفحه‌ها، اثرِ کارها و مقایسهٔ انواع.',
+     'inputSchema': obj({'project': ANY, 'limit': S('integer')}, ['project'])},
     {'name': 'actions_list', 'description': 'لاگِ تغییراتِ MCP (دسته‌ها، قابلِ بازگردانی).', 'inputSchema': obj({'limit': S('integer')})},
     {'name': 'undo', 'description': 'بازگردانیِ یک دسته (batch). force=true حتی اگر بعداً دستی تغییر کرده.',
      'inputSchema': obj({'batch': S('integer'), 'force': S('boolean')}, ['batch'])},
@@ -143,6 +147,29 @@ def find(gate, a):
     return {k: v for k, v in out.items() if v}
 
 
+def gsc_page(gate, a):
+    from gsc.analysis import briefs_for, page_brief
+    from tasks.models import Task
+    if a.get('task'):
+        t = Task.all_objects.filter(organization=gate.organization, pk=a['task']).select_related('type_def').prefetch_related('type_def__fields').first()
+        if not t:
+            raise ToolError('تسک پیدا نشد')
+        out = briefs_for(gate.organization, '', t)
+    elif a.get('url'):
+        b = page_brief(gate.organization, a['url'], days=int(a.get('days') or 90))
+        out = [b] if b else []
+    else:
+        raise ToolError('url یا task لازم است')
+    return out or {'none': 'برای این صفحه داده‌ای در سرچ کنسول نیست (سایت وصل نیست یا هنوز همگام نشده)'}
+
+
+def gsc_project(gate, a):
+    from gsc.analysis import project_brief
+    from projects.models import Project
+    p = Project.objects.get(pk=Resolver().get('project', a['project']))
+    return project_brief(p, int(a.get('limit') or 10)) or {'none': 'این پروژه به سرچ کنسول وصل نیست یا هنوز همگام نشده'}
+
+
 def actions_list(gate, a):
     from mcpgate.models import MCPBatch
     rows = [[b.id, jd(b.created_at), b.created_at.strftime('%H:%M'), b.tool, b.summary, b.counts or None,
@@ -161,7 +188,7 @@ def undo(gate, a):
 
 
 HANDLERS = {
-    'panel_info': panel_info, 'find': find, 'actions_list': actions_list, 'undo': undo,
+    'panel_info': panel_info, 'find': find, 'gsc_page': gsc_page, 'gsc_project': gsc_project, 'actions_list': actions_list, 'undo': undo,
     'tasks_query': T.tasks_query, 'task_get': T.task_get, 'tasks_save': T.tasks_save,
     'tasks_update_where': T.tasks_update_where, 'tasks_delete': T.tasks_delete, 'tasks_restore': T.tasks_restore,
     'task_comment': T.task_comment, 'task_review': T.task_review,

@@ -39,6 +39,8 @@
   `/f/<id سازمان>/<پوشه>/<نام.پسوند>` + تغییرِ نام/جابه‌جایی/حذف؛ هشدارِ جایگزینیِ هم‌نام. گیت `shared_files`. `filebox/CLAUDE.md`.
 - `skills/` — **«اسکیل‌ها»ی سایدبار** (مدیرِ اسکیل برای تولیدِ محتوا): اجباری / عمومی (همیشه|خودکار|دستی) / پروژه +
   فایل‌های نمونه + نسخه‌ها + تشخیصِ خودکارِ پروژه/نوع از متنِ درخواست + کانکتورِ MCPِ جدا `/mcp/<token>/skills/`. `skills/CLAUDE.md`.
+- `gsc/` — **سرچ کنسول**: Service Account (+ پراکسیِ اختیاری) + همگام‌سازیِ شبانهٔ روز×صفحه×کلمه (`gsc_sync`) + کارتِ خودکارِ
+  زیرِ تسک (کلماتِ ۳ ماهِ صفحه + نمودار + اثرِ تسک) + تبِ «تحلیلِ سرچ کنسول»ِ پروژه + دادهٔ صفحه در MCP. `gsc/CLAUDE.md`.
 - `personal/` — **فضای شخصیِ خصوصی** (فقط سوپریوزر/`admin`): بالای صفحه = **تقویمِ مشترک**
   (همان ماژولِ `calendarapp`؛ پنلِ بدون‌تاریخ = اینباکس) + هبیت ترکر، اهداف، یادداشت،
   ثانیه‌شمارِ عمر. اسکوپ به `user`. `personal/CLAUDE.md`.
@@ -84,6 +86,7 @@
 | اتصالِ ChatGPT/Claude به سایت‌ها از راهِ پنل (MCP سرورِ خودِ پنل) | `mcpgate/` (`tools.py: TOOLS/run` + `wp.py: request/mcp`) — توکن در آدرس، نه `APIToken` (باید همیشه قابلِ نمایش باشد) |
 | همگام‌سازیِ برنامهٔ دسکتاپِ ChatGPT-WP (داده/فایل‌ها، بینِ چند کامپیوتر) | پنل: `connector/` (انبار + API توکنی) · برنامه: `chatgpt-connector/plugin/server/sync.mjs` (ادغام) |
 | تشخیصِ پروژه/نوع و انتخابِ اسکیل‌های لازم (MCP + تبِ پروژه + آزمایشِ تشخیص) / متنِ «اجباری»ِ MCP | `skills/text.py: detect/select/must_use_text` (+ `mcpgate/views._instructions`) |
+| دادهٔ سرچ کنسولِ صفحه/تسک/پروژه (کارتِ تسک، تبِ پروژه، MCP) | `gsc/analysis.py` + فرانت `static/js/gsc.js` (`window.GSC`) |
 | گروه‌بندی نوع در گزارش | `reports/models.py: BUCKETS` |
 | فیلدهای قابل‌نمایش به مشتری | `reports/models.py: CLIENT_FIELDS` + `Report.visible_fields` |
 | پاکسازی HTML ادیتور | `core/htmlsan.py: clean_html` |

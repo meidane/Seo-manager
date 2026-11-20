@@ -59,6 +59,7 @@
     <button class="tab on" data-tab="tasks">تسک‌ها</button>
     {% if project.track_keyword_rank %}<button class="tab" data-tab="keywords">کلمات کلیدی</button>{% endif %}
     <button class="tab" data-tab="calendar">تقویم</button>
+    {% if has_gsc %}<button class="tab" data-tab="gsc">تحلیلِ سرچ کنسول</button>{% endif %}
     <button class="tab" data-tab="skills">اسکیل‌ها{% if project_skills_n %} <span class="zero">{{ project_skills_n|fa_digits }}</span>{% endif %}</button>
     {% if 'project_files' in org_perms %}<button class="tab" data-tab="files">فایل‌ها</button>{% endif %}
     {% if 'project_colleagues_access' in org_perms %}<button class="tab" data-tab="members">دسترسی به همکاران</button>{% endif %}
@@ -329,6 +330,9 @@
   </section>
   {% endif %}
 
+  {# تحلیلِ سرچ کنسول — لودِ تنبل با اولین بازشدنِ تب (static/js/gsc.js: projectTab) #}
+  {% if has_gsc %}<section class="card glass tab-panel" data-panel="gsc"><div id="gsc-tab" style="padding:14px 16px"></div></section>{% endif %}
+
   {# اسکیل‌های این پروژه = همان `skills.text.select` که هوش مصنوعی می‌گیرد (اول «کامل داده می‌شود»، بعد «فقط عنوان») #}
   <section class="card glass tab-panel ps-skills" data-panel="skills">
     <div class="card-h"><h3>اسکیل‌هایی که هوش مصنوعی برای این پروژه می‌گیرد</h3>
@@ -469,6 +473,7 @@
   function activate(key){
     tabs.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.dataset.tab===key));
     document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('on', p.dataset.panel===key));
+    if (key === 'gsc' && window.GSC) GSC.projectTab({{ project.pk }}, document.getElementById('gsc-tab'));
   }
   tabs.addEventListener('click', e=>{
     const b = e.target.closest('.tab'); if(!b) return;

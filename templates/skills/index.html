@@ -62,15 +62,29 @@
 
   // ── مارک‌داونِ ساده (ایمن: اول escape) ──
   function md(src){
-    const lines = esc(src || '').split('\n'); let out = '', list = null, code = false;
+    // مارک‌داونِ ساده و ایمن (اول escape): تیتر، فهرست، جدول (| … |)، نقل‌قول (>)، خطِ جداکننده (---)، کد (```)، **پررنگ**، `کد`
+    const lines = esc(src || '').split('\n'); let out = '', list = null, code = false, tbl = null;
     const inline = t => t.replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
-      .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener" dir="ltr">$1</a>');
-    const close = () => { if (list) { out += `</${list}>`; list = null; } };
+      .replace(/(https?:\/\/[^\s<|]+)/g, '<a href="$1" target="_blank" rel="noopener" dir="ltr">$1</a>');
+    const cells = l => l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+    const flushTbl = () => {
+      if (!tbl) return;
+      const sep = tbl.length > 1 && /^\|?\s*:?-{2,}/.test(tbl[1].trim()) ? 1 : -1;
+      const head = sep === 1 ? cells(tbl[0]) : null;
+      out += '<div class="md-table"><table>' + (head ? `<thead><tr>${head.map(c => `<th>${inline(c)}</th>`).join('')}</tr></thead>` : '') +
+        `<tbody>${(sep === 1 ? tbl.slice(2) : tbl).map(r => `<tr>${cells(r).map(c => `<td>${inline(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+      tbl = null;
+    };
+    const close = () => { flushTbl(); if (list) { out += `</${list}>`; list = null; } };
     for (const l of lines) {
-      if (/^```/.test(l)) { close(); out += code ? '</pre>' : '<pre class="sk-code" dir="ltr">'; code = !code; continue; }
+      if (/^```/.test(l.trim())) { close(); out += code ? '</pre>' : '<pre class="sk-code" dir="ltr">'; code = !code; continue; }
       if (code) { out += l + '\n'; continue; }
+      if (/^\s*\|.*\|\s*$/.test(l)) { if (list) { out += `</${list}>`; list = null; } (tbl = tbl || []).push(l); continue; }
+      flushTbl();
       let m;
-      if ((m = l.match(/^(#{1,4})\s+(.*)/))) { close(); out += `<h${Math.min(m[1].length + 2, 6)}>${inline(m[2])}</h${Math.min(m[1].length + 2, 6)}>`; }
+      if ((m = l.match(/^(#{1,4})\s+(.*)/))) { close(); const h = Math.min(m[1].length + 2, 6); out += `<h${h}>${inline(m[2])}</h${h}>`; }
+      else if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(l)) { close(); out += '<hr>'; }
+      else if ((m = l.match(/^\s*&gt;\s?(.*)/))) { close(); out += `<blockquote>${inline(m[1])}</blockquote>`; }
       else if ((m = l.match(/^\s*[-*•]\s+(.*)/))) { if (list !== 'ul') { close(); out += '<ul>'; list = 'ul'; } out += `<li>${inline(m[1])}</li>`; }
       else if ((m = l.match(/^\s*\d+[.)-]\s+(.*)/))) { if (list !== 'ol') { close(); out += '<ol>'; list = 'ol'; } out += `<li>${inline(m[1])}</li>`; }
       else if (!l.trim()) { close(); }

@@ -179,6 +179,7 @@
         </div>` : ''}
         ${t.id ? `<div id="sec-history" class="topt-sec" style="display:none"><div class="hist-list">${historyListHtml(t)}</div></div>` : ''}
         ${t.id ? '<div id="kpi-box" style="display:none;margin-top:12px"></div>' : ''}
+        ${t.id ? '<div id="gsc-box" style="display:none;margin-top:12px"></div>' : ''}
       </div>
     </div>
     <div class="modal-f">
@@ -759,6 +760,7 @@
     wireRecur();               // نوار تکرار (تسک جدید)
     wireChecklist();           // چک‌لیستِ عمومی
     if (id) initKpis(id);      // نمایش KPI (تسک موجود)؛ گزارش تنبل در wireOptToolbar
+    if (id && window.GSC) GSC.taskCard(id, document.getElementById('gsc-box'));   // کلماتِ سرچ کنسولِ صفحهٔ تسک (خودکار، اگر وصل باشد)
     const recDel = document.getElementById('rec-del');
     if (recDel) recDel.onclick = async () => {
       if (await App.confirm('کلِ سریِ آینده‌ی این تکرار حذف شود؟ (تسک‌های انجام‌شده می‌مانند)')) {

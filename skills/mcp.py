@@ -105,6 +105,16 @@ def skills_start(gate, a):
         out['detected']['hint'] = 'پروژه تشخیص داده نشد — اگر کار برای سایتِ خاصی است، project یا site بده تا اسکیل‌های همان پروژه هم بیاید.'
     out['load'] = [{'id': s.id, 'title': s.title, 'why': why, 'body': s.body, **({'files': _files(s, base)} if _files(s, base) else {})}
                    for s, why in load]
+    # دادهٔ سرچ کنسولِ صفحه (لینکِ داخلِ درخواست یا صفحهٔ تسک) — برای بازنویسی/آپدیتِ همان صفحه
+    try:
+        from gsc.analysis import briefs_for
+        from tasks.models import Task
+        t = Task.all_objects.filter(pk=d['task']).select_related('type_def').prefetch_related('type_def__fields').first() if d['task'] else None
+        gsc = briefs_for(org, d['text'], t)
+        if gsc:
+            out['search_console'] = gsc
+    except Exception:  # noqa: BLE001 — نبودِ داده نباید اسکیل‌ها را خراب کند
+        pass
     if avail:
         out['available'] = table(['id', 'title', 'summary', 'scope'], [[s.id, s.title, s.summary or None, s.scope] for s, _ in avail[:40]])
     return out

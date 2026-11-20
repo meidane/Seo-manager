@@ -298,6 +298,8 @@ class ProjectDetailView(LoginRequiredMixin, DateRangeMixin, DetailView):
         ctx['switch_projects'] = (Project.objects.filter(id__in=accessible_project_ids(self.request))
                                   .order_by('status', F('priority').asc(nulls_last=True), 'name')
                                   .only('id', 'name', 'domain', 'color', 'logo', 'status'))
+        from gsc.models import GSCSite
+        ctx['has_gsc'] = GSCSite.objects.filter(project=p).exists()
         from skills.text import select as skill_select
         sk_load, sk_avail = skill_select(self.request.organization, p.pk)
         ctx['project_skills'] = sk_load + sk_avail   # [(skill, why)] — همان چیزی که هوش مصنوعی برای این پروژه می‌گیرد

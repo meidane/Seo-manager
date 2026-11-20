@@ -29,6 +29,7 @@ urlpatterns = [
     path('skills/', include('skills.urls')),
     path('', include('connector.urls')),
     path('', include('mcpgate.urls')),  # /mcp/<token>/ + /settings/mcp/
+    path('', include('gsc.urls')),  # /settings/gsc/ + /gsc/api/...
     path('', include('filebox.urls')),  # /files/ + لینکِ عمومیِ /f/<token>/  # /settings/chatgpt-sync/ + /connector/api/...
     path('r/<str:token>/', ReportPublicView.as_view(), name='report_public'),
     path('settings/task-types/', include('tasks.type_urls')),

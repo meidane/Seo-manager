@@ -106,3 +106,9 @@ cd /var/www/teams
 ### استقرارِ خودکار با هر push (اختیاری)
 یک GitHub Action با `appleboy/ssh-action` که به سرور SSH بزند و `cd /var/www/teams && ./deploy.sh`
 را اجرا کند؛ کلیدِ خصوصیِ SSH را در Secrets مخزن نگه‌دار.
+
+## سرچ کنسول — همگام‌سازیِ شبانه (cron)
+```
+0 4 * * * cd /path/to/Seo-manager && .venv/bin/python manage.py gsc_sync >> /var/log/gsc_sync.log 2>&1
+```
+اگر سرور به گوگل دسترسی ندارد، در `/settings/gsc/` فیلدِ «پراکسی» را با آدرسِ یک پراکسیِ HTTP روی سرورِ خارج پر کن.

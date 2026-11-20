@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}سرچ کنسول{% endblock %}
+
+{% block content %}
+  {% include "settings/_nav.html" %}
+  <div class="page-h"><h1>سرچ کنسول</h1></div>
+
+  <section class="card glass" style="margin-bottom:14px">
+    <div class="card-h"><h3>اتصال (Service Account)</h3>
+      {% if acc.client_email %}<span class="tag t-ok" style="margin-inline-start:auto" dir="ltr">{{ acc.client_email }}</span>{% endif %}</div>
+    <div class="mcp-guide">
+      <div><b>ساختِ کلید (یک بار)</b>
+        <ol><li>در <span dir="ltr">console.cloud.google.com</span> یک پروژه بساز و <b>Google Search Console API</b> را Enable کن.</li>
+          <li>IAM &amp; Admin ← Service Accounts ← Create؛ بعد Keys ← Add key ← <b>JSON</b> و فایل را دانلود کن.</li>
+          <li>فایل را همین‌جا انتخاب کن و «ذخیره» بزن.</li></ol></div>
+      <div><b>دادنِ دسترسی به هر سایت</b>
+        <ol><li>در سرچ کنسولِ هر سایت: Settings ← Users and permissions ← Add user.</li>
+          <li>ایمیلِ Service Account {% if acc.client_email %}(<span dir="ltr">{{ acc.client_email }}</span>){% else %}(بعد از ذخیره نشان داده می‌شود){% endif %} را با دسترسیِ <b>Restricted</b> اضافه کن.</li>
+          <li>«تست و دریافتِ سایت‌ها» را بزن؛ سایت‌ها با دامنهٔ پروژه‌ها خودکار جفت می‌شوند.</li></ol></div>
+    </div>
+    <div class="gsc-form">
+      <div class="field"><label>فایلِ کلید (JSON)</label><input type="file" id="g-file" accept=".json,application/json"></div>
+      <div class="field"><label>پراکسی <span class="zero">اختیاری — اگر سرور به گوگل دسترسی ندارد (واسطِ سرورِ خارج)</span></label>
+        <input class="input" id="g-proxy" dir="ltr" value="{{ acc.proxy }}" placeholder="http://user:pass@host:port"></div>
+      <div class="field" style="max-width:200px"><label>روزهای سابقه (بارِ اول)</label><input class="input" id="g-days" type="number" value="{{ acc.days_back }}" min="7" max="480"></div>
+    </div>
+    <div class="gsc-actions">
+      <button class="btn btn-p" id="g-save">ذخیره</button>
+      <button class="btn" id="g-test"{% if not acc.client_email %} disabled{% endif %}>{% icon 'refresh' %} تست و دریافتِ سایت‌ها</button>
+      <button class="btn" id="g-sync"{% if not acc.client_email %} disabled{% endif %}>{% icon 'sync' %} همگام‌سازیِ الان</button>
+      <span class="zero" id="g-state">{% if acc.syncing %}در حالِ همگام‌سازی…{% elif acc.last_sync %}آخرین همگام‌سازی {{ acc.last_sync|timeago }}{% endif %}</span>
+    </div>
+    <div class="gsc-err" id="g-err"{% if not acc.last_error %} hidden{% endif %}>{% icon 'warning' %} <span>{{ acc.last_error }}</span></div>
+    <p class="mcp-hint" style="padding:0 17px 14px">همگام‌سازیِ خودکارِ شبانه: روی سرور <code dir="ltr">python manage.py gsc_sync</code> را در cron بگذار (مثلاً هر شب ساعت ۴). دادهٔ گوگل ۲ تا ۳ روز تأخیر دارد.</p>
+  </section>
+
+  <section class="card glass">
+    <div class="card-h"><h3>سایت‌ها</h3><span class="zero">فقط سایت‌های جفت‌شده با پروژه همگام می‌شوند</span></div>
+    <div class="tscroll"><table>
+      <thead><tr><th>property</th><th>پروژه</th><th>دادهٔ ذخیره‌شده تا</th><th>صفحه‌ها</th><th>فعال</th></tr></thead>
+      <tbody id="g-sites">
+      {% for s in sites %}
+        <tr data-id="{{ s.id }}">
+          <td dir="ltr" style="text-align:right">{{ s.url }}{% if s.error %}<div class="gsc-err-s" title="{{ s.error }}">{{ s.error|truncatechars:90 }}</div>{% endif %}</td>
+          <td><select class="g-proj"><option value="">— جفت نشده —</option>{% for p in projects %}<option value="{{ p.id }}"{% if p.id == s.project %} selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></td>
+          <td>{% if s.synced_until %}{{ s.synced_until }}{% else %}<span class="zero">—</span>{% endif %}</td>
+          <td>{{ s.pages|fa_digits }}</td>
+          <td><input type="checkbox" class="g-active"{% if s.active %} checked{% endif %}></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5" class="zero" style="text-align:center;padding:20px">هنوز سایتی دریافت نشده — کلید را ذخیره و «تست» بزن.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const err = m => { $('g-err').hidden = !m; $('g-err').querySelector('span').textContent = m || ''; };
+  $('g-save').onclick = async () => {
+    const f = $('g-file').files[0], body = {proxy: $('g-proxy').value, days_back: +$('g-days').value};
+    if (f) body.json = await f.text();
+    const r = await App.fetchJSON('{% url "gsc:save" %}', {method: 'POST', body});
+    App.toast('ذخیره شد' + (r.email ? ' — ' + r.email : ''), 'ok'); setTimeout(() => location.reload(), 700);
+  };
+  $('g-test').onclick = async () => {
+    try { const r = await App.fetchJSON('{% url "gsc:test" %}', {method: 'POST'}); err('');
+      App.toast(`${r.sites.length} سایت پیدا شد`, 'ok'); setTimeout(() => location.reload(), 700);
+    } catch (e) { err((e.data && e.data.detail) || 'اتصال ناموفق'); }
+  };
+  let poll;
+  const watch = () => { clearInterval(poll); poll = setInterval(async () => {
+    const r = await (await fetch('{% url "gsc:status" %}')).json();
+    $('g-state').textContent = r.syncing ? 'در حالِ همگام‌سازی…' : 'تمام شد';
+    if (!r.syncing) { clearInterval(poll); err(r.error); if (!r.error) setTimeout(() => location.reload(), 600); }
+  }, 3000); };
+  $('g-sync').onclick = async () => { await App.fetchJSON('{% url "gsc:sync" %}', {method: 'POST'}); $('g-state').textContent = 'در حالِ همگام‌سازی…'; watch(); };
+  {% if acc.syncing %}watch();{% endif %}
+  document.querySelectorAll('#g-sites tr[data-id]').forEach(tr => {
+    const send = body => App.fetchJSON(`/settings/gsc/site/${tr.dataset.id}/`, {method: 'POST', body}).then(() => App.toast('ذخیره شد', 'ok'));
+    tr.querySelector('.g-proj').onchange = e => send({project: e.target.value || null});
+    tr.querySelector('.g-active').onchange = e => send({active: e.target.checked});
+  });
+})();
+</script>
+{% endblock %}

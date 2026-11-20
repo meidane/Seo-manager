@@ -32,4 +32,6 @@ task_types/append) · `skill_delete` · `skill_history` · `skill_restore` · `s
 (`PROJECT_PROFILE`، دکمهٔ کنارِ نامِ پروژه). دیدن برای همه (پروژه‌ای فقط پروژه‌های `accessible_project_ids`)؛ ویرایش `manage_skills`.
 API: `api/` ذخیره · `api/<pk>/` نسخه‌ها/حذف · `api/<pk>/restore/<vid>/` · `api/<pk>/duplicate/` · `api/<pk>/files/` آپلود ·
 `api/files/<fid>/` PATCH توضیح/DELETE · `api/detect/` · `api/starters/`. CSS: بلوکِ «بخشِ اسکیل‌ها» در `style.css` (`.skm-*`, `.skf-*`).
+- متنِ اسکیل با `md()`ِ همان تمپلیت رندر می‌شود: تیتر، فهرست، **جدول** (`| … |` + خطِ `|---|`)، نقل‌قول (`>`)، `---`، کد. اول escape.
+- `skills_start` اگر لینکِ صفحه یا تسک در درخواست باشد، دادهٔ سرچ کنسولِ همان صفحه را هم در `search_console` می‌دهد (`gsc/CLAUDE.md`).
 - **تله:** رویدادِ `input`ِ اینپوتِ فایل هم bubble می‌کند — dirtyِ فرم آن را نادیده می‌گیرد، وگرنه آپلود «تغییرِ ذخیره‌نشده» حساب می‌شد.
