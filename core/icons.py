@@ -67,4 +67,8 @@ ICONS = {
     'refresh': ('redo-alt', 'regular'),
     'book': ('book-open', 'regular'),
     'history': ('history', 'regular'),
+    'pointer': ('mouse-pointer', 'regular'),
+    'percent': ('percent', 'regular'),
+    'trophy': ('trophy', 'regular'),
+    'trend-down': ('chart-line-down', 'regular'),
 }

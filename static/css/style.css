@@ -2244,8 +2244,8 @@ input[type=checkbox]:disabled{opacity:.5;cursor:default}
 .gsc-imp{border:1px solid var(--stroke-soft);border-radius:9px;padding:8px 10px;margin-bottom:8px;font-size:12px;background:var(--card-solid,var(--glass))}
 .gsc-imp-r{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:4px}
 em.up,em.down{font-style:normal;font-weight:700;font-size:11.5px}
-em.up{color:var(--success)}
-em.down{color:var(--danger)}
+em.up{color:var(--ok-fg)}
+em.down{color:var(--bad-fg)}
 .gsc-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
 .gsc-kpis>div{border:1px solid var(--stroke-soft);border-radius:10px;padding:9px 12px;display:flex;flex-direction:column;gap:2px;background:var(--fill)}
 .gsc-kpis span{font-size:11.5px;color:var(--text-dim)}
@@ -2264,3 +2264,59 @@ em.down{color:var(--danger)}
 .gsc-mt.compact .gsc-m{flex-direction:row;padding:4px 12px;border-radius:20px}
 .gsc-keys{display:flex;flex-direction:column;gap:6px;padding:12px 17px 4px}
 .gsc-key{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border:1px solid var(--stroke-soft);border-radius:9px;padding:7px 10px;font-size:13px}
+/* خوانایی جدول‌های سرچ کنسول: لینک‌ها LTR و چپ‌چین، اعداد وسط‌چین با ارقامِ هم‌عرض */
+.gsc-tbl td.n,.gsc-tbl th.n{text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums}
+.gsc-tbl td.u,.gsc-tbl th.u{text-align:left;direction:ltr}
+.gsc-tbl td.u .gsc-pg{max-width:460px;font-size:12px;color:var(--text)}
+.gsc-tbl td.u .gsc-pg:hover{color:var(--primary-400)}
+.gsc-tbl tr.cont td{border-top-color:transparent}
+.gsc-tbl td.q{vertical-align:middle;font-weight:600;background:var(--fill)}
+.gsc-imp-t{margin-top:6px;max-width:420px}
+.gsc-imp-t td:first-child{color:var(--text-dim)}
+.gsc-kpis b,.gsc-m b{font-variant-numeric:tabular-nums}
+.gsc-tbl td.u .gsc-pg{display:flex;flex-direction:column;gap:1px;max-width:420px;overflow:hidden}
+.gsc-pg .t{font-size:12.5px;font-weight:600;color:var(--text);text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gsc-pg .p{font-size:10.5px;color:var(--text-faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gsc-pg:hover .t{color:var(--primary-400)}
+
+/* ── سرچ کنسول: رنگ و نماد برای خوانایی (هر دو تم؛ رنگ‌های *-fg در تمِ روشن کنتراستِ بالاتر دارند) ── */
+.gsc-tbl em.up,.gsc-tbl em.down,.gsc-kpis em.up,.gsc-kpis em.down{display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:20px}
+em.up{background:color-mix(in srgb,var(--ok-fg) 13%,transparent)}
+em.down{background:color-mix(in srgb,var(--bad-fg) 13%,transparent)}
+.posb{display:inline-block;min-width:34px;padding:1px 7px;border-radius:20px;font-weight:700;font-size:11.5px;text-align:center;font-variant-numeric:tabular-nums}
+.posb.p1{color:var(--ok-fg);background:color-mix(in srgb,var(--ok-fg) 14%,transparent)}
+.posb.p2{color:var(--info-fg);background:color-mix(in srgb,var(--info-fg) 14%,transparent)}
+.posb.p3{color:var(--amber-fg);background:color-mix(in srgb,var(--amber-fg) 16%,transparent)}
+.posb.p4{color:var(--text-dim);background:var(--fill-strong)}
+.ctr-low{color:var(--bad-fg);font-weight:700}
+.gsc-legend{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:11.5px;color:var(--text-dim);margin:-2px 2px 10px}
+.gsc-legend .sep{width:1px;height:14px;background:var(--stroke)}
+.gsc-tbl thead th{background:var(--fill-strong);color:var(--text-dim);font-weight:700;font-size:11.5px}
+.gsc-tbl tbody tr:nth-child(even) td:not(.q){background:var(--row-alt)}
+.gsc-tbl tbody tr:hover td:not(.q){background:var(--fill)}
+/* هر بخش یک رنگ: نوارِ کنار + آیکن */
+.gsc-sec{border-inline-start:3px solid var(--sec,var(--stroke))}
+.gsc-sec summary .ic{color:var(--sec,var(--text-dim));width:15px;height:15px}
+.gsc-sec .gsc-n{background:color-mix(in srgb,var(--sec,var(--text-dim)) 16%,transparent);color:var(--sec,var(--text))}
+.s-decline{--sec:var(--bad-fg)}
+.s-striking{--sec:var(--amber-fg)}
+.s-ctr{--sec:var(--info-fg)}
+.s-cannibal{--sec:var(--violet)}
+.s-types{--sec:var(--primary)}
+.s-work{--sec:var(--ok-fg)}
+/* کارت‌های بالای تب: آیکن و نوارِ رنگیِ هر معیار */
+.gsc-kpis>div{border-top:3px solid var(--k,var(--stroke))}
+.gsc-kpis span{display:inline-flex;align-items:center;gap:5px}
+.gsc-kpis span .ic{color:var(--k);width:13px;height:13px}
+.gsc-kpis .k-c{--k:var(--primary)}
+.gsc-kpis .k-i{--k:var(--info-fg)}
+.gsc-kpis .k-r{--k:var(--amber-fg)}
+.gsc-kpis .k-p{--k:var(--ok-fg)}
+.gsc-kpis em{align-self:flex-start}
+.gsc-url.gsc-pg{display:flex;flex-direction:column;align-items:flex-start;white-space:normal;margin-bottom:10px}
+.gsc-pages .chip{direction:rtl}
+
+/* ── عرضِ بیشینهٔ محتوا: روی مانیتورهای خیلی عریض صفحه کش نیاید (خواستِ کاربر) — تقویم استثنا و تمام‌عرض (`.main-full`) ── */
+:root{--page-max:1600px}
+.main{width:100%;max-width:var(--page-max);margin-inline:auto}
+.main.main-full{max-width:none}

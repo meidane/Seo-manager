@@ -3,10 +3,18 @@
    نمودار: یک سری، یک محور (کلیک | ایمپرشن | جایگاه با محورِ وارونه)، خطِ ۲px + ناحیهٔ کم‌رنگ، تولتیپ با هاور. */
 (function () {
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
-  const fa = n => (n == null ? '—' : Number(n).toLocaleString('fa-IR'));
-  const jd = iso => new Date(iso + 'T12:00:00').toLocaleDateString('fa-IR-u-ca-persian', {month: 'short', day: 'numeric'});
+  const fa = n => (n == null ? '—' : Number(n).toLocaleString('en-US'));   // اعدادِ لاتین (خواناتر کنارِ لینک)
+  const jd = iso => new Date(iso + 'T12:00:00').toLocaleDateString('fa-IR-u-ca-persian-nu-latn', {month: 'short', day: 'numeric'});
+  // نشانِ رنگیِ جایگاه: ۱–۳ سبز، ۴–۱۰ آبی، ۱۱–۲۰ کهربایی، بیشتر خاکستری (راهنما زیرِ «پیشنهادها»)
+  const pos = v => v == null ? '<span class="zero">—</span>' : `<span class="posb ${v <= 3.5 ? 'p1' : v <= 10.5 ? 'p2' : v <= 20.5 ? 'p3' : 'p4'}">${fa(v)}</span>`;
   const M = {clicks: 'کلیک', impressions: 'ایمپرشن', ctr: 'CTR', position: 'جایگاه'};
   const decode = u => { try { return decodeURI(u); } catch (_) { return u; } };
+  const nice = u => {   // {title, dir}: آخرین بخشِ نشانی با فاصله به‌جای خط‌تیره + پوشهٔ والد
+    const p = decode(String(u || '').replace(/^https?:\/\/(www\.)?/, '')).replace(/^[^/]+/, '') || '/';
+    const segs = p.split('/').filter(Boolean);
+    return {title: segs.length ? segs[segs.length - 1].replace(/[-_]+/g, ' ').trim() : 'صفحهٔ اصلی',
+            dir: segs.length > 1 ? '/' + segs.slice(0, -1).join('/') + '/' : '/'};
+  };
   const short = u => decode(String(u || '').replace(/^https?:\/\/(www\.)?/, '')).replace(/^[^/]+/, '') || '/';
 
   // ── نمودار ──
@@ -38,7 +46,7 @@
       cr.setAttribute('x1', x(i)); cr.setAttribute('x2', x(i)); cr.style.display = '';
       if (v != null) { dot.setAttribute('cx', x(i)); dot.setAttribute('cy', y(v)); dot.style.display = ''; } else dot.style.display = 'none';
       tip.hidden = false;
-      tip.innerHTML = `<b>${jd(s.date)}</b><span>کلیک ${fa(s.clicks)}</span><span>ایمپرشن ${fa(s.impressions)}</span><span>CTR ${fa(s.ctr)}٪</span><span>جایگاه ${fa(s.position)}</span>`;
+      tip.innerHTML = `<b>${jd(s.date)}</b><span>کلیک ${fa(s.clicks)}</span><span>ایمپرشن ${fa(s.impressions)}</span><span>CTR ${fa(s.ctr)}%</span><span>جایگاه ${fa(s.position)}</span>`;
       const left = x(i) * r.width / W;
       tip.style.left = Math.min(Math.max(left - tip.offsetWidth / 2, 0), r.width - tip.offsetWidth) + 'px';
     };
@@ -49,7 +57,7 @@
   // نمودار + تب‌های متریک + جمعِ بازه
   function chartBlock(el, series, compact) {
     const tot = series.reduce((o, d) => { o.c += d.clicks; o.i += d.impressions; o.pw += (d.position || 0) * d.impressions; return o; }, {c: 0, i: 0, pw: 0});
-    const sum = {clicks: fa(tot.c), impressions: fa(tot.i), ctr: tot.i ? fa(Math.round(tot.c * 1000 / tot.i) / 10) + '٪' : '—', position: tot.i ? fa(Math.round(tot.pw * 10 / tot.i) / 10) : '—'};
+    const sum = {clicks: fa(tot.c), impressions: fa(tot.i), ctr: tot.i ? fa(Math.round(tot.c * 1000 / tot.i) / 10) + '%' : '—', position: tot.i ? fa(Math.round(tot.pw * 10 / tot.i) / 10) : '—'};
     // compact: فقط تب‌های کوچکِ متریک (جمع‌ها جای دیگری نمایش داده شده‌اند — تبِ پروژه)
     el.innerHTML = `<div class="gsc-mt${compact ? ' compact' : ''}">${['clicks', 'impressions', 'ctr', 'position'].map((k, i) => `<button type="button" class="gsc-m${i ? '' : ' on'}" data-m="${k}"><span>${M[k]}</span>${compact ? '' : `<b>${sum[k]}</b>`}</button>`).join('')}</div><div class="gsc-plot"></div>`;
     const plot = el.querySelector('.gsc-plot');
@@ -69,7 +77,7 @@
         : dir * (((a[key] ?? 999) - (b[key] ?? 999)) || (b.impressions - a.impressions)));
       const vis = all ? sorted : sorted.slice(0, opts.limit || 25);
       el.innerHTML = `<div class="tscroll"><table class="gsc-tbl"><thead><tr>${cols.map(([k, l]) => `<th data-k="${k}" class="${k === key ? 'on' : ''}">${l}${k === key ? (dir < 0 ? ' ▾' : ' ▴') : ''}</th>`).join('')}</tr></thead>
-        <tbody>${vis.map(r => `<tr><td dir="auto">${esc(r.query)}</td><td>${fa(r.clicks)}</td><td>${fa(r.impressions)}</td><td>${fa(r.ctr)}٪</td><td>${fa(r.position)}</td></tr>`).join('')}</tbody></table></div>
+        <tbody>${vis.map(r => `<tr><td dir="auto">${esc(r.query)}</td><td class="n">${fa(r.clicks)}</td><td class="n">${fa(r.impressions)}</td><td class="n">${fa(r.ctr)}%</td><td class="n">${pos(r.position)}</td></tr>`).join('')}</tbody></table></div>
         ${rows.length > vis.length ? `<button type="button" class="btn btn-sm gsc-more">نمایشِ همه (${fa(rows.length)})</button>` : ''}`;
       el.querySelectorAll('th').forEach(th => th.onclick = () => { const k = th.dataset.k; dir = k === key ? -dir : (k === 'position' || k === 'query' ? 1 : -1); key = k; render(); });
       const m = el.querySelector('.gsc-more'); if (m) m.onclick = () => { all = true; render(); };
@@ -80,11 +88,15 @@
   function impactHtml(im) {
     if (!im) return '';
     const b = im.before, a = im.after, cd = im.clicks_delta, pd = im.position_delta;
-    const sign = v => `<bdi dir="ltr">${v > 0 ? '+' : ''}${fa(v)}</bdi>`;
-    return `<div class="gsc-imp"><b>اثرِ این تسک</b> <span class="zero">${im.full ? '۲۸ روز قبل و بعد از انجام' : fa(im.days) + ' روز قبل و بعد (هنوز ۲۸ روز نگذشته)'}</span>
-      <div class="gsc-imp-r"><span>کلیک ${fa(b.clicks)} ← ${fa(a.clicks)} <em class="${cd > 0 ? 'up' : cd < 0 ? 'down' : ''}">${sign(cd)}</em></span>
-      <span>ایمپرشن ${fa(b.impressions)} ← ${fa(a.impressions)}</span>
-      <span>جایگاه ${fa(b.position)} ← ${fa(a.position)}${pd ? ` <em class="${pd > 0 ? 'up' : pd < 0 ? 'down' : ''}">${pd > 0 ? 'بهتر ' : pd < 0 ? 'بدتر ' : ''}${fa(Math.abs(pd))}</em>` : ''}</span></div></div>`;
+    // ▲ سبز = بهتر، ▼ قرمز = بدتر (برای جایگاه، position_delta = قبل − بعد؛ مثبت یعنی بهتر شده)
+    const chg = v => !v ? '<span class="zero">—</span>' : `<em class="${v > 0 ? 'up' : 'down'}">${v > 0 ? '▲' : '▼'} <span dir="ltr">${fa(Math.abs(v))}</span></em>`;
+    const di = a.impressions - b.impressions;
+    return `<div class="gsc-imp"><b>اثرِ این تسک</b> <span class="zero">${im.full ? '۲۸ روز قبل و بعد از انجام' : im.days + ' روز قبل و بعد (هنوز ۲۸ روز نگذشته)'}</span>
+      <table class="gsc-tbl gsc-imp-t"><thead><tr><th></th><th>قبل</th><th>بعد</th><th>تغییر</th></tr></thead><tbody>
+        <tr><td>کلیک</td><td class="n">${fa(b.clicks)}</td><td class="n">${fa(a.clicks)}</td><td class="n">${chg(cd)}</td></tr>
+        <tr><td>ایمپرشن</td><td class="n">${fa(b.impressions)}</td><td class="n">${fa(a.impressions)}</td><td class="n">${chg(di)}</td></tr>
+        <tr><td>جایگاه</td><td class="n">${pos(b.position)}</td><td class="n">${pos(a.position)}</td><td class="n">${chg(pd)}</td></tr>
+      </tbody></table></div>`;
   }
 
   // ── کارتِ زیرِ تسک (خودکار؛ فقط اگر صفحهٔ تسک در سرچ کنسول باشد) ──
@@ -95,12 +107,13 @@
     const pages = (d.pages || []);
     if (!pages.length) return;
     box.style.display = '';
-    const tabs = pages.length > 1 ? `<div class="gsc-pages">${pages.map((p, i) => `<button type="button" class="chip${i ? '' : ' on'}" data-i="${i}" title="${esc(decode(p.url))}">${p.role === 'target' ? 'هدف: ' : ''}${esc(short(p.url))}</button>`).join('')}</div>` : '';
+    const tabs = pages.length > 1 ? `<div class="gsc-pages">${pages.map((p, i) => `<button type="button" class="chip${i ? '' : ' on'}" data-i="${i}" title="${esc(decode(p.url))}">${p.role === 'target' ? 'هدف: ' : ''}${esc(nice(p.url).title)}</button>`).join('')}</div>` : '';
     box.innerHTML = `<div class="gsc-card"><div class="gsc-card-h">${App.icon('chart')} سرچ کنسول <span class="zero">۳ ماهِ اخیر${pages[0].until ? ' تا ' + jd(pages[0].until) : ''}</span></div>${tabs}<div class="gsc-body"></div></div>`;
     const body = box.querySelector('.gsc-body');
     const show = i => {
       const p = pages[i];
-      body.innerHTML = `<a class="gsc-url" href="${esc(p.url)}" target="_blank" rel="noopener" dir="ltr">${esc(decode(p.url))}</a>${impactHtml(p.impact)}<div class="gsc-chart"></div>
+      const nm = nice(p.url);
+      body.innerHTML = `<a class="gsc-url gsc-pg" href="${esc(p.url)}" target="_blank" rel="noopener" title="${esc(decode(p.url))}"><span class="t" dir="auto">${esc(nm.title)}</span><span class="p" dir="ltr">${esc(nm.dir)}</span></a>${impactHtml(p.impact)}<div class="gsc-chart"></div>
         <div class="gsc-q-h">کلماتی که این صفحه با آن‌ها دیده شده <span class="zero">${fa(p.queries.length)}</span></div><div class="gsc-q"></div>`;
       chartBlock(body.querySelector('.gsc-chart'), p.series);
       if (p.queries.length) queryTable(body.querySelector('.gsc-q'), p.queries);
@@ -127,37 +140,47 @@
     const c = d.total.current, p = d.total.previous;
     const delta = (a, b, inv) => { if (a == null || b == null) return ''; const v = inv ? b - a : a - b; if (!v) return ''; const pct = b ? Math.round(Math.abs(a - b) * 100 / b) : null;
       if (!inv && pct === 0) return ''; if (inv && Math.round(Math.abs(a - b) * 10) === 0) return '';
-      return `<em class="${v > 0 ? 'up' : 'down'}">${v > 0 ? '▲' : '▼'} ${pct != null && !inv ? fa(pct) + '٪' : fa(Math.round(Math.abs(a - b) * 10) / 10)}</em>`; };
-    const link = u => `<a href="https://${esc(u)}" target="_blank" rel="noopener" dir="ltr" class="gsc-pg" title="${esc(u)}">${esc(short('https://' + u))}</a>`;
-    const sec = (id, icon, title, hint, n, inner) => `<details class="gsc-sec" ${n ? 'open' : ''}><summary>${App.icon(icon)} <b>${title}</b> <span class="gsc-n">${fa(n)}</span><span class="zero">${hint}</span></summary><div class="gsc-sec-b">${n ? inner : '<div class="gsc-nodata">موردی نیست</div>'}</div></details>`;
-    const tbl = (head, rows) => `<div class="tscroll"><table class="gsc-tbl"><thead><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+      return `<em class="${v > 0 ? 'up' : 'down'}">${v > 0 ? '▲' : '▼'} ${pct != null && !inv ? fa(pct) + '%' : fa(Math.round(Math.abs(a - b) * 10) / 10)}</em>`; };
+    const link = u => {
+      const p = short('https://' + u), segs = p.split('/').filter(Boolean), last = segs[segs.length - 1] || '';
+      const title = !segs.length ? 'صفحهٔ اصلی' : last.replace(/[-_]+/g, ' ').trim();
+      const dir = segs.length > 1 ? '/' + segs.slice(0, -1).join('/') + '/' : '/';   // فقط پوشه (عنوان خودش آخرین بخش است)
+      return `<a href="https://${esc(u)}" target="_blank" rel="noopener" class="gsc-pg" title="${esc(p)}"><span class="t" dir="auto">${esc(title)}</span><span class="p" dir="ltr">${esc(dir)}</span></a>`;
+    };
+    const U = u => `<td class="u">${link(u)}</td>`, N = v => `<td class="n">${v}</td>`;
+    const arrow = (v, unit) => !v ? '<span class="zero">—</span>' : `<em class="${v > 0 ? 'up' : 'down'}">${v > 0 ? '▲' : '▼'} <span dir="ltr">${fa(Math.abs(v))}${unit || ''}</span></em>`;
+    const sec = (id, icon, title, hint, n, inner) => `<details class="gsc-sec s-${id}" ${n ? 'open' : ''}><summary>${App.icon(icon)} <b>${title}</b> <span class="gsc-n">${fa(n)}</span><span class="zero">${hint}</span></summary><div class="gsc-sec-b">${n ? inner : '<div class="gsc-nodata">موردی نیست</div>'}</div></details>`;
+    // urlCols: اندیسِ ستون‌های لینک (سرستونشان هم چپ‌چین)؛ بقیهٔ ستون‌های عددی وسط‌چین (td.n)
+    const tbl = (head, rows, urlCols) => `<div class="tscroll"><table class="gsc-tbl"><thead><tr>${head.map((h, i) => `<th class="${(urlCols || []).includes(i) ? 'u' : i ? 'n' : ''}">${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
 
     el.innerHTML = `<div class="gsc-proj">
       <div class="gsc-kpis">
-        <div><span>کلیک (۲۸ روز)</span><b>${fa(c.clicks)}</b>${delta(c.clicks, p.clicks)}</div>
-        <div><span>ایمپرشن</span><b>${fa(c.impressions)}</b>${delta(c.impressions, p.impressions)}</div>
-        <div><span>CTR</span><b>${fa(c.ctr)}٪</b></div>
-        <div><span>میانگینِ جایگاه</span><b>${fa(c.position)}</b>${delta(c.position, p.position, true)}</div>
+        <div class="k-c"><span>${App.icon('pointer')} کلیک (۲۸ روز)</span><b>${fa(c.clicks)}</b>${delta(c.clicks, p.clicks)}</div>
+        <div class="k-i"><span>${App.icon('eye')} ایمپرشن</span><b>${fa(c.impressions)}</b>${delta(c.impressions, p.impressions)}</div>
+        <div class="k-r"><span>${App.icon('percent')} CTR</span><b>${fa(c.ctr)}%</b>${delta(c.ctr, p.ctr)}</div>
+        <div class="k-p"><span>${App.icon('trophy')} میانگینِ جایگاه</span><b>${fa(c.position)}</b>${delta(c.position, p.position, true)}</div>
       </div>
       <p class="zero" style="margin:4px 2px 8px;font-size:11.5px">مقایسه با ۲۸ روزِ قبل از آن · داده تا ${jd(d.until)} · ${d.sites.map(esc).join('، ')}</p>
       <div class="gsc-chart"></div>
       <div class="gsc-group-h">پیشنهادها</div>
-      ${sec('decline', 'warning', 'صفحه‌های در حالِ افت', 'کلیکِ ۲۸ روزِ اخیر ۳۰٪+ کمتر — نامزدِ آپدیت', d.decline.length,
-        tbl(['صفحه', 'کلیکِ قبل', 'کلیکِ اخیر', 'افت', 'جایگاه'], d.decline.map(x => `<tr><td>${link(x.page)}</td><td>${fa(x.before.clicks)}</td><td>${fa(x.after.clicks)}</td><td><em class="down">${fa(x.drop)}٪</em></td><td>${fa(x.before.position)} ← ${fa(x.after.position)}</td></tr>`)))}
-      ${sec('striking', 'star', 'نزدیکِ صفحهٔ اول', 'جایگاه ۸ تا ۲۰ با نمایشِ زیاد — کمترین کار، بیشترین بازده', d.striking.length,
-        tbl(['کلمه', 'صفحه', 'ایمپرشن', 'کلیک', 'جایگاه'], d.striking.map(x => `<tr><td dir="auto">${esc(x.query)}</td><td>${link(x.page)}</td><td>${fa(x.impressions)}</td><td>${fa(x.clicks)}</td><td>${fa(x.position)}</td></tr>`)))}
-      ${sec('ctr', 'eye', 'CTR پایین', 'جایگاهِ خوب ولی کلیکِ کم — عنوان و متا را بهتر کن', d.low_ctr.length,
-        tbl(['کلمه', 'صفحه', 'جایگاه', 'ایمپرشن', 'CTR'], d.low_ctr.map(x => `<tr><td dir="auto">${esc(x.query)}</td><td>${link(x.page)}</td><td>${fa(x.position)}</td><td>${fa(x.impressions)}</td><td>${fa(x.ctr)}٪</td></tr>`)))}
-      ${sec('cannibal', 'layers', 'رقابتِ صفحه‌ها روی یک کلمه', 'چند صفحه برای یک کلمه با هم رقابت می‌کنند — ادغام یا تفکیکِ هدف', d.cannibal.length,
-        tbl(['کلمه', 'صفحه‌ها (ایمپرشن · جایگاه)'], d.cannibal.map(x => `<tr><td dir="auto">${esc(x.query)}</td><td>${x.pages.map(pg => `<div>${link(pg.page)} <span class="zero">${fa(pg.impressions)} · ${fa(pg.position)}</span></div>`).join('')}</td></tr>`)))}
+      <div class="gsc-legend"><span><em class="up">▲</em> بهتر</span><span><em class="down">▼</em> بدتر</span>
+        <span class="sep"></span><span>جایگاه:</span><span class="posb p1" dir="ltr">1–3</span><span class="posb p2" dir="ltr">4–10</span><span class="posb p3" dir="ltr">11–20</span><span class="posb p4" dir="ltr">20+</span></div>
+      ${sec('decline', 'trend-down', 'صفحه‌های در حالِ افت', 'کلیکِ ۲۸ روزِ اخیر نسبت به ۲۸ روزِ قبلش ۳۰٪ یا بیشتر کم شده — نامزدِ آپدیت', d.decline.length,
+        tbl(['صفحه', 'کلیکِ قبل', 'کلیکِ اخیر', 'افت', 'جایگاهِ قبل', 'جایگاهِ اخیر'], d.decline.map(x => `<tr>${U(x.page)}${N(fa(x.before.clicks))}${N(fa(x.after.clicks))}${N(arrow(-x.drop, '%'))}${N(pos(x.before.position))}${N(pos(x.after.position))}</tr>`), [0]))}
+      ${sec('striking', 'star', 'نزدیکِ صفحهٔ اول', '۲۸ روزِ اخیر · جایگاه ۸ تا ۲۰ با نمایشِ زیاد — کمترین کار، بیشترین بازده', d.striking.length,
+        tbl(['کلمه', 'صفحه', 'ایمپرشن', 'کلیک', 'جایگاه'], d.striking.map(x => `<tr><td dir="auto">${esc(x.query)}</td>${U(x.page)}${N(fa(x.impressions))}${N(fa(x.clicks))}${N(pos(x.position))}</tr>`), [1]))}
+      ${sec('ctr', 'eye', 'CTR پایین', '۲۸ روزِ اخیر · جایگاهِ خوب ولی کلیکِ کم — عنوان و متا را بهتر کن', d.low_ctr.length,
+        tbl(['کلمه', 'صفحه', 'جایگاه', 'ایمپرشن', 'CTR'], d.low_ctr.map(x => `<tr><td dir="auto">${esc(x.query)}</td>${U(x.page)}${N(pos(x.position))}${N(fa(x.impressions))}${N(`<span class="ctr-low">${fa(x.ctr)}%</span>`)}</tr>`), [1]))}
+      ${sec('cannibal', 'layers', 'رقابتِ صفحه‌ها روی یک کلمه', '۲۸ روزِ اخیر · چند صفحه برای یک کلمه با هم رقابت می‌کنند — ادغام یا تفکیکِ هدف', d.cannibal.length,
+        tbl(['کلمه', 'صفحه', 'ایمپرشن', 'کلیک', 'جایگاه'], d.cannibal.map(x => x.pages.map((pg, i) => `<tr class="${i ? 'cont' : 'grp'}">${i ? '' : `<td dir="auto" rowspan="${x.pages.length}" class="q">${esc(x.query)}</td>`}${U(pg.page)}${N(fa(pg.impressions))}${N(fa(pg.clicks))}${N(pos(pg.position))}</tr>`).join('')), [1]))}
       <div class="gsc-group-h">اثرِ کارها</div>
       ${sec('types', 'chart', 'مقایسهٔ انواعِ کار', 'میانگینِ تغییرِ کلیکِ صفحه ۲۸ روز بعد از انجام (فقط کارهای با ۲۸ روزِ کامل)', d.by_type.length,
-        tbl(['نوع', 'تعداد', 'میانگینِ کلیکِ اضافه', 'میانگینِ بهبودِ جایگاه', 'هزینه به‌ازای هر کلیک'], d.by_type.map(g => `<tr><td>${esc(g.type)}</td><td>${fa(g.n)}</td><td>${fa(g.avg_clicks)}</td><td>${fa(g.avg_position)}</td><td>${g.cost_per_click ? fa(g.cost_per_click) + ' ریال' : '—'}</td></tr>`)))}
+        tbl(['نوع', 'تعداد', 'میانگینِ تغییرِ کلیک', 'میانگینِ تغییرِ جایگاه', 'هزینه به‌ازای هر کلیک'], d.by_type.map(g => `<tr><td>${esc(g.type)}</td>${N(fa(g.n))}${N(arrow(g.avg_clicks))}${N(arrow(g.avg_position))}${N(g.cost_per_click ? fa(g.cost_per_click) + ' ریال' : '—')}</tr>`)))}
       ${sec('work', 'check-circle', 'قبل و بعدِ هر تسک', 'تسک‌های انجام‌شدهٔ ۶ ماهِ اخیر که صفحه یا هدفشان در سرچ کنسول است', d.work.length,
-        tbl(['تسک', 'نوع', 'تاریخ', 'کلیک قبل ← بعد', 'جایگاه', 'هزینه/کلیک'], d.work.map(w => `<tr><td><a class="lnk" href="#" data-open-task="${w.id}">${esc(w.title)}</a>${w.full ? '' : ` <span class="zero">(${fa(w.days)} روز)</span>`}</td><td>${esc(w.type)}</td><td>${jd(w.done)}</td>
-          <td>${fa(w.clicks_before)} ← ${fa(w.clicks_after)} <em class="${w.clicks_delta > 0 ? 'up' : w.clicks_delta < 0 ? 'down' : ''}"><bdi dir="ltr">${w.clicks_delta > 0 ? '+' : ''}${fa(w.clicks_delta)}</bdi></em></td>
-          <td>${w.position_delta == null ? '—' : !w.position_delta ? 'بدونِ تغییر' : `<em class="${w.position_delta > 0 ? 'up' : w.position_delta < 0 ? 'down' : ''}">${w.position_delta > 0 ? 'بهتر ' : 'بدتر '}${fa(Math.abs(w.position_delta))}</em>`}</td>
-          <td>${w.cost_per_click ? fa(w.cost_per_click) : '—'}</td></tr>`)))}
+        tbl(['تسک', 'نوع', 'تاریخ', 'کلیکِ قبل', 'کلیکِ بعد', 'تغییرِ کلیک', 'تغییرِ جایگاه', 'هزینه/کلیک'], d.work.map(w => `<tr><td><a class="lnk" href="#" data-open-task="${w.id}">${esc(w.title)}</a>${w.full ? '' : ` <span class="zero">(${w.days} روز)</span>`}</td><td>${esc(w.type)}</td>${N(jd(w.done))}
+          ${N(fa(w.clicks_before))}${N(fa(w.clicks_after))}${N(arrow(w.clicks_delta))}
+          ${N(arrow(w.position_delta))}
+          ${N(w.cost_per_click ? fa(w.cost_per_click) : '—')}</tr>`)))}
     </div>`;
     chartBlock(el.querySelector('.gsc-chart'), d.series, true);
   }

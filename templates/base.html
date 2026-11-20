@@ -26,7 +26,7 @@
 
   {% include "components/sidebar.html" %}
 
-  <main class="main">
+  <main class="main{% if request.resolver_match.namespace == 'calendarapp' %} main-full{% endif %}">
     {% include "components/header.html" %}
     {% if pending_invites %}
       <div class="invite-banner">
