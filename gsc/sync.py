@@ -113,6 +113,10 @@ def sync_account(acc, site_ids=None, log=print):
         clients = {}
         qs = GSCSite.objects.filter(organization=acc.organization, active=True)
         qs = qs.filter(pk__in=site_ids) if site_ids else qs.filter(project__isnull=False)
+        if not qs.exists():
+            n_all = GSCSite.objects.filter(organization=acc.organization).count()
+            log(f'هیچ سایتِ فعالِ جفت‌شده با پروژه نیست ({n_all} سایت پیدا شد) — در /settings/gsc/ برای هر سایت پروژه انتخاب کن'
+                if n_all else 'هیچ سایتی پیدا نشد — ایمیلِ Service Account را در سرچ کنسولِ سایت‌ها اضافه کن')
         for s in qs:
             try:
                 if s.credential_id not in clients:
@@ -128,6 +132,10 @@ def sync_account(acc, site_ids=None, log=print):
         err = str(e)
     except Exception as e:  # noqa: BLE001
         err = f'{type(e).__name__}: {e}'
+    if err:
+        log(f'خطا: {err}')
+    else:
+        log(f'تمام شد — {total} ردیف')
     acc.syncing = False
     acc.last_error = err[:2000]
     acc.last_sync = timezone.now() if not err else acc.last_sync
