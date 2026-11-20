@@ -27,6 +27,7 @@ class GSCAccount(models.Model):
     last_sync = models.DateTimeField(null=True, blank=True)
     last_error = models.TextField(blank=True)
     syncing = models.BooleanField(default=False)
+    sync_started = models.DateTimeField(null=True, blank=True)   # برای قفل: قفلِ قدیمی‌تر از ۳ ساعت = گیرکرده (ری‌استارتِ سرور)
 
     class Meta:
         verbose_name = 'حسابِ سرچ کنسول'

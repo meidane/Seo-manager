@@ -107,7 +107,8 @@ cd /var/www/teams
 یک GitHub Action با `appleboy/ssh-action` که به سرور SSH بزند و `cd /var/www/teams && ./deploy.sh`
 را اجرا کند؛ کلیدِ خصوصیِ SSH را در Secrets مخزن نگه‌دار.
 
-## سرچ کنسول — همگام‌سازیِ شبانه (cron)
+## سرچ کنسول — همگام‌سازی
+خودکار است (روزی یک بار با اولین استفاده از پنل، در پس‌زمینه) — cron **لازم نیست**. اگر خواستی مستقل از بازدید هم اجرا شود (اختیاری):
 ```
 0 4 * * * cd /path/to/Seo-manager && .venv/bin/python manage.py gsc_sync >> /var/log/gsc_sync.log 2>&1
 ```

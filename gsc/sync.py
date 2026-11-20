@@ -103,10 +103,33 @@ def sync_site(client, site, days_back=95, until=None):
     return n
 
 
-def sync_account(acc, site_ids=None, log=print):
+STALE = timedelta(hours=3)
+
+
+def claim(acc):
+    """قفلِ اتمیک: True فقط برای یک اجرا (cron/دکمه/خودکار هم‌زمان دوبار همگام نکنند). قفلِ گیرکرده بعد از ۳ ساعت آزاد می‌شود."""
+    from django.db.models import Q
+    now = timezone.now()
+    ok = GSCAccount.objects.filter(pk=acc.pk).filter(Q(syncing=False) | Q(sync_started__lt=now - STALE) |
+                                                     Q(sync_started__isnull=True)).update(syncing=True, sync_started=now)
+    if ok:
+        acc.syncing, acc.sync_started = True, now
+    return bool(ok)
+
+
+def due(acc):
+    """وقتِ همگام‌سازیِ خودکار است؟ کلید دارد و آخرین همگام‌سازیِ موفق (یا تلاش) بیش از ۲۰ ساعت پیش بوده."""
+    if not acc.credentials_enc and not GSCCredential.objects.filter(organization=acc.organization).exists():
+        return False
+    times = [t for t in (acc.last_sync, acc.sync_started) if t]
+    return not times or timezone.now() - max(times) > timedelta(hours=20)
+
+
+def sync_account(acc, site_ids=None, log=print, claimed=False):
     """کلِ حساب: propertyها + هر سایتِ فعالِ جفت‌شده با پروژه (یا همه اگر site_ids). خطای هر سایت جدا ثبت می‌شود."""
-    acc.syncing = True
-    acc.save(update_fields=['syncing'])
+    if not claimed and not claim(acc):
+        log('همگام‌سازیِ دیگری در حالِ اجراست')
+        return 0, ''
     total, err = 0, ''
     try:
         refresh_sites(acc)

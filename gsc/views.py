@@ -99,15 +99,16 @@ def test(request):
 def sync_now(request):
     org = require_perm(request, PERM)
     acc = _acc(org)
-    if acc.syncing:
-        return JsonResponse({'detail': 'همگام‌سازی در حالِ اجراست'}, status=409)
     if not acc.credentials_enc and not GSCCredential.objects.filter(organization=org).exists():
         return JsonResponse({'detail': 'اول کلید را ثبت کن'}, status=400)
+    from .sync import claim
+    if not claim(acc):
+        return JsonResponse({'detail': 'همگام‌سازی در حالِ اجراست'}, status=409)
 
     def run():
         close_old_connections()
         try:
-            sync_account(acc, log=lambda m: None)
+            sync_account(acc, log=lambda m: None, claimed=True)
         finally:
             close_old_connections()
     threading.Thread(target=run, daemon=True).start()

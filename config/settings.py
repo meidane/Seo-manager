@@ -66,6 +66,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'accounts.tenancy.CurrentOrgMiddleware',
     'accounts.tenancy.OrgRequiredMiddleware',
+    'gsc.middleware.AutoSyncMiddleware',  # همگام‌سازیِ روزانهٔ سرچ کنسول بدونِ cron (نخِ پس‌زمینه)
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
