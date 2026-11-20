@@ -99,6 +99,27 @@
       </tbody></table></div>`;
   }
 
+  function indexLine(ix) {
+    if (!ix) return '';
+    if (ix.error && !ix.verdict) return `<div class="ix-line"><span class="ix">${App.icon('warning')} بررسیِ ایندکس ناموفق</span></div>`;
+    return `<div class="ix-line">${ix.indexed ? `<span class="ix ok">${App.icon('check-circle')} ایندکس شده</span>` : `<span class="ix bad">${App.icon('warning')} ایندکس نشده — ${esc(ix.coverage || '')}</span>`}
+      ${ix.last_crawl ? `<span class="zero">آخرین کراول ${jd(ix.last_crawl)}</span>` : ''}<span class="zero">بررسی ${jd(ix.checked)}</span>
+      ${ix.canonical_mismatch ? `<span class="ix warn" title="${esc(ix.google_canonical)}">${App.icon('warning')} گوگل canonicalِ دیگری انتخاب کرده</span>` : ''}</div>`;
+  }
+
+  // کلمه‌های هدفِ تسک: جایگاهِ همین صفحه (سرچ کنسول، ۲۸ روز) + اگر صفحهٔ دیگری از سایت برای آن کلمه بهتر دیده می‌شود + آخرین رتبهٔ افزونه
+  function kwHtml(list) {
+    if (!list || !list.length) return '';
+    return `<div class="gsc-q-h">${App.icon('star')} کلماتِ هدفِ تسک <span class="zero">۲۸ روزِ اخیر</span></div>
+      <div class="tscroll"><table class="gsc-tbl"><thead><tr><th>کلمه</th><th class="n">جایگاهِ این صفحه</th><th class="n">کلیک</th><th class="n">ایمپرشن</th><th>صفحهٔ دیگرِ سایت</th><th class="n">افزونه</th></tr></thead><tbody>
+      ${list.map(k => { const pg = k.page, b = k.best;
+        const other = b && !b.same ? `<span title="${esc(decode(b.url))}">${esc(nice(b.url).title)} ${pos(b.position)}</span>` : '<span class="zero">—</span>';
+        return `<tr><td dir="auto"><b>${esc(k.keyword)}</b></td><td class="n">${pg ? pos(pg.position) : '<span class="zero" title="این صفحه برای این کلمه در ۲۸ روزِ اخیر نمایشی نداشته">دیده نشده</span>'}</td>
+          <td class="n">${pg ? fa(pg.clicks) : '—'}</td><td class="n">${pg ? fa(pg.impressions) : '—'}</td><td>${other}</td>
+          <td class="n">${k.ext ? `${pos(k.ext.position)} <span class="zero">${jd(k.ext.date)}</span>` : '<span class="zero">—</span>'}</td></tr>`; }).join('')}
+      </tbody></table></div>`;
+  }
+
   // ── کارتِ زیرِ تسک (خودکار؛ فقط اگر صفحهٔ تسک در سرچ کنسول باشد) ──
   async function taskCard(taskId, box) {
     if (!box) return;
@@ -108,12 +129,13 @@
     if (!pages.length) return;
     box.style.display = '';
     const tabs = pages.length > 1 ? `<div class="gsc-pages">${pages.map((p, i) => `<button type="button" class="chip${i ? '' : ' on'}" data-i="${i}" title="${esc(decode(p.url))}">${p.role === 'target' ? 'هدف: ' : ''}${esc(nice(p.url).title)}</button>`).join('')}</div>` : '';
-    box.innerHTML = `<div class="gsc-card"><div class="gsc-card-h">${App.icon('chart')} سرچ کنسول <span class="zero">۳ ماهِ اخیر${pages[0].until ? ' تا ' + jd(pages[0].until) : ''}</span></div>${tabs}<div class="gsc-body"></div></div>`;
+    box.innerHTML = `<div class="gsc-card"><div class="gsc-card-h">${App.icon('chart')} سرچ کنسول <span class="zero">۳ ماهِ اخیر${pages[0].until ? ' تا ' + jd(pages[0].until) : ''}</span>
+      <a class="btn btn-sm" style="margin-inline-start:auto" href="/gsc/api/task/${taskId}/export/" title="خروجیِ اکسل">${App.icon('file-excel')} اکسل</a></div>${tabs}<div class="gsc-body"></div></div>`;
     const body = box.querySelector('.gsc-body');
     const show = i => {
       const p = pages[i];
       const nm = nice(p.url);
-      body.innerHTML = `<a class="gsc-url gsc-pg" href="${esc(p.url)}" target="_blank" rel="noopener" title="${esc(decode(p.url))}"><span class="t" dir="auto">${esc(nm.title)}</span><span class="p" dir="ltr">${esc(nm.dir)}</span></a>${impactHtml(p.impact)}<div class="gsc-chart"></div>
+      body.innerHTML = `<a class="gsc-url gsc-pg" href="${esc(p.url)}" target="_blank" rel="noopener" title="${esc(decode(p.url))}"><span class="t" dir="auto">${esc(nm.title)}</span><span class="p" dir="ltr">${esc(nm.dir)}</span></a>${indexLine(p.index)}${kwHtml(p.keywords)}${impactHtml(p.impact)}<div class="gsc-chart"></div>
         <div class="gsc-q-h">کلماتی که این صفحه با آن‌ها دیده شده <span class="zero">${fa(p.queries.length)}</span></div><div class="gsc-q"></div>`;
       chartBlock(body.querySelector('.gsc-chart'), p.series);
       if (p.queries.length) queryTable(body.querySelector('.gsc-q'), p.queries);
@@ -142,10 +164,11 @@
       if (!inv && pct === 0) return ''; if (inv && Math.round(Math.abs(a - b) * 10) === 0) return '';
       return `<em class="${v > 0 ? 'up' : 'down'}">${v > 0 ? '▲' : '▼'} ${pct != null && !inv ? fa(pct) + '%' : fa(Math.round(Math.abs(a - b) * 10) / 10)}</em>`; };
     const link = u => {
-      const p = short('https://' + u), segs = p.split('/').filter(Boolean), last = segs[segs.length - 1] || '';
+      if (!/^https?:\/\//.test(u)) u = 'https://' + u;
+      const p = short(u), segs = p.split('/').filter(Boolean), last = segs[segs.length - 1] || '';
       const title = !segs.length ? 'صفحهٔ اصلی' : last.replace(/[-_]+/g, ' ').trim();
       const dir = segs.length > 1 ? '/' + segs.slice(0, -1).join('/') + '/' : '/';   // فقط پوشه (عنوان خودش آخرین بخش است)
-      return `<a href="https://${esc(u)}" target="_blank" rel="noopener" class="gsc-pg" title="${esc(p)}"><span class="t" dir="auto">${esc(title)}</span><span class="p" dir="ltr">${esc(dir)}</span></a>`;
+      return `<a href="${esc(u)}" target="_blank" rel="noopener" class="gsc-pg" title="${esc(p)}"><span class="t" dir="auto">${esc(title)}</span><span class="p" dir="ltr">${esc(dir)}</span></a>`;
     };
     const U = u => `<td class="u">${link(u)}</td>`, N = v => `<td class="n">${v}</td>`;
     const arrow = (v, unit) => !v ? '<span class="zero">—</span>' : `<em class="${v > 0 ? 'up' : 'down'}">${v > 0 ? '▲' : '▼'} <span dir="ltr">${fa(Math.abs(v))}${unit || ''}</span></em>`;
@@ -162,6 +185,7 @@
       </div>
       <p class="zero" style="margin:4px 2px 8px;font-size:11.5px">مقایسه با ۲۸ روزِ قبل از آن · داده تا ${jd(d.until)} · ${d.sites.map(esc).join('، ')}</p>
       <div class="gsc-chart"></div>
+      ${devicesHtml(d.devices)}
       <div class="gsc-group-h">پیشنهادها</div>
       <div class="gsc-legend"><span><em class="up">▲</em> بهتر</span><span><em class="down">▼</em> بدتر</span>
         <span class="sep"></span><span>جایگاه:</span><span class="posb p1" dir="ltr">1–3</span><span class="posb p2" dir="ltr">4–10</span><span class="posb p3" dir="ltr">11–20</span><span class="posb p4" dir="ltr">20+</span></div>
@@ -173,6 +197,19 @@
         tbl(['کلمه', 'صفحه', 'جایگاه', 'ایمپرشن', 'CTR'], d.low_ctr.map(x => `<tr><td dir="auto">${esc(x.query)}</td>${U(x.page)}${N(pos(x.position))}${N(fa(x.impressions))}${N(`<span class="ctr-low">${fa(x.ctr)}%</span>`)}</tr>`), [1]))}
       ${sec('cannibal', 'layers', 'رقابتِ صفحه‌ها روی یک کلمه', '۲۸ روزِ اخیر · چند صفحه برای یک کلمه با هم رقابت می‌کنند — ادغام یا تفکیکِ هدف', d.cannibal.length,
         tbl(['کلمه', 'صفحه', 'ایمپرشن', 'کلیک', 'جایگاه'], d.cannibal.map(x => x.pages.map((pg, i) => `<tr class="${i ? 'cont' : 'grp'}">${i ? '' : `<td dir="auto" rowspan="${x.pages.length}" class="q">${esc(x.query)}</td>`}${U(pg.page)}${N(fa(pg.impressions))}${N(fa(pg.clicks))}${N(pos(pg.position))}</tr>`).join('')), [1]))}
+      <div class="gsc-group-h">تغییراتِ کلمات <span class="zero">۲۸ روزِ اخیر در برابرِ ۲۸ روزِ قبل</span></div>
+      ${sec('new', 'plus', 'کلماتِ تازه', 'حالا نمایش دارند و قبلاً نداشتند (حداقل ۱۰ نمایش)', d.changes.new_n,
+        tbl(['کلمه', 'ایمپرشن', 'کلیک', 'جایگاه'], d.changes.new.map(x => `<tr><td dir="auto">${esc(x.query)}</td>${N(fa(x.impressions))}${N(fa(x.clicks))}${N(pos(x.position))}</tr>`)))}
+      ${sec('lost', 'trend-down', 'کلماتِ ازدست‌رفته', 'قبلاً نمایش داشتند (حداقل ۲۰) و حالا ندارند', d.changes.lost_n,
+        tbl(['کلمه', 'ایمپرشنِ قبل', 'کلیکِ قبل', 'جایگاهِ قبل'], d.changes.lost.map(x => `<tr><td dir="auto">${esc(x.query)}</td>${N(fa(x.impressions))}${N(fa(x.clicks))}${N(pos(x.position))}</tr>`)))}
+      ${sec('moves', 'sync', 'بیشترین جابه‌جاییِ جایگاه', 'کلماتی با حداقل ۲۰ نمایش در هر دو بازه', d.changes.up.length + d.changes.down.length,
+        tbl(['کلمه', 'جایگاهِ قبل', 'جایگاهِ اخیر', 'تغییر', 'ایمپرشن'], d.changes.up.concat(d.changes.down).map(x => `<tr><td dir="auto">${esc(x.query)}</td>${N(pos(x.before))}${N(pos(x.after))}${N(arrow(x.delta))}${N(fa(x.impressions))}</tr>`)))}
+      <div class="gsc-group-h">بخش‌های سایت</div>
+      ${sec('sections', 'folder', 'مقایسهٔ بخش‌ها', 'بر اساسِ اولین پوشهٔ نشانی (/blog/، /product/، …) — «/» یعنی صفحه‌های سطحِ اول', d.sections.length,
+        tbl(['بخش', 'صفحه', 'کلیکِ قبل', 'کلیکِ اخیر', 'تغییرِ کلیک', 'ایمپرشنِ اخیر', 'جایگاهِ اخیر', 'تغییرِ جایگاه'], d.sections.map(x => `<tr><td dir="ltr" class="u"><b>${esc(x.section)}</b></td>${N(fa(x.pages))}${N(fa(x.previous.clicks))}${N(fa(x.current.clicks))}${N(arrow(x.clicks_delta))}${N(fa(x.current.impressions))}${N(pos(x.current.position))}${N(arrow(x.position_delta))}</tr>`), [0]))}
+      ${indexHtml(d.index, sec, tbl, U, N)}
+      <div class="gsc-group-h">صفحه‌های بی‌نمایش <span class="zero">منتشرشده در وردپرس ولی بدونِ هیچ نمایشی در گوگل در ۹۰ روزِ اخیر</span></div>
+      <div class="gsc-unseen" id="gsc-unseen"></div>
       <div class="gsc-group-h">اثرِ کارها</div>
       ${sec('types', 'chart', 'مقایسهٔ انواعِ کار', 'میانگینِ تغییرِ کلیکِ صفحه ۲۸ روز بعد از انجام (فقط کارهای با ۲۸ روزِ کامل)', d.by_type.length,
         tbl(['نوع', 'تعداد', 'میانگینِ تغییرِ کلیک', 'میانگینِ تغییرِ جایگاه', 'هزینه به‌ازای هر کلیک'], d.by_type.map(g => `<tr><td>${esc(g.type)}</td>${N(fa(g.n))}${N(arrow(g.avg_clicks))}${N(arrow(g.avg_position))}${N(g.cost_per_click ? fa(g.cost_per_click) + ' ریال' : '—')}</tr>`)))}
@@ -183,6 +220,92 @@
           ${N(w.cost_per_click ? fa(w.cost_per_click) : '—')}</tr>`)))}
     </div>`;
     chartBlock(el.querySelector('.gsc-chart'), d.series, true);
+    el.querySelector('.gsc-proj').insertAdjacentHTML('afterbegin', `<div class="gsc-top"><a class="btn btn-sm" href="/gsc/api/project/${pid}/export/">${App.icon('file-excel')} خروجیِ اکسل</a></div>`);
+    unseenBlock(pid, el.querySelector('#gsc-unseen'), d.unseen, link, N);
+  }
+
+  const KIND = {post: 'مقاله', page: 'برگه', product: 'محصول', category: 'دستهٔ مقاله', product_cat: 'دستهٔ محصول'};
+  const kindName = k => KIND[k] || k;
+
+  function devicesHtml(list) {
+    if (!list || !list.length) return '';
+    const tot = list.reduce((a, x) => a + x.current.clicks, 0) || 1;
+    const ch = (a, b, inv) => { const v = inv ? (b && a ? b - a : 0) : a - b; if (!v || Math.abs(v) < (inv ? .1 : 1)) return ''; const pct = !inv && b ? Math.round(Math.abs(v) * 100 / b) : null;
+      return `<em class="${v > 0 ? 'up' : 'down'}">${v > 0 ? '▲' : '▼'}<span dir="ltr">${pct != null ? pct + '%' : fa(Math.round(Math.abs(v) * 10) / 10)}</span></em>`; };
+    return `<div class="gsc-dev">${list.map(x => `<div><b>${esc(x.device)}</b><span class="zero" dir="ltr">${Math.round(x.current.clicks * 100 / tot)}%</span>
+      <span>کلیک ${fa(x.current.clicks)} ${ch(x.current.clicks, x.previous.clicks)}</span>
+      <span>ایمپرشن ${fa(x.current.impressions)} ${ch(x.current.impressions, x.previous.impressions)}</span>
+      <span>جایگاه ${pos(x.current.position)} ${ch(x.current.position, x.previous.position, true)}</span></div>`).join('')}</div>`;
+  }
+
+  function indexHtml(ix, sec, tbl, U, N) {
+    if (!ix) return `<div class="gsc-group-h">ایندکس و کراول</div><div class="gsc-nodata">هنوز بررسی نشده — بعد از همگام‌سازیِ بعدی، صفحهٔ تسک‌ها و صفحه‌های پربازدید خودکار بررسی می‌شوند.</div>`;
+    const crawl = x => x.last_crawl ? jd(x.last_crawl) : '—';
+    return `<div class="gsc-group-h">ایندکس و کراول <span class="zero">${fa(ix.checked)} صفحه بررسی شده · ${fa(ix.indexed)} ایندکس</span></div>
+      ${sec('noindex', 'warning', 'بررسی‌شده و ایندکس‌نشده', 'صفحهٔ تسک‌ها، صفحه‌های تازه و پربازدید که گوگل ایندکس نکرده — علت در ستونِ وضعیت', ix.not_indexed.length,
+        tbl(['صفحه', 'وضعیت', 'آخرین کراول', 'بررسی'], ix.not_indexed.map(x => `<tr>${U(x.url)}<td class="cov">${esc(x.coverage)}</td>${N(crawl(x))}${N(jd(x.checked))}</tr>`), [0]))}
+      ${sec('stale', 'hourglass', 'کراولِ قدیمی', 'ایندکس است ولی گوگل بیش از ۳۰ روز است سراغش نیامده', ix.stale.length,
+        tbl(['صفحه', 'آخرین کراول', 'بررسی'], ix.stale.map(x => `<tr>${U(x.url)}${N(crawl(x))}${N(jd(x.checked))}</tr>`), [0]))}
+      ${sec('sitemaps', 'layers', 'سایت‌مپ‌ها', 'از سرچ کنسول', ix.sitemaps.length,
+        tbl(['سایت‌مپ', 'نشانی‌ها', 'خطا', 'هشدار', 'آخرین خواندن'], ix.sitemaps.map(m => `<tr><td dir="ltr" class="u">${esc(m.path)}</td>${N(fa(m.submitted))}${N(m.errors ? `<span class="ctr-low">${fa(m.errors)}</span>` : '0')}${N(fa(m.warnings))}${N(m.last_downloaded ? jd(m.last_downloaded.slice(0, 10)) : (m.pending ? 'در انتظار' : '—'))}</tr>`), [0]))}`;
+  }
+
+  // صفحه‌های بی‌نمایش: خلاصه به تفکیکِ نوع + فهرستِ فیلترشونده (نوع/جستجو/تازه‌ها) + «بررسیِ ایندکس» برای انتخاب‌شده‌ها
+  function unseenBlock(pid, box, sum, link, N) {
+    if (!box) return;
+    if (!sum.kinds.length) {
+      box.innerHTML = `<div class="gsc-nodata">${sum.error ? esc(sum.error) : sum.pending ? 'فهرستِ صفحه‌ها هنوز از وردپرس گرفته نشده (با همگام‌سازیِ بعدی، یا همین الان:)' : 'صفحه‌ای پیدا نشد'}
+        <div style="margin-top:8px"><button type="button" class="btn btn-sm" id="un-inv">${App.icon('refresh')} دریافتِ فهرست از وردپرس</button></div></div>`;
+    } else {
+      box.innerHTML = `<div class="tscroll"><table class="gsc-tbl un-sum"><thead><tr><th>نوع</th><th class="n">کل</th><th class="n">با نمایش</th><th class="n">بی‌نمایش</th><th class="n">تازه (کمتر از ۳ هفته)</th><th class="n">سهمِ بی‌نمایش</th></tr></thead><tbody>
+        ${sum.kinds.map(k => `<tr data-kind="${esc(k.kind)}" class="pick"><td><b>${esc(kindName(k.kind))}</b></td>${N(fa(k.total))}${N(fa(k.seen))}${N(k.unseen ? `<span class="ctr-low">${fa(k.unseen)}</span>` : '0')}${N(fa(k.new))}
+          ${N(`<span class="bar"><i style="width:${Math.round(k.unseen * 100 / (k.total || 1))}%"></i></span> <span dir="ltr">${Math.round(k.unseen * 100 / (k.total || 1))}%</span>`)}</tr>`).join('')}</tbody></table></div>
+        <div class="un-bar">
+          <select id="un-kind"><option value="">همهٔ نوع‌ها</option>${sum.kinds.map(k => `<option value="${esc(k.kind)}">${esc(kindName(k.kind))} (${fa(k.unseen)})</option>`).join('')}</select>
+          <input class="input" id="un-q" placeholder="جستجو در عنوان یا نشانی…">
+          <label class="mcp-switch"><input type="checkbox" id="un-new"> با صفحه‌های تازه</label>
+          <span class="zero" id="un-count"></span>
+          <span style="margin-inline-start:auto;display:inline-flex;gap:6px">
+            <button type="button" class="btn btn-sm" id="un-check" disabled>${App.icon('search')} بررسیِ ایندکسِ انتخاب‌شده‌ها</button>
+            <button type="button" class="btn btn-sm" id="un-inv" title="فهرست هفته‌ای یک بار خودکار تازه می‌شود">${App.icon('refresh')} تازه‌کردنِ فهرست</button></span>
+        </div>
+        <div id="un-list"></div>`;
+    }
+    const inv = box.querySelector('#un-inv');
+    if (inv) inv.onclick = async () => { await App.fetchJSON(`/gsc/api/project/${pid}/inventory/`, {method: 'POST'}); App.toast('در حالِ دریافت از وردپرس — برای سایتِ بزرگ چند دقیقه؛ بعد صفحه را رفرش کن', 'ok', 6000); };
+    if (!sum.kinds.length) return;
+    let rows = [], total = 0, t;
+    const list = box.querySelector('#un-list'), cnt = box.querySelector('#un-count'), chk = box.querySelector('#un-check');
+    const idx = x => !x.index ? '<span class="zero">—</span>' : x.index.indexed ? `<span class="ix ok">${App.icon('check')} ایندکس</span>` : `<span class="ix bad" title="${esc(x.index.coverage)}">${App.icon('warning')} ${esc(x.index.coverage || 'ایندکس نشده')}</span>`;
+    const render = () => {
+      list.innerHTML = `<div class="tscroll un-scroll"><table class="gsc-tbl"><thead><tr><th class="n"><input type="checkbox" id="un-all"></th><th class="u">صفحه</th><th>نوع</th><th class="n">انتشار</th><th>ایندکس</th></tr></thead><tbody>
+        ${rows.map((x, i) => `<tr><td class="n"><input type="checkbox" class="un-c" data-i="${i}"></td><td class="u">${link(x.url).replace('class="t" dir="auto">' + esc(nice(x.url).title), 'class="t" dir="auto">' + esc(x.title || nice(x.url).title))}</td><td>${esc(kindName(x.kind))}</td>${N(x.published ? jd(x.published) : '—')}<td>${idx(x)}</td></tr>`).join('') || '<tr><td colspan="5" class="gsc-nodata">موردی نیست</td></tr>'}</tbody></table></div>
+        ${rows.length < total ? `<button type="button" class="btn btn-sm gsc-more" id="un-more">نمایشِ بیشتر (${fa(total - rows.length)})</button>` : ''}`;
+      cnt.textContent = `${fa(total)} صفحه`;
+      const all = list.querySelector('#un-all');
+      const sync = () => { chk.disabled = !list.querySelector('.un-c:checked'); };
+      if (all) all.onchange = () => { list.querySelectorAll('.un-c').forEach((c, i) => c.checked = all.checked && i < 20); sync(); };
+      list.querySelectorAll('.un-c').forEach(c => c.onchange = sync);
+      const more = list.querySelector('#un-more'); if (more) more.onclick = () => load(rows.length);
+      sync();
+    };
+    const load = async (offset) => {
+      const q = new URLSearchParams({kind: box.querySelector('#un-kind').value, q: box.querySelector('#un-q').value, new: box.querySelector('#un-new').checked ? '1' : '', offset: offset || 0, limit: offset ? 100 : 30});
+      const r = await (await fetch(`/gsc/api/project/${pid}/unseen/?${q}`)).json();
+      rows = offset ? rows.concat(r.rows) : r.rows; total = r.total; render();
+    };
+    box.querySelector('#un-kind').onchange = () => load(0);
+    box.querySelector('#un-new').onchange = () => load(0);
+    box.querySelector('#un-q').oninput = () => { clearTimeout(t); t = setTimeout(() => load(0), 350); };
+    box.querySelectorAll('.un-sum tr.pick').forEach(tr => tr.onclick = () => { box.querySelector('#un-kind').value = tr.dataset.kind; load(0); });
+    chk.onclick = async () => {
+      const picked = [...list.querySelectorAll('.un-c:checked')].map(c => rows[+c.dataset.i]).slice(0, 20);
+      if (!picked.length) return;
+      const r = await App.fetchJSON(`/gsc/api/project/${pid}/inspect/`, {method: 'POST', body: {urls: picked.map(x => x.url)}});
+      picked.forEach(x => { if (r.results[x.url]) x.index = r.results[x.url]; });
+      render(); App.toast(`${fa(Object.keys(r.results).length)} صفحه بررسی شد`, 'ok');
+    };
+    load(0);
   }
 
   window.GSC = {chart, chartBlock, queryTable, taskCard, projectTab};

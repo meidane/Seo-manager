@@ -81,6 +81,8 @@ TOOLS = [
      'inputSchema': obj({'url': S('string'), 'task': S('integer'), 'days': S('integer')})},
     {'name': 'gsc_project', 'description': 'تحلیلِ سرچ کنسولِ پروژه: افت، نزدیکِ صفحهٔ اول، CTR پایین، رقابتِ صفحه‌ها، اثرِ کارها و مقایسهٔ انواع.',
      'inputSchema': obj({'project': ANY, 'limit': S('integer')}, ['project'])},
+    {'name': 'gsc_unseen', 'description': 'صفحه‌های منتشرشدهٔ وردپرس که ۹۰ روز هیچ نمایشی در گوگل نداشته‌اند. kind: post|page|product|category|product_cat، q.',
+     'inputSchema': obj({'project': ANY, 'kind': S('string'), 'q': S('string'), 'offset': S('integer'), 'include_new': S('boolean')}, ['project'])},
     {'name': 'actions_list', 'description': 'لاگِ تغییراتِ MCP (دسته‌ها، قابلِ بازگردانی).', 'inputSchema': obj({'limit': S('integer')})},
     {'name': 'undo', 'description': 'بازگردانیِ یک دسته (batch). force=true حتی اگر بعداً دستی تغییر کرده.',
      'inputSchema': obj({'batch': S('integer'), 'force': S('boolean')}, ['batch'])},
@@ -170,6 +172,18 @@ def gsc_project(gate, a):
     return project_brief(p, int(a.get('limit') or 10)) or {'none': 'این پروژه به سرچ کنسول وصل نیست یا هنوز همگام نشده'}
 
 
+def gsc_unseen(gate, a):
+    from gsc.analysis import unseen_pages
+    from projects.models import Project
+    p = Project.objects.get(pk=Resolver().get('project', a['project']))
+    r = unseen_pages(p, kind=a.get('kind') or '', q=a.get('q') or '', include_new=bool(a.get('include_new')),
+                     offset=int(a.get('offset') or 0), limit=50)
+    return {'total': r['total'], **table(['url', 'title', 'kind', 'published', 'indexed'],
+                                         [[x['url'], x['title'], x['kind'], x['published'],
+                                           (x['index']['indexed'] if x['index'] else None)] for x in r['rows']]),
+            'next_offset': r.get('offset', 0) + 50 if r['total'] > r.get('offset', 0) + 50 else None}
+
+
 def actions_list(gate, a):
     from mcpgate.models import MCPBatch
     rows = [[b.id, jd(b.created_at), b.created_at.strftime('%H:%M'), b.tool, b.summary, b.counts or None,
@@ -188,7 +202,7 @@ def undo(gate, a):
 
 
 HANDLERS = {
-    'panel_info': panel_info, 'find': find, 'gsc_page': gsc_page, 'gsc_project': gsc_project, 'actions_list': actions_list, 'undo': undo,
+    'panel_info': panel_info, 'find': find, 'gsc_page': gsc_page, 'gsc_project': gsc_project, 'gsc_unseen': gsc_unseen, 'actions_list': actions_list, 'undo': undo,
     'tasks_query': T.tasks_query, 'task_get': T.task_get, 'tasks_save': T.tasks_save,
     'tasks_update_where': T.tasks_update_where, 'tasks_delete': T.tasks_delete, 'tasks_restore': T.tasks_restore,
     'task_comment': T.task_comment, 'task_review': T.task_review,

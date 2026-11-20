@@ -15,4 +15,9 @@ urlpatterns = [
     path('settings/gsc/key/<int:pk>/delete/', views.cred_delete, name='cred_delete'),
     path('gsc/api/task/<int:pk>/', views.task_api, name='task_api'),
     path('gsc/api/project/<int:pk>/', views.project_api, name='project_api'),
+    path('gsc/api/project/<int:pk>/unseen/', views.unseen_api, name='unseen_api'),
+    path('gsc/api/project/<int:pk>/inspect/', views.inspect_api, name='inspect_api'),
+    path('gsc/api/project/<int:pk>/inventory/', views.inventory_api, name='inventory_api'),
+    path('gsc/api/project/<int:pk>/export/', views.project_export, name='project_export'),
+    path('gsc/api/task/<int:pk>/export/', views.task_export, name='task_export'),
 ]

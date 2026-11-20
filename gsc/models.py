@@ -73,6 +73,11 @@ class GSCSite(models.Model):
     synced_until = models.DateField(null=True, blank=True)   # آخرین روزِ ذخیره‌شده
     first_date = models.DateField(null=True, blank=True)
     last_error = models.TextField(blank=True)
+    sitemaps = models.JSONField(default=list, blank=True)            # [{path, last_downloaded, errors, warnings, pending, type}]
+    inventory_at = models.DateTimeField(null=True, blank=True)       # آخرین دریافتِ فهرستِ صفحه‌ها از وردپرس
+    inventory_error = models.CharField(max_length=300, blank=True)
+    inspected_on = models.DateField(null=True, blank=True)           # شمارشِ سهمیهٔ روزانهٔ URL Inspection
+    inspected_count = models.PositiveIntegerField(default=0)
 
     class Meta:
         unique_together = [('organization', 'site_url')]
@@ -122,3 +127,56 @@ class GSCPageDay(models.Model):
     class Meta:
         indexes = [models.Index(fields=['page', 'date'], name='gsc_pday_page_date'),
                    models.Index(fields=['site', 'date'], name='gsc_pday_site_date')]
+
+
+class GSCDeviceDay(models.Model):
+    """کلِ سایت به تفکیکِ دستگاه (MOBILE/DESKTOP/TABLET) — سه ردیف در روز، ناچیز."""
+    site = models.ForeignKey(GSCSite, on_delete=models.CASCADE, related_name='device_days')
+    date = models.DateField()
+    device = models.CharField(max_length=10)
+    clicks = models.PositiveIntegerField(default=0)
+    impressions = models.PositiveIntegerField(default=0)
+    position = models.FloatField(default=0)
+
+    class Meta:
+        indexes = [models.Index(fields=['site', 'date'], name='gsc_dev_site_date')]
+
+
+class GSCInspection(models.Model):
+    """نتیجهٔ URL Inspection (ایندکس/کراول) — فقط برای صفحه‌های مهم (سهمیهٔ روزانهٔ گوگل محدود است):
+    صفحهٔ تسک‌ها، صفحه‌های پربازدید، و هر صفحه‌ای که کاربر دستی «بررسی» بزند."""
+    site = models.ForeignKey(GSCSite, on_delete=models.CASCADE, related_name='inspections')
+    key = models.CharField(max_length=700)
+    url = models.CharField(max_length=1000)
+    verdict = models.CharField(max_length=20, blank=True)          # PASS | NEUTRAL | FAIL | …
+    coverage = models.CharField(max_length=200, blank=True)        # «Submitted and indexed» / «Crawled - currently not indexed» …
+    indexing_state = models.CharField(max_length=60, blank=True)
+    robots = models.CharField(max_length=40, blank=True)
+    fetch_state = models.CharField(max_length=40, blank=True)
+    last_crawl = models.DateTimeField(null=True, blank=True)
+    google_canonical = models.CharField(max_length=1000, blank=True)
+    user_canonical = models.CharField(max_length=1000, blank=True)
+    error = models.CharField(max_length=300, blank=True)
+    checked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = [('site', 'key')]
+
+    @property
+    def indexed(self):
+        return self.verdict == 'PASS'
+
+
+class GSCSiteURL(models.Model):
+    """فهرستِ همهٔ صفحه‌های منتشرشدهٔ سایت از وردپرس (از اتصالِ «سایت‌ها»ی MCP) — برای «صفحه‌های بی‌نمایش».
+    kind = نوعِ محتوا (post/page/product/…) یا طبقه‌بندی (category/product_cat). هفته‌ای یک بار تازه می‌شود."""
+    site = models.ForeignKey(GSCSite, on_delete=models.CASCADE, related_name='site_urls')
+    key = models.CharField(max_length=700)
+    url = models.CharField(max_length=1000)
+    kind = models.CharField(max_length=40)
+    title = models.CharField(max_length=300, blank=True)
+    published = models.DateField(null=True, blank=True)
+
+    class Meta:
+        unique_together = [('site', 'key')]
+        indexes = [models.Index(fields=['site', 'kind'], name='gsc_surl_site_kind')]

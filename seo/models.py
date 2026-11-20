@@ -52,6 +52,8 @@ class KeywordRankSnapshot(models.Model):
     date = models.DateField('تاریخ')
     position = models.PositiveIntegerField('جایگاه')
     seen_url = models.URLField('لینکِ دیده‌شده در نتیجه', max_length=500, blank=True)
+    # ext = افزونهٔ مرورگر (رتبهٔ واقعیِ لحظه‌ای، بر دادهٔ سرچ کنسول مقدم است) · gsc = میانگینِ روزانهٔ سرچ کنسول برای روزهای بی‌دادهٔ افزونه
+    source = models.CharField('منبع', max_length=4, default='ext')
 
     class Meta:
         verbose_name = 'رکورد جایگاه'

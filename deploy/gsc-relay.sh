@@ -4,6 +4,7 @@
 # خروجی: «کلیدِ واسط» که در پنل (تنظیمات ← سرچ کنسول) وارد می‌کنی.
 # کار: nginx + گواهیِ رایگانِ Let's Encrypt؛ فقط دو مسیر را به گوگل می‌رساند و بدونِ کلید 403 می‌دهد:
 #   /oauth2/...      → https://oauth2.googleapis.com/...
+#   /v1/urlInspection/... → https://searchconsole.googleapis.com/v1/urlInspection/...  (بررسیِ ایندکس)
 #   /webmasters/...  → https://www.googleapis.com/webmasters/...  (مسیر دست‌نخورده — بدونِ اسلشِ آخر در proxy_pass؛
 #   با «/» نگینکس آدرسِ کدشدهٔ سایت (https%3A%2F%2F…) را decode می‌کرد و گوگل 404 می‌داد)
 set -euo pipefail
@@ -33,6 +34,14 @@ server {
         if (\$http_x_relay_key != "${KEY}") { return 403 "relay: bad key"; }
         proxy_pass https://www.googleapis.com;
         proxy_set_header Host www.googleapis.com;
+        proxy_set_header X-Relay-Key "";
+        proxy_ssl_server_name on;
+        proxy_read_timeout 120s;
+    }
+    location /v1/urlInspection/ {
+        if (\$http_x_relay_key != "${KEY}") { return 403 "relay: bad key"; }
+        proxy_pass https://searchconsole.googleapis.com;
+        proxy_set_header Host searchconsole.googleapis.com;
         proxy_set_header X-Relay-Key "";
         proxy_ssl_server_name on;
         proxy_read_timeout 120s;

@@ -247,9 +247,16 @@ def rank_ingest(request):
     if not project:
         return JsonResponse({'matched': False})
 
-    tk, _ = TrackedKeyword.objects.get_or_create(
-        project=project, page_url=url, keyword=keyword,
-        defaults={'is_manual': False, 'is_starred': False})
-    KeywordRankSnapshot.objects.update_or_create(
-        keyword=tk, date=d, defaults={'position': position, 'seen_url': url})
+    from .match import find_tracked
+    tk = find_tracked(project, keyword, url)   # نشانی/کلمهٔ نرمال‌شده → همان کلمهٔ تسک، نه رکوردِ تکراری
+    if tk is None:
+        tk = TrackedKeyword.objects.create(project=project, page_url=url, keyword=keyword, is_manual=False, is_starred=False)
+    snap = KeywordRankSnapshot.objects.filter(keyword=tk, date=d).first()
+    if snap and snap.source == 'ext' and snap.position <= position:
+        pass   # همان روز: بهترین جایگاهِ افزونه می‌ماند (چند نتیجه از یک سایت در یک صفحه)
+    elif snap:
+        snap.position, snap.seen_url, snap.source = position, url[:500], 'ext'
+        snap.save(update_fields=['position', 'seen_url', 'source'])
+    else:
+        KeywordRankSnapshot.objects.create(keyword=tk, date=d, position=position, seen_url=url[:500], source='ext')
     return JsonResponse({'matched': True, 'project': project.id, 'keyword_id': tk.id})

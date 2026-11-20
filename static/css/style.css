@@ -2320,3 +2320,33 @@ em.down{background:color-mix(in srgb,var(--bad-fg) 13%,transparent)}
 :root{--page-max:1600px}
 .main{width:100%;max-width:var(--page-max);margin-inline:auto}
 .main.main-full{max-width:none}
+/* ── سرچ کنسول: دستگاه‌ها، ایندکس، صفحه‌های بی‌نمایش، کلمهٔ هدفِ تسک ── */
+.gsc-top{display:flex;justify-content:flex-end;margin-bottom:8px}
+.gsc-dev{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0 4px}
+.gsc-dev>div{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;border:1px solid var(--stroke-soft);border-radius:10px;padding:7px 11px;font-size:11.5px;color:var(--text-dim)}
+.gsc-dev b{color:var(--text);font-size:12.5px}
+.gsc-dev em.up,.gsc-dev em.down{font-size:10.5px;padding:0 5px;border-radius:12px}
+.s-new{--sec:var(--ok-fg)}
+.s-lost{--sec:var(--bad-fg)}
+.s-moves{--sec:var(--info-fg)}
+.s-sections{--sec:var(--primary)}
+.s-noindex{--sec:var(--bad-fg)}
+.s-stale{--sec:var(--amber-fg)}
+.s-sitemaps{--sec:var(--violet)}
+.ix{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;padding:1px 8px;border-radius:20px;background:var(--fill-strong);color:var(--text-dim)}
+.ix .ic{width:12px;height:12px}
+.ix.ok{color:var(--ok-fg);background:color-mix(in srgb,var(--ok-fg) 13%,transparent)}
+.ix.bad{color:var(--bad-fg);background:color-mix(in srgb,var(--bad-fg) 12%,transparent)}
+.ix.warn{color:var(--amber-fg);background:color-mix(in srgb,var(--amber-fg) 14%,transparent)}
+.ix-line{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:-4px 0 10px;font-size:11.5px}
+.gsc-tbl td.cov{font-size:11.5px;color:var(--bad-fg)}
+.gsc-unseen{border:1px solid var(--stroke-soft);border-inline-start:3px solid var(--amber-fg);border-radius:11px;padding:8px;margin-bottom:8px}
+.un-sum tr.pick{cursor:pointer}
+.un-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:10px 0 8px}
+.un-bar select{width:auto;min-width:160px}
+.un-bar .input{width:auto;flex:1 1 200px;max-width:300px}
+.bar{display:inline-block;width:60px;height:6px;border-radius:6px;background:var(--fill-strong);vertical-align:middle;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--bad-fg);border-radius:6px}
+@media(max-width:700px){.gsc-dev{grid-template-columns:minmax(0,1fr)}}
+.un-scroll{max-height:460px;overflow-y:auto}
+.un-scroll thead th{position:sticky;top:0;z-index:1}

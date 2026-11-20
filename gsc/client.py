@@ -12,6 +12,7 @@ from django.core.cache import cache
 
 SCOPE = 'https://www.googleapis.com/auth/webmasters.readonly'
 API = 'https://www.googleapis.com/webmasters/v3'
+INSPECT = 'https://searchconsole.googleapis.com'   # URL Inspection روی میزبانِ دیگر؛ در واسط مسیرِ /v1/urlInspection/
 PAUSE = 0.3   # مکثِ کوتاه بینِ درخواست‌ها تا به سقفِ دقیقه‌ای نخوریم
 
 
@@ -67,11 +68,16 @@ class Client:
         cache.set(key, tok, 3000)
         return tok
 
-    def _req(self, method, path, body=None):
+    def _base(self, host):
+        if host == 'inspect':
+            return self.relay if self.relay else INSPECT
+        return (self.relay + '/webmasters/v3') if self.relay else API
+
+    def _req(self, method, path, body=None, host='webmasters'):
         # سهمیه: 429/500/503 یا 403ِ «quota/rate» → صبر و تلاشِ دوباره (۲، ۴، ۸، ۱۶، ۳۲ ثانیه)
         for attempt in range(6):
             try:
-                r = self.s.request(method, (self.relay + '/webmasters/v3' if self.relay else API) + path, json=body, timeout=90, headers={'Authorization': 'Bearer ' + self._token()})
+                r = self.s.request(method, self._base(host) + path, json=body, timeout=90, headers={'Authorization': 'Bearer ' + self._token()})
             except requests.RequestException as e:
                 if attempt < 2:
                     time.sleep(3)
@@ -95,6 +101,15 @@ class Client:
 
     def sites(self):
         return self._req('GET', '/sites').get('siteEntry', [])
+
+    def sitemaps(self, site_url):
+        return self._req('GET', f'/sites/{quote(site_url, safe="")}/sitemaps').get('sitemap', [])
+
+    def inspect(self, site_url, url):
+        """URL Inspection → inspectionResult.indexStatusResult (سهمیه: حدودِ ۲۰۰۰ در روز برای هر سایت)."""
+        r = self._req('POST', '/v1/urlInspection/index:inspect', {'inspectionUrl': url, 'siteUrl': site_url, 'languageCode': 'en-US'},
+                      host='inspect')
+        return (r.get('inspectionResult') or {}).get('indexStatusResult') or {}
 
     def query(self, site_url, start, end, dimensions, row_limit=25000, max_rows=500000):
         """همهٔ ردیف‌ها با صفحه‌بندی (startRow). تاریخ‌ها date."""

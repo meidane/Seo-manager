@@ -6,7 +6,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from .client import Client, GSCError
-from .models import GSCAccount, GSCCredential, GSCPage, GSCPageDay, GSCQueryDay, GSCSite
+from .models import GSCAccount, GSCCredential, GSCDeviceDay, GSCPage, GSCPageDay, GSCQueryDay, GSCSite
 from .urls_norm import host_of, page_key
 
 KEEP_DAYS = 180   # حداکثر ۶ ماه داده (هم دریافت، هم نگه‌داری) — خواستِ کاربر
@@ -62,6 +62,7 @@ def prune(site, until):
     cut = until - timedelta(days=KEEP_DAYS - 1)
     GSCQueryDay.objects.filter(site=site, date__lt=cut).delete()
     GSCPageDay.objects.filter(site=site, date__lt=cut).delete()
+    GSCDeviceDay.objects.filter(site=site, date__lt=cut).delete()
     used = set(GSCQueryDay.objects.filter(site=site).values_list('page_id', flat=True).distinct()) | \
         set(GSCPageDay.objects.filter(site=site).values_list('page_id', flat=True).distinct())
     GSCPage.objects.filter(site=site).exclude(id__in=used).delete()
@@ -81,10 +82,15 @@ def sync_site(client, site, days_back=95, until=None):
         end = min(cur + timedelta(days=CHUNK_DAYS - 1), until)
         q_rows = client.query(site.site_url, cur, end, ['date', 'page', 'query'])
         p_rows = client.query(site.site_url, cur, end, ['date', 'page'])
+        d_rows = client.query(site.site_url, cur, end, ['date', 'device'])
         with transaction.atomic():
             pid = _page_ids(site, {r['keys'][1] for r in q_rows} | {r['keys'][1] for r in p_rows})
             GSCQueryDay.objects.filter(site=site, date__range=(cur, end)).delete()
             GSCPageDay.objects.filter(site=site, date__range=(cur, end)).delete()
+            GSCDeviceDay.objects.filter(site=site, date__range=(cur, end)).delete()
+            GSCDeviceDay.objects.bulk_create([GSCDeviceDay(
+                site=site, date=date.fromisoformat(r['keys'][0]), device=r['keys'][1][:10], clicks=int(r.get('clicks', 0)),
+                impressions=int(r.get('impressions', 0)), position=round(_f(r.get('position')), 2)) for r in d_rows])
             GSCQueryDay.objects.bulk_create([GSCQueryDay(
                 site=site, date=date.fromisoformat(r['keys'][0]), page_id=pid[r['keys'][1]],
                 query=r['keys'][2][:400], clicks=int(r.get('clicks', 0)), impressions=int(r.get('impressions', 0)),
@@ -125,6 +131,20 @@ def due(acc):
     return not times or timezone.now() - max(times) > timedelta(hours=20)
 
 
+def after_sync(client, site, log=print):
+    """کارهای جانبی — هرکدام جدا، تا خطای یکی بقیه را نخواباند: سایت‌مپ، فهرستِ وردپرس (هفتگی)، رتبهٔ کلماتِ ردیابی‌شده، ایندکس."""
+    from . import extras
+    from .rankfill import fill_tracked
+    for name, fn in (('sitemaps', lambda: extras.refresh_sitemaps(client, site)),
+                     ('inventory', lambda: extras.refresh_inventory(site, log=log)),
+                     ('rank', lambda: fill_tracked(site, log=log)),
+                     ('inspect', lambda: extras.run_inspections(client, site, log=log))):
+        try:
+            fn()
+        except Exception as e:  # noqa: BLE001
+            log(f'{site.site_url}: {name} — {type(e).__name__}: {e}')
+
+
 def sync_account(acc, site_ids=None, log=print, claimed=False):
     """کلِ حساب: propertyها + هر سایتِ فعالِ جفت‌شده با پروژه (یا همه اگر site_ids). خطای هر سایت جدا ثبت می‌شود."""
     if not claimed and not claim(acc):
@@ -147,6 +167,7 @@ def sync_account(acc, site_ids=None, log=print, claimed=False):
                 n = sync_site(clients[s.credential_id], s, acc.days_back)
                 total += n
                 log(f'{s.site_url}: {n} ردیف')
+                after_sync(clients[s.credential_id], s, log)
             except GSCError as e:
                 s.last_error = str(e)[:2000]
                 s.save(update_fields=['last_error'])

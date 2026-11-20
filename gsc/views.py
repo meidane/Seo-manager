@@ -191,3 +191,80 @@ def project_api(request, pk):
     p = get_object_or_404(Project, pk=pk)
     return JsonResponse({'data': analysis.project_analysis(p),
                          'connected': GSCSite.objects.filter(project=p).exists()})
+
+
+def _project_or_403(request, pk):
+    from projects.models import Project
+    if pk not in accessible_project_ids(request):
+        raise PermissionDenied
+    return get_object_or_404(Project, pk=pk)
+
+
+@login_required
+def unseen_api(request, pk):
+    """صفحه‌های بی‌نمایش (فیلتر: kind، q، new=1 یعنی تازه‌ها هم، offset)."""
+    p = _project_or_403(request, pk)
+    g = request.GET
+    return JsonResponse(analysis.unseen_pages(p, kind=g.get('kind', ''), q=g.get('q', '').strip(), include_new=g.get('new') == '1',
+                                              offset=int(g.get('offset') or 0), limit=min(int(g.get('limit') or 100), 200)))
+
+
+@login_required
+@require_http_methods(['POST'])
+def inspect_api(request, pk):
+    """«بررسیِ ایندکس» برای چند صفحهٔ انتخابی (حداکثر ۲۰ در هر بار — هر کدام یک درخواستِ URL Inspection)."""
+    from .client import Client
+    from .extras import inspect_urls
+    from .urls_norm import page_key
+    p = _project_or_403(request, pk)
+    urls = [u for u in (_body(request).get('urls') or []) if isinstance(u, str)][:20]
+    sites = list(GSCSite.objects.filter(project=p, active=True))
+    done = {}
+    for s in sites:
+        mine = [u for u in urls if analysis.site_for_url(s.organization, u, [s])]
+        if mine:
+            try:
+                inspect_urls(Client(GSCAccount.objects.get(organization=s.organization), s.credential), s, mine)
+            except GSCError as e:
+                return JsonResponse({'detail': str(e)}, status=400)
+            for u in mine:
+                done[u] = analysis.inspection(s, page_key(u))
+    return JsonResponse({'results': done})
+
+
+@login_required
+@require_http_methods(['POST'])
+def inventory_api(request, pk):
+    """دریافتِ دوبارهٔ فهرستِ صفحه‌های وردپرس (پس‌زمینه — برای سایتِ چند هزار صفحه‌ای چند دقیقه)."""
+    from .extras import refresh_inventory
+    p = _project_or_403(request, pk)
+    ids = list(GSCSite.objects.filter(project=p, active=True).values_list('pk', flat=True))
+
+    def run():
+        close_old_connections()
+        try:
+            for s in GSCSite.objects.filter(pk__in=ids):
+                refresh_inventory(s, force=True, log=lambda m: None)
+        finally:
+            close_old_connections()
+    threading.Thread(target=run, daemon=True).start()
+    return JsonResponse({'ok': True})
+
+
+@login_required
+def project_export(request, pk):
+    from .export import project_xlsx
+    p = _project_or_403(request, pk)
+    return project_xlsx(p)
+
+
+@login_required
+def task_export(request, pk):
+    from tasks.api import _task_visible_ok
+    from tasks.models import Task
+
+    from .export import task_xlsx
+    t = get_object_or_404(Task.objects.select_related('type_def').prefetch_related('type_def__fields'), pk=pk)
+    if not _task_visible_ok(request, t):
+        raise PermissionDenied
+    return task_xlsx(t)

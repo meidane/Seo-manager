@@ -125,6 +125,9 @@ sudo sed -i -e "s#location /googleapis/ {#location /webmasters/ {#" -e "s#proxy_
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
+برای بررسیِ ایندکس (URL Inspection) واسطِ نصب‌شده با نسخهٔ قبلی یک مسیرِ تازه لازم دارد — روی سرورِ خارج یک بار:
+`sudo bash deploy/gsc-relay-add-inspection.sh` (تکرارش بی‌خطر است).
+
 ### (جایگزین) پراکسیِ سرچ کنسول روی سرورِ خارج (tinyproxy)
 ```
 sudo apt install -y tinyproxy

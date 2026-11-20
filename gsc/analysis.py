@@ -6,6 +6,9 @@
 - window / impact                ← قبل/بعدِ یک تاریخ (۲۸ روز) برای سنجیدنِ اثرِ تسک
 - task_card                      ← همهٔ دادهٔ کارتِ زیرِ تسک
 - project_analysis               ← تبِ «تحلیلِ سرچ کنسول»: افت، نزدیکِ صفحهٔ اول، CTR پایین، رقابتِ صفحه‌ها، اثرِ کارها
+                                   + تغییرِ کلمات، بخش‌های سایت، دستگاه‌ها، ایندکس/سایت‌مپ، خلاصهٔ صفحه‌های بی‌نمایش
+- target_keywords / inspection   ← کارتِ تسک: کلمهٔ هدفِ تسک (سرچ کنسول + افزونه) و وضعیتِ ایندکسِ صفحه
+- unseen_pages                   ← فهرستِ کاملِ صفحه‌های بی‌نمایشِ وردپرس (فیلترِ نوع/جستجو/جدید)
 جایگاه = میانگینِ وزنی با ایمپرشن (همان روشِ گوگل). همهٔ جمع‌ها با aggregate/annotate.
 """
 from datetime import timedelta
@@ -13,7 +16,7 @@ from datetime import timedelta
 from django.db.models import F, FloatField, Sum
 from django.db.models.functions import Cast
 
-from .models import GSCPage, GSCPageDay, GSCQueryDay, GSCSite
+from .models import GSCDeviceDay, GSCInspection, GSCPage, GSCPageDay, GSCQueryDay, GSCSite, GSCSiteURL
 from .urls_norm import host_of, page_key
 
 WIN = 28
@@ -138,8 +141,64 @@ def task_card(task):
                 'queries': page_queries(s, k), 'series': page_series(s, k)}
         if task.status == 'done' and task.done_date:
             item['impact'] = impact(s, k, task.done_date)
+        if role == 'page':
+            item['keywords'] = target_keywords(task, s, url)
+        item['index'] = inspection(s, k)
         pages.append(item)
     return pages
+
+
+def _task_keywords(task):
+    """کلمه‌های هدفِ تسک: فیلدهای `is_keyword_source` (tags = چند کلمه؛ textarea = هر خط یکی)."""
+    out = []
+    if task.type_def_id:
+        for f in task.type_def.fields.all():
+            if f.is_keyword_source:
+                v = (task.custom or {}).get(f.key)
+                vals = v if isinstance(v, list) else str(v or '').replace('،', '\n').replace(',', '\n').splitlines()
+                out += [str(x).strip() for x in vals if str(x).strip()]
+    return list(dict.fromkeys(out))[:15]
+
+
+def target_keywords(task, site, url, days=WIN):
+    """برای هر کلمهٔ هدفِ تسک: جایگاهِ همین صفحه برای آن کلمه (۲۸ روزِ اخیر)، بهترین صفحهٔ سایت برای آن کلمه، و آخرین رتبهٔ افزونه."""
+    from seo.match import norm_kw
+    from seo.models import KeywordRankSnapshot
+    kws = _task_keywords(task)
+    if not kws or not site.synced_until:
+        return []
+    key = page_key(url)
+    nk = {norm_kw(k): k for k in kws}
+    rows = (GSCQueryDay.objects.filter(site=site, date__gt=site.synced_until - timedelta(days=days),
+                                       query__in=set(nk) | {k.lower() for k in kws})
+            .values('query', 'page__key', 'page__url').annotate(**_agg()))
+    agg = {}
+    for r in rows:
+        k = nk.get(norm_kw(r['query']))
+        if not k:
+            continue
+        a = agg.setdefault(k, {'page': None, 'best': None})
+        f = _fmt(r['c'], r['i'], r['pw'])
+        if r['page__key'] == key:
+            a['page'] = f
+        if not a['best'] or f['impressions'] > a['best']['impressions']:
+            a['best'] = {**f, 'url': r['page__url'], 'same': r['page__key'] == key}
+    ext = {}
+    if task.project_id:
+        for snap in (KeywordRankSnapshot.objects.filter(keyword__project_id=task.project_id, source='ext')
+                     .select_related('keyword').order_by('-date')[:500]):
+            ext.setdefault(norm_kw(snap.keyword.keyword), {'position': snap.position, 'date': snap.date.isoformat()})
+    return [{'keyword': k, 'page': agg.get(k, {}).get('page'), 'best': agg.get(k, {}).get('best'), 'ext': ext.get(norm_kw(k))} for k in kws]
+
+
+def inspection(site, key):
+    i = GSCInspection.objects.filter(site=site, key=key).first()
+    if not i or not i.checked_at:
+        return None
+    return {'indexed': i.indexed, 'verdict': i.verdict, 'coverage': i.coverage, 'error': i.error,
+            'last_crawl': i.last_crawl.date().isoformat() if i.last_crawl else None, 'checked': i.checked_at.date().isoformat(),
+            'canonical_mismatch': bool(i.google_canonical and i.user_canonical and page_key(i.google_canonical) != page_key(i.user_canonical)),
+            'google_canonical': i.google_canonical}
 
 
 # ───────────── تحلیلِ پروژه ─────────────
@@ -242,7 +301,14 @@ def project_analysis(project):
              for g in by_type.values()]
     types.sort(key=lambda g: -g['avg_clicks'])
 
+    changes = _changes(sites, cur0, end, prev0, prev1)
+    sections = _sections(cur, prev)
+    devices = _devices(sites, cur0, end, prev0, prev1)
+    index = _index(sites)
+    unseen = _unseen_summary(sites, end)
+
     return {'until': end.isoformat(), 'sites': [s.site_url for s in sites],
+            'changes': changes, 'sections': sections, 'devices': devices, 'index': index, 'unseen': unseen,
             'total': {'current': _fmt(tot_c['c'], tot_c['i'], tot_c['pw']), 'previous': _fmt(tot_p['c'], tot_p['i'], tot_p['pw'])},
             'series': ser, 'decline': decline[:20], 'striking': striking[:25], 'low_ctr': low_ctr[:20],
             'cannibal': cannibal[:15], 'work': work[:60], 'by_type': types}
@@ -297,4 +363,142 @@ def project_brief(project, limit=10):
             'low_ctr': t(['query', 'page', 'position', 'impressions', 'ctr'], [[x['query'], x['page'], x['position'], x['impressions'], x['ctr']] for x in d['low_ctr']]),
             'cannibalization': t(['query', 'pages'], [[x['query'], [p['page'] for p in x['pages']]] for x in d['cannibal']]),
             'work_by_type': t(['type', 'n', 'avg_click_gain', 'avg_position_gain', 'cost_per_click'], [[g['type'], g['n'], g['avg_clicks'], g['avg_position'], g['cost_per_click']] for g in d['by_type']]),
+            'new_queries': t(['query', 'impressions', 'clicks', 'position'], [[x['query'], x['impressions'], x['clicks'], x['position']] for x in d['changes']['new']]),
+            'lost_queries': t(['query', 'impressions_before', 'position_before'], [[x['query'], x['impressions'], x['position']] for x in d['changes']['lost']]),
+            'movers': t(['query', 'position_before', 'position_now', 'gain'], [[x['query'], x['before'], x['after'], x['delta']] for x in d['changes']['up'] + d['changes']['down']]),
+            'sections': t(['section', 'clicks_prev', 'clicks_now', 'position_now'], [[x['section'], x['previous']['clicks'], x['current']['clicks'], x['current']['position']] for x in d['sections']]),
+            'devices': [[x['device'], x['current']['clicks'], x['previous']['clicks']] for x in d['devices']],
+            'index': {k: (v if k in ('checked', 'indexed') else len(v)) for k, v in (d['index'] or {}).items()},
+            'unseen_by_type': [[k['kind'], k['total'], k['unseen']] for k in d['unseen'].get('kinds', [])],
             'recent_work': t(['task', 'type', 'done', 'clicks_before', 'clicks_after', 'position_gain'], [[w['id'], w['type'], w['done'], w['clicks_before'], w['clicks_after'], w['position_delta']] for w in d['work']])}
+
+
+# ───────────── بخش‌های تازهٔ تبِ پروژه ─────────────
+def _q_window(sites, start, end):
+    return {r['query']: r for r in GSCQueryDay.objects.filter(site__in=sites, date__range=(start, end))
+            .values('query').annotate(**_agg())}
+
+
+def _changes(sites, cur0, end, prev0, prev1, limit=20):
+    """کلمه‌ها (کلِ سایت): تازه (حالا ≥۱۰ نمایش، قبلاً هیچ)، ازدست‌رفته (قبلاً ≥۲۰، حالا هیچ)، بیشترین بهتر/بدترشدنِ جایگاه."""
+    cur, prev = _q_window(sites, cur0, end), _q_window(sites, prev0, prev1)
+    f = lambda r: _fmt(r['c'], r['i'], r['pw'])  # noqa: E731
+    new = sorted(({'query': q, **f(r)} for q, r in cur.items() if q not in prev and (r['i'] or 0) >= 10), key=lambda x: -x['impressions'])
+    lost = sorted(({'query': q, **f(r)} for q, r in prev.items() if q not in cur and (r['i'] or 0) >= 20), key=lambda x: -x['impressions'])
+    moves = []
+    for q, r in cur.items():
+        p = prev.get(q)
+        if p and (r['i'] or 0) >= 20 and (p['i'] or 0) >= 20:
+            a, b = f(p), f(r)
+            if a['position'] and b['position']:
+                moves.append({'query': q, 'before': a['position'], 'after': b['position'], 'delta': round(a['position'] - b['position'], 1),
+                              'impressions': b['impressions'], 'clicks': b['clicks']})
+    up = sorted([m for m in moves if m['delta'] >= 1], key=lambda m: -m['delta'])
+    down = sorted([m for m in moves if m['delta'] <= -1], key=lambda m: m['delta'])
+    return {'new': new[:limit], 'new_n': len(new), 'lost': lost[:limit], 'lost_n': len(lost), 'up': up[:limit], 'down': down[:limit]}
+
+
+def _section_of(key):
+    """steeltak.com/blog/x → /blog/ ؛ صفحه‌های سطحِ اول (/about، صفحهٔ اصلی) → «/» (ریشه)."""
+    parts = key.split('/', 2)
+    return '/' + parts[1] + '/' if len(parts) > 2 and parts[1] else '/'
+
+
+def _sections(cur, prev):
+    """بخش‌های سایت = اولین پوشهٔ نشانی (/blog/، /product/، …)؛ ۲۸ روزِ اخیر در برابرِ قبل."""
+    agg = {}
+    for which, src in (('c', cur), ('p', prev)):
+        for (_, key), r in src.items():
+            sec = _section_of(key)
+            a = agg.setdefault(sec, {'c': [0, 0, 0.0, set()], 'p': [0, 0, 0.0, set()]})[which]
+            a[0] += r['c'] or 0
+            a[1] += r['i'] or 0
+            a[2] += r['pw'] or 0
+            a[3].add(key)
+    out = []
+    for sec, v in agg.items():
+        c, p = v['c'], v['p']
+        cf, pf = _fmt(c[0], c[1], c[2]), _fmt(p[0], p[1], p[2])
+        out.append({'section': sec, 'pages': len(c[3] or p[3]), 'current': cf, 'previous': pf,
+                    'clicks_delta': cf['clicks'] - pf['clicks'],
+                    'position_delta': round(pf['position'] - cf['position'], 1) if cf['position'] and pf['position'] else None})
+    out.sort(key=lambda x: -(x['current']['clicks'] + x['previous']['clicks']))
+    return out[:15]
+
+
+def _devices(sites, cur0, end, prev0, prev1):
+    def w(a, b):
+        return {r['device']: _fmt(r['c'], r['i'], r['pw']) for r in GSCDeviceDay.objects.filter(site__in=sites, date__range=(a, b))
+                .values('device').annotate(**_agg())}
+    c, p = w(cur0, end), w(prev0, prev1)
+    label = {'MOBILE': 'موبایل', 'DESKTOP': 'دسکتاپ', 'TABLET': 'تبلت'}
+    return [{'device': label.get(d, d), 'current': c.get(d) or _fmt(0, 0, 0), 'previous': p.get(d) or _fmt(0, 0, 0)}
+            for d in ('MOBILE', 'DESKTOP', 'TABLET') if d in c or d in p]
+
+
+def _index(sites):
+    """ایندکس/کراول از URL Inspectionهای ذخیره‌شده + سایت‌مپ‌ها."""
+    from datetime import date
+    insp = list(GSCInspection.objects.filter(site__in=sites, checked_at__isnull=False))
+    if not insp and not any(s.sitemaps for s in sites):
+        return None
+    titles = {u.key: u.title for u in GSCSiteURL.objects.filter(site__in=sites, key__in=[i.key for i in insp])}
+    row = lambda i: {'url': i.url, 'key': i.key, 'title': titles.get(i.key, ''), 'coverage': i.coverage or i.error,  # noqa: E731
+                     'last_crawl': i.last_crawl.date().isoformat() if i.last_crawl else None, 'checked': i.checked_at.date().isoformat()}
+    stale = date.today() - timedelta(days=30)
+    return {'checked': len(insp), 'indexed': sum(1 for i in insp if i.indexed),
+            'not_indexed': [row(i) for i in insp if not i.indexed and not i.error][:100],
+            'stale': [row(i) for i in insp if i.indexed and i.last_crawl and i.last_crawl.date() < stale][:50],
+            'sitemaps': [m for s in sites for m in (s.sitemaps or [])]}
+
+
+def _seen_keys(sites, end, days=90):
+    return set(GSCPageDay.objects.filter(site__in=sites, date__gt=end - timedelta(days=days), impressions__gt=0)
+               .values_list('page__key', flat=True).distinct())
+
+
+def _unseen_summary(sites, end, new_days=21):
+    """به تفکیکِ نوع: کل / با نمایش / بی‌نمایش (صفحه‌های تازه‌تر از ۲۱ روز جدا شمرده می‌شوند — هنوز فرصت نداشته‌اند)."""
+    from datetime import date
+    urls = list(GSCSiteURL.objects.filter(site__in=sites).values('key', 'kind', 'published'))
+    if not urls:
+        errs = [s.inventory_error for s in sites if s.inventory_error]
+        return {'kinds': [], 'error': errs[0] if errs else '', 'pending': not any(s.inventory_at for s in sites)}
+    seen, fresh = _seen_keys(sites, end), date.today() - timedelta(days=new_days)
+    by = {}
+    for u in urls:
+        k = by.setdefault(u['kind'], {'kind': u['kind'], 'total': 0, 'seen': 0, 'unseen': 0, 'new': 0})
+        k['total'] += 1
+        if u['key'] in seen:
+            k['seen'] += 1
+        elif u['published'] and u['published'] > fresh:
+            k['new'] += 1
+        else:
+            k['unseen'] += 1
+    kinds = sorted(by.values(), key=lambda k: -k['total'])
+    return {'kinds': kinds, 'total': sum(k['total'] for k in kinds), 'unseen_total': sum(k['unseen'] for k in kinds),
+            'inventory_at': max((s.inventory_at for s in sites if s.inventory_at), default=None)}
+
+
+def unseen_pages(project, kind='', q='', include_new=False, offset=0, limit=100, new_days=21):
+    """فهرستِ صفحه‌های منتشرشدهٔ وردپرس که در ۹۰ روزِ اخیر هیچ نمایشی در گوگل نداشته‌اند (+ وضعیتِ ایندکس اگر بررسی شده)."""
+    from datetime import date
+    sites = list(GSCSite.objects.filter(project=project, active=True, synced_until__isnull=False))
+    if not sites:
+        return {'rows': [], 'total': 0}
+    end = max(s.synced_until for s in sites)
+    seen, fresh = _seen_keys(sites, end), date.today() - timedelta(days=new_days)
+    qs = GSCSiteURL.objects.filter(site__in=sites).order_by('published', 'id')
+    if kind:
+        qs = qs.filter(kind=kind)
+    if q:
+        qs = qs.filter(title__icontains=q) | qs.filter(url__icontains=q)
+    rows = [u for u in qs if u.key not in seen and (include_new or not u.published or u.published <= fresh)]
+    insp = {i.key: i for i in GSCInspection.objects.filter(site__in=sites, key__in=[u.key for u in rows[offset:offset + limit]])}
+    out = []
+    for u in rows[offset:offset + limit]:
+        i = insp.get(u.key)
+        out.append({'url': u.url, 'key': u.key, 'title': u.title, 'kind': u.kind, 'published': u.published.isoformat() if u.published else None,
+                    'index': None if not i or not i.checked_at else {'indexed': i.indexed, 'coverage': i.coverage or i.error,
+                                                                     'last_crawl': i.last_crawl.date().isoformat() if i.last_crawl else None}})
+    return {'rows': out, 'total': len(rows), 'offset': offset, 'site': sites[0].pk}
