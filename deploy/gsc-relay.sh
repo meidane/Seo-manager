@@ -43,11 +43,12 @@ ln -sf /etc/nginx/sites-available/gsc-relay /etc/nginx/sites-enabled/gsc-relay
 nginx -t
 systemctl reload nginx
 
+# فایروال قبل از certbot (وگرنه تأییدِ دامنه روی پورتِ 80 شکست می‌خورد)
+if command -v ufw >/dev/null && ufw status | grep -q active; then ufw allow 80/tcp; ufw allow 443/tcp; fi
+
 # HTTPS (certbot همین server را به 443 می‌برد و 80 را به https ریدایرکت می‌کند)
 certbot --nginx -d "${DOMAIN}" --non-interactive --agree-tos -m "${EMAIL}" --redirect
 systemctl reload nginx
-
-if command -v ufw >/dev/null && ufw status | grep -q active; then ufw allow 80/tcp; ufw allow 443/tcp; fi
 
 echo
 echo "✅ واسط آماده است: https://${DOMAIN}"
