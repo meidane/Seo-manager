@@ -15,7 +15,7 @@ from projects.access import accessible_project_ids
 
 from . import analysis
 from .client import GSCError
-from .models import GSCAccount, GSCPageDay, GSCSite
+from .models import GSCAccount, GSCCredential, GSCPageDay, GSCSite
 from .sync import refresh_sites, sync_account
 
 PERM = 'manage_api_tokens'
@@ -27,7 +27,7 @@ def _acc(org):
 
 def _site_row(s):
     return {'id': s.id, 'url': s.site_url, 'project': s.project_id, 'active': s.active, 'permission': s.permission,
-            'synced_until': s.synced_until.isoformat() if s.synced_until else '', 'error': s.last_error}
+            'credential': s.credential_id, 'synced_until': s.synced_until.isoformat() if s.synced_until else '', 'error': s.last_error}
 
 
 @login_required
@@ -43,6 +43,8 @@ def page(request):
         'page_title': 'سرچ کنسول', 'acc': acc,
         'sites': [{**_site_row(s), 'pages': counts[s.id]} for s in sites],
         'projects': Project.objects.filter(personal_owner__isnull=True).order_by('status', 'name'),
+        'creds': GSCCredential.objects.filter(organization=org),
+        'has_key': bool(acc.credentials_enc) or GSCCredential.objects.filter(organization=org).exists(),
     })
 
 
@@ -60,12 +62,9 @@ def save(request):
     acc = _acc(org)
     d = _body(request)
     if d.get('json'):
-        try:
-            cred = json.loads(d['json'])
-        except ValueError:
-            return JsonResponse({'detail': 'فایلِ JSON معتبر نیست'}, status=400)
-        if cred.get('type') != 'service_account' or not cred.get('private_key'):
-            return JsonResponse({'detail': 'این فایل کلیدِ Service Account نیست (type=service_account)'}, status=400)
+        cred, err = _parse_key(d['json'])
+        if err:
+            return JsonResponse({'detail': err}, status=400)
         acc.credentials = cred
     if 'proxy' in d:
         acc.proxy = (d.get('proxy') or '').strip()
@@ -98,7 +97,7 @@ def sync_now(request):
     acc = _acc(org)
     if acc.syncing:
         return JsonResponse({'detail': 'همگام‌سازی در حالِ اجراست'}, status=409)
-    if not acc.credentials_enc:
+    if not acc.credentials_enc and not GSCCredential.objects.filter(organization=org).exists():
         return JsonResponse({'detail': 'اول کلید را ثبت کن'}, status=400)
 
     def run():
@@ -129,8 +128,43 @@ def site_update(request, pk):
         s.project_id = int(d['project']) if d.get('project') else None
     if 'active' in d:
         s.active = bool(d['active'])
+    if 'credential' in d:
+        s.credential = get_object_or_404(GSCCredential, pk=d['credential'], organization=org) if d.get('credential') else None
     s.save()
     return JsonResponse({'site': _site_row(s)})
+
+
+def _parse_key(raw):
+    try:
+        cred = json.loads(raw or '')
+    except ValueError:
+        return None, 'فایلِ JSON معتبر نیست'
+    if cred.get('type') != 'service_account' or not cred.get('private_key'):
+        return None, 'این فایل کلیدِ Service Account نیست (type=service_account)'
+    return cred, ''
+
+
+@login_required
+@require_http_methods(['POST'])
+def cred_add(request):
+    """کلیدِ اضافه برای سایت‌های پرداده (body: {name, json})."""
+    org = require_perm(request, PERM)
+    d = _body(request)
+    cred, err = _parse_key(d.get('json'))
+    if err:
+        return JsonResponse({'detail': err}, status=400)
+    c = GSCCredential(organization=org, name=(d.get('name') or cred.get('client_email', ''))[:80])
+    c.credentials = cred
+    c.save()
+    return JsonResponse({'id': c.id, 'email': c.client_email})
+
+
+@login_required
+@require_http_methods(['POST'])
+def cred_delete(request, pk):
+    org = require_perm(request, PERM)
+    get_object_or_404(GSCCredential, pk=pk, organization=org).delete()   # سایت‌هایش به کلیدِ اصلی برمی‌گردند (SET_NULL)
+    return JsonResponse({'ok': True})
 
 
 @login_required

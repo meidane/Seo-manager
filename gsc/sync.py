@@ -6,30 +6,36 @@ from django.db import transaction
 from django.utils import timezone
 
 from .client import Client, GSCError
-from .models import GSCAccount, GSCPageDay, GSCQueryDay, GSCSite
+from .models import GSCAccount, GSCCredential, GSCPageDay, GSCQueryDay, GSCSite
 from .urls_norm import host_of, page_key
 
-CHUNK_DAYS = 30
+CHUNK_DAYS = 1   # روز‌به‌روز: هر درخواست سبک‌تر (سهمیهٔ «بار»ِ گوگل) و سقفِ ردیفِ هر پاسخ کمتر پر می‌شود
 
 
 def refresh_sites(acc):
-    """propertyهای قابلِ‌دسترس → GSCSite؛ پروژهٔ هم‌دامنه خودکار جفت می‌شود (اگر هنوز دستی تعیین نشده)."""
+    """propertyهای قابلِ‌دسترسِ کلیدِ اصلی و کلیدهای اضافه → GSCSite؛ پروژهٔ هم‌دامنه خودکار جفت می‌شود (اگر هنوز دستی تعیین نشده).
+    سایتی که فقط یک کلیدِ اضافه آن را می‌بیند، خودکار به همان کلید وصل می‌شود."""
     from projects.models import Project
-    entries = Client(acc).sites()
     by_dom = {}
     for p in Project.all_objects.filter(organization=acc.organization, personal_owner__isnull=True, deleted_at__isnull=True):
         if p.domain:
             by_dom.setdefault(host_of(p.domain), p)
-    seen = []
-    for e in entries:
-        if e.get('permissionLevel') == 'siteUnverifiedUser':
-            continue
-        s, _ = GSCSite.objects.get_or_create(organization=acc.organization, site_url=e['siteUrl'])
-        s.permission = e.get('permissionLevel', '')
-        if not s.project_id:
-            s.project = by_dom.get(host_of(e['siteUrl']))
-        s.save()
-        seen.append(s.pk)
+    seen, main_seen = [], set()
+    keys = ([None] if acc.credentials_enc else []) + list(GSCCredential.objects.filter(organization=acc.organization))
+    for cred in keys:
+        for e in Client(acc, cred).sites():
+            if e.get('permissionLevel') == 'siteUnverifiedUser':
+                continue
+            s, _ = GSCSite.objects.get_or_create(organization=acc.organization, site_url=e['siteUrl'])
+            if cred is None:
+                main_seen.add(s.pk)
+            elif s.pk not in main_seen and not s.credential_id:
+                s.credential = cred
+            s.permission = e.get('permissionLevel', '')
+            if not s.project_id:
+                s.project = by_dom.get(host_of(e['siteUrl']))
+            s.save()
+            seen.append(s.pk)
     return GSCSite.objects.filter(pk__in=seen)
 
 
@@ -72,13 +78,15 @@ def sync_account(acc, site_ids=None, log=print):
     acc.save(update_fields=['syncing'])
     total, err = 0, ''
     try:
-        client = Client(acc)
         refresh_sites(acc)
+        clients = {}
         qs = GSCSite.objects.filter(organization=acc.organization, active=True)
         qs = qs.filter(pk__in=site_ids) if site_ids else qs.filter(project__isnull=False)
         for s in qs:
             try:
-                n = sync_site(client, s, acc.days_back)
+                if s.credential_id not in clients:
+                    clients[s.credential_id] = Client(acc, s.credential)
+                n = sync_site(clients[s.credential_id], s, acc.days_back)
                 total += n
                 log(f'{s.site_url}: {n} ردیف')
             except GSCError as e:
@@ -97,6 +105,8 @@ def sync_account(acc, site_ids=None, log=print):
 
 
 def run_all(log=print):
-    for acc in GSCAccount.objects.exclude(credentials_enc=''):
+    for acc in GSCAccount.objects.all():
+        if not acc.credentials_enc and not GSCCredential.objects.filter(organization=acc.organization).exists():
+            continue
         log(f'— {acc.organization}')
         sync_account(acc, log=log)

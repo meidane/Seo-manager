@@ -11,6 +11,8 @@ urlpatterns = [
     path('settings/gsc/sync/', views.sync_now, name='sync'),
     path('settings/gsc/status/', views.status, name='status'),
     path('settings/gsc/site/<int:pk>/', views.site_update, name='site_update'),
+    path('settings/gsc/key/', views.cred_add, name='cred_add'),
+    path('settings/gsc/key/<int:pk>/delete/', views.cred_delete, name='cred_delete'),
     path('gsc/api/task/<int:pk>/', views.task_api, name='task_api'),
     path('gsc/api/project/<int:pk>/', views.project_api, name='project_api'),
 ]

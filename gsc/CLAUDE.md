@@ -3,6 +3,11 @@
 اتصال با **Service Account** (کلیدِ JSON، رمزنگاری‌شده در `GSCAccount.credentials_enc`) + **پراکسیِ اختیاری** (`GSCAccount.proxy`،
 برای سرورِ ایران → واسطِ خارج؛ همهٔ درخواست‌ها از آن می‌روند). کلاینت (`client.py`) JWT را با `cryptography` امضا می‌کند — بدونِ
 وابستگیِ تازه. توکن ۵۰ دقیقه در cache.
+- **تلهٔ پراکسی (بیت‌مان زد):** `requests` پراکسیِ متغیرهای محیطی (`HTTPS_PROXY`) را بر `Session.proxies` مقدم می‌کند → پراکسیِ پنل بی‌اثر
+  می‌شد. با پراکسی، `trust_env=False`.
+- **چند کلید:** `GSCCredential` (کلیدهای اضافه، ترجیحاً در پروژهٔ دیگرِ Google Cloud برای سایتِ پرداده) + `GSCSite.credential`
+  (خالی = کلیدِ اصلیِ `GSCAccount`). `refresh_sites` همهٔ کلیدها را می‌گردد؛ سایتی که فقط کلیدِ اضافه می‌بیند خودکار به آن وصل می‌شود.
+- **سهمیه:** درخواست‌ها روز‌به‌روز (`CHUNK_DAYS=1`)، مکثِ `PAUSE` بینشان، و تلاشِ دوباره با تأخیرِ نمایی روی 429/5xx/403ِ quota.
 
 ## داده (`models.py`, `sync.py`)
 - `GSCSite` = property (`sc-domain:x.com` یا `https://x.com/`)؛ با دامنهٔ پروژه **خودکار جفت** می‌شود (`refresh_sites`)، دستی هم از

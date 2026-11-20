@@ -112,3 +112,16 @@ cd /var/www/teams
 0 4 * * * cd /path/to/Seo-manager && .venv/bin/python manage.py gsc_sync >> /var/log/gsc_sync.log 2>&1
 ```
 اگر سرور به گوگل دسترسی ندارد، در `/settings/gsc/` فیلدِ «پراکسی» را با آدرسِ یک پراکسیِ HTTP روی سرورِ خارج پر کن.
+
+### پراکسیِ سرچ کنسول روی سرورِ خارج (tinyproxy)
+```
+sudo apt install -y tinyproxy
+# در /etc/tinyproxy/tinyproxy.conf:
+#   Port 8888
+#   Allow <IP سرورِ ایران>
+#   BasicAuth gsc <رمزِ قوی>
+sudo systemctl restart tinyproxy
+sudo ufw allow from <IP سرورِ ایران> to any port 8888 proto tcp
+```
+تست از سرورِ ایران: `curl -x http://gsc:<رمز>@<IP خارج>:8888 -I https://oauth2.googleapis.com/token` (هر پاسخِ HTTP یعنی وصل است).
+در پنل: `http://gsc:<رمز>@<IP خارج>:8888`.

@@ -40,11 +40,30 @@ class GSCAccount(models.Model):
         self.client_email = (data or {}).get('client_email', '')
 
 
+class GSCCredential(models.Model):
+    """کلیدِ اضافه (Service Account دیگر، ترجیحاً در پروژهٔ دیگرِ Google Cloud) برای سایت‌های پرداده — تا سهمیهٔ پروژهٔ
+    اصلی مصرف نشود. هر `GSCSite` می‌تواند کلیدِ خودش را داشته باشد؛ خالی = کلیدِ اصلیِ `GSCAccount`."""
+    organization = models.ForeignKey('accounts.Organization', on_delete=models.CASCADE, related_name='+')
+    name = models.CharField(max_length=80)
+    credentials_enc = models.TextField()
+    client_email = models.CharField(max_length=300, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    credentials = GSCAccount.credentials
+
+    class Meta:
+        ordering = ['id']
+
+    def __str__(self):
+        return self.name
+
+
 class GSCSite(models.Model):
     organization = models.ForeignKey('accounts.Organization', on_delete=models.CASCADE, related_name='+')
     site_url = models.CharField(max_length=300)
     permission = models.CharField(max_length=40, blank=True)
     project = models.ForeignKey('projects.Project', on_delete=models.SET_NULL, null=True, blank=True, related_name='gsc_sites')
+    credential = models.ForeignKey(GSCCredential, on_delete=models.SET_NULL, null=True, blank=True, related_name='sites')
     active = models.BooleanField(default=True)
     synced_until = models.DateField(null=True, blank=True)   # آخرین روزِ ذخیره‌شده
     first_date = models.DateField(null=True, blank=True)

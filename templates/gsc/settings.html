@@ -27,29 +27,46 @@
     </div>
     <div class="gsc-actions">
       <button class="btn btn-p" id="g-save">ذخیره</button>
-      <button class="btn" id="g-test"{% if not acc.client_email %} disabled{% endif %}>{% icon 'refresh' %} تست و دریافتِ سایت‌ها</button>
-      <button class="btn" id="g-sync"{% if not acc.client_email %} disabled{% endif %}>{% icon 'sync' %} همگام‌سازیِ الان</button>
+      <button class="btn" id="g-test"{% if not has_key %} disabled{% endif %}>{% icon 'refresh' %} تست و دریافتِ سایت‌ها</button>
+      <button class="btn" id="g-sync"{% if not has_key %} disabled{% endif %}>{% icon 'sync' %} همگام‌سازیِ الان</button>
       <span class="zero" id="g-state">{% if acc.syncing %}در حالِ همگام‌سازی…{% elif acc.last_sync %}آخرین همگام‌سازی {{ acc.last_sync|timeago }}{% endif %}</span>
     </div>
     <div class="gsc-err" id="g-err"{% if not acc.last_error %} hidden{% endif %}>{% icon 'warning' %} <span>{{ acc.last_error }}</span></div>
     <p class="mcp-hint" style="padding:0 17px 14px">همگام‌سازیِ خودکارِ شبانه: روی سرور <code dir="ltr">python manage.py gsc_sync</code> را در cron بگذار (مثلاً هر شب ساعت ۴). دادهٔ گوگل ۲ تا ۳ روز تأخیر دارد.</p>
   </section>
 
+  <section class="card glass" style="margin-bottom:14px">
+    <div class="card-h"><h3>کلیدهای اضافه</h3><span class="zero">برای سایتِ پرداده: یک Service Account در <b>پروژهٔ دیگرِ</b> Google Cloud تا سهمیهٔ پروژهٔ اصلی مصرف نشود</span></div>
+    <div class="gsc-keys">
+      {% for c in creds %}<div class="gsc-key"><b>{{ c.name }}</b> <span dir="ltr" class="zero">{{ c.client_email }}</span>
+        <span class="zero">· {{ c.sites.count|fa_digits }} سایت</span>
+        <button class="mini g-kdel" data-id="{{ c.id }}" style="margin-inline-start:auto;color:var(--danger)" title="حذف — سایت‌هایش به کلیدِ اصلی برمی‌گردند">{% icon 'trash' %}</button></div>
+      {% empty %}<div class="zero">کلیدِ اضافه‌ای نیست؛ همهٔ سایت‌ها با کلیدِ اصلی همگام می‌شوند.</div>{% endfor %}
+    </div>
+    <div class="gsc-form">
+      <div class="field" style="max-width:240px"><label>نام</label><input class="input" id="k-name" placeholder="مثلاً کلیدِ استیل تک"></div>
+      <div class="field"><label>فایلِ کلید (JSON)</label><input type="file" id="k-file" accept=".json,application/json"></div>
+    </div>
+    <div class="gsc-actions"><button class="btn" id="k-add">{% icon 'plus' %} افزودنِ کلید</button>
+      <span class="zero">بعد: ایمیلِ این کلید را در سرچ کنسولِ همان سایت اضافه کن، «تست» بزن و در جدولِ پایین کلیدِ سایت را انتخاب کن.</span></div>
+  </section>
+
   <section class="card glass">
     <div class="card-h"><h3>سایت‌ها</h3><span class="zero">فقط سایت‌های جفت‌شده با پروژه همگام می‌شوند</span></div>
     <div class="tscroll"><table>
-      <thead><tr><th>property</th><th>پروژه</th><th>دادهٔ ذخیره‌شده تا</th><th>صفحه‌ها</th><th>فعال</th></tr></thead>
+      <thead><tr><th>property</th><th>پروژه</th><th>کلید</th><th>دادهٔ ذخیره‌شده تا</th><th>صفحه‌ها</th><th>فعال</th></tr></thead>
       <tbody id="g-sites">
       {% for s in sites %}
         <tr data-id="{{ s.id }}">
           <td dir="ltr" style="text-align:right">{{ s.url }}{% if s.error %}<div class="gsc-err-s" title="{{ s.error }}">{{ s.error|truncatechars:90 }}</div>{% endif %}</td>
           <td><select class="g-proj"><option value="">— جفت نشده —</option>{% for p in projects %}<option value="{{ p.id }}"{% if p.id == s.project %} selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></td>
+          <td><select class="g-cred"><option value="">اصلی</option>{% for c in creds %}<option value="{{ c.id }}"{% if c.id == s.credential %} selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></td>
           <td>{% if s.synced_until %}{{ s.synced_until }}{% else %}<span class="zero">—</span>{% endif %}</td>
           <td>{{ s.pages|fa_digits }}</td>
           <td><input type="checkbox" class="g-active"{% if s.active %} checked{% endif %}></td>
         </tr>
       {% empty %}
-        <tr><td colspan="5" class="zero" style="text-align:center;padding:20px">هنوز سایتی دریافت نشده — کلید را ذخیره و «تست» بزن.</td></tr>
+        <tr><td colspan="6" class="zero" style="text-align:center;padding:20px">هنوز سایتی دریافت نشده — کلید را ذخیره و «تست» بزن.</td></tr>
       {% endfor %}
       </tbody>
     </table></div>
@@ -72,6 +89,15 @@
       App.toast(`${r.sites.length} سایت پیدا شد`, 'ok'); setTimeout(() => location.reload(), 700);
     } catch (e) { err((e.data && e.data.detail) || 'اتصال ناموفق'); }
   };
+  $('k-add').onclick = async () => {
+    const f = $('k-file').files[0]; if (!f) return App.toast('فایلِ JSON را انتخاب کن', 'warn');
+    const r = await App.fetchJSON('{% url "gsc:cred_add" %}', {method: 'POST', body: {name: $('k-name').value, json: await f.text()}});
+    App.toast('کلید اضافه شد — ' + r.email, 'ok'); setTimeout(() => location.reload(), 700);
+  };
+  document.querySelectorAll('.g-kdel').forEach(b => b.onclick = async () => {
+    if (!await App.confirm('این کلید حذف شود؟ سایت‌هایش با کلیدِ اصلی همگام می‌شوند.', {okText: 'حذف'})) return;
+    await App.fetchJSON(`/settings/gsc/key/${b.dataset.id}/delete/`, {method: 'POST'}); location.reload();
+  });
   let poll;
   const watch = () => { clearInterval(poll); poll = setInterval(async () => {
     const r = await (await fetch('{% url "gsc:status" %}')).json();
@@ -84,6 +110,7 @@
     const send = body => App.fetchJSON(`/settings/gsc/site/${tr.dataset.id}/`, {method: 'POST', body}).then(() => App.toast('ذخیره شد', 'ok'));
     tr.querySelector('.g-proj').onchange = e => send({project: e.target.value || null});
     tr.querySelector('.g-active').onchange = e => send({active: e.target.checked});
+    tr.querySelector('.g-cred').onchange = e => send({credential: e.target.value || null});
   });
 })();
 </script>

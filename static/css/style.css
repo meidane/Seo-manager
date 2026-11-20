@@ -2262,3 +2262,5 @@ em.down{color:var(--danger)}
 @media(max-width:700px){.gsc-mt,.gsc-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.gsc-pg{max-width:180px}}
 .gsc-mt.compact{display:flex;gap:4px;flex-wrap:wrap}
 .gsc-mt.compact .gsc-m{flex-direction:row;padding:4px 12px;border-radius:20px}
+.gsc-keys{display:flex;flex-direction:column;gap:6px;padding:12px 17px 4px}
+.gsc-key{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border:1px solid var(--stroke-soft);border-radius:9px;padding:7px 10px;font-size:13px}

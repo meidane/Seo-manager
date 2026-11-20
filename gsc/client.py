@@ -12,6 +12,7 @@ from django.core.cache import cache
 
 SCOPE = 'https://www.googleapis.com/auth/webmasters.readonly'
 API = 'https://www.googleapis.com/webmasters/v3'
+PAUSE = 0.3   # مکثِ کوتاه بینِ درخواست‌ها تا به سقفِ دقیقه‌ای نخوریم
 
 
 class GSCError(Exception):
@@ -23,13 +24,16 @@ def _b64(b):
 
 
 class Client:
-    def __init__(self, account):
+    def __init__(self, account, credential=None):
+        """credential = GSCCredential (کلیدِ اضافه) یا None (کلیدِ اصلیِ حساب). پراکسی همیشه از حساب."""
         self.acc = account
-        self.cred = account.credentials or {}
+        self.cred = (credential.credentials if credential else account.credentials) or {}
         if not self.cred.get('private_key') or not self.cred.get('client_email'):
             raise GSCError('کلیدِ Service Account ثبت نشده یا ناقص است')
         self.s = requests.Session()
         if account.proxy:
+            # تله: requests پراکسیِ متغیرهای محیطی (HTTPS_PROXY) را بر proxiesِ سشن مقدم می‌کند → trust_env خاموش
+            self.s.trust_env = False
             self.s.proxies = {'https': account.proxy, 'http': account.proxy}
 
     def _token(self):
@@ -46,7 +50,9 @@ class Client:
         try:
             r = self.s.post(uri, data={'grant_type': 'urn:ietf:params:oauth:grant-type:jwt-bearer', 'assertion': jwt}, timeout=30)
         except requests.RequestException as e:
-            raise GSCError(f'اتصال به گوگل برقرار نشد ({type(e).__name__}) — اگر سرور در ایران است پراکسی لازم است') from e
+            hint = ('پراکسی جواب نداد — آدرس/پورت/رمزِ پراکسی و فایروالِ سرورِ خارج را چک کن' if self.acc.proxy
+                    else 'اگر سرور در ایران است پراکسی لازم است')
+            raise GSCError(f'اتصال به گوگل برقرار نشد ({type(e).__name__}) — {hint}') from e
         if r.status_code != 200:
             raise GSCError(f'گرفتنِ توکن ناموفق ({r.status_code}): {r.text[:300]}')
         tok = r.json()['access_token']
@@ -54,10 +60,21 @@ class Client:
         return tok
 
     def _req(self, method, path, body=None):
-        try:
-            r = self.s.request(method, API + path, json=body, timeout=90, headers={'Authorization': 'Bearer ' + self._token()})
-        except requests.RequestException as e:
-            raise GSCError(f'اتصال به API سرچ کنسول برقرار نشد ({type(e).__name__})') from e
+        # سهمیه: 429/500/503 یا 403ِ «quota/rate» → صبر و تلاشِ دوباره (۲، ۴، ۸، ۱۶، ۳۲ ثانیه)
+        for attempt in range(6):
+            try:
+                r = self.s.request(method, API + path, json=body, timeout=90, headers={'Authorization': 'Bearer ' + self._token()})
+            except requests.RequestException as e:
+                if attempt < 2:
+                    time.sleep(3)
+                    continue
+                raise GSCError(f'اتصال به API سرچ کنسول برقرار نشد ({type(e).__name__})') from e
+            quota = r.status_code == 403 and any(w in r.text.lower() for w in ('quota', 'rate limit', 'ratelimit'))
+            if (r.status_code in (429, 500, 503) or quota) and attempt < 5:
+                time.sleep(2 ** (attempt + 1))
+                continue
+            break
+        time.sleep(PAUSE)
         if r.status_code >= 400:
             try:
                 msg = r.json().get('error', {}).get('message', '')
