@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% load seo_extras %}
+{% block title %}بازخوردِ اسکیل‌ها{% endblock %}
+
+{% block content %}
+{% comment %}
+بازخورد برای بهبودِ اسکیل‌ها (`skills/feedback.py` + ابزارِ MCPِ `skill_feedback`). بالا: هشدارِ تکرار + شمارِ نوع/اسکیل (کلیک = فیلتر)؛
+پایین: فهرست با عمل‌های «افزودن به اسکیل» / «حل شد» / «نادیده» / «بازکردن» / حذف (`api_feedback`، پرمیشنِ manage_skills).
+{% endcomment %}
+  <div class="page-h"><h1>بازخوردِ اسکیل‌ها</h1>
+    <div class="side-c">
+      {% if fskill %}<a href="{% url 'skills:index' %}?s={{ fskill.id }}" class="btn">{% icon 'book' %} اسکیلِ «ثبتِ بازخورد»</a>{% endif %}
+      <a href="{% url 'skills:index' %}" class="btn">بازگشت به اسکیل‌ها</a>
+    </div>
+  </div>
+
+  {% if alarms %}
+  <div class="fb-alarms">
+    {% for a in alarms %}
+      <a class="fb-alarm" href="?status=open&kind={{ a.kind }}{% if a.skill %}&skill={{ a.skill }}{% else %}&skill=none{% endif %}">
+        {% icon 'warning' %} <b>{{ a.kind_label }}</b>{% if a.skill_title %} در «{{ a.skill_title }}»{% endif %} — {{ a.n }} بار در ۷ روزِ اخیر
+      </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="fb-sum">
+    <div class="card glass fb-box">
+      <div class="fb-bh">بازها بر اساسِ نوع</div>
+      {% for k in by_kind %}<a href="?status=open&kind={{ k.kind }}" class="fb-bar{% if f_kind == k.kind %} on{% endif %}"><span>{{ k.label }}</span><b>{{ k.n }}</b></a>
+      {% empty %}<div class="fb-none">موردِ بازی نیست</div>{% endfor %}
+    </div>
+    <div class="card glass fb-box">
+      <div class="fb-bh">بازها بر اساسِ اسکیل</div>
+      {% for k in by_skill %}<a href="?status=open&skill={{ k.skill_id|default:'none' }}" class="fb-bar{% if f_skill == k.skill_id|stringformat:'s' %} on{% endif %}"><span>{{ k.skill__title|default:'بدونِ اسکیل' }}</span><b>{{ k.n }}</b></a>
+      {% empty %}<div class="fb-none">موردِ بازی نیست</div>{% endfor %}
+    </div>
+  </div>
+
+  <div class="card glass">
+    <form class="fb-filters" method="get">
+      <input type="hidden" name="status" value="{{ f_status }}">{% if f_skill %}<input type="hidden" name="skill" value="{{ f_skill }}">{% endif %}
+      <div class="sk-seg fb-seg">
+        {% for v, l, n in statuses %}<button name="status" value="{{ v }}" class="{% if f_status == v %}on{% endif %}">{{ l }} <span>{{ n }}</span></button>{% endfor %}
+        <button name="status" value="all" class="{% if f_status == 'all' %}on{% endif %}">همه</button>
+      </div>
+      <select name="kind" onchange="this.form.submit()"><option value="">همهٔ نوع‌ها</option>
+        {% for v, l in kinds %}<option value="{{ v }}"{% if f_kind == v %} selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+      {% if f_kind or f_skill %}<a href="?status={{ f_status }}" class="btn btn-sm">پاک‌کردنِ فیلتر</a>{% endif %}
+    </form>
+
+    <div class="fb-list">
+      {% for f in rows %}
+      <div class="fb-it st-{{ f.status }}" data-id="{{ f.id }}">
+        <div class="fb-top">
+          <span class="tag fb-k k-{{ f.kind }}">{{ f.kind_label }}</span>
+          {% if f.skill %}<a class="fb-sk" href="{% url 'skills:index' %}?s={{ f.skill_id }}">{% icon 'book' %} {{ f.skill.title }}</a>{% endif %}
+          {% if f.project %}<span class="fb-meta">{{ f.project.name }}</span>{% endif %}
+          <span class="fb-meta fb-when" title="{{ f.created_at|jalali:'%Y/%m/%d %H:%M' }}">{{ f.created_at|timeago }}</span>
+        </div>
+        <div class="fb-sum-t">{{ f.summary }}</div>
+        {% if f.request %}<blockquote class="fb-req">{{ f.request|linebreaksbr }}</blockquote>{% endif %}
+        {% if f.suggestion %}<div class="fb-sug"><b>پیشنهاد:</b> {{ f.suggestion|linebreaksbr }}</div>{% endif %}
+        {% if f.status != 'open' %}<div class="fb-meta">{{ f.get_status_display }}{% if f.resolved_by %} — {{ f.resolved_by.get_full_name|default:f.resolved_by.username }}{% endif %}{% if f.resolved_at %}، {{ f.resolved_at|timeago }}{% endif %}</div>{% endif %}
+        {% if can_edit %}
+        <div class="fb-act">
+          {% if f.status == 'open' %}
+            {% if f.skill and f.suggestion %}<button class="btn btn-sm btn-p" data-act="append">{% icon 'plus' %} افزودن به اسکیل</button>{% endif %}
+            <button class="btn btn-sm" data-act="resolve">{% icon 'check' %} حل شد</button>
+            <button class="btn btn-sm" data-act="dismiss">نادیده</button>
+          {% else %}
+            <button class="btn btn-sm" data-act="reopen">{% icon 'refresh' %} بازکردن</button>
+          {% endif %}
+          <button class="btn btn-sm btn-ghost" data-act="delete" title="حذف">{% icon 'trash' %}</button>
+        </div>
+        {% endif %}
+      </div>
+      {% empty %}
+        <div class="empty"><div class="ico">{% icon 'comment' %}</div><h4>بازخوردی نیست</h4>
+          هوش مصنوعی طبقِ اسکیلِ «ثبتِ بازخورد» اشتباه‌ها را این‌جا ثبت می‌کند.</div>
+      {% endfor %}
+    </div>
+    {% include "components/_pagination.html" %}
+  </div>
+
+<script>
+document.querySelector('.fb-list').addEventListener('click', async e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const it = b.closest('.fb-it'), act = b.dataset.act;
+  if (act === 'delete' && !confirm('این بازخورد حذف شود؟')) return;
+  if (act === 'append' && !confirm('پیشنهاد به تهِ متنِ اسکیل اضافه شود؟ (نسخهٔ تازه ساخته می‌شود)')) return;
+  const r = await App.fetchJSON(`{% url 'skills:api_feedback' 0 %}`.replace('/0/', `/${it.dataset.id}/`), {method: 'POST', body: {action: act}});
+  if (!r) return;
+  App.toast({append: 'به اسکیل اضافه شد', resolve: 'حل شد', dismiss: 'نادیده گرفته شد', reopen: 'دوباره باز شد', delete: 'حذف شد'}[act]);
+  it.remove();
+});
+</script>
+{% endblock %}

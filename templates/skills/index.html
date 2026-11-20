@@ -9,6 +9,7 @@
 {% endcomment %}
   <div class="page-h"><h1>اسکیل‌ها</h1>
     <div class="side-c">
+      <a href="{% url 'skills:feedback' %}" class="btn">{% icon 'comment' %} بازخوردها{% if fb_open %} <span class="sk-fbn">{{ fb_open }}</span>{% endif %}</a>
       {% if can_edit %}<button class="btn btn-p" id="sk-new">{% icon 'plus' %} اسکیلِ جدید</button>{% endif %}
     </div>
   </div>

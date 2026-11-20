@@ -71,4 +71,5 @@ ICONS = {
     'percent': ('percent', 'regular'),
     'trophy': ('trophy', 'regular'),
     'trend-down': ('chart-line-down', 'regular'),
+    'comment': ('comment-alt-lines', 'regular'),
 }

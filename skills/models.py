@@ -42,6 +42,8 @@ class Skill(models.Model):
     task_types = models.ManyToManyField('tasks.TaskTypeDef', verbose_name='انواعِ تسک', blank=True, related_name='skills')
     order = models.PositiveIntegerField('ترتیب', default=0)
     active = models.BooleanField('فعال', default=True)
+    # اسکیلِ سیستمیِ پیش‌فرض (مثلاً 'feedback' = راهنمای ثبتِ بازخورد) — با تغییرِ عنوان دوباره ساخته نشود
+    key = models.CharField(max_length=40, blank=True, db_index=True)
     updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     deleted_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -145,3 +147,45 @@ class SkillFile(models.Model):
     def public_path(self):
         from urllib.parse import quote
         return f'/skills/f/{self.token}/{quote(self.name)}'
+
+
+class SkillFeedback(models.Model):
+    """بازخورد برای بهبودِ اسکیل‌ها: اشتباه/کمبودی که هوش مصنوعی در گفتگو با نویسنده دید (ابزارِ MCPِ `skill_feedback`)
+    یا مدیر دستی ثبت کرد. فعلاً نویسنده معلوم نیست (حسابِ ChatGPTِ مشترک). صفحه: `/skills/feedback/`."""
+    CONFLICT, MISSING, REWORK, GUESS, QUALITY, OTHER = 'conflict', 'missing', 'rework', 'guess', 'quality', 'other'
+    KINDS = [(CONFLICT, 'خلافِ اسکیل'), (MISSING, 'اطلاعاتِ ناقص'), (REWORK, 'دوباره‌کاری'), (GUESS, 'حدس/ابهام'),
+             (QUALITY, 'کیفیتِ درخواست'), (OTHER, 'سایر')]
+    OPEN, RESOLVED, DISMISSED = 'open', 'resolved', 'dismissed'
+    STATUSES = [(OPEN, 'باز'), (RESOLVED, 'حل شد'), (DISMISSED, 'نادیده')]
+
+    organization = models.ForeignKey('accounts.Organization', on_delete=models.CASCADE, null=True, blank=True, related_name='+')
+    kind = models.CharField('نوع', max_length=12, choices=KINDS, default=OTHER)
+    skill = models.ForeignKey(Skill, verbose_name='اسکیل', on_delete=models.SET_NULL, null=True, blank=True, related_name='feedback')
+    project = models.ForeignKey('projects.Project', verbose_name='پروژه', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    summary = models.CharField('خلاصه', max_length=300)
+    suggestion = models.TextField('پیشنهادِ اصلاح', blank=True)
+    request = models.TextField('بخشی از درخواست', blank=True)
+    source = models.CharField(max_length=8, default='mcp')   # mcp | web
+    status = models.CharField('وضعیت', max_length=10, choices=STATUSES, default=OPEN, db_index=True)
+    resolved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    objects = TenantManager()
+    all_objects = models.Manager()
+
+    class Meta:
+        ordering = ['-id']
+        verbose_name = 'بازخوردِ اسکیل'
+        verbose_name_plural = 'بازخوردهای اسکیل'
+
+    def save(self, *args, **kwargs):
+        stamp_org(self)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.summary
+
+    @property
+    def kind_label(self):
+        return dict(self.KINDS).get(self.kind, self.kind)

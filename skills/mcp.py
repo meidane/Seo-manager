@@ -5,6 +5,7 @@
 - skills_start      ← تشخیصِ پروژه/نوع از هر سرنخ (text/site/task/project) + متنِ کاملِ اسکیل‌های لازم (`text.detect/select`)
 - skills_list / skill_get / skill_save / skill_delete / skill_history / skill_restore
 - skill_file_get / skill_file_save / skill_file_delete  ← ضمیمه‌ها (کد/عکسِ نمونه)
+- skill_feedback    ← ثبتِ بازخورد برای بهبودِ اسکیل‌ها (`feedback.py`؛ صفحهٔ `/skills/feedback/`)
 - کمکی‌های مشترک با وب: file_row, save_file_bytes, restore_version
 نوشتن‌ها داخلِ `journal.Batch` → در لاگِ MCP و قابلِ بازگردانی. فعلاً بدونِ محدودیتِ نقش (خواستِ کاربر).
 """
@@ -51,6 +52,10 @@ TOOLS = [
      'inputSchema': obj({'skill': S('integer'), 'name': S('string'), 'text': S('string'), 'base64': S('string'), 'url': S('string'),
                          'note': S('string')}, ['skill', 'name'])},
     {'name': 'skill_file_delete', 'description': 'حذفِ فایلِ ضمیمه (قابلِ بازگردانی).', 'inputSchema': obj({'ids': S('array')}, ['ids'])},
+    {'name': 'skill_feedback', 'description': 'ثبتِ بازخورد برای بهبودِ اسکیل‌ها (طبقِ اسکیلِ «ثبتِ بازخورد»): اشتباه/کمبودی که درخواستِ کاربر '
+     'کیفیت را پایین آورد. kind: conflict|missing|rework|guess|quality|other. کار را متوقف نکن، فقط ثبت کن.',
+     'inputSchema': obj({'items': S('array', '[{kind, summary (یک جمله), skill (id یا عنوان)?, project?, suggestion (قاعدهٔ پیشنهادی)?, '
+                                    'request (تکهٔ مرتبطِ درخواست)?}]')}, ['items'])},
     {'name': 'undo', 'description': 'بازگردانیِ یک دستهٔ تغییر (batch از خروجیِ نوشتن‌ها).',
      'inputSchema': obj({'batch': S('integer'), 'force': S('boolean')}, ['batch'])},
 ]
@@ -60,7 +65,8 @@ BASE_INSTRUCTIONS = (   # ثابت — هرگز با داده عوض نشود (C
     'قبل از هر کاری، اول ابزارِ skills_start را با text = متنِ درخواستِ کاربر (و site/project اگر معلوم است) صدا بزن و هر چه در load '
     'برگشت (از جمله قواعدِ اجباری) را کامل رعایت کن؛ متنِ اسکیل‌ها فقط از همین جواب بیاید چون همیشه تازه است. پروژه خودکار تشخیص داده می‌شود. '
     'اسکیل‌های load را کامل و دقیق رعایت کن؛ از available فقط اگر لازم شد skill_get بگیر. فایل‌های نمونه با skill_file_get. '
-    'اگر کاربر نکتهٔ ماندگاری گفت، با skill_save (append) به اسکیلِ مناسب اضافه کن و به کاربر بگو.'
+    'اگر کاربر نکتهٔ ماندگاری گفت، با skill_save (append) به اسکیلِ مناسب اضافه کن و به کاربر بگو. '
+    'اگر درخواستِ کاربر کیفیتِ کار را پایین آورد (طبقِ اسکیلِ «ثبتِ بازخورد»)، با skill_feedback یک خطِ کوتاه ثبت کن.'
 )
 
 
@@ -97,6 +103,8 @@ def _files(s, base):
 
 def skills_start(gate, a):
     org, base = gate.organization, getattr(gate, '_base', '')
+    from .feedback import ensure_skill
+    ensure_skill(org)
     d = detect(org, project=a.get('project'), site=a.get('site'), task=a.get('task'), type=a.get('type'), text=a.get('text') or '')
     load, avail = select(org, d['project'], d['type'], d['text'])
     r = Resolver()
@@ -340,6 +348,29 @@ def skill_file_delete(gate, a):
     return {'batch': b.id, 'deleted': len(ids)}
 
 
+def skill_feedback(gate, a):
+    from .feedback import record
+    items = a.get('items') or []
+    if isinstance(items, dict):
+        items = [items]
+    r = Resolver()
+
+    def _skill(v):
+        q = Skill.objects.filter(deleted_at__isnull=True)
+        return (q.filter(pk=int(v)).first() if str(v).strip().isdigit() else
+                q.filter(title=str(v).strip()).first() or q.filter(title__icontains=str(v).strip()).first())
+
+    def _proj(v):
+        try:
+            return r.get('project', v)
+        except ToolError:
+            return None
+    rows = record(gate.organization, items, 'mcp', _skill, _proj)
+    if not rows:
+        raise ToolError('summary خالی است')
+    return {'saved': len(rows), 'ids': [f.id for f in rows]}
+
+
 def undo(gate, a):
     from mcpgate.panel.registry import undo as panel_undo
     return panel_undo(gate, a)
@@ -348,7 +379,7 @@ def undo(gate, a):
 HANDLERS = {'skills_start': skills_start, 'skills_list': skills_list, 'skill_get': skill_get, 'skill_save': skill_save,
             'skill_delete': skill_delete, 'skill_history': skill_history, 'skill_restore': skill_restore,
             'skill_file_get': skill_file_get, 'skill_file_save': skill_file_save, 'skill_file_delete': skill_file_delete,
-            'undo': undo}
+            'skill_feedback': skill_feedback, 'undo': undo}
 
 
 def run(gate, name, args, log):

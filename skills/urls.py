@@ -6,6 +6,8 @@ app_name = 'skills'
 
 urlpatterns = [
     path('', views.index, name='index'),
+    path('feedback/', views.feedback, name='feedback'),
+    path('api/feedback/<int:pk>/', views.api_feedback, name='api_feedback'),
     path('api/', views.api_save, name='api_save'),
     path('api/detect/', views.api_detect, name='api_detect'),
     path('api/starters/', views.api_starters, name='api_starters'),

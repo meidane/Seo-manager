@@ -3,6 +3,7 @@
 
 ایندکس: index · api_save · api_detail (نسخه‌ها/حذف) · api_restore · api_duplicate · api_files (آپلود) · api_file (حذف/توضیح)
 · api_detect (آزمایشِ تشخیص = همان چیزی که هوش مصنوعی می‌گیرد) · api_starters · public_file (لینکِ توکنی، بدونِ ورود)
+· feedback (صفحهٔ بازخوردها) · api_feedback (حل/نادیده/بازکردن/افزودن به اسکیل/حذف)
 """
 import json
 import mimetypes
@@ -19,7 +20,7 @@ from core.templatetags.seo_extras import jalali, timeago
 from projects.access import accessible_project_ids
 
 from .mcp import ToolError, file_row, restore_version, save_file_bytes
-from .models import Skill, SkillFile, SkillVersion
+from .models import Skill, SkillFeedback, SkillFile, SkillVersion
 
 PERM = 'manage_skills'
 
@@ -57,6 +58,8 @@ def index(request):
 
     from .starters import STARTERS
     projects = Project.objects.filter(id__in=accessible_project_ids(request), personal_owner__isnull=True).order_by('status', 'name')
+    from .feedback import ensure_skill
+    ensure_skill(getattr(request, 'organization', None))
     existing = set(Skill.objects.filter(deleted_at__isnull=True).values_list('title', flat=True))
     return render(request, 'skills/index.html', {
         'page_title': 'اسکیل‌ها', 'skills': [_row(s) for s in _visible(request)],
@@ -64,6 +67,7 @@ def index(request):
         'starters': [{'key': x['key'], 'title': x['title'], 'summary': x['summary'], 'have': x['title'] in existing} for x in STARTERS],
         'can_edit': has_perm(request, PERM), 'sel_project': request.GET.get('project', ''),
         'mcp_ok': has_perm(request, 'manage_api_tokens'),
+        'fb_open': SkillFeedback.objects.filter(status=SkillFeedback.OPEN).count(),
     })
 
 
@@ -245,3 +249,58 @@ def public_file(request, token, name=''):
         ctype = 'text/plain; charset=utf-8'   # کد/HTML اجرا نشود، فقط نمایش
     inline = f.kind in ('image', 'text') or ctype == 'application/pdf'
     return FileResponse(fh, content_type=ctype, as_attachment=not inline, filename=f.name)
+
+
+@login_required
+def feedback(request):
+    """صفحهٔ بازخوردها: هشدارِ تکرار + شمارِ نوع/اسکیل + فهرست با فیلترِ وضعیت/نوع/اسکیل."""
+    from django.core.paginator import Paginator
+    from django.db.models import Count
+
+    from .feedback import alarms, ensure_skill
+    fskill = ensure_skill(getattr(request, 'organization', None))
+    base = SkillFeedback.objects.all()
+    st = request.GET.get('status', 'open')
+    kind, sk = request.GET.get('kind', ''), request.GET.get('skill', '')
+    qs = base.select_related('skill', 'project', 'resolved_by')
+    if st in dict(SkillFeedback.STATUSES):
+        qs = qs.filter(status=st)
+    if kind:
+        qs = qs.filter(kind=kind)
+    if sk:
+        qs = qs.filter(skill_id=None if sk == 'none' else sk)
+    opened = base.filter(status=SkillFeedback.OPEN)
+    kinds = dict(SkillFeedback.KINDS)
+    by_kind = [{'kind': r['kind'], 'label': kinds.get(r['kind'], r['kind']), 'n': r['n']}
+               for r in opened.values('kind').annotate(n=Count('id')).order_by('-n')]
+    by_skill = list(opened.values('skill_id', 'skill__title').annotate(n=Count('id')).order_by('-n')[:12])
+    page = Paginator(qs, 50).get_page(request.GET.get('page'))
+    counts = {r['status']: r['n'] for r in base.values('status').annotate(n=Count('id'))}
+    return render(request, 'skills/feedback.html', {
+        'page_title': 'بازخوردِ اسکیل‌ها', 'page_obj': page, 'rows': page.object_list,
+        'alarms': alarms(base), 'by_kind': by_kind, 'by_skill': by_skill,
+        'kinds': SkillFeedback.KINDS, 'statuses': [(v, lb, counts.get(v, 0)) for v, lb in SkillFeedback.STATUSES], 'f_status': st, 'f_kind': kind, 'f_skill': sk,
+        'fskill': fskill, 'can_edit': has_perm(request, PERM),
+    })
+
+
+@login_required
+@require_http_methods(['POST'])
+def api_feedback(request, pk):
+    require_perm(request, PERM)
+    from .feedback import append_to_skill
+    fb = get_object_or_404(SkillFeedback.objects.select_related('skill'), pk=pk)
+    act = _body(request).get('action')
+    if act == 'append':
+        if not append_to_skill(fb, request.user):
+            return JsonResponse({'detail': 'اسکیل یا پیشنهادِ اصلاح خالی است'}, status=400)
+    elif act in ('resolve', 'dismiss', 'reopen'):
+        fb.status = {'resolve': SkillFeedback.RESOLVED, 'dismiss': SkillFeedback.DISMISSED, 'reopen': SkillFeedback.OPEN}[act]
+        fb.resolved_by, fb.resolved_at = (None, None) if act == 'reopen' else (request.user, timezone.now())
+        fb.save()
+    elif act == 'delete':
+        fb.delete()
+        return JsonResponse({'ok': True, 'deleted': True})
+    else:
+        return JsonResponse({'detail': 'عملِ نامعتبر'}, status=400)
+    return JsonResponse({'ok': True, 'status': fb.status})
