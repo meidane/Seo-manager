@@ -118,6 +118,12 @@ cd /var/www/teams
 2. روی سرورِ خارج: `sudo bash deploy/gsc-relay.sh middle.lomin.co you@example.com` → «کلیدِ واسط» را چاپ می‌کند.
 3. در پنل (تنظیمات ← سرچ کنسول): آدرسِ واسط `https://middle.lomin.co` + همان کلید.
 
+اگر واسط را با نسخهٔ قدیمیِ اسکریپت (مسیرِ `/googleapis/`) نصب کرده‌ای، روی سرورِ خارج:
+```
+sudo sed -i -e "s#location /googleapis/ {#location /webmasters/ {#" -e "s#proxy_pass https://www.googleapis.com/;#proxy_pass https://www.googleapis.com;#" /etc/nginx/sites-available/gsc-relay
+sudo nginx -t && sudo systemctl reload nginx
+```
+
 ### (جایگزین) پراکسیِ سرچ کنسول روی سرورِ خارج (tinyproxy)
 ```
 sudo apt install -y tinyproxy

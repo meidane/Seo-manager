@@ -7,8 +7,12 @@
   می‌شد. با پراکسی، `trust_env=False`.
 - **واسط (relay) — راهِ پیشنهادیِ سرورِ ایران:** `GSCAccount.relay_url` (مثلاً `https://middle.lomin.co`) + `relay_key` (هدرِ
   `X-Relay-Key`). اگر پر باشد بر پراکسی مقدم است: توکن به `<relay>/oauth2/token` (ولی `aud` همان آدرسِ واقعیِ گوگل) و API به
-  `<relay>/googleapis/webmasters/v3/...`. سمتِ سرورِ خارج: `deploy/gsc-relay.sh <دامنه> <ایمیل>` (nginx + Let's Encrypt، فقط این دو
+  `<relay>/webmasters/v3/...` (همان مسیرِ گوگل). سمتِ سرورِ خارج: `deploy/gsc-relay.sh <دامنه> <ایمیل>` (nginx + Let's Encrypt، فقط این دو
   مسیر، بدونِ کلید `403 relay: bad key` که کلاینت به پیامِ «کلیدِ واسط یکی نیست» تبدیل می‌کند).
+- **تلهٔ واسط (بیت‌مان زد — 404ِ HTMLِ گوگل در همگام‌سازی، با این‌که فهرستِ سایت‌ها می‌آمد):** `proxy_pass` با مسیر (`…com/;`)
+  URI را normalize/decode می‌کند → `sites/https%3A%2F%2Fx.com%2F/…` به `sites/https:/x.com/…` تبدیل می‌شد. راهِ درست: `location
+  /webmasters/` + `proxy_pass https://www.googleapis.com;` (بدونِ مسیر = URIِ خام دست‌نخورده). `$request_uri`+متغیر هم double-encode
+  می‌کند. اصلاحِ سرورِ قبلی: sedِ `googleapis/`→`webmasters/` (در `DEPLOY.md`).
 - **چند کلید:** `GSCCredential` (کلیدهای اضافه، ترجیحاً در پروژهٔ دیگرِ Google Cloud برای سایتِ پرداده) + `GSCSite.credential`
   (خالی = کلیدِ اصلیِ `GSCAccount`). `refresh_sites` همهٔ کلیدها را می‌گردد؛ سایتی که فقط کلیدِ اضافه می‌بیند خودکار به آن وصل می‌شود.
 - **سهمیه:** درخواست‌ها روز‌به‌روز (`CHUNK_DAYS=1`)، مکثِ `PAUSE` بینشان، و تلاشِ دوباره با تأخیرِ نمایی روی 429/5xx/403ِ quota.

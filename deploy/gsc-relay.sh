@@ -4,7 +4,8 @@
 # خروجی: «کلیدِ واسط» که در پنل (تنظیمات ← سرچ کنسول) وارد می‌کنی.
 # کار: nginx + گواهیِ رایگانِ Let's Encrypt؛ فقط دو مسیر را به گوگل می‌رساند و بدونِ کلید 403 می‌دهد:
 #   /oauth2/...      → https://oauth2.googleapis.com/...
-#   /googleapis/...  → https://www.googleapis.com/...
+#   /webmasters/...  → https://www.googleapis.com/webmasters/...  (مسیر دست‌نخورده — بدونِ اسلشِ آخر در proxy_pass؛
+#   با «/» نگینکس آدرسِ کدشدهٔ سایت (https%3A%2F%2F…) را decode می‌کرد و گوگل 404 می‌داد)
 set -euo pipefail
 DOMAIN="${1:?دامنه را بده: sudo bash gsc-relay.sh middle.lomin.co you@example.com}"
 EMAIL="${2:?ایمیل (برای Let's Encrypt) را بده}"
@@ -28,9 +29,9 @@ server {
         proxy_ssl_server_name on;
         proxy_read_timeout 120s;
     }
-    location /googleapis/ {
+    location /webmasters/ {
         if (\$http_x_relay_key != "${KEY}") { return 403 "relay: bad key"; }
-        proxy_pass https://www.googleapis.com/;
+        proxy_pass https://www.googleapis.com;
         proxy_set_header Host www.googleapis.com;
         proxy_set_header X-Relay-Key "";
         proxy_ssl_server_name on;

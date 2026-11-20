@@ -71,7 +71,7 @@ class Client:
         # سهمیه: 429/500/503 یا 403ِ «quota/rate» → صبر و تلاشِ دوباره (۲، ۴، ۸، ۱۶، ۳۲ ثانیه)
         for attempt in range(6):
             try:
-                r = self.s.request(method, (self.relay + '/googleapis/webmasters/v3' if self.relay else API) + path, json=body, timeout=90, headers={'Authorization': 'Bearer ' + self._token()})
+                r = self.s.request(method, (self.relay + '/webmasters/v3' if self.relay else API) + path, json=body, timeout=90, headers={'Authorization': 'Bearer ' + self._token()})
             except requests.RequestException as e:
                 if attempt < 2:
                     time.sleep(3)
